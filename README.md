@@ -13,12 +13,13 @@ http://github.com/Continuum/kdbpy
 
 
 ## Dependencies
-* [`future`](http://python-future.org)
-* [`datashape`](https://github.com/ContinuumIO/datashape)
+* [`future`](http://python-future.org): Python 2-3 compatibility
+* [`datashape`](https://github.com/ContinuumIO/datashape): Extended
+  array oriented type system
 
 
 ## Development Dependencies
-* [`pytest`](http://www.pytest.org)
+* [`pytest`](http://www.pytest.org): For testing
 
 ## Installation from sources
 
