@@ -34,4 +34,4 @@ BSD
 
 ## Documentation
 
-![alt text](https://github.com/ContinuumIO/doc/_static/NEAT Diagram.png "NEAT Diagram")
+![alt text](https://github.com/ContinuumIO/kdbpy/doc/_static/NEAT Diagram.png "NEAT Diagram")
