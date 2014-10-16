@@ -33,3 +33,5 @@ python setup.py install
 BSD
 
 ## Documentation
+
+.. image:: doc/_static/NEAT Diagram.png
