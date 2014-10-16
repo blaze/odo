@@ -13,6 +13,12 @@ http://github.com/Continuum/kdbpy
 
 
 ## Dependencies
+* [`future`](http://www.python-future.org)
+* [`datashape`](https://github.com/ContinuumIO/datashape)
+
+
+## Development Dependencies
+* [`pytest`](http://www.pytest.org)
 
 ## Installation from sources
 
