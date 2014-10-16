@@ -34,4 +34,4 @@ BSD
 
 ## Documentation
 
-.. image:: doc/_static/NEAT Diagram.png
+![alt text](https://github.com/ContinuumIO/doc/_static/NEAT Diagram.png "NEAT Diagram")
