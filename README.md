@@ -13,7 +13,7 @@ http://github.com/Continuum/kdbpy
 
 
 ## Dependencies
-* [`future`](http://www.python-future.org)
+* [`future`](http://python-future.org)
 * [`datashape`](https://github.com/ContinuumIO/datashape)
 
 
