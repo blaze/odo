@@ -13,8 +13,8 @@ http://github.com/Continuum/kdbpy
 
 ## Dependencies
 * [`future`](http://python-future.org): Python 2-3 compatibility
-* [`datashape`](https://github.com/ContinuumIO/datashape): Extended
-  array oriented type system
+* [`blaze`](https://github.com/ContinuumIO/blaze): Composable
+  abstractions for data
 
 
 ## Development Dependencies
