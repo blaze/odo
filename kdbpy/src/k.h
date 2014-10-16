@@ -4,12 +4,16 @@ typedef char*S,C;typedef unsigned char G;typedef short H;typedef int I;typedef l
 #ifdef __cplusplus
 extern"C"{
 #endif
+#ifndef KXVER
+#error "Set KXVER=3 for kdb+3.0 or standalone c-api after 2011-04-20. Otherwise set KXVER=2"
+#endif
 #if KXVER>=3
 typedef struct k0{signed char m,a,t;C u;I r;union{G g;H h;I i;J j;E e;F f;S s;struct k0*k;struct{J n;G G0[1];};};}*K;
 typedef struct{G g[16];}U;
 #define kU(x) ((U*)kG(x))
 #define xU ((U*)xG)
 extern K ku(U),ktn(I,J),kpn(S,J);
+extern I setm(I);
 #define DO(n,x)	{J i=0,_i=(n);for(;i<_i;++i){x;}}
 #else
 typedef struct k0{I r;H t,u;union{G g;H h;I i;J j;E e;F f;S s;struct k0*k;struct{I n;G G0[1];};};}*K;
@@ -60,10 +64,13 @@ extern K ktn(I,I),kpn(S,I);
 
 #ifdef __cplusplus
 extern"C"{
+extern V m9();
+#else
+extern V m9(V);
 #endif
-extern I khpun(const S,I,const S,I),khpu(const S,I,const S),khp(const S,I),ymd(I,I,I),dj(I);extern V r0(K),sd0(I),m9(V),kclose(I);extern S sn(S,I),ss(S);
+extern I khpun(const S,I,const S,I),khpu(const S,I,const S),khp(const S,I),okx(K),ymd(I,I,I),dj(I);extern V r0(K),sd0(I),kclose(I);extern S sn(S,I),ss(S);
 extern K ktj(I,J),ka(I),kb(I),kg(I),kh(I),ki(I),kj(J),ke(F),kf(F),kc(I),ks(S),kd(I),kz(F),kt(I),sd1(I,K(*)(I)),dl(V*f,I),
- knk(I,...),kp(S),ja(K*,V*),js(K*,S),jk(K*,K),k(I,const S,...),xT(K),xD(K,K),ktd(K),r1(K),krr(S),orr(S),dot(K,K),b9(I,K),d9(K);
+ knk(I,...),kp(S),ja(K*,V*),js(K*,S),jk(K*,K),jv(K*k,K),k(I,const S,...),xT(K),xD(K,K),ktd(K),r1(K),krr(const S),orr(const S),dot(K,K),b9(I,K),d9(K);
 #ifdef __cplusplus 
 }
 #endif
@@ -73,17 +80,15 @@ extern K ktj(I,J),ka(I),kb(I),kg(I),kh(I),ki(I),kj(J),ke(F),kf(F),kc(I),ks(S),kd
 #define wh ((I)0x7FFF)
 #define ni ((I)0x80000000)
 #define wi ((I)0x7FFFFFFF)
-#ifdef WIN32
-#define nj ((J)0x8000000000000000)
-#define wj ((J)0x7FFFFFFFFFFFFFFF)
+#define nj ((J)0x8000000000000000LL) 
+#define wj 0x7FFFFFFFFFFFFFFFLL
+#if WIN32 || _WIN32
 #define nf (log(-1.0))
 #define wf (-log(0.0))
 #define isnan _isnan
 #define finite _finite
-extern double log();
+extern double log(double);
 #else  
-#define nj 0x8000000000000000LL
-#define wj 0x7FFFFFFFFFFFFFFFLL
 #define nf (0/0.0)
 #define wf (1/0.0)
 #define closesocket(x) close(x)
