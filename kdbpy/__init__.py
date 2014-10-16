@@ -1,4 +1,6 @@
 from __future__ import absolute_import, division, print_function
+from .compute import *
+
 import logging
 
 logging.basicConfig()
@@ -23,6 +25,7 @@ def print_versions():
     print("Processor: %s" % processor)
     print("Byte-ordering: %s" % sys.byteorder)
     print("-=" * 38)
+
 
 def test(verbose=False, junitfile=None, exit=False):
     """
