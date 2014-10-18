@@ -1,3 +1,8 @@
+
+#ifndef KXVER
+#define KXVER 3
+#endif
+
 #ifndef KX
 #define KX
 typedef char*S,C;typedef unsigned char G;typedef short H;typedef int I;typedef long long J;typedef float E;typedef double F;typedef void V;
@@ -71,7 +76,7 @@ extern V m9(V);
 extern I khpun(const S,I,const S,I),khpu(const S,I,const S),khp(const S,I),okx(K),ymd(I,I,I),dj(I);extern V r0(K),sd0(I),kclose(I);extern S sn(S,I),ss(S);
 extern K ktj(I,J),ka(I),kb(I),kg(I),kh(I),ki(I),kj(J),ke(F),kf(F),kc(I),ks(S),kd(I),kz(F),kt(I),sd1(I,K(*)(I)),dl(V*f,I),
  knk(I,...),kp(S),ja(K*,V*),js(K*,S),jk(K*,K),jv(K*k,K),k(I,const S,...),xT(K),xD(K,K),ktd(K),r1(K),krr(const S),orr(const S),dot(K,K),b9(I,K),d9(K);
-#ifdef __cplusplus 
+#ifdef __cplusplus
 }
 #endif
 
@@ -80,7 +85,7 @@ extern K ktj(I,J),ka(I),kb(I),kg(I),kh(I),ki(I),kj(J),ke(F),kf(F),kc(I),ks(S),kd
 #define wh ((I)0x7FFF)
 #define ni ((I)0x80000000)
 #define wi ((I)0x7FFFFFFF)
-#define nj ((J)0x8000000000000000LL) 
+#define nj ((J)0x8000000000000000LL)
 #define wj 0x7FFFFFFFFFFFFFFFLL
 #if WIN32 || _WIN32
 #define nf (log(-1.0))
@@ -88,11 +93,11 @@ extern K ktj(I,J),ka(I),kb(I),kg(I),kh(I),ki(I),kj(J),ke(F),kf(F),kc(I),ks(S),kd
 #define isnan _isnan
 #define finite _finite
 extern double log(double);
-#else  
+#else
 #define nf (0/0.0)
 #define wf (1/0.0)
 #define closesocket(x) close(x)
-#endif 
+#endif
 
 // remove more clutter
 #define O printf
@@ -143,4 +148,3 @@ extern double log(double);
 #define xB ((G*)xG)
 
 #endif
-

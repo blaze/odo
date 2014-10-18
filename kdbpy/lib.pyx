@@ -5,6 +5,8 @@ import numpy as np
 from numpy cimport *
 cimport cpython
 
+from k cimport *
+
 # initialize numpy
 import_array()
 import_ufunc()
@@ -12,28 +14,26 @@ import_ufunc()
 cdef class KDB:
 
     cdef:
-        object q
+        int kdb
 
-    def __init__(self, q=None):
-        self.q = q
-
-    def initialize(self):
-        self.q = True
-        return self
+    def __init__(self, host='localhost', port=5001):
+        self.kdb = khp(host,port)
+        if not self.is_initialized:
+            raise ValueError("kdb is not initialized")
 
     def close(self):
-        self.q = None
+        if self.kdb:
+            kclose(self.kdb)
+        self.kdb = 0
 
     property is_initialized:
 
         def __get__(self):
-            return self.q is not None
+            return self.kdb > 0
 
     def evaluate(self, expr):
-        cdef ndarray result
+        # pass in an evaluate a q-expression
+        k(self.kdb,expr)
 
-        if not self.is_initialized:
-            raise ValueError("q is not initialized")
-
-        result = np.zeros(10,dtype=expr)
-        return result
+    def get_memory_used(self):
+        k(self.kdb,'.Q.w[]')

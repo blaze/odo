@@ -95,7 +95,7 @@ class CleanCommand(Command):
     def initialize_options(self):
         self._clean_me = []
         self._clean_trees = []
-        self._clean_exclude = []
+        self._clean_exclude = ['c.o']
 
         for toplevel in packages:
             for root, dirs, files in list(os.walk(toplevel)):
@@ -166,9 +166,10 @@ class CythonCommand(build_ext):
 
 extensions = [
     Extension('kdbpy.lib',
-              sources=['kdbpy/lib.pyx'],
+              sources=['kdbpy/lib.pyx','kdbpy/src/k.pxd'],
               depends=['kdbpy/src/k.h'],
-              include_dirs=['kdby/src'])
+              extra_objects=['kdbpy/arch/m64/c.o'],
+              include_dirs=['kdbpy/src'])
     ]
 
 #------------------------------------------------------------------------
@@ -207,4 +208,3 @@ setup(
         },
     ext_modules=extensions,
 )
-
