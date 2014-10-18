@@ -1,3 +1,6 @@
+""" kdb c-level interfaces """
+
+
 cimport numpy as np
 cimport cython
 import numpy as np
@@ -5,35 +8,40 @@ import numpy as np
 from numpy cimport *
 cimport cpython
 
-from k cimport *
-
 # initialize numpy
 import_array()
 import_ufunc()
 
+from k cimport *
+
 cdef class KDB:
+    """ represents the c-level interface to the kdb/q processes """
 
     cdef:
-        int kdb
+        int q
 
-    def __init__(self, host='localhost', port=5001):
-        self.kdb = khp(host,port)
+    def __init__(self, cred):
+        # given credentials, start the connection to the server
+
+        self.q = khpu(cred.host,cred.port,"{0}:{1}".format(cred.username,cred.password))
         if not self.is_initialized:
-            raise ValueError("kdb is not initialized")
+            raise ValueError("kdb is not initialized: {0}".format(self.q))
 
     def close(self):
-        if self.kdb:
-            kclose(self.kdb)
-        self.kdb = 0
+        # close the kdb process
+
+        if self.q:
+            kclose(self.q)
+        self.q = 0
 
     property is_initialized:
 
         def __get__(self):
-            return self.kdb > 0
+            return self.q > 0
 
-    def evaluate(self, expr):
+    def eval(self, expr):
         # pass in an evaluate a q-expression
-        k(self.kdb,expr)
+        k(self.q,expr)
 
     def get_memory_used(self):
-        k(self.kdb,'.Q.w[]')
+        k(self.q,'.Q.w[]')
