@@ -1,7 +1,6 @@
 import unittest
 import pytest
 
-import time
 import numpy as np
 from kdbpy import server, lib
 
@@ -10,9 +9,6 @@ class Base(unittest.TestCase):
     def setUp(self):
         self.creds = server.get_credentials()
         server.q_start_process(self.creds)
-
-        # wait for startup
-        time.sleep(1)
 
     def tearDown(self):
         server.q_kill_process()

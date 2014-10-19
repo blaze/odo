@@ -1,5 +1,6 @@
 """ kdb process management """
 import os
+import time
 import subprocess
 import atexit
 import logging
@@ -75,6 +76,11 @@ def q_start_process(cred, restart=False):
     # that can potentially block though
     with open(os.devnull, 'w') as devnull:
         q_handle = subprocess.Popen([ q_executable, '-p', str(cred.port)], stdin=devnull, stdout=devnull, stderr=devnull)
+
+    #### TODO - need to wait for the process to start here
+    #### maybe communicate and wait till it starts before returning
+    time.sleep(1)
+
     return q_handle
 
 @atexit.register

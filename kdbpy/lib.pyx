@@ -12,6 +12,7 @@ cimport cpython
 import_array()
 import_ufunc()
 
+# k.pxd imports
 from k cimport *
 
 cdef class KDB:
@@ -46,7 +47,6 @@ cdef class KDB:
             K result
 
         result = k(self.q,expr,<K>0)
-        print "returned -> {0}".format(result.t)
 
         if (result.t==-128):
            r0(result)
@@ -58,4 +58,15 @@ cdef class KDB:
         elif (result.t<0):
            print "scalar received {0}".format(result.t)
         else:
-           print "kK[0] -> {0}".format(kK(&result)[0].t)
+           print_k(result)
+           #print_k(kK(&result)[0])
+
+
+           #print "kK[0] -> {0}".format(kK(&result)[0].t)
+
+
+cdef print_k(K x, l=None):
+    if l is not None:
+        print "{0} -> {1} : {2}".format(l, k_typekind(x), k_itemsize(x))
+    else:
+        print "{0} : {1}".format(k_typekind(x), k_itemsize(x))
