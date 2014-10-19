@@ -43,20 +43,19 @@ cdef class KDB:
         # pass in an evaluate a q-expression
         # return the result
         cdef:
-            K result, *r
+            K result
 
         result = k(self.q,expr,<K>0)
-        r = &result
+        print "returned -> {0}".format(result.t)
 
-        if (r.t==-128):
+        if (result.t==-128):
            r0(result)
-           raise ValueError("server error {0}".format(r.s))
-        elif (r.t==98):
+           raise ValueError("server error {0}".format(result.s))
+        elif (result.t>0):
+           # vectorz
            r0(result)
-           print "dict received"
-        elif (r.t==99):
-           r0(result)
-           print "table received"
+           print "vector received {0}".format(result.t)
+        elif (result.t<0):
+           print "scalar received {0}".format(result.t)
         else:
-           r0(result)
-           print("type {0} received".format(r.t))
+           print "kK[0] -> {0}".format(kK(&result)[0].t)

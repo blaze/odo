@@ -6,6 +6,8 @@ from numpy cimport *
 cimport cpython
 
 cdef extern from "k.h":
+
+   # basic data types
    ctypedef char *S
    ctypedef char  C
    ctypedef unsigned char G
@@ -16,23 +18,55 @@ cdef extern from "k.h":
    ctypedef double F
    ctypedef void V
 
+   # primary K structure
    cdef struct k0:
        signed char m
        signed char a
-       signed char t
+       signed char t # type
        C u
-       I r
-       G g
-       H h
-       I i
-       J j
-       E e
-       F f
-       S s
-       k0 *k
-       J n
-       G G0[1]
-   ctypedef k0 K
+       I r # memory references
+       G g # unsigned char
+       H h # short
+       I i # int
+       J j # long long
+       E e # float
+       F f # double
+       S s # symbol
+       k0 *k # pointer to a K
+       J n # long long
+       G G0[1] # array of unsigned char
+   ctypedef k0 *K
+
+   # vector accessors
+   cdef :
+      G kG(K x)
+      C kC(K x)
+      H *kH(K *x)
+      I *kI(K *x)
+      J *kJ(K *x)
+      E *kE(K *x)
+      F *kF(K *x)
+      S *kS(K *x)
+      K *kK(K *x)
+
+   # scalar accessors
+   cdef :
+      K ka(I) # atom
+      K kb(I) # boolean
+      K ku(U) # guid
+      K kg(I) # byte
+      K kh(I) # short
+      K ki(I) # int
+      K kj(J) # long
+      K ke(F) # real
+      K kf(F) # float
+      K kc(I) # char
+      K ks(S) # symbol
+      K ktj(KP,J) # timestamp
+      K kt(I) # time
+      K kd(I) # date
+      K ktj(KN,J) # timespan
+      K kz(F) # datetime
 
    cdef :
        I khpun(const S,I,const S,I)

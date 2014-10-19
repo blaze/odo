@@ -40,5 +40,9 @@ class Eval(Base):
         super(Eval, self).tearDown()
 
     def test_evaluate(self):
-        result = self.kdb.eval("a:42")
+        self.kdb.eval("a:42")
+        result = self.kdb.eval("a")
         assert result == 42
+
+    def test_evaluate2(self):
+        result=self.kdb.eval("([]a:til 10;b:reverse til 10;c:10?`4;d:{x#.Q.a}each til 10)")
