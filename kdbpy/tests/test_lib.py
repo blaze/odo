@@ -41,3 +41,4 @@ class Eval(Base):
 
     def test_evaluate(self):
         result = self.kdb.eval("a:42")
+        assert result == 42

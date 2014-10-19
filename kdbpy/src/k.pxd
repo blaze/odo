@@ -8,16 +8,18 @@ cimport cpython
 cdef extern from "k.h":
    ctypedef char *S
    ctypedef char  C
-   ctypedef       unsigned char G
-   ctypedef       short H
-   ctypedef       int I
-   ctypedef       long long J
-   ctypedef       float E
-   ctypedef       double F
-   ctypedef       void V
+   ctypedef unsigned char G
+   ctypedef short H
+   ctypedef int I
+   ctypedef long long J
+   ctypedef float E
+   ctypedef double F
+   ctypedef void V
 
-   ctypedef struct K:
-       signed char m,a,t
+   cdef struct k0:
+       signed char m
+       signed char a
+       signed char t
        C u
        I r
        G g
@@ -27,9 +29,10 @@ cdef extern from "k.h":
        E e
        F f
        S s
-       K *k
+       k0 *k
        J n
        G G0[1]
+   ctypedef k0 K
 
    cdef :
        I khpun(const S,I,const S,I)

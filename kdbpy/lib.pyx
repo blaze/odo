@@ -41,7 +41,22 @@ cdef class KDB:
 
     def eval(self, expr):
         # pass in an evaluate a q-expression
-        k(self.q,expr)
+        # return the result
+        cdef:
+            K result, *r
 
-    def get_memory_used(self):
-        k(self.q,'.Q.w[]')
+        result = k(self.q,expr,<K>0)
+        r = &result
+
+        if (r.t==-128):
+           r0(result)
+           raise ValueError("server error {0}".format(r.s))
+        elif (r.t==98):
+           r0(result)
+           print "dict received"
+        elif (r.t==99):
+           r0(result)
+           print "table received"
+        else:
+           r0(result)
+           print("type {0} received".format(r.t))
