@@ -59,7 +59,7 @@ cdef class KDB:
            print "scalar received {0}".format(result.t)
         else:
            print_k(result)
-           #print_k(kK(&result)[0])
+           #print_k(kK(result))
 
 
            #print "kK[0] -> {0}".format(kK(&result)[0].t)

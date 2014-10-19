@@ -38,16 +38,15 @@ cdef extern from "k.h":
    ctypedef k0 *K
 
    # vector accessors
-   cdef :
-      G kG(K x)
-      C kC(K x)
-      H *kH(K *x)
-      I *kI(K *x)
-      J *kJ(K *x)
-      E *kE(K *x)
-      F *kF(K *x)
-      S *kS(K *x)
-      K *kK(K *x)
+   #   G kG(K x)
+   #   C kC(K x)
+   #   H kH(K x)
+   #   I kI(K x)
+   #   J kJ(K x)
+   #   E kE(K x)
+   #   F kF(K x)
+   #   S kS(K x)
+
 
    # scalar accessors
    cdef :
@@ -140,6 +139,9 @@ cdef extern from "k.h":
        # // table,dict
        XT # 98 //   x->k is XD
        XD # 99 //   kK(x)[0] is keys. kK(x)[1] is values.
+
+cdef inline K kK(K x):
+     return <K>(x.G0)
 
 cdef inline char *k_typekind(K x):
 
