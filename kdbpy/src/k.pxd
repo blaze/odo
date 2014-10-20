@@ -19,12 +19,14 @@ cdef extern from "k.h":
    ctypedef void V
 
    # primary K structure
-   cdef struct k0:
-       signed char m
-       signed char a
-       signed char t # type
-       C u
-       I r # memory references
+   # typedef struct k0{signed char m,a,t;C u;I r;union{G g;H h;I i;J j;E e;F f;S s;struct k0*k;struct{J n;G G0[1];};};}*K;
+   cdef struct k0
+
+   ctypedef struct k_g0:
+       J n # long long
+       G G0[1] # array of unsigned char
+
+   cdef struct k_sub:
        G g # unsigned char
        H h # short
        I i # int
@@ -33,8 +35,15 @@ cdef extern from "k.h":
        F f # double
        S s # symbol
        k0 *k # pointer to a K
-       J n # long long
-       G G0[1] # array of unsigned char
+       k_g0 g0
+
+   cdef struct k0:
+       signed char m
+       signed char a
+       signed char t # type
+       C u
+       I r # memory references
+       k_sub k # sub-structure
    ctypedef k0 *K
 
    # vector accessors
@@ -141,7 +150,7 @@ cdef extern from "k.h":
        XD # 99 //   kK(x)[0] is keys. kK(x)[1] is values.
 
 cdef inline K kK(K x):
-     return <K>(x.G0)
+     return <K>(x.k.g0.G0)
 
 cdef inline char *k_typekind(K x):
 
@@ -177,3 +186,23 @@ cdef inline int k_itemsize(K x):
      if (t < sizeof(k_itemsizes)):
            return k_itemsizes[t]
      return 0
+
+cdef inline int k_ktype(int typekind, int itemsize):
+    # based on the typekind and itemsize, return the K type enum
+    if typekind == 'f':
+        if itemsize == 4:
+            return KE
+        elif itemsize == 8:
+            return KF
+    elif typekind == 'i':
+        if itemsize == 2:
+            return KH
+        elif itemsize == 4:
+            return KI
+        elif itemsize == 8:
+            return KJ
+    elif typekind == 'b':
+        return KB
+    elif typekind == 'O':
+        return KS
+    return -1;

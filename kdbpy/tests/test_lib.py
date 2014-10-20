@@ -35,10 +35,11 @@ class Eval(Base):
         self.kdb.close()
         super(Eval, self).tearDown()
 
-    def test_evaluate(self):
-        self.kdb.eval("a:42")
-        result = self.kdb.eval("a")
+    def test_evaluate_scalar(self):
+        import pdb; pdb.set_trace()
+        self.kdb.eval("b:42")
+        result = self.kdb.eval("b")
         assert result == 42
 
-    def test_evaluate2(self):
+    def test_evaluate_table(self):
         result=self.kdb.eval("([]a:til 10;b:reverse til 10;c:10?`4;d:{x#.Q.a}each til 10)")

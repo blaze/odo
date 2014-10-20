@@ -46,11 +46,13 @@ cdef class KDB:
         cdef:
             K result
 
+        print "\nexpr: {0}".format(expr)
         result = k(self.q,expr,<K>0)
+        print "result.t: {0}".format(result.t)
 
         if (result.t==-128):
            r0(result)
-           raise ValueError("server error {0}".format(result.s))
+           raise ValueError("server error {0}".format(result.k.s))
         elif (result.t>0):
            # vectorz
            r0(result)
@@ -59,8 +61,8 @@ cdef class KDB:
            print "scalar received {0}".format(result.t)
         else:
            print_k(result)
-           #print_k(kK(result))
-
+           #result = kK(result)
+           #print_k(result)
 
            #print "kK[0] -> {0}".format(kK(&result)[0].t)
 
