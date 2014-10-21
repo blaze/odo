@@ -43,7 +43,7 @@ class QCategorical(object):
 
 class String(QCategorical):
     def __init__(self, s):
-        super(String, self).__init__(s)
+        super(String, self).__init__(str(s))
 
     def __repr__(self):
         return '"%s"' % self.s
