@@ -3,32 +3,30 @@ A blaze backend that generates Q code
 """
 
 from __future__ import absolute_import, print_function, division
+from builtins import str
+from builtins import zip
+
+from past.builtins import basestring
 
 import numbers
 import pprint
 import keyword
 import re
 
-from collections import Iterable, OrderedDict
+from collections import OrderedDict
 from io import StringIO
+from functools import total_ordering
 
 from blaze.dispatch import dispatch
 from blaze.expr import Symbol, Projection, Broadcast, Selection, Field
-from blaze.expr import BinOp, UnaryOp, Expr, By, Reduction
+from blaze.expr import BinOp, UnaryOp, Expr, Reduction
 from blaze.expr import count
-from future.builtins import str
 from toolz.curried import map
-from toolz import first
-
-
-Leaf = Field, Symbol, numbers.Number
-
-
-ID_REGEX = re.compile(r'[a-zA-Z_]\w*')
+from toolz import identity
 
 
 def isidentifier(s):
-    return ID_REGEX.match(s) is not None and not keyword.iskeyword(s)
+    return re.match(r'([a-zA-Z_]\w*)', s) is not None and ' ' not in s
 
 
 class QDict(OrderedDict):
@@ -38,24 +36,58 @@ class QDict(OrderedDict):
     def __repr__(self):
         return '%s!%s' % (QList(*self.keys()), QList(*self.values()))
 
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.keys() == other.keys() and
+                self.values() == other.values())
 
-class QSymbol(object):
+    def __ne__(self, other):
+        return not self == other
+
+
+@total_ordering
+class QCategorical(object):
     def __init__(self, s):
-        assert isinstance(s, str), 'input must be an instance of str'
-        self.s = s
-
-    def __repr__(self):
-        if not isidentifier(self.s):
-            return '`$"%s"' % self.s
-        return '`%s' % self.s
+        assert isinstance(s, (basestring, QSymbol, QString))
+        self.s = getattr(s, 's', s)
 
     def __hash__(self):
-        return hash(self.s)
+        return hash(str(self))
+
+    def __eq__(self, other):
+        return self.s == other.s
+
+    def __lt__(self, other):
+        return self.s < other.s
 
 
+class QString(QCategorical):
+    def __init__(self, s):
+        super(QString, self).__init__(s)
+
+    def __repr__(self):
+        return '"%s"' % self.s
+
+
+class QSymbol(QCategorical):
+    def __init__(self, s):
+        super(QSymbol, self).__init__(s)
+
+    def __repr__(self):
+        s = self.s
+        if not isidentifier(s) and not keyword.iskeyword(s):
+            return '`$%s' % QString(s)
+        return '`' + s
+
+
+class QOperator(QSymbol):
+    def __repr__(self):
+        return self.s
+
+
+@total_ordering
 class QList(object):
     def __init__(self, *items):
-        super(QList, self).__init__()
         self.items = items
 
     def __repr__(self):
@@ -75,6 +107,15 @@ class QList(object):
     def __len__(self):
         return len(self.items)
 
+    def __iter__(self):
+        return iter(self.items)
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.items == other.items
+
+    def __lt__(self, other):
+        return type(self) == type(other) and self.items < other.items
+
 
 class Q(object):
     __slots__ = 't', 'q'
@@ -90,28 +131,17 @@ class Q(object):
                 '(t={0.t}, q={1!s})').format(self, stream.getvalue())
 
 
-@dispatch(str, Q)
+@dispatch(basestring, Q)
 def compute_up(expr, data, **kwargs):
-    return Q(t=expr, q=QSymbol(str(expr)))
-
-
-def _deep_join(qexpr):
-    for el in qexpr:
-        if isinstance(el, str) or not isinstance(el, Iterable):
-            yield str(el)
-        else:
-            yield '(%s)' % '; '.join(_deep_join(el))
-
-
-def deep_join(qexpr, char='; '):
-    return '(%s)' % char.join(_deep_join(qexpr))
+    return Q(t=expr, q=QString(str(expr)))
 
 
 @dispatch(Projection, Q)
 def compute_up(expr, data, **kwargs):
-    child = compute_up(expr._child, data, **kwargs)
+    child = compute_up(expr._child, data, **kwargs).q
     fields = list(map(QSymbol, expr.fields))
-    q = QList('?', child.q, '0b', QDict(zip(fields, fields)))
+    q = QList('?', child, QList(), QBool(False),
+              QDict(list(zip(fields, fields))))
     return Q(t=expr, q=q)
 
 
@@ -123,19 +153,17 @@ def compute_up(expr, data, **kwargs):
 
 
 binops = {
-    '&': 'and',
-    '|': 'or',
-    '!=': '<>',
-    '/': '%',
-    '%': 'mod',
-    '**': 'xexp',
-    '==': '='
+    '!=': QOperator('<>'),
+    '/': QOperator('%'),
+    '%': QOperator('mod'),
+    '**': QOperator('xexp'),
+    '==': QOperator('=')
 }
 
 
 unops = {
-    'USub': '-:',
-    '~': '~:'
+    'USub': QOperator('-:'),
+    '~': QOperator('~:')
 }
 
 
@@ -149,7 +177,7 @@ def compute_up(expr, data, **kwargs):
     op = binops.get(expr.symbol, expr.symbol)
     lhs = compute_up(expr.lhs, data, **kwargs).q
     rhs = compute_up(expr.rhs, data, **kwargs).q
-    return Q(t=expr, q='(%s)' % '; '.join(map(str, (op, lhs, rhs))))
+    return Q(t=expr, q=QList(op, lhs, rhs))
 
 
 @dispatch(UnaryOp, Q)
@@ -166,19 +194,14 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Broadcast, Q)
 def compute_up(expr, data, **kwargs):
-    return Q(t=expr, q=compute_up(expr.expr, data, **kwargs).q)
+    return Q(t=expr, q=compute_up(expr._expr, data, **kwargs).q)
 
 
 @dispatch(Selection, Q)
 def compute_up(expr, data, **kwargs):
     predicate = compute_up(expr.predicate, data, **kwargs).q
-    if isinstance(expr._child, Leaf):
-        q = QList(compute_up(expr._child, data, **kwargs).q,
-                  QList(QList(predicate)), '0b', ())
-        return Q(t=expr, q=q)
-    q = QList('?', compute_up(expr._child, data, **kwargs).q,
-              QList(QList(predicate)), '0b', ())
-    return Q(t=expr, q=q)
+    return Q(t=expr, q=QList('?', compute_up(expr._child, data, **kwargs).q,
+                             QList(QList(predicate)), QBool(False), ()))
 
 
 reductions = {'mean': 'avg',
@@ -197,15 +220,6 @@ def compute_up(expr, data, **kwargs):
                              compute_up(expr._child, data, **kwargs).q))
 
 
-@dispatch(By, Q)
-def compute_up(expr, data, **kwargs):
-    grouper = compute_up(expr.grouper, data, **kwargs).q
-    reduction = compute_up(expr.apply, data, **kwargs).q
-    child = compute_up(expr.grouper._child, data, **kwargs).q
-    return Q(t=expr, q='select (%s) by (%s) from (%s)' % (reduction, grouper,
-                                                          child))
-
-
 def call_q_client(expr):
     """Send an expression to the KDB interpreter.
 
@@ -217,6 +231,25 @@ def call_q_client(expr):
     return expr
 
 
+server = identity
+
+
+@total_ordering
+class QBool(object):
+    def __init__(self, value):
+        assert value is True or value is False
+        self.value = value
+
+    def __repr__(self):
+        return '%ib' % self.value
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.value == other.value
+
+    def __lt__(self, other):
+        return type(self) == type(other) and self.value < other.value
+
+
 @dispatch(Expr, Q, dict)
 def post_compute(expr, data, _):
-    return call_q_client(str(data.q))
+    return server(data.q)
