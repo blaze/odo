@@ -20,13 +20,15 @@ cdef class KDB:
 
     cdef:
         int q
+        object credentials
 
-    def __init__(self, cred):
-        self.cred = cred
-        self.q = None
+    def __init__(self, credentials):
+        self.credentials = credentials
+        self.q = 0
 
     def start(self):
         """ given credentials, start the connection to the server """
+        cred = self.credentials
         self.q = khpu(cred.host,cred.port,"{0}:{1}".format(cred.username,cred.password))
         if not self.is_initialized:
             raise ValueError("kdb is not initialized: {0}".format(self.q))
