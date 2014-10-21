@@ -55,8 +55,9 @@ dist
 ######################
 .directory
 .gdb_history
-.DS_Store?
-ehthumbs.db
+.DS_Store*
+.com.*
+.ehthumbs.db
 Icon?
 Thumbs.db
 

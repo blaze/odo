@@ -164,6 +164,8 @@ class CythonCommand(build_ext):
         pass
 
 
+import os
+os.environ['CC'] = 'gcc-4.9'
 extensions = [
     Extension('kdbpy.lib',
               sources=['kdbpy/lib.pyx','kdbpy/src/k.pxd'],
@@ -171,6 +173,7 @@ extensions = [
               extra_objects=['kdbpy/arch/m32/c.o'],
               libraries=['pthread'],
               include_dirs=['kdbpy/src'],
+              extra_compile_args=['-m32']
               )
     ]
 
