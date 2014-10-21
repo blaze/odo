@@ -4,7 +4,8 @@ import logging
 
 class Web(object):
 
-    def __init__(self):
+    def __init__(self, parent):
+        self.parent = parent
         self.is_initialized = False
 
     def start(self):

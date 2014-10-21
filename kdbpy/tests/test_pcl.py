@@ -27,3 +27,8 @@ class PCL(unittest.TestCase):
         p.stop()
         assert not p.is_kdb
         assert not p.is_web
+
+    def test_eval(self):
+        p = pcl.PCL()
+        assert p.eval('42') == 42
+        p.stop()

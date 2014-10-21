@@ -104,7 +104,9 @@ def q_stop_process():
 class KDB(object):
     """ represents the interface to qPython object """
 
-    def __init__(self, credentials):
+    def __init__(self, parent, credentials):
+        """ Hold the parent reference, and connection credentials """
+        self.parent = parent
         self.credentials = credentials
         self.q = None
 
@@ -150,4 +152,10 @@ class KDB(object):
         a scalar, a list, or a numpy 1-d array or a DataFrame
 
         """
-        return self.q.sync(expr)
+        result = self.q.sync(expr)
+
+        # convert if needed
+        #if convert and not np.isscalar(result):
+        #    import pdb; pdb.set_trace()
+
+        return result

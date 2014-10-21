@@ -41,14 +41,14 @@ class BasicKDB(unittest.TestCase):
         kdb.q_stop_process()
 
     def test_construction(self):
-        k = kdb.KDB(self.creds).start()
+        k = kdb.KDB(self, self.creds).start()
         assert k.is_initialized
         k.stop()
         assert not k.is_initialized
 
         # require initilization
         with pytest.raises(ValueError):
-            kdb.KDB(kdb.get_credentials(port=0)).start()
+            kdb.KDB(self, kdb.get_credentials(port=0)).start()
 
 class Eval(unittest.TestCase):
 
@@ -56,7 +56,7 @@ class Eval(unittest.TestCase):
     def setUpClass(cls):
         cls.creds = kdb.get_credentials()
         kdb.q_start_process(cls.creds)
-        cls.kdb = kdb.KDB(cls.creds).start()
+        cls.kdb = kdb.KDB(cls, cls.creds).start()
 
     @classmethod
     def tearDownClass(cls):
