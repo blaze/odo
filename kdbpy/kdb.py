@@ -79,7 +79,7 @@ def q_start_process(cred, restart=False):
 
     #### TODO - need to wait for the process to start here
     #### maybe communicate and wait till it starts before returning
-    time.sleep(1)
+    time.sleep(0.5)
 
     return q_handle
 
