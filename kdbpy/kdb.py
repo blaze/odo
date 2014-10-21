@@ -3,7 +3,7 @@ import os
 import time
 import subprocess
 import atexit
-import logging
+
 from collections import namedtuple
 
 # qPython
@@ -15,12 +15,16 @@ q_default_port = 5001
 q_default_username = 'user'
 q_default_password = 'password'
 
-### TODO - need arch agnostic method of finding this
-q_executable = '/Users/jreback/q/m32/q'
+try:
+    q_executable = os.environ['QEXEC']
+except KeyError:
+    raise KeyError('Please set the QEXEC environment variable to point to a Q'
+                   ' executable')
 q_handle = None
 
 # credentials
-Credentials = namedtuple('Credentials',['host','port','username','password'])
+Credentials = namedtuple('Credentials', ['host', 'port', 'username',
+                                         'password'])
 def get_credentials(host=None, port=None, username=None, password=None):
     """
     Parameters
