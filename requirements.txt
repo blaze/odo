@@ -1,1 +1,2 @@
 numpy >= 1.7
+qPython >= 1.0.Beta.6

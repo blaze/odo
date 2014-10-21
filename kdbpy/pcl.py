@@ -1,6 +1,6 @@
 """ pcl top-level managemenet """
 import logging
-from kdbpy import kdb, web, lib
+from kdbpy import kdb, web
 
 class PCL(object):
 
@@ -17,7 +17,7 @@ class PCL(object):
         """ start up kdb/q process and connect server """
         cred = kdb.get_credentials()
         kdb.q_start_process(cred)
-        self.kdb = lib.KDB(cred).start()
+        self.kdb = kdb.KDB(cred).start()
 
     def stop_kdb(self):
         """ terminate kdb/q process and connecting server """

@@ -4,8 +4,10 @@ import time
 import subprocess
 import atexit
 import logging
-
 from collections import namedtuple
+
+# qPython
+from qpython import qconnection
 
 # constants
 q_default_host = 'localhost'
@@ -96,3 +98,56 @@ def q_stop_process():
         finally:
             q_handle = None
     return False
+
+### qPython object wrapper ###
+
+class KDB(object):
+    """ represents the interface to qPython object """
+
+    def __init__(self, credentials):
+        self.credentials = credentials
+        self.q = None
+
+    def start(self):
+        """ given credentials, start the connection to the server """
+        cred = self.credentials
+        try:
+            self.q = qconnection.QConnection(host=cred.host,
+                                             port=cred.port,
+                                             username=cred.username,
+                                             password=cred.password)
+            self.q.open()
+        except (Exception) as e:
+            raise ValueError("cannot connect to the kdb server: {0}".format(e))
+        if not self.is_initialized:
+            raise ValueError("kdb is not initialized: {0}".format(self.q))
+        return self
+
+    def stop(self):
+        """ stop the kdb client process """
+        if self.q is not None:
+            self.q.close()
+            self.q = None
+        return self
+
+    @property
+    def is_initialized(self):
+        return self.q is not None
+
+    def eval(self, expr, convert=True, columns=None, *args):
+        """
+        Parameters
+        ----------
+        expr: a string q expression
+        args: a list of positional parameters to pass into the q expression
+        convert: boolean, default True
+             provide conversions of datatypes to standard form
+        columns: list or None
+             provide only these columns back (only applicable to tables)
+
+        Returns
+        -------
+        a scalar, a list, or a numpy 1-d array or a DataFrame
+
+        """
+        return self.q.sync(expr)
