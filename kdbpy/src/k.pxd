@@ -25,11 +25,12 @@ cdef extern from "k.h":
    # struct k0*k;struct{J n;G G0[1];};};}*K;
    cdef struct k0
 
-   # cdef struct k_g0:
-   #     J n # long long
-   #     G G0[1] # array of unsigned char
-
-   cdef struct k_sub:
+   cdef struct k0:
+       signed char m # internal
+       signed char a # internal
+       signed char t # type
+       C u
+       I r # memory references
        G g # unsigned char
        H h # short
        I i # int
@@ -38,16 +39,9 @@ cdef extern from "k.h":
        F f # double
        S s # symbol
        k0 *k # pointer to a K
-       J n
-       G G0[1]
+       J n # long long
+       G G0[1] # array of unsigned char
 
-   cdef struct k0:
-       signed char m
-       signed char a
-       signed char t # type
-       C u
-       I r # memory references
-       k_sub *k # sub-structure
    ctypedef k0 *K
 
    # vector accessors
@@ -153,8 +147,8 @@ cdef extern from "k.h":
        XT # 98 //   x->k is XD
        XD # 99 //   kK(x)[0] is keys. kK(x)[1] is values.
 
-cdef inline K kK(K x):
-     return <K>(x.k.G0)
+#cdef inline K kK(K x):
+#     return <K>(x.k.g0.G0)
 
 cdef inline char *k_typekind(K x):
 

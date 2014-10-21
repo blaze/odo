@@ -40,15 +40,17 @@ cdef class KDB:
         def __get__(self):
             return self.q > 0
 
-    def eval(self, expr):
+    def eval(self, expr, printit=True):
         # pass in an evaluate a q-expression
         # return the result
         cdef:
             K result
 
         print "\nexpr: {0}".format(expr)
-        result = k(self.q,expr,<K>0)
-        print "result.t: {0}".format(result.t)
+        result = k(self.q,expr)
+        print "result.j: {0}".format(result.j)
+        print "result.t: {0}, {1}".format(type(result.t),result.t)
+        print ','.join([ "{0}:{1}".format(x,y) for x,y in [('m',result.m),('a',result.a),('u',result.u),('r',result.u),('t',result.t)]])
 
         if (result.t==-128):
            r0(result)
@@ -66,6 +68,38 @@ cdef class KDB:
 
            #print "kK[0] -> {0}".format(kK(&result)[0].t)
 
+
+    #def k_to_frame(self, K k):
+        """
+        Parameters
+        ----------
+        k : input K type object of type == XT|XD (table/dict)
+
+        Returns
+        -------
+        DataFrame
+
+        """
+        #assert k.t == XT | k.t == XD
+
+        #cdef:
+        #    K col_names, col_data, c
+        #    int ncols, nrows, i, j
+        #    object name
+
+        # flip if needed
+        #k = ktd(k)
+
+        #col_names = kK(flip.k)[0]
+        #col_data = kK(flip.k)[1]
+        #ncols = col_names->n
+        #nrows = kK(col_data)[0]->n
+
+        # iterate the columns
+        #for i in range(ncols):
+
+        #    name = kS(col_names)[i]
+        #    c = self._convert_column(kK(col_data)[i])
 
 cdef print_k(K x, l=None):
     if l is not None:

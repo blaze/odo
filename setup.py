@@ -168,9 +168,13 @@ extensions = [
     Extension('kdbpy.lib',
               sources=['kdbpy/lib.pyx','kdbpy/src/k.pxd'],
               depends=['kdbpy/src/k.h'],
-              extra_objects=['kdbpy/arch/m64/c.o'],
-              include_dirs=['kdbpy/src'])
+              extra_objects=['kdbpy/arch/m32/c.o'],
+              libraries=['pthread'],
+              include_dirs=['kdbpy/src'],
+              )
     ]
+
+
 
 #------------------------------------------------------------------------
 # Setup
