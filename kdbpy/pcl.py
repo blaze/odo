@@ -10,7 +10,7 @@ class PCL(object):
 
         if start_kdb:
             self.start_kdb()
-        if self.start_web:
+        if start_web:
             self.start_web()
 
     def start_kdb(self):
