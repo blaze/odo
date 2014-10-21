@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from multipledispatch import halt_ordering, restart_ordering
 halt_ordering()
-from .compute import *
+from . import compute
 restart_ordering()
 
 import logging
