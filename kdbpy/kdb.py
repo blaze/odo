@@ -69,7 +69,7 @@ def q_start_process(cred, restart=False):
     if not restart and q_handle is not None:
         raise ValueError("q process already running!")
 
-    q_kill_process()
+    q_stop_process()
 
     # launche the subprocess, redirecting stdout/err to devnull
     # alternatively we can redirect to a PIPE and use .communicate()
@@ -84,7 +84,7 @@ def q_start_process(cred, restart=False):
     return q_handle
 
 @atexit.register
-def q_kill_process():
+def q_stop_process():
     """ terminate the q_process, returning boolean if it existed previously """
     global q_handle
     if q_handle is not None:

@@ -22,21 +22,24 @@ cdef class KDB:
         int q
 
     def __init__(self, cred):
-        # given credentials, start the connection to the server
+        self.cred = cred
+        self.q = None
 
+    def start(self):
+        """ given credentials, start the connection to the server """
         self.q = khpu(cred.host,cred.port,"{0}:{1}".format(cred.username,cred.password))
         if not self.is_initialized:
             raise ValueError("kdb is not initialized: {0}".format(self.q))
+        return self
 
-    def close(self):
-        # close the kdb process
-
+    def stop(self):
+        # stop the kdb process
         if self.q:
             kclose(self.q)
         self.q = 0
+        return self
 
     property is_initialized:
-
         def __get__(self):
             return self.q > 0
 

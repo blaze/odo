@@ -28,5 +28,5 @@ class Lib(unittest.TestCase):
             kdb.q_start_process(cred)
 
         # terminate
-        kdb.q_kill_process()
+        kdb.q_stop_process()
         assert kdb.q_handle is None
