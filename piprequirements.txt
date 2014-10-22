@@ -1,0 +1,1 @@
+git+git://github.com/jreback/qPython.git@946f752030256566f271f7cf649ac909531e077a

@@ -6,6 +6,9 @@ import atexit
 
 from collections import namedtuple
 
+# pandas
+import pandas as pd
+
 # qPython
 from qpython import qconnection
 
@@ -103,7 +106,21 @@ def q_stop_process():
             q_handle = None
     return False
 
-### qPython object wrapper ###
+def launch_kdb(credentials=None):
+    """
+    Parameters
+    ----------
+    credentials: Credentials, or default to kdb.credentials()
+
+    Returns
+    -------
+    a KDB object, with a started q engine
+    """
+
+    if credentials is None:
+        credentials = get_credentials()
+    q_start_process(credentials, restart=False)
+    return KDB(parent=None, credentials=credential).start()
 
 class KDB(object):
     """ represents the interface to qPython object """
@@ -121,7 +138,8 @@ class KDB(object):
             self.q = qconnection.QConnection(host=cred.host,
                                              port=cred.port,
                                              username=cred.username,
-                                             password=cred.password)
+                                             password=cred.password,
+                                             pandas=True)
             self.q.open()
         except (Exception) as e:
             raise ValueError("cannot connect to the kdb server: {0}".format(e))
@@ -140,26 +158,63 @@ class KDB(object):
     def is_initialized(self):
         return self.q is not None
 
-    def eval(self, expr, convert=True, columns=None, *args):
+    def eval(self, expr, *args):
         """
         Parameters
         ----------
         expr: a string q expression
         args: a list of positional parameters to pass into the q expression
-        convert: boolean, default True
-             provide conversions of datatypes to standard form
-        columns: list or None
-             provide only these columns back (only applicable to tables)
 
         Returns
         -------
         a scalar, a list, or a numpy 1-d array or a DataFrame
 
         """
-        result = self.q.sync(expr)
+        return self.q.sync(expr)
 
-        # convert if needed
-        #if convert and not np.isscalar(result):
-        #    import pdb; pdb.set_trace()
+class Example(object):
+    """ hold an example record, including the q string and the expected result """
 
-        return result
+    def __init__(self, key, q, result=None):
+        self.key = key
+        self.q = q
+        self.result = result
+
+
+class Examples(object):
+    """ hold q examples for interactive use, serves up a dict-like interface """
+
+    def __init__(self):
+        self.data = self.create_data()
+
+    def create_data(self):
+        return [
+            Example('table1',
+                    '([]a:til 10;b:reverse til 10;c:`foo;d:{x#.Q.a}each til 10)',
+                    pd.DataFrame({'a': range(0,10), 'b' : range(10,0,-1), 'c' : 'foo'})),
+            Example('table2',
+                    'flip `name`iq`fullname!(`Dent`Beeblebrox`Prefect;98 42 126;("Arthur Dent"; "Zaphod Beeblebrox"; "Ford Prefect"))',
+                    pd.DataFrame()),
+            Example('table3',
+                    '([eid:1001 0N 1003;sym:`foo`bar`] pos:`d1`d2`d3;dates:(2001.01.01;2000.05.01;0Nd))',
+                    pd.DataFrame()),
+            Example('scalar1','42',42),
+            Example('datetime','20130101 10:11:12'),
+            ]
+
+    @property
+    def keys(self):
+        return self.data.keys()
+
+    @property
+    def values(self):
+        return self.data.values()
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+    def __len__(self):
+        return len(self.data)
+
+    def __iter__(self):
+        return iter(( (e.key, e) for e in self._data ))

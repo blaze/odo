@@ -62,10 +62,3 @@ class Eval(unittest.TestCase):
     def tearDownClass(cls):
         cls.kdb.stop()
         kdb.q_stop_process()
-
-    def test_evaluate_scalar(self):
-        result = self.kdb.eval("42")
-        assert result == 42
-
-    def test_evaluate_table(self):
-        result=self.kdb.eval("([]a:til 10;b:reverse til 10;c:10?`4;d:{x#.Q.a}each til 10)")
