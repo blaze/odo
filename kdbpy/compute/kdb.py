@@ -5,67 +5,44 @@ A blaze backend that generates Q code
 from __future__ import absolute_import, print_function, division
 
 import numbers
-import pprint
 
 from . import q
-
-try:
-    from cStringIO import StringIO
-except ImportError:
-    try:
-        from StringIO import StringIO
-    except ImportError:
-        from io import StringIO
+from ..kdb import Credentials, launch_kdb
 
 import qpython.qcollection
 
 import pandas as pd
+import sqlalchemy as sa
 
 from blaze.dispatch import dispatch
+from blaze import compute
 from blaze.expr import Symbol, Projection, Broadcast, Selection, Field
-from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join
+from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head
 from blaze.expr import count
 from datashape import DataShape, Var, Record
 from toolz.curried import map
 from toolz.compatibility import zip
 from toolz import identity
-import toolz
 
 
-class Q(object):
-    __slots__ = 't', 'q', 'kdb'
+class QTable(object):
+    def __init__(self, uri):
+        self.uri, self._tablename = uri.rsplit('::', 1)
+        self.params = params = sa.engine.url.make_url(self.uri)
+        self.engine = launch_kdb(Credentials(username=params.username,
+                                             password=params.password,
+                                             host=params.host,
+                                             port=params.port))
+        import ipdb; ipdb.set_trace()
+        self.dshape = tables(self.engine)[self.tablename].dshape
 
-    def __init__(self, t, q, kdb):
-        self.t = t
-        self.q = q
-        self.kdb = kdb
+    @property
+    def tablename(self):
+        return self._tablename
 
     def __repr__(self):
-        stream = StringIO()
-        pprint.pprint(self.q, stream=stream)
-        return ('{0.__class__.__name__}'
-                '(t={0.t}, q={1!s})').format(self, stream.getvalue())
-
-    def eval(self, *args, **kwargs):
-        return self.kdb.kdb.eval(*args, **kwargs)
-
-
-class Function(object):
-    def __init__(self, name, nargs):
-        super(Function, self).__init__()
-
-        self.name = name
-        self.nargs = nargs
-
-    def __call__(self, kdb, *args):
-        assert len(args) == self.nargs, \
-            'function %r only takes %d arguments but received %d' % (self.name,
-                                                                     self.nargs,
-                                                                     len(args))
-        return kdb.kdb.eval('%s[%s]' % (self.name, '; '.join(args)))
-
-
-meta = Function('meta', nargs=1)
+        return ('{0.__class__.__name__}(tablename={0.tablename}, '
+                'dshape={0.dshape})'.format(self))
 
 
 qtypes = {'b': 'bool',
@@ -85,43 +62,37 @@ qtypes = {'b': 'bool',
           't': 'time'}
 
 
-@dispatch(Q)
-def discover(data):
-    try:
-        return data.t.dshape
-    except AttributeError:
-        tablename = data.t
-        metadata = meta(data.kdb, tablename)
-        names = list(toolz.concat(metadata.keys))
-        types = metadata.values['t'].tolist()
-        return DataShape(Var(), Record(list(zip(names,
-                                                [qtypes[t] for t in types]))))
-
-
-@dispatch(basestring, Q)
+@dispatch(basestring, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return Q(t=expr, q=q.Symbol(expr), kdb=data.kdb)
+    return q.Symbol(expr)
 
 
-@dispatch(Projection, Q)
+@dispatch(Projection, q.Expr)
 def compute_up(expr, data, **kwargs):
-    child = compute_up(expr._child, data, **kwargs).q
+    child = compute_up(expr._child, data, **kwargs)
     fields = list(map(q.Symbol, expr.fields))
     qexpr = q.List('?', child, q.List(), q.Bool(False),
                    q.Dict(list(zip(fields, fields))))
-    return Q(t=expr, q=qexpr, kdb=data.kdb)
+    return qexpr
 
 
 def tables(kdb):
-    return kdb.kdb.eval('tables `.').tolist()
+    names = kdb.eval('tables `.')
+    metadata = kdb.eval('meta each tables `.')
+
+    # t is the type column in Q
+    syms = []
+    for name, metatable in zip(names, metadata):
+        types = metatable.values['t'].tolist()
+        ds = DataShape(Var(), Record(list(zip(names,
+                                              [qtypes[t] for t in types]))))
+        syms.append((name, Symbol(name, ds)))
+    return dict(syms)
 
 
-@dispatch(Symbol, Q)
+@dispatch(Symbol, q.Expr)
 def compute_up(expr, data, **kwargs):
-    if isinstance(data.t, Symbol) and expr._name in data.t.fields:
-        return Q(t=expr, q=q.Symbol('%s.%s' % (data.t, expr._name)),
-                 kdb=data.kdb)
-    return Q(t=expr, q=q.Symbol(expr._name), kdb=data.kdb)
+    return q.Symbol(expr._name)
 
 
 binops = {
@@ -139,92 +110,98 @@ unops = {
 }
 
 
-@dispatch(numbers.Number, Q)
+@dispatch(numbers.Number, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return Q(t=expr, q=str(expr), kdb=data.kdb)
+    return expr
 
 
 def get_wrapper(expr, types=(basestring,)):
     return q.List if isinstance(expr, types) else identity
 
 
-@dispatch(BinOp, Q)
+@dispatch(BinOp, q.Expr)
 def compute_up(expr, data, **kwargs):
     op = binops.get(expr.symbol, expr.symbol)
     lwrapper = get_wrapper(expr.lhs)
     rwrapper = get_wrapper(expr.rhs)
-    lhs = lwrapper(compute_up(expr.lhs, data, **kwargs).q)
-    rhs = rwrapper(compute_up(expr.rhs, data, **kwargs).q)
-    qexpr = q.List(op, lhs, rhs)
-    return Q(t=expr, q=qexpr, kdb=data.kdb)
+    lhs = lwrapper(compute_up(expr.lhs, data, **kwargs))
+    rhs = rwrapper(compute_up(expr.rhs, data, **kwargs))
+    return q.List(op, lhs, rhs)
 
 
-@dispatch(UnaryOp, Q)
+@dispatch(UnaryOp, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return Q(t=expr, q=q.List(unops.get(expr.symbol, expr.symbol),
-                              compute_up(expr._child, data, **kwargs).q),
-             kdb=data.kdb)
+    return q.List(unops.get(expr.symbol, expr.symbol), compute_up(expr._child,
+                                                                  data,
+                                                                  **kwargs))
 
 
-@dispatch(Field, Q)
+@dispatch(Field, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return Q(t=expr, q='%s.%s' % (compute_up(expr._child, data, **kwargs).q,
-                                  expr._name), kdb=data.kdb)
+    return q.Symbol('%s.%s' % (compute_up(expr._child, data, **kwargs),
+                               expr._name))
 
 
-@dispatch(Broadcast, Q)
+@dispatch(Broadcast, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return Q(t=expr, q=compute_up(expr._expr, data, **kwargs).q, kdb=data.kdb)
+    return compute_up(expr._expr, data, **kwargs)
 
 
-@dispatch(Selection, Q)
+@dispatch(Selection, q.Expr)
 def compute_up(expr, data, **kwargs):
-    predicate = compute_up(expr.predicate, data, **kwargs).q
-    return Q(t=expr, q=q.List('?', compute_up(expr._child, data, **kwargs).q,
-                              q.List(q.List(predicate)), q.Bool(False), ()),
-             kdb=data.kdb)
+    predicate = compute_up(expr.predicate, data, **kwargs)
+    return q.List('?', compute_up(expr._child, data, **kwargs),
+                  q.List(q.List(predicate)), q.Bool(), ())
 
 
 reductions = {'mean': 'avg',
               'std': 'dev'}
 
 
-@dispatch(count, Q)
+@dispatch(count, q.Expr)
 def compute_up(expr, data, **kwargs):
-    child = compute_up(expr._child, data, **kwargs).q
-    # TODO: possibly have a Where expression
-    qexpr = q.List('#:',
-                   q.List(child,
-                          q.List('&:', q.List('~:', q.List('^:', child)))))
-    return Q(t=expr, q=qexpr, kdb=data.kdb)
+    child = compute_up(expr._child, data, **kwargs)
+    return q.List('#:', child)
 
 
-@dispatch(Reduction, Q)
+@dispatch(Reduction, q.Expr)
 def compute_up(expr, data, **kwargs):
-    qexpr = q.List(reductions.get(expr.symbol, expr.symbol),
-                   compute_up(expr._child, data, **kwargs).q)
-    return Q(t=expr, q=qexpr, kdb=data.kdb)
+    return q.List(reductions.get(expr.symbol, expr.symbol),
+                  compute_up(expr._child, data, **kwargs))
 
 
-@dispatch(Join, Q)
+@dispatch(Join, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return Q(t=expr, q=data.q, kdb=data.kdb)
+    return data
 
 
-@dispatch(By, Q)
+@dispatch(By, q.Expr)
 def compute_up(expr, data, **kwargs):
-    child = compute_up(expr._child, data, **kwargs).q
-    grouper = compute_up(expr.grouper, data, **kwargs).q
+    child = compute_up(expr._child, data, **kwargs)
+    grouper = compute_up(expr.grouper, data, **kwargs)
     grouper = q.Dict([(q.Symbol(expr.grouper._name), grouper)])
-    reducer = compute_up(expr.apply, data, **kwargs).q
+    reducer = compute_up(expr.apply, data, **kwargs)
     reducer = q.Dict([(q.Symbol(expr.apply._name), reducer)])
     qexpr = q.List('?', child, (), grouper, reducer)
-    return Q(t=expr, q=qexpr, kdb=data.kdb)
+    return qexpr
 
 
-@dispatch(Expr, Q, dict)
-def post_compute(expr, data, _):
-    return data.eval('eval[%s]' % data.q)
+@dispatch(Head, q.Expr)
+def compute_up(expr, data, **kwargs):
+    child = compute_up(expr._child, data, **kwargs)
+    return q.List('#', min(expr.n, compute(expr._child.count(), data)), child)
+
+
+@dispatch(Expr, q.Expr, dict)
+def post_compute(expr, data, scope):
+    import ipdb; ipdb.set_trace()
+    return scope[expr].eval('eval [%s]' % data)
+
+
+@dispatch(Expr, QTable)
+def compute_up(expr, data, **kwargs):
+    import ipdb; ipdb.set_trace()
+    return compute_up(expr, q.Symbol(data.tablename), **kwargs)
 
 
 @dispatch(pd.DataFrame, qpython.qcollection.QKeyedTable)
