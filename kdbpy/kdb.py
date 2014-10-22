@@ -18,11 +18,23 @@ q_default_port = 5001
 q_default_username = 'user'
 q_default_password = 'password'
 
-try:
-    q_executable = os.environ['QEXEC']
-except KeyError:
-    raise KeyError('Please set the QEXEC environment variable to point to a Q'
-                   ' executable')
+
+def get_q_executable(path=None):
+    if path is None:
+        try:
+            import platform
+            arch_name = platform.system()
+            archd = {
+                'Darwin' : 'm32/q',
+                'linux' : 'l32/q',
+                'nt' : 'w32//q.exe',
+                }
+            arch = archd[arch_name]
+            path = os.path.join('kdbpy/bin/{arch}'.format(arch=arch))
+        except KeyError:
+            raise RuntimeError("cannot locate q executable")
+    return path
+
 q_handle = None
 
 # credentials
@@ -58,13 +70,14 @@ def get_credentials(host=None, port=None, username=None, password=None):
 
 
 # q process
-def q_start_process(cred, restart=False):
+def q_start_process(cred, path=None, restart=False):
     """
     create the q executable process, returning the handle
 
     Parameters
     ----------
     cred : a Credentials
+    path : the q executable path, defaults to a shipped 32-bit version
     restart : boolean, default False
        if True restart if the process is running
        if False raise ValueError if the process is running
@@ -85,7 +98,7 @@ def q_start_process(cred, restart=False):
     # alternatively we can redirect to a PIPE and use .communicate()
     # that can potentially block though
     with open(os.devnull, 'w') as devnull:
-        q_handle = subprocess.Popen([ q_executable, '-p', str(cred.port)], stdin=devnull, stdout=devnull, stderr=devnull)
+        q_handle = subprocess.Popen([ get_q_executable(path), '-p', str(cred.port)], stdin=devnull, stdout=devnull, stderr=devnull)
 
     #### TODO - need to wait for the process to start here
     #### maybe communicate and wait till it starts before returning

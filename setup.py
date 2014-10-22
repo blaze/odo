@@ -179,6 +179,10 @@ extensions = []
 #    ]
 
 
+#------------------------------------------------------------------------
+# data files
+#------------------------------------------------------------------------
+data_files = [('kdbpy/bin/', ['kdbpy/bin/l32/q','kdbpy/bin/m32/q','kdbpy/bin/w32/q.exe'])]
 
 #------------------------------------------------------------------------
 # Setup
@@ -193,7 +197,7 @@ setup(
     author_email='kdbpy-dev@continuum.io',
     description='kdbpy',
     long_description=longdesc,
-    data_files=[],
+    data_files=data_files,
     license='BSD',
     platforms = ['any'],
     classifiers=[
