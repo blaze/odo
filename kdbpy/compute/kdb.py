@@ -9,18 +9,27 @@ import pprint
 
 from . import q
 
-from io import StringIO
+try:
+    from cStringIO import StringIO
+except ImportError:
+    try:
+        from StringIO import StringIO
+    except ImportError:
+        from io import StringIO
+
 import qpython.qcollection
 
 import pandas as pd
 
 from blaze.dispatch import dispatch
 from blaze.expr import Symbol, Projection, Broadcast, Selection, Field
-from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By
+from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join
 from blaze.expr import count
+from datashape import DataShape, Var, Record
 from toolz.curried import map
 from toolz.compatibility import zip
 from toolz import identity
+import toolz
 
 
 class Q(object):
@@ -41,6 +50,54 @@ class Q(object):
         return self.kdb.kdb.eval(*args, **kwargs)
 
 
+class Function(object):
+    def __init__(self, name, nargs):
+        super(Function, self).__init__()
+
+        self.name = name
+        self.nargs = nargs
+
+    def __call__(self, kdb, *args):
+        assert len(args) == self.nargs, \
+            'function %r only takes %d arguments but received %d' % (self.name,
+                                                                     self.nargs,
+                                                                     len(args))
+        return kdb.kdb.eval('%s[%s]' % (self.name, '; '.join(args)))
+
+
+meta = Function('meta', nargs=1)
+
+
+qtypes = {'b': 'bool',
+          'x': 'int8',
+          'h': 'int16',
+          'i': 'int32',
+          'j': 'int64',
+          'e': 'float32',
+          'f': 'float64',
+          'c': 'int8',  # q char
+          's': 'string',  # q symbol
+          'm': 'date',  # q month
+          'd': 'date',
+          'z': 'datetime',
+          'u': 'time',  # q minute
+          'v': 'time',  # q second
+          't': 'time'}
+
+
+@dispatch(Q)
+def discover(data):
+    try:
+        return data.t.dshape
+    except AttributeError:
+        tablename = data.t
+        metadata = meta(data.kdb, tablename)
+        names = list(toolz.concat(metadata.keys))
+        types = metadata.values['t'].tolist()
+        return DataShape(Var(), Record(list(zip(names,
+                                                [qtypes[t] for t in types]))))
+
+
 @dispatch(basestring, Q)
 def compute_up(expr, data, **kwargs):
     return Q(t=expr, q=q.Symbol(expr), kdb=data.kdb)
@@ -53,6 +110,10 @@ def compute_up(expr, data, **kwargs):
     qexpr = q.List('?', child, q.List(), q.Bool(False),
                    q.Dict(list(zip(fields, fields))))
     return Q(t=expr, q=qexpr, kdb=data.kdb)
+
+
+def tables(kdb):
+    return kdb.kdb.eval('tables `.').tolist()
 
 
 @dispatch(Symbol, Q)
@@ -83,11 +144,15 @@ def compute_up(expr, data, **kwargs):
     return Q(t=expr, q=str(expr), kdb=data.kdb)
 
 
+def get_wrapper(expr, types=(basestring,)):
+    return q.List if isinstance(expr, types) else identity
+
+
 @dispatch(BinOp, Q)
 def compute_up(expr, data, **kwargs):
     op = binops.get(expr.symbol, expr.symbol)
-    lwrapper = q.List if isinstance(expr.lhs, basestring) else identity
-    rwrapper = q.List if isinstance(expr.rhs, basestring) else identity
+    lwrapper = get_wrapper(expr.lhs)
+    rwrapper = get_wrapper(expr.rhs)
     lhs = lwrapper(compute_up(expr.lhs, data, **kwargs).q)
     rhs = rwrapper(compute_up(expr.rhs, data, **kwargs).q)
     qexpr = q.List(op, lhs, rhs)
@@ -139,6 +204,11 @@ def compute_up(expr, data, **kwargs):
     qexpr = q.List(reductions.get(expr.symbol, expr.symbol),
                    compute_up(expr._child, data, **kwargs).q)
     return Q(t=expr, q=qexpr, kdb=data.kdb)
+
+
+@dispatch(Join, Q)
+def compute_up(expr, data, **kwargs):
+    return Q(t=expr, q=data.q, kdb=data.kdb)
 
 
 @dispatch(By, Q)
