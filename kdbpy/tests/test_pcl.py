@@ -13,7 +13,6 @@ class PCL(unittest.TestCase):
     def test_examples(self):
 
         # examples
-        import pdb; pdb.set_trace()
 
         with pcl.PCL() as p:
 
