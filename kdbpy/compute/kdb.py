@@ -194,13 +194,11 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Expr, q.Expr, dict)
 def post_compute(expr, data, scope):
-    import ipdb; ipdb.set_trace()
     return scope[expr].eval('eval [%s]' % data)
 
 
 @dispatch(Expr, QTable)
 def compute_up(expr, data, **kwargs):
-    import ipdb; ipdb.set_trace()
     return compute_up(expr, q.Symbol(data.tablename), **kwargs)
 
 
