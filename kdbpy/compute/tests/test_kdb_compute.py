@@ -5,22 +5,35 @@ from numpy import nan
 import pandas as pd
 import pandas.util.testing as tm
 import blaze as bz
-from blaze import compute, into, by
-from kdbpy.compute import Q
+from blaze import compute, into, by, discover
+from kdbpy.compute import Q, tables
 from kdbpy.compute.q import List, Symbol, Dict, String
 from kdbpy.pcl import PCL
 
 
 @pytest.fixture
 def t():
-    return bz.Symbol('t', 'var * {id: int, amount: float64, name: string}')
+    return bz.Symbol('t', 'var * {name: string, id: int64, amount: float64}')
+
+
+@pytest.fixture
+def rt():
+    return bz.Symbol('rt', 'var * {name: string, tax: float64, street: string}')
+
+
+@pytest.fixture
+def st():
+    return bz.Symbol('st', 'var * {name: string, jobcode: int64, tree: string}')
 
 
 @pytest.fixture(scope='module')
 def kdb():
     r = PCL()
-    r.kdb.eval('t: ([] id: 1 2 3; amount: -100.90 0n 432.2; '
-               'name: `Bob`Alice`Joe; street: ("maple"; "apple"; "pine"))')
+    r.kdb.eval('t: ([] name: `Bob`Alice`Joe; id: 1 2 3; amount: -100.90 0n 432.2)')
+    r.kdb.eval('rt: ([name: `Bob`Alice`Joe`John] tax: -3.1 2.0 0n 4.2; '
+               'street: `maple`apple`pine`grove)')
+    r.kdb.eval('st: ([name: `Bob`Alice`Joe] jobcode: 9 10 11; '
+               'tree: `maple`apple`pine)')
     return r
 
 
@@ -31,10 +44,27 @@ def q(t, kdb):
 
 @pytest.fixture
 def df():
-    return pd.DataFrame([(1, -100.90, 'Bob', 'maple'),
-                         (2, nan, 'Alice', 'apple'),
-                         (3, 432.2, 'Joe', 'pine')],
-                        columns=['id', 'amount', 'name', 'street'])
+    return pd.DataFrame([('Bob', 1, -100.90),
+                         ('Alice', 2, nan),
+                         ('Joe', 3, 432.2)],
+                        columns=['name', 'id', 'amount'])
+
+
+@pytest.fixture
+def rdf():
+    return pd.DataFrame([('Bob', -3.1, 'maple'),
+                         ('Alice', 2.0, 'apple'),
+                         ('Joe', nan, 'pine'),
+                         ('John', 4.2, 'grove')],
+                        columns=['name', 'tax', 'street']).set_index('name',
+                                                                     drop=True)
+
+
+@pytest.fixture
+def sdf():
+    return pd.DataFrame([('Bob', 9, 'maple'),
+                         ('Alice', 10, 'apple'),
+                         ('Joe', 11, 'pine')]).set_index('name', drop=True)
 
 
 def test_qlist():
@@ -165,3 +195,26 @@ def test_count(t, q, df):
     expr = t.amount.count()
     result = compute(expr, q)
     assert result == compute(expr, df)
+
+
+@pytest.mark.xfail
+def test_simple_join(rt, st, q, rdf, sdf):
+    expr = bz.join(t, rt)
+    result = into(pd.DataFrame, compute(expr, q))
+    expected = compute(expr, df, rdf)
+    tm.assert_frame_equal(result, expected)
+
+
+def test_discover(kdb, t, rt, st):
+    tdshape = discover(Q(t='t', q=[], kdb=kdb))
+    assert str(tdshape) == str(t.dshape)
+
+    rtdshape = discover(Q(t='rt', q=[], kdb=kdb))
+    assert str(rtdshape) == str(rt.dshape)
+
+    stdshape = discover(Q(t='st', q=[], kdb=kdb))
+    assert str(stdshape) == str(st.dshape)
+
+
+def test_tables(kdb):
+    assert tables(kdb) == ['rt', 'st', 't']
