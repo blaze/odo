@@ -1,147 +1,158 @@
 from __future__ import print_function, division, absolute_import
 import pytest
 
-import numpy as np
-from blaze import Symbol, compute, by
-from kdbpy import Q, QString, QList, QDict, QSymbol, QBool
+import pandas as pd
+import pandas.util.testing as tm
+import blaze as bz
+from blaze import compute, into, by
+from kdbpy.compute import Q
+from kdbpy.compute.q import List, Symbol, Dict, String
+from kdbpy.pcl import PCL
 
 
-@pytest.fixture(scope='module')
-def raw():
-    return np.array([(1, -100.90, 'Bob'),
-                     (2, 300.23, 'Alice'),
-                     (3, 432.2, 'Joe')],
-                    dtype=[('id', 'int64'),
-                           ('amount', 'float64'),
-                           ('name', 'object')])
-
-
-@pytest.fixture(scope='module')
+@pytest.fixture
 def t():
-    return Symbol('t', 'var * {id: int, amount: float64, name: string}')
+    return bz.Symbol('t', 'var * {id: int, amount: float64, name: string}')
 
 
 @pytest.fixture(scope='module')
-def q(t):
-    return Q(t=t, q=[])
+def kdb():
+    r = PCL()
+    r.kdb.eval('t: ([] id: 1 2 3; amount: -100.90 300.23 432.2; '
+               'name: `Bob`Alice`Joe; street: ("maple"; "apple"; "pine"))')
+    return r
+
+
+@pytest.fixture
+def q(t, kdb):
+    return Q(t, q=[], kdb=kdb)
+
+
+@pytest.fixture
+def df():
+    return pd.DataFrame([(1, -100.90, 'Bob', 'maple'),
+                         (2, 300.23, 'Alice', 'apple'),
+                         (3, 432.2, 'Joe', 'pine')],
+                        columns=['id', 'amount', 'name', 'street'])
 
 
 def test_qlist():
-    x = QList(QSymbol('a'), 1, 2)
+    x = List(Symbol('a'), 1, 2)
     assert repr(x) == '(`a; 1; 2)'
 
-    x = QList(QSymbol('a sym'), QList(QSymbol('a')), 3)
+    x = List(Symbol('a sym'), List(Symbol('a')), 3)
     assert repr(x) == '(`$"a sym"; (enlist[`a]); 3)'
 
 
 def test_qdict():
-    x = QDict([(QSymbol('a'), 1), (QSymbol('b'), 2)])
+    x = Dict([(Symbol('a'), 1), (Symbol('b'), 2)])
     assert repr(x) == '(`a; `b)!(1; 2)'
 
 
 def test_qsymbol():
-    s = QSymbol('a')
+    s = Symbol('a')
     assert repr(s) == '`a'
 
-    s = QSymbol('a symbol')
+    s = Symbol('a symbol')
     assert repr(s) == '`$"a symbol"'
 
 
 def test_qstring():
-    s = QString('s')
+    s = String('s')
     assert repr(s) == '"s"'
 
-    s = QString('"s"')
+    s = String('"s"')
     assert repr(s) == '"\"s\""'
 
 
-def test_projection(t, q):
+def test_projection(t, q, df):
     expr = t[['id', 'amount']]
-    result = compute(expr, q)
-    fields = [QSymbol('id'), QSymbol('amount')]
-    expected = QList('?', QSymbol('t'), QList(), QBool(False),
-                     QDict(list(zip(fields, fields))))
-    import ipdb; ipdb.set_trace()
-    assert result == expected
+    expected = compute(expr, df)
+    result = into(pd.DataFrame, compute(expr, q))
+    tm.assert_frame_equal(result, expected)
 
 
-def test_single_projection(t, q):
+def test_single_projection(t, q, df):
     expr = t[['id']]
-    result = compute(expr, q)
-    assert result == QList('?', QSymbol('t'), QList(),
-                           QBool(False), QDict([(QSymbol('id'),),
-                                                (QSymbol('id'),)]))
+    result = into(pd.DataFrame, compute(expr, q))
+    tm.assert_frame_equal(result, compute(expr, df))
 
 
-def test_selection(t, q):
+def test_selection(t, q, df):
     expr = t[t.id == 1]
-    result = compute(expr, q)
-    assert result == '(?; `t; (enlist[(enlist[(=; `t.id; 1)])]); 0b; ())'
+    result = into(pd.DataFrame, compute(expr, q))
+    expected = compute(expr, df)
+    tm.assert_frame_equal(result, expected)
 
 
-def test_broadcast(t, q):
+def test_broadcast(t, q, df):
     expr = t.id + 1
-    result = compute(expr, q)
-    assert result == '(+; `t.id; 1)'
+    result = into(pd.Series, compute(expr, q))
+    expected = compute(expr, df)
+    tm.assert_series_equal(result, expected)
 
 
-def test_complex_arith(t, q):
+def test_complex_arith(t, q, df):
     expr = t.id + 1 - 2 * t.id ** 2 + t.amount > t.id - 3
-    result = compute(expr, q)
-    big = '(+; (-; (+; `t.id; 1); (*; 2; (xexp; `t.id; 2))); `t.amount)'
-    expected = '(>; %s; (-; `t.id; 3))' % big
-    assert result == expected
+    result = into(pd.Series, compute(expr, q))
+    expected = compute(expr, df)
+    tm.assert_series_equal(result, expected)
 
 
-def test_complex_selection(t, q):
+def test_complex_selection(t, q, df):
     expr = t[t.id + 1 - 2 * t.id ** 2 + t.amount > t.id - 3]
-    result = compute(expr, q)
-    big = '(+; (-; (+; `t.id; 1); (*; 2; (xexp; `t.id; 2))); `t.amount)'
-    where = '(>; %s; (-; `t.id; 3))' % big
-    assert result == '(?; `t; (enlist[(enlist[%s])]); 0b; ())' % where
+
+    # q doesn't know anything pandas indexes
+    result = into(pd.DataFrame, compute(expr, q))
+
+    # but blaze preserves them
+    expected = compute(expr, df).reset_index(drop=True)
+    tm.assert_frame_equal(result, expected)
 
 
-def test_complex_selection_projection(t, q):
+def test_complex_selection_projection(t, q, df):
     expr = t[t.id ** 2 + t.amount > t.id - 3][['id', 'amount']]
-    result = compute(expr, q)
-    child = QList()
-    constraint = QList()
-    by = QBool(False)
-    fields = QSymbol('id'), QSymbol('amount')
-    expected = QList('?', child, constraint, by,
-                     QDict(list(zip(fields, fields))))
-    assert result == expected
+
+    # q doesn't know anything pandas indexes
+    result = into(pd.DataFrame, compute(expr, q))
+
+    # but blaze preserves them
+    expected = compute(expr, df).reset_index(drop=True)
+    tm.assert_frame_equal(result, expected)
 
 
-
-def test_unary_op(t, q):
+def test_unary_op(t, q, df):
     expr = -t.amount
-    result = compute(expr, q)
-    assert result == '(-:; `t.amount)'
+    result = into(pd.Series, compute(expr, q))
+    expected = compute(expr, df)
+    tm.assert_series_equal(result, expected)
 
 
-def test_string_compare(t, q):
+def test_string_compare(t, q, df):
     expr = t.name == 'Alice'
-    result = compute(expr, q)
-    expected = '(=; `t.name; "Alice")'
-    assert result == expected
+    result = into(pd.Series, compute(expr, q))
+    expected = compute(expr, df)
+    tm.assert_series_equal(result, expected)
 
 
-@pytest.mark.xfail
-def test_simple_by(t, q):
+def test_simple_by(t, q, df):
     expr = by(t.name, t.amount.sum())
-    result = compute(expr, q)
-    assert result == False
-    assert result == 'select (sum (t.amount)) by (t.name) from (t)'
+    result = into(pd.DataFrame, compute(expr, q)).reset_index()
+    expected = compute(expr, df)
+    tm.assert_frame_equal(result, expected)
+
+    result = into(pd.DataFrame, compute(expr, q))
+    expected = compute(expr, df).set_index('name', drop=True)
+    tm.assert_frame_equal(result, expected)
 
 
-def test_field(t, q):
+def test_field(t, q, df):
     expr = t.name
     result = compute(expr, q)
-    assert result == '`t.name'
+    tm.assert_series_equal(pd.Series(result), compute(expr, df))
 
 
-def test_sum(t, q):
+def test_sum(t, q, df):
     expr = t.amount.sum()
     result = compute(expr, q)
-    assert result == "(sum; `t.amount)"
+    assert result == compute(expr, df)
