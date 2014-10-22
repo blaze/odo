@@ -1,6 +1,7 @@
 from __future__ import print_function, division, absolute_import
 import pytest
 
+from numpy import nan
 import pandas as pd
 import pandas.util.testing as tm
 import blaze as bz
@@ -18,7 +19,7 @@ def t():
 @pytest.fixture(scope='module')
 def kdb():
     r = PCL()
-    r.kdb.eval('t: ([] id: 1 2 3; amount: -100.90 300.23 432.2; '
+    r.kdb.eval('t: ([] id: 1 2 3; amount: -100.90 0n 432.2; '
                'name: `Bob`Alice`Joe; street: ("maple"; "apple"; "pine"))')
     return r
 
@@ -31,7 +32,7 @@ def q(t, kdb):
 @pytest.fixture
 def df():
     return pd.DataFrame([(1, -100.90, 'Bob', 'maple'),
-                         (2, 300.23, 'Alice', 'apple'),
+                         (2, nan, 'Alice', 'apple'),
                          (3, 432.2, 'Joe', 'pine')],
                         columns=['id', 'amount', 'name', 'street'])
 
@@ -138,11 +139,13 @@ def test_string_compare(t, q, df):
 def test_simple_by(t, q, df):
     expr = by(t.name, t.amount.sum())
     result = into(pd.DataFrame, compute(expr, q)).reset_index()
-    expected = compute(expr, df)
+
+    # q fills NaN reducers with 0
+    expected = compute(expr, df).fillna(0)
     tm.assert_frame_equal(result, expected)
 
     result = into(pd.DataFrame, compute(expr, q))
-    expected = compute(expr, df).set_index('name', drop=True)
+    expected = compute(expr, df).set_index('name', drop=True).fillna(0)
     tm.assert_frame_equal(result, expected)
 
 
@@ -154,5 +157,11 @@ def test_field(t, q, df):
 
 def test_sum(t, q, df):
     expr = t.amount.sum()
+    result = compute(expr, q)
+    assert result == compute(expr, df)
+
+
+def test_count(t, q, df):
+    expr = t.amount.count()
     result = compute(expr, q)
     assert result == compute(expr, df)

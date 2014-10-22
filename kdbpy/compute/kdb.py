@@ -126,9 +126,12 @@ reductions = {'mean': 'avg',
 
 @dispatch(count, Q)
 def compute_up(expr, data, **kwargs):
-    target = compute_up(expr._child, data, **kwargs).q
-    return Q(t=expr, q='count ({0}) where not null ({0})'.format(target),
-             kdb=data.kdb)
+    child = compute_up(expr._child, data, **kwargs).q
+    # TODO: possibly have a Where expression
+    qexpr = q.List('#:',
+                   q.List(child,
+                          q.List('&:', q.List('~:', q.List('^:', child)))))
+    return Q(t=expr, q=qexpr, kdb=data.kdb)
 
 
 @dispatch(Reduction, Q)
