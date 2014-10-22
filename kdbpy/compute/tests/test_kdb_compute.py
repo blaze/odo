@@ -5,41 +5,58 @@ from numpy import nan
 import pandas as pd
 import pandas.util.testing as tm
 import blaze as bz
-from blaze import compute, into, by, discover
-from kdbpy.compute import Q, tables
+from blaze import compute, into, by
+from kdbpy.compute import tables, QTable
 from kdbpy.compute.q import List, Symbol, Dict, String
-from kdbpy.pcl import PCL
+from kdbpy.kdb import launch_kdb, Credentials
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def t():
     return bz.Symbol('t', 'var * {name: string, id: int64, amount: float64}')
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def rt():
     return bz.Symbol('rt', 'var * {name: string, tax: float64, street: string}')
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def st():
     return bz.Symbol('st', 'var * {name: string, jobcode: int64, tree: string}')
 
 
+ports = [5001]
+
+
+@pytest.yield_fixture(scope='module')
+def port():
+    yield ports[-1]
+    ports.append(ports[-1] + 1)
+
+
 @pytest.fixture(scope='module')
-def kdb():
-    r = PCL()
-    r.kdb.eval('t: ([] name: `Bob`Alice`Joe; id: 1 2 3; amount: -100.90 0n 432.2)')
-    r.kdb.eval('rt: ([name: `Bob`Alice`Joe`John] tax: -3.1 2.0 0n 4.2; '
-               'street: `maple`apple`pine`grove)')
-    r.kdb.eval('st: ([name: `Bob`Alice`Joe] jobcode: 9 10 11; '
-               'tree: `maple`apple`pine)')
-    return r
+def rstring(port):
+    return 'kdb://pcloud@localhost:%d::t' % port
 
 
-@pytest.fixture
-def q(t, kdb):
-    return Q(t, q=[], kdb=kdb)
+@pytest.yield_fixture(scope='module')
+def kdb(port):
+    r = launch_kdb(Credentials(username='pcloud', password='password',
+                               host='localhost', port=port))
+    r.start()
+    r.eval('t: ([] name: `Bob`Alice`Joe; id: 1 2 3; amount: -100.90 0n 432.2)')
+    r.eval('rt: ([name: `Bob`Alice`Joe`John] tax: -3.1 2.0 0n 4.2; '
+           'street: `maple`apple`pine`grove)')
+    r.eval('st: ([name: `Bob`Alice`Joe] jobcode: 9 10 11; '
+           'tree: `maple`apple`pine)')
+    yield r
+    r.stop()
+
+
+@pytest.fixture(scope='module')
+def q(kdb):
+    return QTable('kdb://pcloud@localhost:5001::t')
 
 
 @pytest.fixture
@@ -194,7 +211,7 @@ def test_sum(t, q, df):
 def test_count(t, q, df):
     expr = t.amount.count()
     result = compute(expr, q)
-    assert result == compute(expr, df)
+    assert result == len(df)
 
 
 @pytest.mark.xfail
@@ -205,16 +222,5 @@ def test_simple_join(rt, st, q, rdf, sdf):
     tm.assert_frame_equal(result, expected)
 
 
-def test_discover(kdb, t, rt, st):
-    tdshape = discover(Q(t='t', q=[], kdb=kdb))
-    assert str(tdshape) == str(t.dshape)
-
-    rtdshape = discover(Q(t='rt', q=[], kdb=kdb))
-    assert str(rtdshape) == str(rt.dshape)
-
-    stdshape = discover(Q(t='st', q=[], kdb=kdb))
-    assert str(stdshape) == str(st.dshape)
-
-
-def test_tables(kdb):
-    assert tables(kdb) == ['rt', 'st', 't']
+def test_tables(kdb, rt, st, t):
+    assert tables(kdb) == dict(zip(['rt', 'st', 't'], [rt, st, t]))
