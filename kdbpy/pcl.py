@@ -11,6 +11,9 @@ class PCL(object):
         if start_kdb:
             self.start_kdb(start_kdb)
 
+    # context manager, so allow
+    # with PCL() as p:
+    #    pass
     def __enter__(self):
         return self
 
@@ -18,6 +21,18 @@ class PCL(object):
         self.stop()
         return self
 
+    def __str__(self):
+        """ return a string representation of the connection """
+        if self.kdb is not None:
+            kdb = str(self.kdb)
+        else:
+            kdb = 'kdb client/server not started'
+
+        return "{0}: [{1}]".format(type(self).__name__,kdb)
+
+    __repr__ = __str__
+
+    # start stop the kdb client/server
     def start_kdb(self, how='restart'):
         """ start up kdb/q process and connect server """
         cred = kdb.get_credentials()

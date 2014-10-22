@@ -7,6 +7,12 @@ class PCL(unittest.TestCase):
     def test_start_kdb(self):
         p = pcl.PCL(start_kdb=True)
         assert p.is_kdb
+
+        # repr
+        result = str(p)
+        assert 'KDB: [Credentials(' in result
+        assert '-> connected' in result
+
         p.stop()
         assert not p.is_kdb
 

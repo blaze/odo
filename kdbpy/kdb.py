@@ -148,6 +148,18 @@ class KDB(object):
         self.credentials = credentials
         self.q = None
 
+    def __str__(self):
+        """ return a string representation of the connection """
+        if self.q is not None:
+            s = "{0} -> connected".format(str(self.credentials))
+        else:
+            s = 'client/server not started'
+
+        return "{0}: [{1}]".format(type(self).__name__,s)
+
+    __repr__ = __str__
+
+
     def start(self):
         """ given credentials, start the connection to the server """
         cred = self.credentials

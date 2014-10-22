@@ -43,6 +43,12 @@ class BasicKDB(unittest.TestCase):
     def test_construction(self):
         k = kdb.KDB(self, self.creds).start()
         assert k.is_initialized
+
+        # repr
+        result = str(k)
+        assert 'KDB: [Credentials(' in result
+        assert '-> connected' in result
+
         k.stop()
         assert not k.is_initialized
 
