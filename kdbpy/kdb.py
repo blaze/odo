@@ -56,6 +56,7 @@ def get_credentials(host=None, port=None, username=None, password=None):
                        username=username,
                        password=password)
 
+
 # q process
 def q_start_process(cred, restart=False):
     """
@@ -92,6 +93,7 @@ def q_start_process(cred, restart=False):
 
     return q_handle
 
+
 @atexit.register
 def q_stop_process():
     """ terminate the q_process, returning boolean if it existed previously """
@@ -105,6 +107,7 @@ def q_stop_process():
         finally:
             q_handle = None
     return False
+
 
 def launch_kdb(credentials=None):
     """
@@ -120,7 +123,8 @@ def launch_kdb(credentials=None):
     if credentials is None:
         credentials = get_credentials()
     q_start_process(credentials, restart=False)
-    return KDB(parent=None, credentials=credential).start()
+    return KDB(parent=None, credentials=credentials).start()
+
 
 class KDB(object):
     """ represents the interface to qPython object """
