@@ -18,8 +18,9 @@ q_default_port = 5001
 q_default_username = 'user'
 q_default_password = 'password'
 
+import pdb; pdb.set_trace()
 try:
-    q_executable = os.environ['QEXEC']
+    q_executable = __PATH__
 except KeyError:
     raise KeyError('Please set the QEXEC environment variable to point to a Q'
                    ' executable')
