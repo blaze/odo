@@ -52,6 +52,9 @@ class BasicKDB(unittest.TestCase):
         k.stop()
         assert not k.is_initialized
 
+        result = str(k)
+        assert 'KDB: [client/server not started]'
+
         # require initilization
         with pytest.raises(ValueError):
             kdb.KDB(self, kdb.get_credentials(port=0)).start()

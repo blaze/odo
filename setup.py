@@ -180,9 +180,9 @@ extensions = []
 
 
 #------------------------------------------------------------------------
-# data files
+# script files
 #------------------------------------------------------------------------
-data_files = [('kdbpy/bin/', ['kdbpy/bin/l32/q','kdbpy/bin/m32/q','kdbpy/bin/w32/q.exe'])]
+scripts = [ 'bin/l32/q','bin/m32/q','bin/w32/q.exe' ]
 
 #------------------------------------------------------------------------
 # Setup
@@ -197,7 +197,7 @@ setup(
     author_email='kdbpy-dev@continuum.io',
     description='kdbpy',
     long_description=longdesc,
-    data_files=data_files,
+    data_files=[],
     license='BSD',
     platforms = ['any'],
     classifiers=[
@@ -213,6 +213,7 @@ setup(
         'Topic :: Utilities',
     ],
     packages=packages,
+    scripts=scripts,
     cmdclass = {
         'clean'     : CleanCommand,
         'build_ext' : CheckingBuildExt,

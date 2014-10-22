@@ -1,15 +1,25 @@
 """ pcl top-level managemenet """
 import logging
-from kdbpy import kdb
+from kdbpy import kdb, examples as exmpl
 
 class PCL(object):
-    examples = kdb.Examples()
+    examples = exmpl.Examples()
 
-    def __init__(self, start_kdb='restart'):
+    def __init__(self, credentials_kdb=None, q_exec=None, start_kdb='restart'):
+        """
+        Parameters
+        ----------
+        credentials_kdb: credentials if specified, default None (use default credentials)
+        q_exec: q_exec path (default of None uses the default path)
+        start_kdb: boolean/'restart'
+            start kdb upon creation; if 'restart' is specified then
+            restart if needed
+        """
+
         self.kdb = None
 
         if start_kdb:
-            self.start_kdb(start_kdb)
+            self.start_kdb(credentials=credentials_kdb, path=q_exec, restart=start_kdb)
 
     # context manager, so allow
     # with PCL() as p:
@@ -17,9 +27,9 @@ class PCL(object):
     def __enter__(self):
         return self
 
-    def __exit__(self):
+    def __exit__(self, *args):
         self.stop()
-        return self
+        return True
 
     def __str__(self):
         """ return a string representation of the connection """
@@ -33,11 +43,9 @@ class PCL(object):
     __repr__ = __str__
 
     # start stop the kdb client/server
-    def start_kdb(self, how='restart'):
+    def start_kdb(self, credentials=None, path=None, restart='restart'):
         """ start up kdb/q process and connect server """
-        cred = kdb.get_credentials()
-        kdb.q_start_process(cred, restart=how)
-        self.kdb = kdb.KDB(parent=self, credentials=cred).start()
+        self.kdb = kdb.launch_kdb(credentials=credentials, path=path, parent=self, restart=restart)
 
     def stop_kdb(self):
         """ terminate kdb/q process and connecting server """

@@ -20,19 +20,26 @@ q_default_password = 'password'
 
 
 def get_q_executable(path=None):
+    """
+    get the path to the q executbale
+
+    this is fixed for various architectures
+    """
+
     if path is None:
         try:
             import platform
             arch_name = platform.system()
             archd = {
-                'Darwin' : 'm32/q',
-                'linux' : 'l32/q',
-                'nt' : 'w32//q.exe',
+                'Darwin' : ['m32','q'],
+                'linux' : ['l32','q'],
+                'nt' : ['w32','q.exe'],
                 }
             arch = archd[arch_name]
-            path = os.path.join('kdbpy/bin/{arch}'.format(arch=arch))
-        except KeyError:
-            raise RuntimeError("cannot locate q executable")
+            import kdbpy
+            path = os.path.join(*[os.path.dirname(os.path.abspath(kdbpy.__path__[0])),'bin'] + arch)
+        except (Exception) as e:
+            raise RuntimeError("cannot locate q executable: {0}".format(e))
     return path
 
 q_handle = None
@@ -67,16 +74,37 @@ def get_credentials(host=None, port=None, username=None, password=None):
                        port=port,
                        username=username,
                        password=password)
+# launch client & server
+def launch_kdb(credentials=None, path=None, parent=None, restart='restart'):
+    """
+    Parameters
+    ----------
+    credentials: Credentials, or default to kdb.credentials()
+    path: path to q_exec, default None (use arch default)
+    parent: parent object
+    restart: boolean/'restart':
+        how to to restart kdb if already started
+
+    Returns
+    -------
+    a KDB object, with a started q engine
+    """
+
+    if credentials is None:
+        credentials = get_credentials()
+    q_start_process(credentials=credentials, path=path, restart='restart')
+    return KDB(parent=parent, credentials=credentials).start()
+
 
 
 # q process
-def q_start_process(cred, path=None, restart=False):
+def q_start_process(credentials, path=None, restart=False):
     """
     create the q executable process, returning the handle
 
     Parameters
     ----------
-    cred : a Credentials
+    credentials : a Credentials
     path : the q executable path, defaults to a shipped 32-bit version
     restart : boolean, default False
        if True restart if the process is running
@@ -98,7 +126,11 @@ def q_start_process(cred, path=None, restart=False):
     # alternatively we can redirect to a PIPE and use .communicate()
     # that can potentially block though
     with open(os.devnull, 'w') as devnull:
-        q_handle = subprocess.Popen([ get_q_executable(path), '-p', str(cred.port)], stdin=devnull, stdout=devnull, stderr=devnull)
+        q_exec = get_q_executable(path)
+        try:
+            q_handle = subprocess.Popen([q_exec , '-p', str(credentials.port)], stdin=devnull, stdout=devnull, stderr=devnull)
+        except (Exception) as e:
+            raise ValueError("cannot start the q process: {0} [{1}]".format(q_exec,e))
 
     #### TODO - need to wait for the process to start here
     #### maybe communicate and wait till it starts before returning
@@ -120,23 +152,6 @@ def q_stop_process():
         finally:
             q_handle = None
     return False
-
-
-def launch_kdb(credentials=None):
-    """
-    Parameters
-    ----------
-    credentials: Credentials, or default to kdb.credentials()
-
-    Returns
-    -------
-    a KDB object, with a started q engine
-    """
-
-    if credentials is None:
-        credentials = get_credentials()
-    q_start_process(credentials, restart=False)
-    return KDB(parent=None, credentials=credentials).start()
 
 
 class KDB(object):
@@ -200,50 +215,3 @@ class KDB(object):
 
         """
         return self.q.sync(expr)
-
-class Example(object):
-    """ hold an example record, including the q string and the expected result """
-
-    def __init__(self, key, q, result=None):
-        self.key = key
-        self.q = q
-        self.result = result
-
-
-class Examples(object):
-    """ hold q examples for interactive use, serves up a dict-like interface """
-
-    def __init__(self):
-        self.data = self.create_data()
-
-    def create_data(self):
-        return [
-            Example('table1',
-                    '([]a:til 10;b:reverse til 10;c:`foo;d:{x#.Q.a}each til 10)',
-                    pd.DataFrame({'a': range(0,10), 'b' : range(10,0,-1), 'c' : 'foo'})),
-            Example('table2',
-                    'flip `name`iq`fullname!(`Dent`Beeblebrox`Prefect;98 42 126;("Arthur Dent"; "Zaphod Beeblebrox"; "Ford Prefect"))',
-                    pd.DataFrame()),
-            Example('table3',
-                    '([eid:1001 0N 1003;sym:`foo`bar`] pos:`d1`d2`d3;dates:(2001.01.01;2000.05.01;0Nd))',
-                    pd.DataFrame()),
-            Example('scalar1','42',42),
-            Example('datetime','20130101 10:11:12'),
-            ]
-
-    @property
-    def keys(self):
-        return self.data.keys()
-
-    @property
-    def values(self):
-        return self.data.values()
-
-    def __getitem__(self, key):
-        return self.data[key]
-
-    def __len__(self):
-        return len(self.data)
-
-    def __iter__(self):
-        return iter(( (e.key, e) for e in self._data ))
