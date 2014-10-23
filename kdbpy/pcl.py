@@ -5,26 +5,29 @@ from kdbpy import kdb, examples as exmpl
 class PCL(object):
     examples = exmpl.Examples()
 
-    def __init__(self, credentials_kdb=None, q_exec=None, start_kdb='restart'):
+    def __init__(self, credentials=None, q_exec=None, start='restart'):
         """
         Parameters
         ----------
-        credentials_kdb: credentials if specified, default None (use default credentials)
+        credentials: credentials if specified, default None (use default credentials)
         q_exec: q_exec path (default of None uses the default path)
-        start_kdb: boolean/'restart'
-            start kdb upon creation; if 'restart' is specified then
-            restart if needed
+        start : boolean, default False
+           if True and process is running, return
+           if 'restart' and process is running, restart it
+           if False raise ValueError if the process is running
         """
 
-        self.kdb = None
+        self.kq = kdb.KQ(credentials=credentials, path=q_exec)
 
-        if start_kdb:
-            self.start_kdb(credentials=credentials_kdb, path=q_exec, restart=start_kdb)
+        if start:
+            self.start(start=start)
 
     # context manager, so allow
     # with PCL() as p:
     #    pass
     def __enter__(self):
+        # don't restart if already started
+        self.start(start=True)
         return self
 
     def __exit__(self, *args):
@@ -33,36 +36,26 @@ class PCL(object):
 
     def __str__(self):
         """ return a string representation of the connection """
-        if self.kdb is not None:
-            kdb = str(self.kdb)
-        else:
-            kdb = 'kdb client/server not started'
-
-        return "{0}: [{1}]".format(type(self).__name__,kdb)
+        return "{0}: [{1}]".format(type(self).__name__,self.kq)
 
     __repr__ = __str__
 
     # start stop the kdb client/server
-    def start_kdb(self, credentials=None, path=None, restart='restart'):
+    def start(self, start='restart'):
         """ start up kdb/q process and connect server """
-        self.kdb = kdb.launch_kdb(credentials=credentials, path=path, parent=self, restart=restart)
-
-    def stop_kdb(self):
-        """ terminate kdb/q process and connecting server """
-        if self.kdb is not None:
-            self.kdb.stop()
-            self.kdb = None
-        kdb.q_stop_process()
-
-    @property
-    def is_kdb(self):
-        """ return boolean if kdb is started """
-        return self.kdb is not None and self.kdb.is_initialized
+        self.kq.start()
 
     def stop(self):
-        """ all stop """
-        self.stop_kdb()
+        """ terminate kdb/q process and connecting server """
+        self.kq.stop()
+
+    @property
+    def is_started(self):
+        """ return boolean if kdb is started """
+        return self.kq.is_started
 
     def eval(self, *args, **kwargs):
         """ send the evaluation expression and options to the compute engine """
-        return self.kdb.eval(*args, **kwargs)
+        if not self.is_started:
+            raise ValueError("kdb/q is not started!")
+        return self.kq.kdb.eval(*args, **kwargs)

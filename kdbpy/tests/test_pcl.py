@@ -18,9 +18,9 @@ def compare(a,b):
 
 class PCL(unittest.TestCase):
 
-    def test_start_kdb(self):
-        p = pcl.PCL(start_kdb=True)
-        assert p.is_kdb
+    def test_start(self):
+        p = pcl.PCL(start=True)
+        assert p.is_started
 
         # repr
         result = str(p)
@@ -28,7 +28,7 @@ class PCL(unittest.TestCase):
         assert '-> connected' in result
 
         p.stop()
-        assert not p.is_kdb
+        assert not p.is_started
 
         result = str(p)
         assert 'KDB: [client/server not started]'

@@ -3,6 +3,29 @@ import pytest
 import numpy as np
 from kdbpy import kdb
 
+class KQ(unittest.TestCase):
+
+    def test_basic(self):
+        kq = kdb.KQ()
+        assert not kq.is_started
+        kq.start()
+        assert kq.is_started
+        kq.stop()
+        assert not kq.is_started
+
+        kq.start(start='restart')
+        assert kq.is_started
+
+        # real restart
+        kq.start(start='restart')
+        assert kq.is_started
+
+        kq.stop()
+
+        # context
+        with kdb.KQ() as kq:
+            assert kq.is_started
+
 class QProcess(unittest.TestCase):
 
     def test_credentials(self):
@@ -12,37 +35,47 @@ class QProcess(unittest.TestCase):
 
     def test_q_process(self):
         cred = kdb.get_credentials()
-        q = kdb.q_start_process(cred)
+        q = kdb.Q.create(cred).start()
 
         assert q is not None
         assert q.pid
-        assert kdb.q_handle is not None
+        assert q.process is not None
+
+        # other instance
+        q2 = kdb.Q.create(cred).start()
+        assert q is q2
+
+        # invalid instance
+        with pytest.raises(ValueError):
+            kdb.Q.create(kdb.get_credentials(host='foo',port=1000))
 
         # restart
-        prev = q
-        q = kdb.q_start_process(cred,restart=True)
-        assert q.pid != prev.pid
+        prev = q.pid
+        q = kdb.Q.create(cred).start(start=True)
+        assert q.pid == prev
 
-        # invalid restart
+        q2 = kdb.Q.create().start(start='restart')
+        assert q2.pid != prev
+
         with pytest.raises(ValueError):
-            kdb.q_start_process(cred)
+            kdb.Q.create(cred).start(start=False)
 
         # terminate
-        kdb.q_stop_process()
-        assert kdb.q_handle is None
+        q2.stop()
+        assert q2.pid is None
 
 class BasicKDB(unittest.TestCase):
 
     def setUp(self):
         self.creds = kdb.get_credentials()
-        kdb.q_start_process(self.creds)
+        self.q = kdb.Q.create(self.creds).start()
 
     def tearDown(self):
-        kdb.q_stop_process()
+        self.q.stop()
 
     def test_construction(self):
-        k = kdb.KDB(self, self.creds).start()
-        assert k.is_initialized
+        k = kdb.KDB(credentials=self.creds).start()
+        assert k.is_started
 
         # repr
         result = str(k)
@@ -50,24 +83,24 @@ class BasicKDB(unittest.TestCase):
         assert '-> connected' in result
 
         k.stop()
-        assert not k.is_initialized
+        assert not k.is_started
 
         result = str(k)
         assert 'KDB: [client/server not started]'
 
         # require initilization
         with pytest.raises(ValueError):
-            kdb.KDB(self, kdb.get_credentials(port=0)).start()
+            kdb.KDB(credentials=kdb.get_credentials(port=0)).start()
 
 class Eval(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.creds = kdb.get_credentials()
-        kdb.q_start_process(cls.creds)
-        cls.kdb = kdb.KDB(cls, cls.creds).start()
+        creds = kdb.get_credentials()
+        cls.q = kdb.Q.create(credentials=creds).start()
+        cls.kdb = kdb.KDB(credentials=creds).start()
 
     @classmethod
     def tearDownClass(cls):
         cls.kdb.stop()
-        kdb.q_stop_process()
+        cls.q.stop()
