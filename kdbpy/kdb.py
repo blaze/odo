@@ -3,16 +3,19 @@ import os
 import time
 import subprocess
 import atexit
+import platform
+import getpass
 
 from collections import namedtuple
 
-import pandas as pd
 from qpython import qconnection
+import kdbpy
 
 # credentials
 Credentials = namedtuple('Credentials', ['host', 'port', 'username',
                                          'password'])
-default_credentials = Credentials('localhost',5001,'user','password')
+default_credentials = Credentials('localhost', 5001, getpass.getuser(), None)
+
 
 def get_credentials(host=None, port=None, username=None, password=None):
     """
@@ -37,10 +40,10 @@ def get_credentials(host=None, port=None, username=None, password=None):
         username = default_credentials.username
     if password is None:
         password = default_credentials.password
-    return Credentials(host=host,
-                       port=port,
-                       username=username,
+    return Credentials(host=host, port=port, username=username,
                        password=password)
+
+
 # launch client & server
 class KQ(object):
     """ manage the kdb & q process """
@@ -136,7 +139,7 @@ class Q(object):
     def pid(self):
         try:
             return self.process.pid
-        except:
+        except AttributeError:
             return None
 
     def check(self, credentials, path):
@@ -154,15 +157,13 @@ class Q(object):
 
         if path is None:
             try:
-                import platform
                 arch_name = platform.system()
                 archd = {
-                    'Darwin' : ['m32','q'],
-                    'linux' : ['l32','q'],
-                    'nt' : ['w32','q.exe'],
-                    }
+                    'Darwin': ['m32', 'q'],
+                    'linux': ['l32', 'q'],
+                    'nt': ['w32', 'q.exe'],
+                }
                 arch = archd[arch_name]
-                import kdbpy
                 path = os.path.join(*[os.path.dirname(os.path.abspath(kdbpy.__path__[0])),'bin'] + arch)
             except (Exception) as e:
                 raise RuntimeError("cannot locate q executable: {0}".format(e))
@@ -171,12 +172,8 @@ class Q(object):
     @property
     def is_started(self):
         """ check if the q process is actually running """
-        if self.process is not None:
-            return True
-
         #### TODO # use psutil here!
-        return False
-
+        return self.process is not None
 
     def start(self, start=True):
         """
@@ -207,7 +204,6 @@ class Q(object):
         # raise if the process is actually running
         # we don't want to have duplicate processes
         else:
-
             if self.is_started:
                 raise ValueError("q process already running!")
 
@@ -218,12 +214,15 @@ class Q(object):
         # that can potentially block though
         with open(os.devnull, 'w') as devnull:
             try:
-                self.process = subprocess.Popen([self.path , '-p', str(self.credentials.port)], stdin=devnull, stdout=devnull, stderr=devnull)
-            except (Exception) as e:
-                raise ValueError("cannot start the q process: {0} [{1}]".format(self.path,e))
+                self.process = subprocess.Popen([self.path , '-p',
+                                                 str(self.credentials.port)],
+                                                stdin=devnull, stdout=devnull,
+                                                stderr=devnull)
+            except Exception as e:
+                raise ValueError("cannot start the q process: {0} [{1}]".format(self.path, e))
 
         # register our exit function
-        atexit.register(lambda : self.stop())
+        atexit.register(self.stop)
 
         #### TODO - need to wait for the process to start here
         #### maybe communicate and wait till it starts before returning
@@ -232,15 +231,12 @@ class Q(object):
         return self
 
     def stop(self):
-        """ terminate the q_process, returning boolean if it existed previously """
+        """ terminate the q_process, returning boolean if it existed previously
+        """
         if self.process is not None:
-            try:
-                self.process.terminate()
-                return True
-            except:
-                pass
-            finally:
-                self.process = None
+            self.process.terminate()
+            self.process = None
+            return True
         return False
 
 
