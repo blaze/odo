@@ -9,11 +9,7 @@ def isidentifier(s):
     return re.match(r'([a-zA-Z_]\w*)', s) is not None and ' ' not in s
 
 
-class Expr(object):
-    pass
-
-
-class Dict(OrderedDict, Expr):
+class Dict(OrderedDict):
     def __init__(self, *args, **kwargs):
         super(Dict, self).__init__(*args, **kwargs)
 
@@ -30,7 +26,7 @@ class Dict(OrderedDict, Expr):
 
 
 @total_ordering
-class Categorical(Expr):
+class Categorical(object):
     def __init__(self, s):
         assert isinstance(s, (basestring, Symbol, String))
         self.s = getattr(s, 's', s)
@@ -73,7 +69,7 @@ class Operator(Symbol):
 
 
 @total_ordering
-class List(Expr):
+class List(object):
     def __init__(self, *items):
         self.items = items
 
@@ -105,7 +101,7 @@ class List(Expr):
 
 
 @total_ordering
-class Bool(Expr):
+class Bool(object):
     def __init__(self, value=False):
         self.value = bool(value)
 
@@ -117,3 +113,6 @@ class Bool(Expr):
 
     def __lt__(self, other):
         return type(self) == type(other) and self.value < other.value
+
+
+Expr = Dict, Categorical, List, Bool
