@@ -122,3 +122,12 @@ class Eval(unittest.TestCase):
     def tearDownClass(cls):
         cls.kdb.stop()
         cls.q.stop()
+
+    def test_eval(self):
+
+        # test function API
+        assert self.kdb.eval('42') == 42
+        def f():
+            return self.kdb.eval('42')+1
+        assert self.kdb.eval(f) == 43
+        assert self.kdb.eval(lambda x: x+5, 42) == 47

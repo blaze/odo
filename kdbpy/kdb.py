@@ -189,7 +189,7 @@ class Q(object):
                 if 'q' in name:
                     cmdline = set(proc.cmdline())
                     if '-p' in cmdline and str(self.credentials.port) in cmdline:
-                        self.process = cmdline
+                        self.process = proc
                         break
 
             except (Exception) as e:
@@ -312,11 +312,11 @@ class KDB(object):
     def is_started(self):
         return self.q is not None
 
-    def eval(self, expr, *args):
+    def eval(self, expr, *args, **kwargs):
         """
         Parameters
         ----------
-        expr: a string q expression
+        expr: a string q expression or callable
         args: a list of positional parameters to pass into the q expression
 
         Returns
@@ -324,4 +324,9 @@ class KDB(object):
         a scalar, a list, or a numpy 1-d array or a DataFrame
 
         """
-        return self.q.sync(expr)
+
+        if callable(expr):
+            if len(args) or len(kwargs):
+                return expr(*args, **kwargs)
+            return expr()
+        return self.q.sync(expr, *args)
