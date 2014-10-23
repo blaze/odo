@@ -26,7 +26,7 @@ class Dict(OrderedDict):
 
 
 @total_ordering
-class Categorical(object):
+class Atom(object):
     def __init__(self, s):
         assert isinstance(s, (basestring, Symbol, String))
         self.s = getattr(s, 's', s)
@@ -40,8 +40,11 @@ class Categorical(object):
     def __lt__(self, other):
         return self.s < other.s
 
+    def __repr__(self):
+        return self.s
 
-class String(Categorical):
+
+class String(Atom):
     def __init__(self, s):
         super(String, self).__init__(str(s))
 
@@ -49,7 +52,7 @@ class String(Categorical):
         return '"%s"' % self.s
 
 
-class Symbol(Categorical):
+class Symbol(Atom):
     def __init__(self, s):
         super(Symbol, self).__init__(s)
 
@@ -58,14 +61,6 @@ class Symbol(Categorical):
         if not isidentifier(s) and not keyword.iskeyword(s):
             return '`$%s' % String(s)
         return '`' + s
-
-
-class Operator(Symbol):
-    def __init__(self, *args, **kwargs):
-        super(Operator, self).__init__(*args, **kwargs)
-
-    def __repr__(self):
-        return self.s
 
 
 @total_ordering
@@ -115,4 +110,4 @@ class Bool(object):
         return type(self) == type(other) and self.value < other.value
 
 
-Expr = Dict, Categorical, List, Bool
+Expr = Dict, Atom, List, Bool

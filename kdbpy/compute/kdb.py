@@ -95,17 +95,17 @@ def compute_up(expr, data, **kwargs):
 
 
 binops = {
-    '!=': q.Operator('<>'),
-    '/': q.Operator('%'),
-    '%': q.Operator('mod'),
-    '**': q.Operator('xexp'),
-    '==': q.Operator('=')
+    '!=': q.Atom('<>'),
+    '/': q.Atom('%'),
+    '%': q.Atom('mod'),
+    '**': q.Atom('xexp'),
+    '==': q.Atom('=')
 }
 
 
 unops = {
-    'USub': q.Operator('-:'),
-    '~': q.Operator('~:')
+    'USub': q.Atom('-:'),
+    '~': q.Atom('~:')
 }
 
 
