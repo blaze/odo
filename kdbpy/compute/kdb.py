@@ -22,7 +22,7 @@ from blaze.expr import count
 from datashape import DataShape, Var, Record
 from toolz.curried import map
 from toolz.compatibility import zip
-from toolz import identity
+from toolz import identity, first
 
 
 class QTable(object):
@@ -33,7 +33,6 @@ class QTable(object):
                                              password=params.password,
                                              host=params.host,
                                              port=params.port))
-        import ipdb; ipdb.set_trace()
         self.dshape = tables(self.engine)[self.tablename].dshape
 
     @property
@@ -41,8 +40,8 @@ class QTable(object):
         return self._tablename
 
     def __repr__(self):
-        return ('{0.__class__.__name__}(tablename={0.tablename}, '
-                'dshape={0.dshape})'.format(self))
+        return ('{0.__class__.__name__}(tablename={0.tablename!r}, '
+                'dshape={0.dshape!r})'.format(self))
 
 
 qtypes = {'b': 'bool',
@@ -83,7 +82,7 @@ def tables(kdb):
     # t is the type column in Q
     syms = []
     for name, metatable in zip(names, metadata):
-        types = metatable.values['t'].tolist()
+        types = metatable.t.tolist()
         ds = DataShape(Var(), Record(list(zip(names,
                                               [qtypes[t] for t in types]))))
         syms.append((name, Symbol(name, ds)))
@@ -194,7 +193,8 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Expr, q.Expr, dict)
 def post_compute(expr, data, scope):
-    return scope[expr].eval('eval [%s]' % data)
+    assert len(scope) == 1
+    return first(scope.values()).engine.eval('eval [%s]' % data)
 
 
 @dispatch(Expr, QTable)
