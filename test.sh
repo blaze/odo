@@ -1,2 +1,2 @@
 #!/bin/sh
-py.test -s --doctest-modules --pyargs kdbpy
+py.test -s --doctest-modules --pyargs kdbpy $*
