@@ -3,6 +3,7 @@ import pytest
 import numpy as np
 from kdbpy import kdb
 
+
 class KQ(unittest.TestCase):
 
     def test_basic(self):
@@ -25,6 +26,11 @@ class KQ(unittest.TestCase):
         # context
         with kdb.KQ() as kq:
             assert kq.is_started
+
+    def test_eval(self):
+        with kdb.KQ() as kq:
+            assert kq.eval('2 + 2') == 4
+
 
 class QProcess(unittest.TestCase):
 
