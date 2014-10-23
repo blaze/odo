@@ -136,7 +136,7 @@ class Q(object):
     def pid(self):
         try:
             return self.process.pid
-        except:
+        except AttributeError:
             return None
 
     def check(self, credentials, path):
