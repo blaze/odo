@@ -7,7 +7,7 @@ from __future__ import absolute_import, print_function, division
 import numbers
 
 from . import q
-from ..kdb import Credentials, launch_kdb
+from ..kdb import KQ, Credentials
 
 import qpython.qcollection
 
@@ -29,10 +29,9 @@ class QTable(object):
     def __init__(self, uri):
         self.uri, self._tablename = uri.rsplit('::', 1)
         self.params = params = sa.engine.url.make_url(self.uri)
-        self.engine = launch_kdb(Credentials(username=params.username,
-                                             password=params.password,
-                                             host=params.host,
-                                             port=params.port))
+        self.engine = KQ(Credentials(username=params.username,
+                                     password=params.password, host=params.host,
+                                     port=params.port))
         self.dshape = tables(self.engine)[self.tablename].dshape
 
     @property

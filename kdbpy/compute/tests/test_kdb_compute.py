@@ -1,5 +1,8 @@
 from __future__ import print_function, division, absolute_import
+
 import pytest
+
+import getpass
 
 from numpy import nan
 import pandas as pd
@@ -8,7 +11,7 @@ import blaze as bz
 from blaze import compute, into, by
 from kdbpy.compute import tables, QTable
 from kdbpy.compute.q import List, Symbol, Dict, String
-from kdbpy.kdb import launch_kdb, Credentials
+from kdbpy.kdb import Credentials, KQ
 
 
 @pytest.fixture(scope='module')
@@ -29,7 +32,7 @@ def st():
 ports = [5001]
 
 
-@pytest.yield_fixture(scope='module')
+@pytest.yield_fixture
 def port():
     yield ports[-1]
     ports.append(ports[-1] + 1)
@@ -42,8 +45,8 @@ def rstring(port):
 
 @pytest.yield_fixture(scope='module')
 def kdb(port):
-    r = launch_kdb(Credentials(username='pcloud', password='password',
-                               host='localhost', port=port))
+    r = KQ(Credentials(username=getpass.getuser(), password=None,
+                       host='localhost', port=port))
     r.start()
     r.eval('t: ([] name: `Bob`Alice`Joe; id: 1 2 3; amount: -100.90 0n 432.2)')
     r.eval('rt: ([name: `Bob`Alice`Joe`John] tax: -3.1 2.0 0n 4.2; '
