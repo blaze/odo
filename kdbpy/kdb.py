@@ -103,6 +103,10 @@ class KQ(object):
         self.q.stop()
         return self
 
+    def eval(self, *args, **kwargs):
+        return self.kdb.eval(*args, **kwargs)
+
+
 class Q(object):
     """ manage the q exec process """
     _object = None
