@@ -70,6 +70,18 @@ class QProcess(unittest.TestCase):
         q2.stop()
         assert q2.pid is None
 
+    def test_q_process_detached(self):
+
+        # create a new process
+        q = kdb.Q.create().start()
+        assert q is not None
+        assert q.pid
+        assert q.process is not None
+
+        q.process = None
+        assert q.is_started
+        q.stop()
+
 class BasicKDB(unittest.TestCase):
 
     def setUp(self):

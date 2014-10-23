@@ -1,13 +1,13 @@
 """ kdb process management """
 import os
 import time
-import subprocess
 import atexit
 import platform
 import getpass
-
 from collections import namedtuple
 
+import psutil
+import pandas as pd
 from qpython import qconnection
 import kdbpy
 
@@ -115,6 +115,8 @@ class Q(object):
     def create(cls, credentials=None, path=None):
         """ enforce this as a singleton object """
         if cls._object is None:
+            if credentials is None:
+                credentials = get_credentials()
             o = cls._object = cls(credentials=credentials, path=path)
         else:
             o = cls._object
@@ -124,7 +126,7 @@ class Q(object):
 
         return o
 
-    def __init__(self, credentials=None, path=None):
+    def __init__(self, credentials, path=None):
         self.credentials = credentials
         self.path = self.get_executable(path)
         self.process = None
@@ -176,8 +178,27 @@ class Q(object):
     @property
     def is_started(self):
         """ check if the q process is actually running """
-        #### TODO # use psutil here!
-        return self.process is not None
+
+        if self.process is not None:
+            return True
+
+        # check if we have an actual process running
+        for proc in psutil.process_iter():
+            try:
+                name = proc.name()
+                if 'q' in name:
+                    cmdline = set(proc.cmdline())
+                    if '-p' in cmdline and str(self.credentials.port) in cmdline:
+                        self.process = cmdline
+                        break
+
+            except (Exception) as e:
+                # ignore these; we are only interesetd in user procs
+                pass
+
+        if self.process is not None:
+            return True
+        return False
 
     def start(self, start=True):
         """
@@ -213,15 +234,15 @@ class Q(object):
 
         self.stop()
 
-        # launche the subprocess, redirecting stdout/err to devnull
+        # launch the subprocess, redirecting stdout/err to devnull
         # alternatively we can redirect to a PIPE and use .communicate()
         # that can potentially block though
         with open(os.devnull, 'w') as devnull:
             try:
-                self.process = subprocess.Popen([self.path , '-p',
-                                                 str(self.credentials.port)],
-                                                stdin=devnull, stdout=devnull,
-                                                stderr=devnull)
+                self.process = psutil.Popen([self.path , '-p',
+                                             str(self.credentials.port)],
+                                            stdin=devnull, stdout=devnull,
+                                            stderr=devnull)
             except Exception as e:
                 raise ValueError("cannot start the q process: {0} [{1}]".format(self.path, e))
 
