@@ -55,7 +55,7 @@ def kdb(port):
 
 
 @pytest.fixture(scope='module')
-def q(kdb):
+def q():
     return QTable('kdb://pcloud@localhost:5001::t')
 
 
@@ -222,5 +222,6 @@ def test_simple_join(rt, st, q, rdf, sdf):
     tm.assert_frame_equal(result, expected)
 
 
+@pytest.mark.xfail(raises=ValueError, reason='single q process')
 def test_tables(kdb, rt, st, t):
     assert tables(kdb) == dict(zip(['rt', 'st', 't'], [rt, st, t]))
