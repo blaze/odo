@@ -10,8 +10,8 @@ def isidentifier(s):
 
 
 class Dict(OrderedDict):
-    def __init__(self, *args, **kwargs):
-        super(Dict, self).__init__(*args, **kwargs)
+    def __init__(self, items):
+        super(Dict, self).__init__(items)
 
     def __repr__(self):
         return '%s!%s' % (List(*self.keys()), List(*self.values()))
