@@ -213,7 +213,8 @@ def test_count(t, q, df):
     assert result == len(df)
 
 
-@pytest.mark.xfail(reason=NotImplementedError)
+@pytest.mark.xfail(raises=NotImplementedError,
+                   reason='Join not implemented for QTables')
 def test_simple_join(rt, st, rq, sq, rdf, sdf):
     expr = bz.join(rt, st)
     result = into(pd.DataFrame, compute(expr, {st: sq, rt: rq}))
