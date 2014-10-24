@@ -9,7 +9,7 @@ import pandas as pd
 import pandas.util.testing as tm
 import blaze as bz
 from blaze import compute, into, by
-from kdbpy.compute import tables, QTable
+from kdbpy.compute import QTable
 from kdbpy.compute.q import List, Symbol, Dict, String
 from kdbpy.kdb import Credentials, KQ
 
@@ -58,8 +58,8 @@ def kdb(port):
 
 
 @pytest.fixture(scope='module')
-def q():
-    return QTable('kdb://pcloud@localhost:5001::t')
+def q(kdb):
+    return QTable('kdb://pcloud@localhost:5001::t', engine=kdb)
 
 
 @pytest.fixture
