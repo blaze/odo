@@ -221,6 +221,11 @@ def test_simple_join(rt, st, rq, sq, rdf, sdf):
     tm.assert_frame_equal(result, expected)
 
 
+def test_sort(t, q, df):
+    expr = t.sort('name')
+    qresult = compute(expr, q)
+    expected = compute(expr, df).reset_index(drop=True)  # q doesn't keep index order
+    result = into(pd.DataFrame, qresult)
     tm.assert_frame_equal(result, expected)
 
 
