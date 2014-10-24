@@ -77,7 +77,7 @@ class KQ(object):
             self.start(start=start)
 
     def __str__(self):
-        return str(self.kdb)
+        return "{0} - {1}".format(self.kdb,self.q)
 
     __repr__ = __str__
 
@@ -140,10 +140,12 @@ class Q(object):
     def __str__(self):
         """ return a string representation of the connection """
         if self.process is not None:
-            s = "{0}:{1}".format(self.path,self.pid)
+            s = "{0} -> {1}".format(self.path,self.pid)
         else:
-            s = "{0}:not started".format(self.path)
-        return s
+            s = "q client not started"
+
+
+        return "[{0}: {1}]".format(type(self).__name__,s)
 
     __repr__ = __str__
 
@@ -181,29 +183,40 @@ class Q(object):
                 raise RuntimeError("cannot locate q executable: {0}".format(e))
         return path
 
-    @property
-    def is_started(self):
-        """ check if the q process is actually running """
+    def find_running_process(self):
+        """
+        find an actual running process with our pid
+        return None if no process found
 
+        """
         if self.process is not None:
-            return True
-
-        # check if we have an actual process running
+            return self.process
         for proc in psutil.process_iter():
             try:
                 name = proc.name()
                 if 'q' in name:
                     cmdline = set(proc.cmdline())
                     if '-p' in cmdline and str(self.credentials.port) in cmdline:
-                        self.process = proc
-                        break
+                        return proc
 
             except (Exception) as e:
                 # ignore these; we are only interesetd in user procs
                 pass
 
+        return None
+
+    @property
+    def is_started(self):
+        """
+        check if the q process is actually running
+
+        if it IS running, then set the process variable
+        """
+
+        self.process = self.find_running_process()
         if self.process is not None:
             return True
+
         return False
 
     def start(self, start=True):
@@ -264,6 +277,7 @@ class Q(object):
     def stop(self):
         """ terminate the q_process, returning boolean if it existed previously
         """
+        self.process = self.find_running_process()
         if self.process is not None:
             self.process.terminate()
             self.process = None
@@ -284,9 +298,9 @@ class KDB(object):
         if self.q is not None:
             s = "{0} -> connected".format(str(self.credentials))
         else:
-            s = 'client/server not started'
+            s = 'q client not started'
 
-        return "{0}: [{1}]".format(type(self).__name__,s)
+        return "[{0}: {1}]".format(type(self).__name__,s)
 
     __repr__ = __str__
 

@@ -36,7 +36,7 @@ class PCL(object):
 
     def __str__(self):
         """ return a string representation of the connection """
-        return "{0}: [{1}]".format(type(self).__name__,self.kq)
+        return "[{0}: {1}]".format(type(self).__name__,self.kq)
 
     __repr__ = __str__
 

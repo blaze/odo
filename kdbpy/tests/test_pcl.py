@@ -24,7 +24,7 @@ class PCL(unittest.TestCase):
 
         # repr
         result = str(p)
-        assert 'KDB: [Credentials(' in result
+        assert '[PCL: [KDB: Credentials(' in result
         assert '-> connected' in result
 
         p.stop()

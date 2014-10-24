@@ -98,7 +98,7 @@ class BasicKDB(unittest.TestCase):
 
         # repr
         result = str(k)
-        assert 'KDB: [Credentials(' in result
+        assert '[KDB: Credentials(' in result
         assert '-> connected' in result
 
         k.stop()
