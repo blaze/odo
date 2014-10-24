@@ -16,9 +16,10 @@ import sqlalchemy as sa
 
 from blaze.dispatch import dispatch
 
+import blaze as bz
 from blaze import compute
 from blaze.expr import Symbol, Projection, Broadcast, Selection, Field
-from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head
+from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
 from blaze.expr import count
 
 from datashape import DataShape, Var, Record
@@ -95,7 +96,11 @@ def tables(kdb):
 
 @dispatch(Symbol, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return q.Symbol(expr._name)
+    sym = q.Symbol(expr._name)
+    t = first(kwargs['scope'].keys())
+    if t.isidentical(expr):
+        return sym
+    return subs(sym, t)
 
 
 binops = {
@@ -122,6 +127,70 @@ def get_wrapper(expr, types=(basestring,)):
     return q.List if isinstance(expr, types) else identity
 
 
+def _subs(expr, t):
+    assert isinstance(t, bz.Symbol)
+
+    if isinstance(expr, q.Symbol):
+        if expr.s in t.schema.measure.names:
+            yield q.Symbol('%s.%s' % (t._name, expr.s))
+    elif isinstance(expr, (numbers.Number, basestring, q.Atom)):
+        yield expr
+    elif isinstance(expr, (q.List, q.Dict)):
+        for sube in expr:
+            if isinstance(sube, q.List):
+                yield q.List(*[x for x in _subs(sube, t)])
+            elif isinstance(sube, (q.Atom, basestring, numbers.Number)):
+                yield sube
+            elif isinstance(sube, q.Dict):
+                yield q.Dict([(_subs(x, t), _subs(y, t))
+                              for x, y in sube.items])
+            else:
+                raise ValueError('unknown type for substitution '
+                                 '{!r}'.format(type(sube).__name__))
+
+
+def subs(expr, t):
+    """Substitute a parent table name for fields in a broadcast expression.
+
+    Parameters
+    ----------
+    expr : q.Expr, q.Atom, int, basestring
+        The exression in which to substitute the parent table
+    t : blaze.Symbol
+        The parent table to use for substitution
+
+    Returns
+    -------
+    expression : q.Expr
+
+    Examples
+    --------
+    >>> from blaze import Symbol
+    >>> t = Symbol('t', 'var * {id: int, name: string})
+    >>> s = q.Symbol('name')
+    >>> subs(s, t)
+    `t.name
+    >>> s = q.Symbol('amount')
+    >>> s
+    `amount
+    >>> subs(s, t)  # "amount" isn't a field in t
+    `amount
+    >>> expr = q.List(q.Atom('='), q.Symbol('name'), 1)
+    >>> subs(expr, t)
+    (=; `t.name; 1)
+    """
+    return get(q.List(*list(_subs(expr, t))))
+
+
+def get(x):
+    try:
+        if len(x) == 1:
+            return x[0]
+    except TypeError:
+        return x
+    return x
+
+
 @dispatch(BinOp, q.Expr)
 def compute_up(expr, data, **kwargs):
     op = binops.get(expr.symbol, expr.symbol)
@@ -134,15 +203,17 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(UnaryOp, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return q.List(unops.get(expr.symbol, expr.symbol), compute_up(expr._child,
-                                                                  data,
-                                                                  **kwargs))
+    result = compute_up(expr._child, data, **kwargs)
+    return q.List(unops.get(expr.symbol, expr.symbol), result)
 
 
 @dispatch(Field, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return q.Symbol('%s.%s' % (compute_up(expr._child, data, **kwargs),
-                               expr._name))
+    result = compute_up(expr._child, data, **kwargs)
+    try:
+        return result[expr._name]
+    except TypeError:
+        return result
 
 
 @dispatch(Broadcast, q.Expr)
@@ -198,7 +269,8 @@ def compute_up(expr, data, **kwargs):
 @dispatch(Expr, q.Expr, dict)
 def post_compute(expr, data, scope):
     assert len(scope) == 1
-    return first(scope.values()).engine.eval('eval [%s]' % data)
+    table = first(scope.values())
+    return table.engine.eval('eval [%s]' % data)
 
 
 @dispatch(Expr, QTable)

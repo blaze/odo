@@ -56,6 +56,16 @@ class Symbol(Atom):
     def __init__(self, s):
         super(Symbol, self).__init__(s)
 
+    def __getitem__(self, name):
+        """
+        Examples
+        --------
+        >>> t = q.Symbol('t')
+        >>> t['s']['a']
+        `t.s.a
+        """
+        return type(self)('%s.%s' % (self.s, name))
+
     def __repr__(self):
         s = self.s
         if not isidentifier(s) and not keyword.iskeyword(s):
