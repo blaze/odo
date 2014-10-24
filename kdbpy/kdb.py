@@ -8,7 +8,12 @@ from collections import namedtuple
 
 import psutil
 import subprocess
-from qpython import qconnection
+
+import pandas as pd
+import numpy as np
+from qpython import qconnection, qtemporal
+from pandas.core import common as com
+
 import kdbpy
 
 # credentials
@@ -328,6 +333,34 @@ class KDB(object):
 
         if callable(expr):
             if len(args) or len(kwargs):
-                return expr(*args, **kwargs)
-            return expr()
-        return self.q.sync(expr, *args)
+                result = expr(*args, **kwargs)
+            else:
+                result = expr()
+        else:
+            result = self.q.sync(expr, *args)
+
+        # need to coerce datetime-like scalars
+        if isinstance(result, qtemporal.QTemporal):
+
+            result = result.raw
+            if isinstance(result, np.datetime64):
+
+                # these are created by adding an offset to np.datetime64('2000-01-01','ns')
+                # which represents them in the local timezone; so since we want
+                # timezone naive have to jump some hoops
+                if result.dtype == 'M8[ms]':
+                    result = _q_base_timestamp + (result.astype('M8[ns]') - _q_base_np_datetime)
+
+                # this is M[D] dtype so ok
+                else:
+                    result = pd.Timestamp(result)
+
+            elif isinstance(result, np.timedelta64):
+
+                result = pd.Timedelta(result)
+
+        return result
+
+# TEMPORALS
+_q_base_timestamp = pd.Timestamp('2000-01-01')
+_q_base_np_datetime = np.datetime64('2000-01-01 00:00:00')

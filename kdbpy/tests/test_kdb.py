@@ -1,6 +1,7 @@
 import unittest
 import pytest
 import numpy as np
+import pandas as pd
 from kdbpy import kdb
 
 
@@ -131,3 +132,22 @@ class Eval(unittest.TestCase):
             return self.kdb.eval('42')+1
         assert self.kdb.eval(f) == 43
         assert self.kdb.eval(lambda x: x+5, 42) == 47
+
+    def test_scalar_datetime_like_conversions(self):
+
+        # datetimes
+        # only parses to ms resolutions
+        result = self.kdb.eval('2001.01.01T09:30:00.123')
+        assert result == pd.Timestamp('2001-01-01 09:30:00.123')
+
+        result = self.kdb.eval('2006.07.04T09:04:59:000')
+        assert result == pd.Timestamp('2006-07-04 09:04:59')
+
+        result = self.kdb.eval('2001.01.01')
+        assert result == pd.Timestamp('2001-01-01')
+
+        # timedeltas
+        result = self.kdb.eval('00:01')
+        assert result == pd.Timedelta('1 min')
+        result = self.kdb.eval('00:00:01')
+        assert result == pd.Timedelta('1 sec')
