@@ -7,13 +7,14 @@ import getpass
 from collections import namedtuple
 
 import psutil
-import pandas as pd
+import subprocess
 from qpython import qconnection
 import kdbpy
 
 # credentials
 Credentials = namedtuple('Credentials', ['host', 'port', 'username',
                                          'password'])
+
 default_credentials = Credentials('localhost', 5001, getpass.getuser(), None)
 
 
@@ -237,12 +238,12 @@ class Q(object):
         # launch the subprocess, redirecting stdout/err to devnull
         # alternatively we can redirect to a PIPE and use .communicate()
         # that can potentially block though
-        with open(os.devnull, 'w') as devnull:
+        with open(os.devnull, 'w') as wnull, open(os.devnull, 'r') as rnull:
             try:
                 self.process = psutil.Popen([self.path , '-p',
                                              str(self.credentials.port)],
-                                            stdin=devnull, stdout=devnull,
-                                            stderr=devnull)
+                                            stdin=rnull, stdout=wnull,
+                                            stderr=subprocess.STDOUT)
             except Exception as e:
                 raise ValueError("cannot start the q process: {0} [{1}]".format(self.path, e))
 
@@ -251,7 +252,7 @@ class Q(object):
 
         #### TODO - need to wait for the process to start here
         #### maybe communicate and wait till it starts before returning
-        time.sleep(0.25)
+        time.sleep(0.025)
 
         return self
 
