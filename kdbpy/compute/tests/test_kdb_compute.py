@@ -44,6 +44,16 @@ def q(kdb):
     return QTable('kdb://pcloud@localhost:5001::t', engine=kdb)
 
 
+@pytest.fixture(scope='module')
+def rq(kdb):
+    return QTable('kdb://pcloud@localhost:5001::rt', engine=kdb)
+
+
+@pytest.fixture(scope='module')
+def sq(kdb):
+    return QTable('kdb://pcloud@localhost:5001::st', engine=kdb)
+
+
 @pytest.fixture
 def df():
     return pd.DataFrame([('Bob', 1, -100.90),
@@ -66,7 +76,9 @@ def rdf():
 def sdf():
     return pd.DataFrame([('Bob', 9, 'maple'),
                          ('Alice', 10, 'apple'),
-                         ('Joe', 11, 'pine')]).set_index('name', drop=True)
+                         ('Joe', 11, 'pine')],
+                        columns=['name', 'id', 'street']).set_index('name',
+                                                                    drop=True)
 
 
 def test_qlist():
@@ -169,8 +181,10 @@ def test_string_compare(t, q, df):
 
 
 def test_simple_by(t, q, df):
+    # q) select name, amount_sum: sum amount from t
     expr = by(t.name, t.amount.sum())
-    result = into(pd.DataFrame, compute(expr, q)).reset_index()
+    qresult = compute(expr, q)
+    result = into(pd.DataFrame, qresult).reset_index()
 
     # q fills NaN reducers with 0
     expected = compute(expr, df).fillna(0)
@@ -199,11 +213,14 @@ def test_count(t, q, df):
     assert result == len(df)
 
 
-@pytest.mark.xfail
-def test_simple_join(rt, st, q, rdf, sdf):
-    expr = bz.join(t, rt)
-    result = into(pd.DataFrame, compute(expr, q))
-    expected = compute(expr, df, rdf)
+@pytest.mark.xfail(reason=NotImplementedError)
+def test_simple_join(rt, st, rq, sq, rdf, sdf):
+    expr = bz.join(rt, st)
+    result = into(pd.DataFrame, compute(expr, {st: sq, rt: rq}))
+    expected = compute(expr, {st: sdf, rt: rdf})
+    tm.assert_frame_equal(result, expected)
+
+
     tm.assert_frame_equal(result, expected)
 
 

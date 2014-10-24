@@ -244,9 +244,23 @@ def compute_up(expr, data, **kwargs):
                   compute_up(expr._child, data, **kwargs))
 
 
-@dispatch(Join, q.Expr)
+@dispatch(Join, q.Expr, q.Expr)
+def compute_up(expr, lhs, rhs, **kwargs):
+    raise NotImplementedError()
+
+
 def compute_up(expr, data, **kwargs):
-    return data
+
+
+@dispatch(Join, QTable, QTable)
+def compute_up(expr, lhs, rhs, **kwargs):
+    return compute_up(expr, q.Symbol(lhs.tablename), q.Symbol(rhs.tablename),
+                      **kwargs)
+
+
+@dispatch(Join, q.Expr, dict)
+def post_compute(expr, data, scope):
+    raise NotImplementedError()
 
 
 @dispatch(By, q.Expr)
