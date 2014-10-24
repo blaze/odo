@@ -29,12 +29,12 @@ from toolz import identity, first
 
 
 class QTable(object):
-    def __init__(self, uri):
+    def __init__(self, uri, engine=None):
         self.uri, self._tablename = uri.rsplit('::', 1)
         self.params = params = sa.engine.url.make_url(self.uri)
-        self.engine = KQ(Credentials(username=params.username,
-                                     password=params.password, host=params.host,
-                                     port=params.port))
+        cred = Credentials(username=params.username, password=params.password,
+                           host=params.host, port=params.port)
+        self.engine = engine or KQ(cred, start=True)
         self.dshape = tables(self.engine)[self.tablename].dshape
 
     @property
