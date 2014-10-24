@@ -1,9 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-from multipledispatch import halt_ordering, restart_ordering
-halt_ordering()
+# TODO: find out why "import blaze" makes import faster than not having it here
+import blaze
 from . import compute
-restart_ordering()
 
 import logging
 

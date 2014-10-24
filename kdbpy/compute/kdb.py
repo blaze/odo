@@ -14,8 +14,9 @@ import qpython.qcollection
 import pandas as pd
 import sqlalchemy as sa
 
+from multipledispatch import dispatch
+
 from blaze import compute
-from blaze.dispatch import dispatch
 from blaze.expr import Symbol, Projection, Broadcast, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head
 from blaze.expr import count
