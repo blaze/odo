@@ -242,7 +242,7 @@ class Q(object):
             try:
                 self.process = psutil.Popen([self.path , '-p',
                                              str(self.credentials.port)],
-                                            stdin=wnull, stdout=rnull,
+                                            stdin=rnull, stdout=wnull,
                                             stderr=subprocess.STDOUT)
             except Exception as e:
                 raise ValueError("cannot start the q process: {0} [{1}]".format(self.path, e))
