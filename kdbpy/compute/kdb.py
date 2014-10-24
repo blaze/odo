@@ -7,14 +7,14 @@ from __future__ import absolute_import, print_function, division
 import numbers
 
 from . import q
-from ..kdb import KQ, Credentials
+from ..kdb import KQ, get_credentials
 
 import qpython.qcollection
 
 import pandas as pd
 import sqlalchemy as sa
 
-from multipledispatch import dispatch
+from blaze.dispatch import dispatch
 
 from blaze import compute
 from blaze.expr import Symbol, Projection, Broadcast, Selection, Field
@@ -32,8 +32,9 @@ class QTable(object):
     def __init__(self, uri, engine=None):
         self.uri, self._tablename = uri.rsplit('::', 1)
         self.params = params = sa.engine.url.make_url(self.uri)
-        cred = Credentials(username=params.username, password=params.password,
-                           host=params.host, port=params.port)
+        cred = get_credentials(username=params.username,
+                               password=params.password, host=params.host,
+                               port=params.port)
         self.engine = engine or KQ(cred, start=True)
         self.dshape = tables(self.engine)[self.tablename].dshape
 
@@ -84,8 +85,9 @@ def tables(kdb):
     # t is the type column in Q
     syms = []
     for name, metatable in zip(names, metadata):
-        types = metatable.t.tolist()
-        ds = DataShape(Var(), Record(list(zip(names,
+        types = metatable.t
+        columns = metatable.index
+        ds = DataShape(Var(), Record(list(zip(columns,
                                               [qtypes[t] for t in types]))))
         syms.append((name, Symbol(name, ds)))
     return dict(syms)

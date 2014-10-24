@@ -2,16 +2,14 @@ from __future__ import print_function, division, absolute_import
 
 import pytest
 
-import getpass
-
 from numpy import nan
 import pandas as pd
 import pandas.util.testing as tm
 import blaze as bz
 from blaze import compute, into, by
-from kdbpy.compute import QTable
+from kdbpy.compute import tables, QTable
 from kdbpy.compute.q import List, Symbol, Dict, String
-from kdbpy.kdb import Credentials, KQ
+from kdbpy.kdb import KQ
 
 
 @pytest.fixture(scope='module')
@@ -29,25 +27,10 @@ def st():
     return bz.Symbol('st', 'var * {name: string, jobcode: int64, tree: string}')
 
 
-ports = [5001]
-
-
-@pytest.yield_fixture
-def port():
-    yield ports[-1]
-    ports.append(ports[-1] + 1)
-
-
-@pytest.fixture(scope='module')
-def rstring(port):
-    return 'kdb://pcloud@localhost:%d::t' % port
-
 
 @pytest.yield_fixture(scope='module')
-def kdb(port):
-    r = KQ(Credentials(username=getpass.getuser(), password=None,
-                       host='localhost', port=port))
-    r.start()
+def kdb():
+    r = KQ(start=True)
     r.eval('t: ([] name: `Bob`Alice`Joe; id: 1 2 3; amount: -100.90 0n 432.2)')
     r.eval('rt: ([name: `Bob`Alice`Joe`John] tax: -3.1 2.0 0n 4.2; '
            'street: `maple`apple`pine`grove)')
@@ -225,6 +208,10 @@ def test_simple_join(rt, st, q, rdf, sdf):
     tm.assert_frame_equal(result, expected)
 
 
-@pytest.mark.xfail(raises=ValueError, reason='single q process')
 def test_tables(kdb, rt, st, t):
-    assert tables(kdb) == dict(zip(['rt', 'st', 't'], [rt, st, t]))
+    d = tables(kdb)
+    keys = set(d.keys())
+    assert keys == set(['rt', 'st', 't'])
+    assert rt.isidentical(d['rt'])
+    assert st.isidentical(d['st'])
+    assert t.isidentical(d['t'])
