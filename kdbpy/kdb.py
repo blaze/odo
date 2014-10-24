@@ -166,19 +166,18 @@ class Q(object):
         """
         get the path to the q executbale
 
-        this is fixed for various architectures
+        default file must be on user path
         """
 
         if path is None:
             try:
                 arch_name = platform.system()
                 archd = {
-                    'Darwin': ['m32', 'q'],
-                    'linux': ['l32', 'q'],
-                    'nt': ['w32', 'q.exe'],
+                    'Darwin': 'q',
+                    'linux': 'q',
+                    'nt': 'q.exe',
                 }
-                arch = archd[arch_name]
-                path = os.path.join(*[os.path.dirname(os.path.abspath(kdbpy.__path__[0])),'bin'] + arch)
+                return archd[arch_name]
             except (Exception) as e:
                 raise RuntimeError("cannot locate q executable: {0}".format(e))
         return path

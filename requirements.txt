@@ -5,3 +5,6 @@ pandas >= 0.14.1
 psutil
 pip
 pytest
+
+# q
+# qpython
