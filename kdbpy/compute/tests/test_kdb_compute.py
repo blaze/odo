@@ -125,7 +125,7 @@ def test_broadcast(t, q, df):
     tm.assert_series_equal(result, expected)
 
 
-def test_complex_arith(t, q, df):
+def test_complex_broadcast(t, q, df):
     expr = t.id + 1 - 2 * t.id ** 2 + t.amount > t.id - 3
     result = into(pd.Series, compute(expr, q))
     expected = compute(expr, df)
