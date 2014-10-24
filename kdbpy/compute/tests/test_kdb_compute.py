@@ -27,7 +27,6 @@ def st():
     return bz.Symbol('st', 'var * {name: string, jobcode: int64, tree: string}')
 
 
-
 @pytest.yield_fixture(scope='module')
 def kdb():
     r = KQ(start=True)
