@@ -19,7 +19,7 @@ import blaze as bz
 from blaze import compute
 from blaze.expr import Symbol, Projection, Broadcast, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
-from blaze.expr import count
+from blaze.expr import Length
 
 from toolz.curried import map
 from toolz.compatibility import zip
@@ -35,9 +35,7 @@ def compute_up(expr, data, **kwargs):
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
     fields = list(map(q.Symbol, expr.fields))
-    qexpr = q.List('?', child, q.List(), q.Bool(False),
-                   q.Dict(list(zip(fields, fields))))
-    return qexpr
+    return q.List('?', child, (), q.Bool(), q.Dict(list(zip(fields, fields))))
 
 
 @dispatch(Symbol, q.Expr)
@@ -62,11 +60,6 @@ unops = {
     'USub': q.Atom('-:'),
     '~': q.Atom('~:')
 }
-
-
-@dispatch(numbers.Number, q.Expr)
-def compute_up(expr, data, **kwargs):
-    return expr
 
 
 def get_wrapper(expr, types=(basestring,)):
@@ -107,7 +100,7 @@ def subs(expr, t):
     Parameters
     ----------
     expr : q.Expr, q.Atom, int, basestring
-        The exression in which to substitute the parent table
+        The expression in which to substitute the parent table
     t : blaze.Symbol
         The parent table to use for substitution
 
@@ -165,20 +158,27 @@ def get(x):
     return x
 
 
+@dispatch(numbers.Number, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return expr
+
+
 @dispatch(BinOp, q.Expr)
 def compute_up(expr, data, **kwargs):
-    op = binops.get(expr.symbol, expr.symbol)
-    lwrapper = get_wrapper(expr.lhs)
-    rwrapper = get_wrapper(expr.rhs)
-    lhs = lwrapper(compute_up(expr.lhs, data, **kwargs))
-    rhs = rwrapper(compute_up(expr.rhs, data, **kwargs))
+    symbol = expr.symbol
+    op = binops.get(symbol, symbol)
+    lhs, rhs = expr.lhs, expr.rhs
+    lwrap, rwrap = get_wrapper(lhs), get_wrapper(rhs)
+    lhs = lwrap(compute_up(lhs, data, **kwargs))
+    rhs = rwrap(compute_up(rhs, data, **kwargs))
     return q.List(op, lhs, rhs)
 
 
 @dispatch(UnaryOp, q.Expr)
 def compute_up(expr, data, **kwargs):
+    symbol = expr.symbol
     result = compute_up(expr._child, data, **kwargs)
-    return q.List(unops.get(expr.symbol, expr.symbol), result)
+    return q.List(unops.get(symbol, symbol), result)
 
 
 @dispatch(Field, q.Expr)
@@ -202,19 +202,16 @@ def compute_up(expr, data, **kwargs):
                   q.List(q.List(predicate)), q.Bool(), ())
 
 
-reductions = {'mean': 'avg',
-              'std': 'dev'}
-
-
-@dispatch(count, q.Expr)
-def compute_up(expr, data, **kwargs):
-    child = compute_up(expr._child, data, **kwargs)
-    return q.List('#:', child)
+reductions = {
+    'mean': 'avg',
+    'std': 'dev',
+}
 
 
 @dispatch(Reduction, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return q.List(reductions.get(expr.symbol, expr.symbol),
+    symbol = expr.symbol
+    return q.List(reductions.get(symbol, symbol),
                   compute_up(expr._child, data, **kwargs))
 
 
@@ -236,11 +233,6 @@ def compute_up(expr, lhs, rhs, **kwargs):
                       **kwargs)
 
 
-@dispatch(Join, q.Expr, dict)
-def post_compute(expr, data, scope):
-    raise NotImplementedError()
-
-
 @dispatch(By, q.Expr)
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
@@ -252,10 +244,20 @@ def compute_up(expr, data, **kwargs):
     return qexpr
 
 
+@dispatch(Length, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return q.List('#:', compute_up(expr._child, data, **kwargs))
+
+
 @dispatch(Head, q.Expr)
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
-    return q.List('#', min(expr.n, compute(expr._child.count(), data)), child)
+
+    # q repeats if the N of take is larger than the number of rows, so we need
+    # to get the min of the number of rows and the requested N from the Head
+    # expression
+    n = min(expr.n, compute(expr._child.length(), data))
+    return q.List('#', n, child)
 
 
 @dispatch(Expr, q.Expr, dict)
@@ -265,18 +267,28 @@ def post_compute(expr, data, scope):
     return table.engine.eval('eval [%s]' % data)
 
 
+@dispatch(Join, q.Expr, dict)
+def post_compute(expr, data, scope):
+    raise NotImplementedError()
+
+
 @dispatch(Expr, QTable)
 def compute_up(expr, data, **kwargs):
     return compute_up(expr, q.Symbol(data.tablename), **kwargs)
 
 
 @dispatch(pd.DataFrame, qpython.qcollection.QKeyedTable)
-def into(df, tb, **kwargs):
+def into(_, tb, **kwargs):
     keys = tb.keys
-    keynames = keys.dtype.names
-    index = pd.MultiIndex.from_arrays([keys[name] for name in keynames],
-                                      names=keynames)
-    return pd.DataFrame.from_records(tb.values, index=index)
+    names = keys.dtype.names
+    index = pd.MultiIndex.from_arrays([keys[name] for name in names],
+                                      names=names)
+    return pd.DataFrame.from_records(tb.values, index=index, **kwargs)
+
+
+@dispatch(pd.DataFrame, qpython.qcollection.QTable)
+def into(_, tb, **kwargs):
+    return pd.DataFrame.from_records(tb.values, **kwargs)
 
 
 @dispatch(QTable)
