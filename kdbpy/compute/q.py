@@ -60,6 +60,7 @@ class Symbol(Atom):
         """
         Examples
         --------
+        >>> from kdbpy.compute import q
         >>> t = q.Symbol('t')
         >>> t['s']['a']
         `t.s.a
