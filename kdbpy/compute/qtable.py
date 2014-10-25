@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 from ..kdb import KQ, get_credentials
 from datashape import DataShape, Var, Record
-from blaze import Symbol
+from blaze import Symbol, discover
 
 
 qtypes = {'b': 'bool',
@@ -19,8 +19,6 @@ qtypes = {'b': 'bool',
           'u': 'time',  # q minute
           'v': 'time',  # q second
           't': 'time'}
-
-
 
 
 def tables(kdb):
@@ -41,12 +39,13 @@ def tables(kdb):
 class QTable(object):
     def __init__(self, uri, engine=None):
         self.uri, self._tablename = uri.rsplit('::', 1)
-        self.params = params = sa.engine.url.make_url(self.uri)
-        cred = get_credentials(username=params.username,
-                               password=params.password, host=params.host,
-                               port=params.port)
+        self.params = sa.engine.url.make_url(self.uri)
+        cred = get_credentials(username=self.params.username,
+                               password=self.params.password,
+                               host=self.params.host,
+                               port=self.params.port)
         self.engine = engine or KQ(cred, start=True)
-        self._dshape = tables(self.engine)[self.tablename].dshape
+        self._dshape = discover(self)
 
     @property
     def tablename(self):
@@ -62,7 +61,4 @@ class QTable(object):
 
     @property
     def columns(self):
-        result = self.engine.eval('cols[%s]' % self.tablename)
-        return result.tolist()
-
-
+        return self.engine.eval('cols[%s]' % self.tablename).tolist()
