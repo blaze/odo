@@ -271,9 +271,11 @@ class Q(object):
         self.process = self.find_running_process()
         if self.process is not None:
             self.process.terminate()
+            del self.process
             self.process = None
             return True
         return False
+
 
 class KDB(object):
     """ represents the interface to qPython object """
@@ -298,17 +300,15 @@ class KDB(object):
     def start(self):
         """ given credentials, start the connection to the server """
         cred = self.credentials
+        self.q = qconnection.QConnection(host=cred.host,
+                                            port=cred.port,
+                                            username=cred.username,
+                                            password=cred.password,
+                                            pandas=True)
         try:
-            self.q = qconnection.QConnection(host=cred.host,
-                                             port=cred.port,
-                                             username=cred.username,
-                                             password=cred.password,
-                                             pandas=True)
             self.q.open()
-        except (Exception) as e:
+        except Exception as e:
             raise ValueError("cannot connect to the kdb server: {0}".format(e))
-        if not self.is_started:
-            raise ValueError("kdb is not initialized: {0}".format(self.q))
         return self
 
     def stop(self):
