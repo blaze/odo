@@ -142,6 +142,27 @@ def test_count(t, q, df):
     assert result == len(df)
 
 
+def test_mean(t, q, df):
+    expr = t.amount.mean()
+    result = compute(expr, q)
+    expected = compute(expr, df)
+    assert result == expected
+
+
+def test_std(t, q, df):
+    expr = t.amount.std(unbiased=True)
+    result = compute(expr, q)
+    expected = compute(expr, df)
+    assert result == expected
+
+
+def test_var(t, q, df):
+    expr = t.amount.var(unbiased=True)
+    result = compute(expr, q)
+    expected = compute(expr, df)
+    assert result == expected
+
+
 @pytest.mark.xfail(raises=NotImplementedError,
                    reason='Join not implemented for QTables')
 def test_simple_join(rt, st, rq, sq, rdf, sdf):
@@ -170,3 +191,13 @@ def test_resource(q):
 def test_discover(q):
     assert (str(discover(q)) ==
             str(dshape('var * {name: string, id: int64, amount: float64}')))
+
+
+def test_into_from_keyed(rq, rdf):
+    result = into(pd.DataFrame, rdf)
+    tm.assert_frame_equal(result, rdf)
+
+
+def test_into_from_qtable(q, df):
+    result = into(pd.DataFrame, df)
+    tm.assert_frame_equal(result, df)
