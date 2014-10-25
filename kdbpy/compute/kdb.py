@@ -80,13 +80,17 @@ def _subs(expr, t):
         # TODO: how do we handle multiple tables?
         if expr.s in t.schema.measure.names:
             yield q.Symbol('%s.%s' % (t._name, expr.s))
+        else:
+            yield expr
     elif isinstance(expr, (numbers.Number, basestring, q.Atom)):
         yield expr
     elif isinstance(expr, (q.List, q.Dict)):
         for sube in expr:
             if isinstance(sube, q.List):
                 yield q.List(*(x for x in _subs(sube, t)))
-            elif isinstance(sube, (q.Atom, basestring, numbers.Number)):
+            elif isinstance(sube, q.Atom):
+                yield subs(sube, t)
+            elif isinstance(sube, (basestring, numbers.Number)):
                 yield sube
             elif isinstance(sube, q.Dict):
                 yield q.Dict([(_subs(x, t), _subs(y, t))
@@ -113,7 +117,7 @@ def subs(expr, t):
     Examples
     --------
     >>> from blaze import Symbol
-    >>> t = Symbol('t', 'var * {id: int, name: string})
+    >>> t = Symbol('t', 'var * {id: int, name: string}')
     >>> s = q.Symbol('name')
     >>> subs(s, t)
     `t.name
