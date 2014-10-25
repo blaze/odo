@@ -7,12 +7,11 @@ from __future__ import absolute_import, print_function, division
 import numbers
 
 from . import q
-from ..kdb import KQ, get_credentials
+from .qtable import QTable, tables
 
 import qpython.qcollection
 
 import pandas as pd
-import sqlalchemy as sa
 
 from blaze.dispatch import dispatch
 
@@ -22,47 +21,9 @@ from blaze.expr import Symbol, Projection, Broadcast, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
 from blaze.expr import count
 
-from datashape import DataShape, Var, Record
-
 from toolz.curried import map
 from toolz.compatibility import zip
 from toolz import identity, first
-
-
-class QTable(object):
-    def __init__(self, uri, engine=None):
-        self.uri, self._tablename = uri.rsplit('::', 1)
-        self.params = params = sa.engine.url.make_url(self.uri)
-        cred = get_credentials(username=params.username,
-                               password=params.password, host=params.host,
-                               port=params.port)
-        self.engine = engine or KQ(cred, start=True)
-        self.dshape = tables(self.engine)[self.tablename].dshape
-
-    @property
-    def tablename(self):
-        return self._tablename
-
-    def __repr__(self):
-        return ('{0.__class__.__name__}(tablename={0.tablename!r}, '
-                'dshape={0.dshape!r})'.format(self))
-
-
-qtypes = {'b': 'bool',
-          'x': 'int8',
-          'h': 'int16',
-          'i': 'int32',
-          'j': 'int64',
-          'e': 'float32',
-          'f': 'float64',
-          'c': 'int8',  # q char
-          's': 'string',  # q symbol
-          'm': 'date',  # q month
-          'd': 'date',
-          'z': 'datetime',
-          'u': 'time',  # q minute
-          'v': 'time',  # q second
-          't': 'time'}
 
 
 @dispatch(basestring, q.Expr)
@@ -77,21 +38,6 @@ def compute_up(expr, data, **kwargs):
     qexpr = q.List('?', child, q.List(), q.Bool(False),
                    q.Dict(list(zip(fields, fields))))
     return qexpr
-
-
-def tables(kdb):
-    names = kdb.eval('tables `.')
-    metadata = kdb.eval('meta each tables `.')
-
-    # t is the type column in Q
-    syms = []
-    for name, metatable in zip(names, metadata):
-        types = metatable.t
-        columns = metatable.index
-        ds = DataShape(Var(), Record(list(zip(columns,
-                                              [qtypes[t] for t in types]))))
-        syms.append((name, Symbol(name, ds)))
-    return dict(syms)
 
 
 @dispatch(Symbol, q.Expr)
@@ -131,6 +77,7 @@ def _subs(expr, t):
     assert isinstance(t, bz.Symbol)
 
     if isinstance(expr, q.Symbol):
+        # TODO: how do we handle multiple tables?
         if expr.s in t.schema.measure.names:
             yield q.Symbol('%s.%s' % (t._name, expr.s))
     elif isinstance(expr, (numbers.Number, basestring, q.Atom)):
@@ -138,7 +85,7 @@ def _subs(expr, t):
     elif isinstance(expr, (q.List, q.Dict)):
         for sube in expr:
             if isinstance(sube, q.List):
-                yield q.List(*[x for x in _subs(sube, t)])
+                yield q.List(*(x for x in _subs(sube, t)))
             elif isinstance(sube, (q.Atom, basestring, numbers.Number)):
                 yield sube
             elif isinstance(sube, q.Dict):
@@ -183,10 +130,32 @@ def subs(expr, t):
 
 
 def get(x):
+    """Get a q atom from a single element list or return the list.
+
+    Parameters
+    ----------
+    x : q.Expr
+        A Q expression
+
+    Returns
+    -------
+    r: q.Expr
+
+    Examples
+    --------
+    >>> s = q.List(q.Atom('='), q.Symbol('t.name'), q.Symbol('Alice'))
+    >>> s
+    (=; `t.name; `Alice)
+    >>> get(s)
+    (=; `t.name; `Alice)
+    >>> s = q.List(q.Symbol('t.name'))
+    >>> get(s)
+    `t.name
+    """
     try:
         if len(x) == 1:
             return x[0]
-    except TypeError:
+    except TypeError:  # our input has no notion of length
         return x
     return x
 
@@ -303,3 +272,8 @@ def into(df, tb, **kwargs):
     index = pd.MultiIndex.from_arrays([keys[name] for name in keynames],
                                       names=keynames)
     return pd.DataFrame.from_records(tb.values, index=index)
+
+
+@dispatch(QTable)
+def discover(t):
+    return tables(t.engine)[t.tablename].dshape
