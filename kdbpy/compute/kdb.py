@@ -89,6 +89,7 @@ def _subs(expr, t):
             if isinstance(sube, q.List):
                 yield q.List(*(x for x in _subs(sube, t)))
             elif isinstance(sube, q.Atom):
+                # recurse back into subs (not _subs) to have it call get
                 yield subs(sube, t)
             elif isinstance(sube, (basestring, numbers.Number)):
                 yield sube
