@@ -5,6 +5,8 @@ pandas >= 0.14.1
 psutil
 pip
 pytest
+toolz
+sqlalchemy
 
 # q
 # qpython
