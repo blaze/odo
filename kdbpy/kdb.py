@@ -4,17 +4,15 @@ import time
 import atexit
 import platform
 import getpass
+import subprocess
+
 from collections import namedtuple
 
 import psutil
-import subprocess
 
 import pandas as pd
 import numpy as np
 from qpython import qconnection, qtemporal
-from pandas.core import common as com
-
-import kdbpy
 
 # credentials
 Credentials = namedtuple('Credentials', ['host', 'port', 'username',
@@ -190,19 +188,15 @@ class Q(object):
         """
         if self.process is not None:
             return self.process
-        for proc in psutil.process_iter():
-            try:
-                name = proc.name()
-                if 'q' in name:
-                    cmdline = set(proc.cmdline())
-                    if '-p' in cmdline and str(self.credentials.port) in cmdline:
-                        return proc
 
-            except (Exception) as e:
-                # ignore these; we are only interesetd in user procs
-                pass
-
-        return None
+        # only q processes with at least a single connection
+        # leave everything else alone
+        for proc in filter(lambda x: x.name() == 'q', psutil.process_iter()):
+            conns = proc.connections()
+            for conn in conns:  # probably a single element list
+                _, port = conn.laddr
+                if port == self.credentials.port:
+                    return proc
 
     @property
     def is_started(self):
@@ -213,10 +207,8 @@ class Q(object):
         """
 
         self.process = self.find_running_process()
-        if self.process is not None:
-            return True
+        return self.process is not None
 
-        return False
 
     def start(self, start=True):
         """
@@ -277,11 +269,11 @@ class Q(object):
         """ terminate the q_process, returning boolean if it existed previously
         """
         self.process = self.find_running_process()
-        if self.process is not None:
+        try:
             self.process.terminate()
-            self.process = None
-            return True
-        return False
+        except AttributeError:
+            return False
+        return True
 
 
 class KDB(object):
