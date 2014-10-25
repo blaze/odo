@@ -269,12 +269,11 @@ class Q(object):
         """ terminate the q_process, returning boolean if it existed previously
         """
         self.process = self.find_running_process()
-        try:
+        if self.process is not None:
             self.process.terminate()
-        except AttributeError:
-            return False
-        return True
-
+            self.process = None
+            return True
+        return False
 
 class KDB(object):
     """ represents the interface to qPython object """
