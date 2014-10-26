@@ -288,14 +288,32 @@ def compute_up(expr, lhs, rhs, **kwargs):
                       **kwargs)
 
 
+@dispatch(Summary, q.Expr)
+def compute_up(expr, data, **kwargs):
+    ops = [compute_up(op, data, **kwargs) for op in expr.values]
+    names = expr.names
+    child = compute_up(expr._child, data, **kwargs)
+    qexpr = q.List('?', child, q.List(), q.Bool(),
+                   q.Dict(list(zip(map(q.Symbol, names), ops))))
+    return qexpr
+
+
 @dispatch(By, q.Expr)
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
     grouper = compute_up(expr.grouper, data, **kwargs)
     grouper = q.Dict([(q.Symbol(expr.grouper._name), grouper)])
     reducer = compute_up(expr.apply, data, **kwargs)
-    reducer = q.Dict([(q.Symbol(expr.apply._name), reducer)])
-    qexpr = q.List('?', child, (), grouper, reducer)
+
+    if not isinstance(expr.apply, Summary):
+        reducer = q.Dict([(q.Symbol(expr.apply._name), reducer)])
+    else:
+        # we only need the reduction dictionary from the result of a summary
+        # parse
+        reducer = reducer[-1]
+
+    qexpr = q.List('?', child, q.List(), grouper, reducer)
+    qexpr = desubs(qexpr, first(kwargs['scope'].keys()))
     return qexpr
 
 

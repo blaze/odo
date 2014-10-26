@@ -247,6 +247,38 @@ def test_neg_bounded_slice(t, q, df):
     tm.assert_frame_equal(qresult, compute(expr, df).reset_index(drop=True))
 
 
+def test_raw_summary(t, q, df):
+    expr = summary(s=t.amount.sum(), mn=t.id.mean())
+    result = compute(expr, q)
+    tm.assert_series_equal(result.squeeze(), compute(expr, df))
+
+
+def test_simple_summary(t, q):
+    expr = by(t.name, s=t.amount.sum())
+    result = compute(expr, q)
+    qexpected = 'select s: sum amount by name from t'
+    expected = q.engine.eval(qexpected)
+    tm.assert_frame_equal(result.sort_index(axis=1), expected)
+
+
+def test_twofunc_summary(t, q):
+    expr = by(t.name, s=t.amount.sum(), mn=t.id.mean())
+    result = compute(expr, q)
+    qexpected = 'select s: sum amount, mn: avg id by name from t'
+    expected = q.engine.eval(qexpected)
+    tm.assert_frame_equal(result.sort_index(axis=1),
+                          expected.sort_index(axis=1))
+
+
+def test_complex_summary(t, q):
+    expr = by(t.name, s=t.amount.sum(), mn=t.id.mean(),
+              mx=t.amount.max() + 1)
+    result = compute(expr, q)
+    qexpected = ('select s: sum amount, mn: avg id, mx: (max amount) + 1 '
+                 'by name from t')
+    expected = q.engine.eval(qexpected)
+    tm.assert_frame_equal(result.sort_index(axis=1),
+                          expected.sort_index(axis=1))
 
 
 def test_distinct(t, q, df):
