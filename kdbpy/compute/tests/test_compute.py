@@ -181,9 +181,8 @@ def test_sort(t, q, df):
     tm.assert_frame_equal(result, expected)
 
 
-def test_length(t, q, df):
-    expr = t.length()
-    qresult = compute(expr, q)
+def test_nrows(t, q, df):
+    qresult = compute(t.nrows(), q)
     expected = len(df)
     assert qresult == expected
 

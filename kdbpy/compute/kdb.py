@@ -298,7 +298,7 @@ def compute_up(expr, data, **kwargs):
     return qexpr
 
 
-@dispatch(Length, q.Expr)
+@dispatch(NRows, q.Expr)
 def compute_up(expr, data, **kwargs):
     return q.List('#:', compute_up(expr._child, data, **kwargs))
 
@@ -310,7 +310,7 @@ def compute_up(expr, data, **kwargs):
     # q repeats if the N of take is larger than the number of rows, so we need
     # to get the min of the number of rows and the requested N from the Head
     # expression
-    n = min(expr.n, compute(expr._child.length(), data))
+    n = min(expr.n, compute(expr._child.nrows(), data))
     return q.List('#', n, child)
 
 
