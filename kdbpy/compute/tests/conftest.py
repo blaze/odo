@@ -24,7 +24,10 @@ def st():
 @pytest.yield_fixture(scope='module')
 def kdb():
     r = KQ(start=True)
-    r.eval('t: ([] name: `Bob`Alice`Joe; id: 1 2 3; amount: -100.90 0n 432.2)')
+    r.eval('t: ([] '
+           'name: 10 ? `Bob`Alice`Joe`Smithers;'
+           'id: 1 + til 10;'
+           'amount: 10 ? 10.0)')
     r.eval('rt: ([name: `Bob`Alice`Joe`John] tax: -3.1 2.0 0n 4.2; '
            'street: `maple`apple`pine`grove)')
     r.eval('st: ([name: `Bob`Alice`Joe] jobcode: 9 10 11; '
@@ -49,29 +52,15 @@ def sq(kdb):
 
 
 @pytest.fixture
-def df():
-    return pd.DataFrame([('Bob', 1, -100.90),
-                         ('Alice', 2, np.nan),
-                         ('Joe', 3, 432.2)],
-                        columns=['name', 'id', 'amount'])
+def df(kdb):
+    return kdb.eval('t')
 
 
 @pytest.fixture
-def rdf():
-    return pd.DataFrame([('Bob', -3.1, 'maple'),
-                         ('Alice', 2.0, 'apple'),
-                         ('Joe', np.nan, 'pine'),
-                         ('John', 4.2, 'grove')],
-                        columns=['name', 'tax', 'street']).set_index('name',
-                                                                     drop=True)
+def rdf(kdb):
+    return kdb.eval('rt')
 
 
 @pytest.fixture
-def sdf():
-    return pd.DataFrame([('Bob', 9, 'maple'),
-                         ('Alice', 10, 'apple'),
-                         ('Joe', 11, 'pine')],
-                        columns=['name', 'id', 'street']).set_index('name',
-                                                                    drop=True)
-
-
+def sdf(kdb):
+    return kdb.eval('st')
