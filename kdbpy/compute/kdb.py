@@ -19,11 +19,11 @@ import blaze as bz
 from blaze import compute
 from blaze.expr import Symbol, Projection, Broadcast, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
-from blaze.expr import Length
+from blaze.expr import NRows, Slice, Distinct, Summary, min
 
 from toolz.curried import map
 from toolz.compatibility import zip
-from toolz import identity, first
+from toolz import identity, first, second
 
 
 @dispatch(basestring, q.Expr)
