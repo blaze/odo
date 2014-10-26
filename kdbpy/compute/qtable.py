@@ -11,7 +11,8 @@ qtypes = {'b': 'bool',
           'j': 'int64',
           'e': 'float32',
           'f': 'float64',
-          'c': 'string[1, "A"]',  # q char
+          'c': 'string',  # q char
+          'C': 'string',  # q char
           's': 'string',  # q symbol
           'm': 'date',  # q month
           'd': 'date',
