@@ -276,9 +276,10 @@ def compute_up(expr, lhs, rhs, **kwargs):
 
 @dispatch(Sort, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return q.List(q.Atom('xasc' if expr.ascending else 'xdesc'),
-                  q.List(q.Symbol(expr._key)),
-                  compute_up(expr._child, data, **kwargs))
+    sort_func = q.Atom('xasc' if expr.ascending else 'xdesc')
+    key = q.List(q.Symbol(expr._key))
+    child = compute_up(expr._child, data, **kwargs)
+    return q.List(sort_func, key, child)
 
 
 @dispatch(Join, QTable, QTable)
