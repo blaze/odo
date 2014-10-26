@@ -67,6 +67,41 @@ def get_wrapper(expr, types=(basestring,)):
     return q.List if isinstance(expr, types) else identity
 
 
+def manip(func, expr, t):
+    return get(q.List(*list(func(expr, t))))
+
+
+def get(x):
+    """Get a q atom from a single element list or return the list.
+
+    Parameters
+    ----------
+    x : q.Expr
+        A Q expression
+
+    Returns
+    -------
+    r: q.Expr
+
+    Examples
+    --------
+    >>> s = q.List(q.Atom('='), q.Symbol('t.name'), q.Symbol('Alice'))
+    >>> s
+    (=; `t.name; `Alice)
+    >>> get(s)
+    (=; `t.name; `Alice)
+    >>> s = q.List(q.Symbol('t.name'))
+    >>> get(s)
+    `t.name
+    """
+    try:
+        if len(x) == 1:
+            return x[0]
+    except TypeError:  # our input has no notion of length
+        return x
+    return x
+
+
 def _subs(expr, t):
     assert isinstance(t, bz.Symbol)
 
@@ -125,38 +160,56 @@ def subs(expr, t):
     >>> subs(expr, t)
     (=; `t.name; 1)
     """
-    return get(q.List(*list(_subs(expr, t))))
+    return manip(_subs, expr, t)
 
 
-def get(x):
-    """Get a q atom from a single element list or return the list.
+def desubs(expr, t):
+    """Remove a particular table `t` from an expression.
 
-    Parameters
-    ----------
-    x : q.Expr
-        A Q expression
-
-    Returns
-    -------
-    r: q.Expr
+    TODO
+    ----
+    Is looking at the name of the table sufficient?
 
     Examples
     --------
-    >>> s = q.List(q.Atom('='), q.Symbol('t.name'), q.Symbol('Alice'))
+    >>> import blaze as bz
+    >>> t = bz.Symbol('t', 'var * {name: string, amount: float64}')
+    >>> s = q.Symbol('t.name')
+    >>> desubs(s, t)
+    `name
+    >>> s = q.List(q.Atom('first'), q.Symbol('t.name'))
     >>> s
-    (=; `t.name; `Alice)
-    >>> get(s)
-    (=; `t.name; `Alice)
-    >>> s = q.List(q.Symbol('t.name'))
-    >>> get(s)
-    `t.name
+    (first; `t.name)
+    >>> desubs(s, t)
+    (first; `name)
     """
-    try:
-        if len(x) == 1:
-            return x[0]
-    except TypeError:  # our input has no notion of length
-        return x
-    return x
+    return manip(_desubs, expr, t)
+
+
+def _desubs(expr, t):
+    if isinstance(expr, q.Atom):
+        if '.' in expr.s and expr.s.startswith(t._name):
+            yield type(expr)(second(expr.s.rsplit('.', 1)))
+        else:
+            yield expr
+    elif isinstance(expr, (basestring, numbers.Number)):
+        yield expr
+    else:
+        for sube in expr:
+            if isinstance(sube, q.Atom):
+                if '.' in sube.s and sube.s.startswith(t._name):
+                    yield type(sube)(second(sube.s.rsplit('.', 1)))
+                else:
+                    yield desubs(sube, t)
+            elif isinstance(sube, q.List):
+                yield q.List(*[desubs(s, t) for s in sube])
+            elif isinstance(sube, q.Dict):
+                yield q.Dict([(desubs(k, t), desubs(v, t))
+                              for k, v in sube.items()])
+            elif isinstance(sube, (basestring, numbers.Number)):
+                yield sube
+            else:
+                raise NotImplementedError()
 
 
 @dispatch(numbers.Number, q.Expr)
