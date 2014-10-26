@@ -35,7 +35,8 @@ def compute_up(expr, data, **kwargs):
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
     fields = list(map(q.Symbol, expr.fields))
-    return q.List('?', child, (), q.Bool(), q.Dict(list(zip(fields, fields))))
+    return q.List('?', child, q.List(), q.Bool(), q.Dict(list(zip(fields,
+                                                                  fields))))
 
 
 @dispatch(Symbol, q.Expr)
