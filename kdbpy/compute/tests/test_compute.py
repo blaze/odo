@@ -161,6 +161,20 @@ def test_var(t, q, df):
     expr = t.amount.var(unbiased=True)
     result = compute(expr, q)
     expected = compute(expr, df)
+    np.testing.assert_allclose(result, expected)
+
+
+def test_max(t, q, df):
+    expr = t.id.max()
+    result = compute(expr, q)
+    expected = compute(expr, df)
+    assert result == expected
+
+
+def test_min(t, q, df):
+    expr = t.id.min()
+    result = compute(expr, q)
+    expected = compute(expr, df)
     assert result == expected
 
 
