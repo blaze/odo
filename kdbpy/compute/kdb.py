@@ -326,6 +326,35 @@ def post_compute(expr, data, scope):
     raise NotImplementedError()
 
 
+@dispatch(Slice, q.Expr)
+def compute_up(expr, data, **kwargs):
+    """Slice expressions from Python to Q.
+
+    Notes
+    -----
+    ``sublist`` is actually defined in K land so we have to jump through hoops
+    to actually evaluate it properly.
+
+    In Q::
+
+        r: X sublist Y
+        3 sublist 1 2 3 4 5 = 1 2 3
+        1 3 sublist 1 2 3 4 5 = 2 3 4
+        x = [1, 2, 3, 4, 5]
+        Y[2:5] == 2 3 sublist Y
+        Y[a:b] == a (b - a) sublist Y
+    """
+    assert len(expr.index) == 1, 'only single slice allowed'
+    index, = expr.index
+    nrows = compute_up(expr._child.nrows(), data, **kwargs)
+
+    start = index.start or 0
+    stop = index.stop or nrows
+    qexpr = q.List('sublist', q.List('enlist', start,
+                                     # eval ~ ![-6] // q is so gross
+                                     q.List('![-6]', q.List('-', stop, start))),
+                   compute_up(expr._child, data, **kwargs))
+    return qexpr
 @dispatch(Expr, QTable)
 def compute_up(expr, data, **kwargs):
     return compute_up(expr, q.Symbol(data.tablename), **kwargs)

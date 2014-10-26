@@ -208,4 +208,26 @@ def test_into_from_keyed(rq, rdf):
 
 def test_into_from_qtable(q, df):
     result = into(pd.DataFrame, df)
-    tm.assert_frame_equal(result, df)
+    tm.assert_frame_equal(result, df)def test_slice(t, q, df):
+    expr = t[2:5]
+    qresult = compute(expr, q)
+    tm.assert_frame_equal(qresult, compute(expr, df).reset_index(drop=True))
+
+
+@pytest.mark.xfail(raises=AssertionError,
+                   reason='Logic for negative slices not worked out yet')
+def test_neg_slice(t, q, df):
+    expr = t[-2:]
+    qresult = compute(expr, q)
+    tm.assert_frame_equal(qresult, compute(expr, df).reset_index(drop=True))
+
+
+@pytest.mark.xfail(raises=AssertionError,
+                   reason='Logic for negative slices not worked out yet')
+def test_neg_bounded_slice(t, q, df):
+    # this should be empty in Q, though it's possible to do this
+    expr = t[-2:5]
+    qresult = compute(expr, q)
+    tm.assert_frame_equal(qresult, compute(expr, df).reset_index(drop=True))
+
+
