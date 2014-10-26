@@ -7,6 +7,7 @@ import pandas.util.testing as tm
 import blaze as bz
 from blaze import compute, into, by, discover, dshape
 from kdbpy.compute import tables
+from blaze import compute, into, by, discover, dshape, summary
 from kdbpy.compute.q import List, Symbol, Dict, String
 
 
@@ -153,7 +154,7 @@ def test_std(t, q, df):
     expr = t.amount.std(unbiased=True)
     result = compute(expr, q)
     expected = compute(expr, df)
-    assert result == expected
+    np.testing.assert_allclose(result, expected)
 
 
 def test_var(t, q, df):
