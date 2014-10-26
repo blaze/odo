@@ -355,6 +355,13 @@ def compute_up(expr, data, **kwargs):
                                      q.List('![-6]', q.List('-', stop, start))),
                    compute_up(expr._child, data, **kwargs))
     return qexpr
+
+
+@dispatch(Distinct, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return q.List(q.Atom('?:'), compute_up(expr._child, data, **kwargs))
+
+
 @dispatch(Expr, QTable)
 def compute_up(expr, data, **kwargs):
     return compute_up(expr, q.Symbol(data.tablename), **kwargs)

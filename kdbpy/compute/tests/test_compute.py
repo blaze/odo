@@ -231,3 +231,10 @@ def test_neg_bounded_slice(t, q, df):
     tm.assert_frame_equal(qresult, compute(expr, df).reset_index(drop=True))
 
 
+
+
+def test_distinct(t, q, df):
+    expr = t.name.distinct()
+    result = compute(expr, q)
+    expected = compute(expr, df)
+    tm.assert_series_equal(result, expected)
