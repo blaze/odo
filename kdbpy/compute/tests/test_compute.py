@@ -208,7 +208,10 @@ def test_into_from_keyed(rq, rdf):
 
 def test_into_from_qtable(q, df):
     result = into(pd.DataFrame, df)
-    tm.assert_frame_equal(result, df)def test_slice(t, q, df):
+    tm.assert_frame_equal(result, df)
+
+
+def test_slice(t, q, df):
     expr = t[2:5]
     qresult = compute(expr, q)
     tm.assert_frame_equal(qresult, compute(expr, df).reset_index(drop=True))
