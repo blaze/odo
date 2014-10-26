@@ -175,9 +175,10 @@ def test_simple_join(rt, st, rq, sq, rdf, sdf):
 
 def test_sort(t, q, df):
     expr = t.sort('name')
-    qresult = compute(expr, q)
-    expected = compute(expr, df).reset_index(drop=True)  # q doesn't keep index order
-    result = into(pd.DataFrame, qresult)
+    result = compute(expr, q)
+
+    # q doesn't keep index order
+    expected = df.sort('name', kind='mergesort').reset_index(drop=True)
     tm.assert_frame_equal(result, expected)
 
 
