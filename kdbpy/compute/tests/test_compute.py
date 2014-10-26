@@ -2,11 +2,10 @@ from __future__ import print_function, division, absolute_import
 
 import pytest
 
+import numpy as np
 import pandas as pd
 import pandas.util.testing as tm
 import blaze as bz
-from blaze import compute, into, by, discover, dshape
-from kdbpy.compute import tables
 from blaze import compute, into, by, discover, dshape, summary
 from kdbpy.compute.q import List, Symbol, Dict, String
 
