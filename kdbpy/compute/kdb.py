@@ -425,3 +425,8 @@ def into(_, tb, **kwargs):
 @dispatch(QTable)
 def discover(t):
     return tables(t.engine)[t.tablename].dshape
+
+
+@resource.register('kdb://.+', priority=13)
+def resource_kdb(uri, name, **kwargs):
+    return QTable(uri, name=name, **kwargs)
