@@ -221,6 +221,28 @@ def test_slice(t, q, df):
     qresult = compute(expr, q)
     tm.assert_frame_equal(qresult, compute(expr, df).reset_index(drop=True))
 
+    expr = t.id[2:5]
+    qresult = compute(expr, q)
+    tm.assert_series_equal(qresult, compute(expr, df).reset_index(drop=True))
+
+
+def test_neg_index_series(t, q, df):
+    expr = t.amount[-1]
+    qresult = compute(expr, q)
+    assert qresult == compute(expr, df)
+
+
+def test_neg_index_frame(t, q, df):
+    expr = t[-1]
+    qresult = compute(expr, q).squeeze()
+    tm.assert_series_equal(qresult, compute(expr, df))
+
+
+def test_index_row(t, q, df):
+    expr = t[1]
+    qresult = compute(expr, q).squeeze()
+    tm.assert_series_equal(qresult, compute(expr, df))
+
 
 @pytest.mark.xfail(raises=AssertionError,
                    reason='Logic for negative slices not worked out yet')
