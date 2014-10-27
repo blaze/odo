@@ -19,7 +19,7 @@ import blaze as bz
 from blaze import resource
 from blaze.expr import Symbol, Projection, Broadcast, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
-from blaze.expr import nrows, Slice, Distinct, Summary, DateTime
+from blaze.expr import nrows, Slice, Distinct, Summary
 
 from toolz.curried import map
 from toolz.compatibility import zip
@@ -345,8 +345,6 @@ def compute_up(expr, data, **kwargs):
                           compute_up(expr._child.nrows(), data, **kwargs)),
                    child)
     return qexpr
-
-
 
 
 @dispatch(Expr, q.Expr, dict)
