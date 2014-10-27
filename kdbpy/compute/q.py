@@ -3,10 +3,11 @@ import keyword
 
 from collections import OrderedDict
 from functools import total_ordering
+from itertools import chain
 
 
-def isidentifier(s):
-    return re.match(r'[a-zA-Z_]\w*', s) is not None and ' ' not in s
+def isidentifier(s, rx=re.compile(r'[a-zA-Z_]\w*')):
+    return rx.match(s) is not None and ' ' not in s
 
 
 class Dict(OrderedDict):
@@ -81,7 +82,7 @@ class List(object):
 
     def __repr__(self):
         if len(self) == 1:
-            return '(enlist[%s])' % self[0]
+            return '(,:[%s])' % self[0]
         return '(%s)' % '; '.join(map(str, self.items))
 
     def __getitem__(self, key):
@@ -91,7 +92,7 @@ class List(object):
         return result
 
     def __add__(self, other):
-        return List(*(self.items + other.items))
+        return List(*list(chain(self.items, other.items)))
 
     def __len__(self):
         return len(self.items)

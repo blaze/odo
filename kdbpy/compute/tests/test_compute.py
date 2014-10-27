@@ -15,7 +15,7 @@ def test_qlist():
     assert repr(x) == '(`a; 1; 2)'
 
     x = List(Symbol('a sym'), List(Symbol('a')), 3)
-    assert repr(x) == '(`$"a sym"; (enlist[`a]); 3)'
+    assert repr(x) == '(`$"a sym"; (,:[`a]); 3)'
 
 
 def test_qdict():
