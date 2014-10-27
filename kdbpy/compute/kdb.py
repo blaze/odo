@@ -16,10 +16,10 @@ import pandas as pd
 from blaze.dispatch import dispatch
 
 import blaze as bz
-from blaze import compute
+from blaze import resource
 from blaze.expr import Symbol, Projection, Broadcast, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
-from blaze.expr import NRows, Slice, Distinct, Summary, min
+from blaze.expr import nrows, Slice, Distinct, Summary, DateTime
 
 from toolz.curried import map
 from toolz.compatibility import zip
@@ -327,7 +327,7 @@ def compute_up(expr, data, **kwargs):
     return qexpr
 
 
-@dispatch(NRows, q.Expr)
+@dispatch(nrows, q.Expr)
 def compute_up(expr, data, **kwargs):
     return q.List('#:', compute_up(expr._child, data, **kwargs))
 
