@@ -201,14 +201,6 @@ def test_nrows(t, q, df):
     assert qresult == expected
 
 
-@pytest.mark.xfail(raises=AttributeError,
-                   reason='Issue with Data resource on our side')
-def test_resource(q):
-    data = bz.Data(q, name=q.tablename)
-    result = data.amount + 1
-    assert repr(result)
-
-
 def test_discover(q):
     assert (str(discover(q)) ==
             str(dshape('var * {name: string, id: int64, amount: float64}')))
