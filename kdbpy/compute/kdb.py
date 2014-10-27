@@ -21,6 +21,8 @@ from blaze.expr import Symbol, Projection, Broadcast, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
 from blaze.expr import nrows, Slice, Distinct, Summary
 
+from datashape.predicates import isrecord
+
 from toolz.curried import map
 from toolz.compatibility import zip
 from toolz import identity, first, second
@@ -249,7 +251,7 @@ def post_compute(expr, data, scope):
     table = first(scope.values())
     final_expr = subs(data, q.Symbol(expr._leaves()[0]._name),
                       q.Symbol(table.tablename))
-    result = table.engine.eval('eval[%s]' % final_expr)
+    result = table.engine.eval('eval [%s]' % final_expr)
     result.name = expr._name
     return result
 
@@ -384,13 +386,26 @@ def compute_up(expr, data, **kwargs):
     assert len(expr.index) == 1, 'only single slice allowed'
     index, = expr.index
     nrows = compute_up(expr._child.nrows(), data, **kwargs)
+    child = compute_up(expr._child, data, **kwargs)
 
-    start = index.start or 0
-    stop = index.stop or nrows
-    qexpr = q.List('sublist', q.List('enlist', start,
-                                     # eval ~ ![-6] // q is so gross
-                                     q.List('![-6]', q.List('-', stop, start))),
-                   compute_up(expr._child, data, **kwargs))
+    if isinstance(index, numbers.Integral):
+        qexpr = q.List(child, q.List('$', q.List('>=', index, 0),
+                                     index, q.List('+', index, nrows)))
+        if isrecord(expr.dshape):
+            qexpr = q.List(',:', qexpr)  # +: == flip
+
+    elif isinstance(index, slice):
+        start = index.start or 0
+        stop = index.stop or nrows
+        qexpr = q.List('sublist', q.List('enlist', start,
+                                         # eval ~ ![-6] // q is so gross
+                                         q.List('![-6]', q.List('-', stop,
+                                                                start))),
+                       child)
+    else:
+        raise NotImplementedError('slices of type %r are not implemented for Q '
+                                  'expressions' % type(index).__name__)
+
     return qexpr
 
 
@@ -416,6 +431,11 @@ def into(_, tb, **kwargs):
 @dispatch(pd.DataFrame, qpython.qcollection.QTable)
 def into(_, tb, **kwargs):
     return pd.DataFrame.from_records(tb.values, **kwargs)
+
+
+@dispatch(pd.Series, qpython.qcollection.QDictionary)
+def into(frame, d, **kwargs):
+    return pd.Series(d.values, index=d.keys)
 
 
 @dispatch(QTable)
