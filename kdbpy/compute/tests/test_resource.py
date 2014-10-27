@@ -37,7 +37,7 @@ def daily(rstring, kdb):
     return rstring + '/start/db::daily'
 
 
-def test_resource(daily, kdb):
+def test_resource_doesnt_bork(daily, kdb):
     data = Data(daily, engine=kdb)
     assert repr(data)
 
@@ -52,6 +52,13 @@ def test_field(daily, kdb):
     tm.assert_series_equal(result, expected)
 
 
+def test_field_name(daily, kdb):
+    data = Data(daily, engine=kdb)
+    qresult = data.price
+    lhs = repr(qresult).split('\n')[0].strip()
+    assert lhs == 'price'
+
+
 def test_simple_op(daily, kdb):
     data = Data(daily, engine=kdb)
     qresult = data.price + 1
@@ -61,20 +68,19 @@ def test_simple_op(daily, kdb):
     tm.assert_frame_equal(result, expected)
 
 
-def test_complex_op_repr(daily, kdb):
+def test_complex_date_op_repr(daily, kdb):
     daily = Data(daily, engine=kdb)
     daily = bz.Symbol('daily', daily.dshape)
     result = by(daily.date.month,
                 cnt=daily.price.nrows(),
                 size=daily.size.sum(),
-                wprice=(daily.price * daily.size).sum() / daily.price.count()
-                )
+                wprice=(daily.price * daily.size).sum() / daily.price.count())
     assert repr(result)
 
 
 @pytest.mark.xfail(raises=NotImplementedError,
                    reason='Figure out DateTime issues for By expressions')
-def test_complex_op(daily, kdb):
+def test_complex_date_op(daily, kdb):
     daily = Data(daily, engine=kdb)
     result = by(daily.date.month,
                 cnt=daily.price.nrows(),
