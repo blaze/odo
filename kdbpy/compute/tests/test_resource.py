@@ -47,8 +47,9 @@ def test_field(daily, kdb):
     qresult = data.price
     expr, data = swap_resources_into_scope(qresult, {})
     expected = compute(expr, first(data.values()))
-    result = into(pd.DataFrame, qresult)
-    tm.assert_frame_equal(result, expected)
+    result = into(pd.Series, qresult)
+    assert result.name == expected.name
+    tm.assert_series_equal(result, expected)
 
 
 def test_simple_op(daily, kdb):
@@ -71,7 +72,7 @@ def test_complex_op_repr(daily, kdb):
     assert repr(result)
 
 
-@pytest.mark.xfail(raises=AttributeError,
+@pytest.mark.xfail(raises=NotImplementedError,
                    reason='Figure out DateTime issues for By expressions')
 def test_complex_op(daily, kdb):
     daily = Data(daily, engine=kdb)
