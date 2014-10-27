@@ -43,9 +43,10 @@ def compute_up(expr, data, **kwargs):
 def compute_up(expr, data, **kwargs):
     sym = q.Symbol(expr._name)
     t = first(kwargs['scope'].keys())
-    if t.isidentical(expr):
+    if t.isidentical(expr) or (t._name == expr._name and
+                               t.dshape == expr.dshape):
         return sym
-    return subs(sym, t)
+    return subs(sym, sym, q.Symbol('%s.%s' % (t._name, sym.s)))
 
 
 binops = {
@@ -67,8 +68,8 @@ def get_wrapper(expr, types=(basestring,)):
     return q.List if isinstance(expr, types) else identity
 
 
-def manip(func, expr, t):
-    return get(q.List(*list(func(expr, t))))
+def manip(func, *args, **kwargs):
+    return get(q.List(*list(func(*args, **kwargs))))
 
 
 def get(x):
@@ -102,43 +103,44 @@ def get(x):
     return x
 
 
-def _subs(expr, t):
-    assert isinstance(t, bz.Symbol)
-
+def _subs(expr, old, new):
     if isinstance(expr, q.Symbol):
         # TODO: how do we handle multiple tables?
-        if expr.s in t.schema.measure.names:
-            yield q.Symbol('%s.%s' % (t._name, expr.s))
+        if '.' not in expr.s:
+            yield new if expr == old else expr
         else:
-            yield expr
+            subsed = [subs(e, old, new).s
+                      for e in map(q.Symbol, expr.s.split('.'))]
+            r = q.Symbol('.'.join(subsed))
+            yield r
     elif isinstance(expr, (numbers.Number, basestring, q.Atom)):
         yield expr
     elif isinstance(expr, (q.List, q.Dict)):
         for sube in expr:
             if isinstance(sube, q.List):
-                yield q.List(*(x for x in _subs(sube, t)))
+                yield q.List(*(x for x in _subs(sube, old, new)))
             elif isinstance(sube, q.Atom):
                 # recurse back into subs (not _subs) to have it call get
-                yield subs(sube, t)
-            elif isinstance(sube, (basestring, numbers.Number)):
+                yield subs(sube, old, new)
+            elif isinstance(sube, (basestring, numbers.Number, q.Bool)):
                 yield sube
             elif isinstance(sube, q.Dict):
-                yield q.Dict([(_subs(x, t), _subs(y, t))
-                              for x, y in sube.items])
+                yield q.Dict([(subs(x, old, new), subs(y, old, new))
+                              for x, y in sube.items()])
             else:
                 raise ValueError('unknown type for substitution '
                                  '{!r}'.format(type(sube).__name__))
 
 
-def subs(expr, t):
+def subs(expr, old, new):
     """Substitute a parent table name for fields in a broadcast expression.
 
     Parameters
     ----------
     expr : q.Expr, q.Atom, int, basestring
         The expression in which to substitute the parent table
-    t : blaze.Symbol
-        The parent table to use for substitution
+    old
+    new
 
     Returns
     -------
