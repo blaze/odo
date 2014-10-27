@@ -55,8 +55,9 @@ def test_field(daily, kdb):
 def test_field_name(daily, kdb):
     data = Data(daily, engine=kdb)
     qresult = data.price
-    lhs = repr(qresult).split('\n')[0].strip()
-    assert lhs == 'price'
+    names = repr(qresult).split('\n')[0].strip().split()
+    assert len(names) == 1
+    assert names[0] == 'price'
 
 
 def test_simple_op(daily, kdb):
@@ -97,6 +98,7 @@ def test_complex_nondate_op(daily, kdb):
                  cnt=daily.price.nrows(),
                  size=daily.size.sum(),
                  wprice=(daily.price * daily.size).sum() / daily.price.sum())
+    assert repr(qresult)
     result = into(pd.DataFrame, qresult)
     expr, data = swap_resources_into_scope(qresult, {})
     expected = compute(expr, daily.data)
