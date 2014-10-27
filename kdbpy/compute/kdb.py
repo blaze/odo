@@ -389,8 +389,11 @@ def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
 
     if isinstance(index, numbers.Integral):
-        qexpr = q.List(child, q.List('$', q.List('>=', index, 0),
-                                     index, q.List('+', index, nrows)))
+        if index < 0:
+            index = q.List('+', index, nrows)
+
+        qexpr = q.List(child, index)
+
         if isrecord(expr.dshape):
             qexpr = q.List(',:', qexpr)  # +: == flip
 
