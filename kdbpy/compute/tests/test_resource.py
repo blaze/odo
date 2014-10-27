@@ -64,7 +64,7 @@ def test_simple_op(daily, kdb):
     qresult = data.price + 1
     result = into(pd.DataFrame, qresult)
     expr, data = swap_resources_into_scope(qresult, {})
-    expected = into(pd.DataFrame, compute(expr, data))
+    expected = into(pd.DataFrame(columns=expr.fields), compute(expr, data))
     tm.assert_frame_equal(result, expected)
 
 
