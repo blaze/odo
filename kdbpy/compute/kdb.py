@@ -237,11 +237,21 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Field, q.Expr)
 def compute_up(expr, data, **kwargs):
-    result = compute_up(expr._child, data, **kwargs)
+    child = compute_up(expr._child, data, **kwargs)
     try:
-        return result[expr._name]
+        return child[expr._name]
     except TypeError:
-        return result
+        return child
+
+
+@dispatch(Field, q.Expr, dict)
+def post_compute(expr, data, scope):
+    table = first(scope.values())
+    final_expr = subs(data, q.Symbol(expr._leaves()[0]._name),
+                      q.Symbol(table.tablename))
+    result = table.engine.eval('eval[%s]' % final_expr)
+    result.name = expr._name
+    return result
 
 
 @dispatch(Broadcast, q.Expr)
