@@ -151,18 +151,16 @@ def subs(expr, old, new):
     >>> from blaze import Symbol
     >>> t = Symbol('t', 'var * {id: int, name: string}')
     >>> s = q.Symbol('name')
-    >>> subs(s, t)
+    >>> subs(s, s, q.Symbol('t.%s' % s.s))
     `t.name
-    >>> s = q.Symbol('amount')
+    >>> s = q.Symbol('name')
     >>> s
-    `amount
-    >>> subs(s, t)  # "amount" isn't a field in t
-    `amount
-    >>> expr = q.List(q.Atom('='), q.Symbol('name'), 1)
-    >>> subs(expr, t)
+    `name
+    >>> expr = q.List(q.Atom('='), s, 1)
+    >>> subs(expr, s, q.Symbol('%s.%s' % (t._name, s.s)))
     (=; `t.name; 1)
     """
-    return manip(_subs, expr, t)
+    return manip(_subs, expr, old, new)
 
 
 def desubs(expr, t):
