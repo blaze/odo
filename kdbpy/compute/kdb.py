@@ -353,9 +353,13 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Expr, q.Expr, dict)
 def post_compute(expr, data, scope):
-    assert len(scope) == 1
-    table = first(scope.values())
-    return table.engine.eval('eval [%s]' % data)
+    tables = set(x for x in scope.values() if isinstance(x, (bz.Data, QTable)))
+    assert len(tables) == 1
+    table = first(tables)
+    table = getattr(table, 'data', table)
+    final_expr = subs(data, q.Symbol(expr._leaves()[0]._name),
+                      q.Symbol(table.tablename))
+    return table.engine.eval('eval [%s]' % final_expr)
 
 
 @dispatch(Join, q.Expr, dict)
