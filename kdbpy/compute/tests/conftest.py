@@ -2,8 +2,6 @@ import pytest
 import blaze as bz
 from kdbpy.kdb import KQ
 from kdbpy.compute.qtable import QTable
-import pandas as pd
-import numpy as np
 
 
 @pytest.fixture
@@ -38,17 +36,17 @@ def kdb():
 
 @pytest.fixture
 def q(kdb):
-    return QTable('kdb://pcloud@localhost:5001::t', engine=kdb)
+    return QTable('kdb://pcloud@localhost:5001', name='t', engine=kdb)
 
 
 @pytest.fixture
 def rq(kdb):
-    return QTable('kdb://pcloud@localhost:5001::rt', engine=kdb)
+    return QTable('kdb://pcloud@localhost:5001', name='rt', engine=kdb)
 
 
 @pytest.fixture
 def sq(kdb):
-    return QTable('kdb://pcloud@localhost:5001::st', engine=kdb)
+    return QTable('kdb://pcloud@localhost:5001', name='st', engine=kdb)
 
 
 @pytest.fixture
