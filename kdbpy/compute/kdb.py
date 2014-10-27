@@ -186,27 +186,27 @@ def desubs(expr, t):
     return manip(_desubs, expr, t)
 
 
+def compute_atom(atom, symbol):
+    if '.' in atom.s and atom.s.startswith(symbol._name):
+        return type(atom)(second(atom.s.rsplit('.', 1)))
+    return atom
+
+
 def _desubs(expr, t):
     if isinstance(expr, q.Atom):
-        if '.' in expr.s and expr.s.startswith(t._name):
-            yield type(expr)(second(expr.s.rsplit('.', 1)))
-        else:
-            yield expr
-    elif isinstance(expr, (basestring, numbers.Number)):
+        yield compute_atom(expr, t)
+    elif isinstance(expr, (basestring, numbers.Number, q.Bool)):
         yield expr
     else:
         for sube in expr:
             if isinstance(sube, q.Atom):
-                if '.' in sube.s and sube.s.startswith(t._name):
-                    yield type(sube)(second(sube.s.rsplit('.', 1)))
-                else:
-                    yield desubs(sube, t)
+                yield compute_atom(sube, t)
             elif isinstance(sube, q.List):
-                yield q.List(*[desubs(s, t) for s in sube])
+                yield q.List(*(desubs(s, t) for s in sube))
             elif isinstance(sube, q.Dict):
                 yield q.Dict([(desubs(k, t), desubs(v, t))
                               for k, v in sube.items()])
-            elif isinstance(sube, (basestring, numbers.Number)):
+            elif isinstance(sube, (basestring, numbers.Number, q.Bool)):
                 yield sube
             else:
                 raise NotImplementedError()
@@ -323,7 +323,8 @@ def compute_up(expr, data, **kwargs):
         reducer = reducer[-1]
 
     qexpr = q.List('?', child, q.List(), grouper, reducer)
-    qexpr = desubs(qexpr, first(kwargs['scope'].keys()))
+    table = first(kwargs['scope'].keys())
+    qexpr = desubs(qexpr, table)
     return qexpr
 
 
