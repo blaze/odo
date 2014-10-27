@@ -263,7 +263,7 @@ def compute_up(expr, data, **kwargs):
 def compute_up(expr, data, **kwargs):
     predicate = compute_up(expr.predicate, data, **kwargs)
     return q.List('?', compute_up(expr._child, data, **kwargs),
-                  q.List(q.List(predicate)), q.Bool(), ())
+                  q.List(q.List(predicate)), q.Bool(), q.List())
 
 
 reductions = {
