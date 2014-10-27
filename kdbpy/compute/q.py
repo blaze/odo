@@ -6,7 +6,7 @@ from functools import total_ordering
 
 
 def isidentifier(s):
-    return re.match(r'([a-zA-Z_]\w*)', s) is not None and ' ' not in s
+    return re.match(r'[a-zA-Z_]\w*', s) is not None and ' ' not in s
 
 
 class Dict(OrderedDict):
