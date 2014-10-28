@@ -7,7 +7,7 @@ from __future__ import absolute_import, print_function, division
 import numbers
 
 from . import q
-from .qtable import QTable, tables
+from .qtable import QTable, tables, ispartitioned
 
 import qpython.qcollection
 
@@ -337,15 +337,21 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Head, q.Expr)
 def compute_up(expr, data, **kwargs):
+    table = first(kwargs['scope'].values())
     child = compute_up(expr._child, data, **kwargs)
 
-    # q repeats if the N of take is larger than the number of rows, so we need
-    # to get the min of the number of rows and the requested N from the Head
-    # expression
-    qexpr = q.List('#',
-                   q.List('&', expr.n,
-                          compute_up(expr._child.nrows(), data, **kwargs)),
-                   child)
+    final_index = q.List('&', expr.n, compute_up(expr._child.nrows(), data,
+                                                 **kwargs))
+
+    if ispartitioned(table):
+        # generate different code if we are a partitioned table
+        # we need to use the global index to do this
+        qexpr = q.List('.Q.ind', child, q.List('til', final_index))
+    else:
+        # q repeats if the N of take is larger than the number of rows, so we
+        # need to get the min of the number of rows and the requested N from the
+        # Head expression
+        qexpr = q.List('#', final_index, child)
     return qexpr
 
 
