@@ -1,0 +1,31 @@
+package:
+  name: kdbpy
+  version: {{ environ['GIT_DESCRIBE_TAG'] }}
+
+build:
+    number: 1
+
+requirements:
+  build:
+    - python
+    - numpy
+    - pandas
+    - cython
+    - libpython
+
+  run:
+    - numpy
+    - pandas
+    - q
+    - qpython
+
+test:
+  requires:
+    - pytest
+
+  commands:
+    - py.test -r sxX --verbose --pyargs kdbpy
+
+about:
+  home: https://github.com/ContinuumIO/kdbpy
+  license: BSD
