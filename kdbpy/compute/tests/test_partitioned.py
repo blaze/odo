@@ -5,7 +5,7 @@ from kdbpy.compute.qtable import ispartitioned
 
 @pytest.fixture
 def trade(rstring, kdbpar):
-    return Data(rstring + '/start/db/::trade', engine=kdbpar)
+    return Data(rstring + '/start/db::trade', engine=kdbpar)
 
 
 def test_ispartitioned(trade):
