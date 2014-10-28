@@ -1,6 +1,11 @@
+import os
+import shutil
+import getpass
+import socket
+
 import pytest
 import blaze as bz
-from kdbpy.kdb import KQ
+from kdbpy.kdb import KQ, get_credentials
 from kdbpy.compute.qtable import QTable
 
 
@@ -62,3 +67,23 @@ def rdf(kdb):
 @pytest.fixture
 def sdf(kdb):
     return kdb.eval('st')
+
+
+@pytest.fixture
+def rstring():
+    return 'kdb://%s@%s:5000' % (getpass.getuser(), socket.gethostname())
+
+
+@pytest.fixture
+def tstring(rstring):
+    return rstring + '::t'
+
+
+@pytest.yield_fixture(scope='module')
+def kdbpar():
+    kq = KQ(get_credentials(), start='restart')
+    kq.eval(r'\l buildhdb.q')
+    kq.eval(r'\l %s' % os.path.join('start', 'db'))
+    yield kq
+    kq.stop()
+    shutil.rmtree(os.path.abspath('start'))
