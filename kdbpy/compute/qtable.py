@@ -38,6 +38,20 @@ def tables(kdb):
     return dict(syms)
 
 
+def ispartitioned(table):
+    t = getattr(table, 'data', table)
+    return t.engine.eval('.Q.qp[%s]' % t.tablename).item() is True
+
+
+def issplayed(table):
+    return ispartitioned(table) is False
+
+
+def isstandard(table):
+    t = getattr(table, 'data', table)
+    return t.engine.eval('.Q.qp[%s]' % t.tablename).item() is 0
+
+
 class QTable(object):
     def __init__(self, uri, engine=None, name=None, columns=None, dshape=None,
                  schema=None):
@@ -61,4 +75,3 @@ class QTable(object):
     def __repr__(self):
         return ('{0.__class__.__name__}(tablename={0.tablename!r}, '
                 'dshape={1!r})'.format(self, str(self.dshape)))
-
