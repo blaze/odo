@@ -7,7 +7,7 @@ from __future__ import absolute_import, print_function, division
 import numbers
 
 from . import q
-from .qtable import QTable, tables, ispartitioned
+from .qtable import QTable, tables
 
 import qpython.qcollection
 
@@ -240,6 +240,7 @@ def compute_up(expr, data, **kwargs):
 @dispatch(Field, q.Expr)
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
+
     try:
         return child[expr._name]
     except TypeError:
@@ -251,7 +252,7 @@ def post_compute(expr, data, scope):
     table = first(scope.values())
     final_expr = subs(data, q.Symbol(expr._leaves()[0]._name),
                       q.Symbol(table.tablename))
-    result = table.engine.eval('eval [%s]' % final_expr)
+    result = table.engine.eval('eval [%s]' % final_expr).squeeze()
     result.name = expr._name
     return result
 
@@ -337,21 +338,18 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Head, q.Expr)
 def compute_up(expr, data, **kwargs):
-    table = first(kwargs['scope'].values())
     child = compute_up(expr._child, data, **kwargs)
 
     final_index = q.List('&', expr.n, compute_up(expr._child.nrows(), data,
                                                  **kwargs))
 
-    if ispartitioned(table):
-        # generate different code if we are a partitioned table
-        # we need to use the global index to do this
-        qexpr = q.List('.Q.ind', child, q.List('til', final_index))
-    else:
-        # q repeats if the N of take is larger than the number of rows, so we
-        # need to get the min of the number of rows and the requested N from the
-        # Head expression
-        qexpr = q.List('#', final_index, child)
+    # TODO: generate different code if we are a partitioned table
+    # we need to use the global index to do this
+
+    # q repeats if the N of take is larger than the number of rows, so we
+    # need to get the min of the number of rows and the requested N from the
+    # Head expression
+    qexpr = q.List('#', final_index, child)
     return qexpr
 
 
