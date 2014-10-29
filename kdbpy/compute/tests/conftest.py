@@ -7,6 +7,7 @@ import pytest
 import blaze as bz
 from kdbpy.kdb import KQ, get_credentials
 from kdbpy.compute.qtable import QTable
+from kdbpy.exampleutils import example_data
 
 
 @pytest.fixture
@@ -82,8 +83,8 @@ def tstring(rstring):
 @pytest.yield_fixture(scope='module')
 def kdbpar():
     kq = KQ(get_credentials(), start='restart')
-    kq.eval(r'\l buildhdb.q')
-    kq.eval(r'\l %s' % os.path.join('start', 'db'))
+    path = example_data(os.path.join('start', 'db'))
+    assert os.path.exists(path)
+    kq.eval(r'\l %s' % path)
     yield kq
     kq.stop()
-    shutil.rmtree(os.path.abspath('start'))
