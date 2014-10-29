@@ -1,3 +1,7 @@
+import os
+
+from contextlib import contextmanager
+
 import pytest
 import pandas as pd
 import kdbpy
@@ -26,7 +30,13 @@ def test_basic():
         assert kq.is_started
 
 
-def test_eval():
+def test_kq_repr():
+    expected = ''
+    with kdb.KQ() as kq:
+        assert repr(kq) == expected
+
+
+def test_eval_context():
     with kdb.KQ() as kq:
         assert kq.eval('2 + 2') == 4
 
@@ -39,30 +49,31 @@ def test_credentials():
 
 def test_q_process():
     cred = kdb.get_credentials()
-    q = kdb.Q.create(cred).start()
+    q = kdb.Q(cred).start()
 
     assert q is not None
     assert q.pid
     assert q.process is not None
 
     # other instance
-    q2 = kdb.Q.create(cred).start()
+    q2 = kdb.Q(cred).start()
     assert q is q2
 
     # invalid instance
+    c = kdb.get_credentials(host='foo', port=1000)
     with pytest.raises(ValueError):
-        kdb.Q.create(kdb.get_credentials(host='foo',port=1000))
+        kdb.Q(c)
 
     # restart
     prev = q.pid
-    q = kdb.Q.create(cred).start(start=True)
+    q = kdb.Q(cred).start(start=True)
     assert q.pid == prev
 
-    q2 = kdb.Q.create().start(start='restart')
+    q2 = kdb.Q().start(start='restart')
     assert q2.pid != prev
 
     with pytest.raises(ValueError):
-        kdb.Q.create(cred).start(start=False)
+        kdb.Q(cred).start(start=False)
 
     # terminate
     q2.stop()
@@ -86,7 +97,7 @@ def creds():
 
 @pytest.yield_fixture(scope='module')
 def qproc(creds):
-    q = kdb.Q.create(creds).start()
+    q = kdb.Q(creds).start()
     yield q
     q.stop()
 
@@ -157,3 +168,28 @@ def test_repr(k):
 
 def test_print_versions():
     kdbpy.print_versions()
+
+
+@contextmanager
+def remove_path(path):
+    current_path = os.environ['PATH']
+    new_path = current_path.split(os.pathsep)
+    new_path.pop(new_path.index(path))
+    os.environ['PATH'] = os.pathsep.join(new_path)
+    yield
+    os.environ['PATH'] = current_path
+
+
+def test_cannot_find_q():
+    remove_this = os.path.dirname(which('q'))
+    with remove_path(remove_this):
+        with pytest.raises(OSError):
+            kdb.Q().start()
+
+
+def which(exe):
+    path = os.environ['PATH']
+    for p in path.split(os.pathsep):
+        for f in filter(lambda x: x not in ('..', '.'), os.listdir(p)):
+            if os.path.basename(f) == exe:
+                return f
