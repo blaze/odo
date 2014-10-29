@@ -10,21 +10,20 @@ requirements:
     - python
     - numpy
     - pandas
-    - cython
-    - libpython
 
   run:
+    - python
     - numpy
     - pandas
-    - q
+    #- q
     - qpython
 
-test:
-  requires:
-    - pytest
+#test:
+#  requires:
+#    - pytest
 
-  commands:
-    - py.test -r sxX --verbose --pyargs kdbpy
+#  commands:
+#    - py.test -r sxX --verbose --pyargs kdbpy
 
 about:
   home: https://github.com/ContinuumIO/kdbpy
