@@ -11,16 +11,8 @@ class Bar(Expr):
     __slots__ = '_child', 'n'
 
     @property
-    def fields(self):
-        return self._child.fields
-
-    @property
     def dshape(self):
         return datashape.DataShape(datashape.Var(), datashape.int64)
-
-    @property
-    def schema(self):
-        return self.dshape.measure
 
 
 def bar(expr, n):
