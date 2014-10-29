@@ -257,7 +257,7 @@ class Q(object):
 
         #### TODO - need to wait for the process to start here
         #### maybe communicate and wait till it starts before returning
-        time.sleep(0.1)
+        time.sleep(0.2)
 
         return self
 
