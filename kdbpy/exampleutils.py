@@ -9,8 +9,6 @@ def module_path(module):
         raise TypeError('object %s is not a module, it is a %r' %
                         (module, type(module).__name__))
     path = inspect.getfile(module)
-    if path is None:
-        raise ValueError("No path found for module %r" % (module.__name__))
     path, ext = os.path.splitext(path)
     ext = ext.rstrip('c').lstrip(os.extsep)
     fullpath = os.extsep.join((path, ext))
