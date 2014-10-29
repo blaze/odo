@@ -187,9 +187,13 @@ def test_cannot_find_q():
             kdb.Q().start()
 
 
+def test_which():
+    assert which('q') is not None
+
+
 def which(exe):
     path = os.environ['PATH']
     for p in path.split(os.pathsep):
         for f in filter(lambda x: x not in ('..', '.'), os.listdir(p)):
             if os.path.basename(f) == exe:
-                return f
+                return os.path.join(p, f)
