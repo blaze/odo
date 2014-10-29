@@ -1,153 +1,159 @@
-import unittest
 import pytest
-import numpy as np
 import pandas as pd
+import kdbpy
 from kdbpy import kdb
 
 
-class KQ(unittest.TestCase):
+def test_basic():
+    kq = kdb.KQ()
+    assert not kq.is_started
+    kq.start()
+    assert kq.is_started
+    kq.stop()
+    assert not kq.is_started
 
-    def test_basic(self):
-        kq = kdb.KQ()
-        assert not kq.is_started
-        kq.start()
+    kq.start(start='restart')
+    assert kq.is_started
+
+    # real restart
+    kq.start(start='restart')
+    assert kq.is_started
+
+    kq.stop()
+
+    # context
+    with kdb.KQ() as kq:
         assert kq.is_started
-        kq.stop()
-        assert not kq.is_started
-
-        kq.start(start='restart')
-        assert kq.is_started
-
-        # real restart
-        kq.start(start='restart')
-        assert kq.is_started
-
-        kq.stop()
-
-        # context
-        with kdb.KQ() as kq:
-            assert kq.is_started
-
-    def test_eval(self):
-        with kdb.KQ() as kq:
-            assert kq.eval('2 + 2') == 4
 
 
-class QProcess(unittest.TestCase):
+def test_eval():
+    with kdb.KQ() as kq:
+        assert kq.eval('2 + 2') == 4
 
-    def test_credentials(self):
-        cred = kdb.get_credentials(host='foo',port=1000)
-        assert cred.host == 'foo'
-        assert cred.port == 1000
 
-    def test_q_process(self):
-        cred = kdb.get_credentials()
-        q = kdb.Q.create(cred).start()
+def test_credentials():
+    cred = kdb.get_credentials(host='foo', port=1000)
+    assert cred.host == 'foo'
+    assert cred.port == 1000
 
-        assert q is not None
-        assert q.pid
-        assert q.process is not None
 
-        # other instance
-        q2 = kdb.Q.create(cred).start()
-        assert q is q2
+def test_q_process():
+    cred = kdb.get_credentials()
+    q = kdb.Q.create(cred).start()
 
-        # invalid instance
-        with pytest.raises(ValueError):
-            kdb.Q.create(kdb.get_credentials(host='foo',port=1000))
+    assert q is not None
+    assert q.pid
+    assert q.process is not None
 
-        # restart
-        prev = q.pid
-        q = kdb.Q.create(cred).start(start=True)
-        assert q.pid == prev
+    # other instance
+    q2 = kdb.Q.create(cred).start()
+    assert q is q2
 
-        q2 = kdb.Q.create().start(start='restart')
-        assert q2.pid != prev
+    # invalid instance
+    with pytest.raises(ValueError):
+        kdb.Q.create(kdb.get_credentials(host='foo',port=1000))
 
-        with pytest.raises(ValueError):
-            kdb.Q.create(cred).start(start=False)
+    # restart
+    prev = q.pid
+    q = kdb.Q.create(cred).start(start=True)
+    assert q.pid == prev
 
-        # terminate
-        q2.stop()
-        assert q2.pid is None
+    q2 = kdb.Q.create().start(start='restart')
+    assert q2.pid != prev
 
-    def test_q_process_detached(self):
+    with pytest.raises(ValueError):
+        kdb.Q.create(cred).start(start=False)
 
-        # create a new process
-        q = kdb.Q.create().start()
-        assert q is not None
-        assert q.pid
-        assert q.process is not None
+    # terminate
+    q2.stop()
+    assert q2.pid is None
 
-        q.process = None
-        assert q.is_started
-        q.stop()
 
-class BasicKDB(unittest.TestCase):
+def test_q_process_detached(qproc):
 
-    def setUp(self):
-        self.creds = kdb.get_credentials()
-        self.q = kdb.Q.create(self.creds).start()
+    # create a new process
+    assert qproc is not None
+    assert qproc.pid
+    assert qproc.process is not None
 
-    def tearDown(self):
-        self.q.stop()
+    qproc.process = None
 
-    def test_construction(self):
-        k = kdb.KDB(credentials=self.creds).start()
-        assert k.is_started
 
-        # repr
-        result = str(k)
-        assert '[KDB: Credentials(' in result
-        assert '-> connected' in result
+@pytest.fixture(scope='module')
+def creds():
+    return kdb.get_credentials()
 
-        k.stop()
-        assert not k.is_started
 
-        result = str(k)
-        assert 'KDB: [client/server not started]'
+@pytest.yield_fixture(scope='module')
+def qproc(creds):
+    q = kdb.Q.create(creds).start()
+    yield q
+    q.stop()
 
-        # require initilization
-        with pytest.raises(ValueError):
-            kdb.KDB(credentials=kdb.get_credentials(port=0)).start()
 
-class Eval(unittest.TestCase):
+def test_construction(creds):
+    k = kdb.KDB(credentials=creds).start()
+    assert k.is_started
 
-    @classmethod
-    def setUpClass(cls):
-        creds = kdb.get_credentials()
-        cls.q = kdb.Q.create(credentials=creds).start()
-        cls.kdb = kdb.KDB(credentials=creds).start()
+    # repr
+    result = str(k)
+    assert '[KDB: Credentials(' in result
+    assert '-> connected' in result
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.kdb.stop()
-        cls.q.stop()
+    k.stop()
+    assert not k.is_started
 
-    def test_eval(self):
+    result = str(k)
+    assert 'KDB: [client/server not started]'
 
-        # test function API
-        assert self.kdb.eval('42') == 42
-        def f():
-            return self.kdb.eval('42')+1
-        assert self.kdb.eval(f) == 43
-        assert self.kdb.eval(lambda x: x+5, 42) == 47
+    # require initilization
+    cred = kdb.get_credentials(port=0)
+    k = kdb.KDB(credentials=cred)
+    with pytest.raises(ValueError):
+        k.start()
 
-    def test_scalar_datetime_like_conversions(self):
 
-        # datetimes
-        # only parses to ms resolutions
-        result = self.kdb.eval('2001.01.01T09:30:00.123')
-        assert result == pd.Timestamp('2001-01-01 09:30:00.123')
+@pytest.yield_fixture(scope='module')
+def k(creds, qproc):
+    creds = kdb.get_credentials()
+    k = kdb.KDB(credentials=creds).start()
+    yield k
+    k.stop()
 
-        result = self.kdb.eval('2006.07.04T09:04:59:000')
-        assert result == pd.Timestamp('2006-07-04 09:04:59')
 
-        result = self.kdb.eval('2001.01.01')
-        assert result == pd.Timestamp('2001-01-01')
+def test_eval(k):
+    # test function API
+    assert k.eval('42') == 42
+    f = lambda: k.eval('42') + 1
+    assert k.eval(f) == 43
+    assert k.eval(lambda x: x+5, 42) == 47
 
-        # timedeltas
-        result = self.kdb.eval('00:01')
-        assert result == pd.Timedelta('1 min')
-        result = self.kdb.eval('00:00:01')
-        assert result == pd.Timedelta('1 sec')
+
+def test_scalar_datetime_like_conversions(k):
+
+    # datetimes
+    # only parses to ms resolutions
+    result = k.eval('2001.01.01T09:30:00.123')
+    assert result == pd.Timestamp('2001-01-01 09:30:00.123')
+
+    result = k.eval('2006.07.04T09:04:59:000')
+    assert result == pd.Timestamp('2006-07-04 09:04:59')
+
+    result = k.eval('2001.01.01')
+    assert result == pd.Timestamp('2001-01-01')
+
+    # timedeltas
+    result = k.eval('00:01')
+    assert result == pd.Timedelta('1 min')
+    result = k.eval('00:00:01')
+    assert result == pd.Timedelta('1 sec')
+
+
+def test_repr(k):
+    expected = ("[KDB: Credentials(host='localhost', port=5001, "
+                "username='pcloud', password=None) -> connected]")
+    assert repr(k) == expected
+
+
+def test_print_versions():
+    kdbpy.print_versions()
