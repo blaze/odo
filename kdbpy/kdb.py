@@ -6,7 +6,10 @@ import platform
 import getpass
 import subprocess
 
+from itertools import chain
 from collections import namedtuple
+
+from toolz import first
 
 import psutil
 
@@ -69,15 +72,13 @@ class KQ(object):
         if credentials is None:
             credentials = get_credentials()
         self.credentials = credentials
-        self.q = Q.create(credentials=credentials, path=path)
+        self.q = Q(credentials=credentials, path=path)
         self.kdb = KDB(credentials=self.credentials)
         if start is not None:
             self.start(start=start)
 
-    def __str__(self):
-        return "{0} - {1}".format(self.kdb,self.q)
-
-    __repr__ = __str__
+    def __repr__(self):
+        return '{0.__class__.__name__}(kdb={0.kdb}, q={0.q})'.format(self)
 
     # context manager, so allow
     # with KQ() as kq:
@@ -111,41 +112,39 @@ class KQ(object):
         return self.kdb.eval(*args, **kwargs)
 
 
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args,
+                                                                 **kwargs)
+        inst = cls._instances[cls]
+        creds = list(filter(lambda x: isinstance(x, Credentials),
+                             chain(args, kwargs.values())))
+        try:
+            creds = creds[0]
+        except IndexError:
+            creds = None  # passed no args
+        if creds is not None and inst.credentials != creds:
+            raise ValueError('Different credentials: %s than existing process: '
+                             '%s' % (creds, inst.credentials))
+        return inst
+
+
 class Q(object):
     """ manage the q exec process """
-    _object = None
-
-    @classmethod
-    def create(cls, credentials=None, path=None):
-        """ enforce this as a singleton object """
-        if cls._object is None:
-            if credentials is None:
-                credentials = get_credentials()
-            o = cls._object = cls(credentials=credentials, path=path)
-        else:
-            o = cls._object
-
-            # we must have the same credentials!
-            o.check(credentials=credentials, path=path)
-
-        return o
+    __metaclass__ = Singleton
+    __slots__ = 'credentials', 'path', 'process'
 
     def __init__(self, credentials, path=None):
         self.credentials = credentials
         self.path = self.get_executable(path)
         self.process = None
 
-    def __str__(self):
-        """ return a string representation of the connection """
-        if self.process is not None:
-            s = "{0} -> {1}".format(self.path,self.pid)
-        else:
-            s = "q client not started"
-
-
-        return "[{0}: {1}]".format(type(self).__name__,s)
-
-    __repr__ = __str__
+    def __repr__(self):
+        """return a string representation of the connection"""
+        return "{0.__class__.__name__}(path={0.path}, pid={0.pid})".format(self)
 
     @property
     def pid(self):
@@ -153,12 +152,6 @@ class Q(object):
             return self.process.pid
         except AttributeError:
             return None
-
-    def check(self, credentials, path):
-        if path is not None and path != self.path:
-            raise ValueError("incompatible path with existing process")
-        if credentials is not None and credentials != self.credentials:
-            raise ValueError("incompatible credentials with existing process")
 
     def get_executable(self, path=None):
         """
@@ -176,8 +169,8 @@ class Q(object):
                     'Windows': 'q.exe',
                 }
                 return archd[arch_name]
-            except (Exception) as e:
-                raise RuntimeError("cannot locate q executable: {0}".format(e))
+            except Exception as e:
+                raise OSError("cannot locate q executable: {0}".format(e))
         return path
 
     def find_running_process(self):
@@ -193,17 +186,16 @@ class Q(object):
         # leave everything else alone
         for proc in psutil.process_iter():
             try:
-                if proc.name() == 'q':
-                    try:
-                        conns = proc.connections()
-                    except psutil.NoSuchProcess:
-                        continue
+                name = proc.name()
+            except psutil.AccessDenied:
+                pass
+            else:
+                if name == 'q':
+                    conns = proc.connections()
                     for conn in conns:  # probably a single element list
                         _, port = conn.laddr
                         if port == self.credentials.port:
                             return proc
-            except:
-                continue
 
     @property
     def is_started(self):
@@ -255,13 +247,10 @@ class Q(object):
         # alternatively we can redirect to a PIPE and use .communicate()
         # that can potentially block though
         with open(os.devnull, 'w') as wnull, open(os.devnull, 'r') as rnull:
-            try:
-                self.process = psutil.Popen([self.path , '-p',
-                                             str(self.credentials.port)],
-                                            stdin=rnull, stdout=wnull,
-                                            stderr=subprocess.STDOUT)
-            except Exception as e:
-                raise ValueError("cannot start the q process: {0} [{1}]".format(self.path, e))
+            self.process = psutil.Popen([self.path , '-p',
+                                         str(self.credentials.port)],
+                                        stdin=rnull, stdout=wnull,
+                                        stderr=subprocess.STDOUT)
 
         # register our exit function
         atexit.register(self.stop)
