@@ -191,15 +191,19 @@ class Q(object):
 
         # only q processes with at least a single connection
         # leave everything else alone
-        for proc in filter(lambda x: x.name() == 'q', psutil.process_iter()):
+        for proc in psutil.process_iter():
             try:
-                conns = proc.connections()
-            except psutil.NoSuchProcess:
+                if proc.name() == 'q':
+                    try:
+                        conns = proc.connections()
+                    except psutil.NoSuchProcess:
+                        continue
+                    for conn in conns:  # probably a single element list
+                        _, port = conn.laddr
+                        if port == self.credentials.port:
+                            return proc
+            except:
                 continue
-            for conn in conns:  # probably a single element list
-                _, port = conn.laddr
-                if port == self.credentials.port:
-                    return proc
 
     @property
     def is_started(self):

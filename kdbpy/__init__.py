@@ -5,7 +5,7 @@ logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 def print_versions():
     """Print all the versions of software that kdbpy relies on."""

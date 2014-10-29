@@ -1,6 +1,6 @@
 package:
   name: kdbpy
-  version: {{ environ['GIT_DESCRIBE_TAG'] }}
+  version: 0.0.2
 
 build:
     number: 1
@@ -17,6 +17,7 @@ requirements:
     - pandas
     #- q
     - qpython
+    - pytest
 
 #test:
 #  requires:
