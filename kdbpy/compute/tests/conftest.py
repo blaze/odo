@@ -27,7 +27,7 @@ def st():
 
 @pytest.yield_fixture(scope='module')
 def kdb():
-    r = KQ(start=True)
+    r = KQ(start='restart')
     r.eval('t: ([] '
            'name: 10 ? `Bob`Alice`Joe`Smithers;'
            'id: 1 + til 10;'
