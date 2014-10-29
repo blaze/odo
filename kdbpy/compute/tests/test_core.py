@@ -7,36 +7,6 @@ import pandas as pd
 import pandas.util.testing as tm
 import blaze as bz
 from blaze import compute, into, by, discover, dshape, summary
-from kdbpy.compute.q import List, Symbol, Dict, String
-
-
-def test_qlist():
-    x = List(Symbol('a'), 1, 2)
-    assert repr(x) == '(`a; 1; 2)'
-
-    x = List(Symbol('a sym'), List(Symbol('a')), 3)
-    assert repr(x) == '(`$"a sym"; (,:[`a]); 3)'
-
-
-def test_qdict():
-    x = Dict([(Symbol('a'), 1), (Symbol('b'), 2)])
-    assert repr(x) == '(`a; `b)!(1; 2)'
-
-
-def test_qsymbol():
-    s = Symbol('a')
-    assert repr(s) == '`a'
-
-    s = Symbol('a symbol')
-    assert repr(s) == '`$"a symbol"'
-
-
-def test_qstring():
-    s = String('s')
-    assert repr(s) == '"s"'
-
-    s = String('"s"')
-    assert repr(s) == '"\"s\""'
 
 
 def test_projection(t, q, df):

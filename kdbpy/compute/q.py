@@ -2,8 +2,6 @@ import re
 import keyword
 
 from collections import OrderedDict
-from functools import total_ordering
-from itertools import chain
 
 
 def isidentifier(s, rx=re.compile(r'[a-zA-Z_]\w*')):
@@ -17,16 +15,7 @@ class Dict(OrderedDict):
     def __repr__(self):
         return '%s!%s' % (List(*self.keys()), List(*self.values()))
 
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.keys() == other.keys() and
-                self.values() == other.values())
 
-    def __ne__(self, other):
-        return not self == other
-
-
-@total_ordering
 class Atom(object):
     def __init__(self, s):
         assert isinstance(s, (basestring, Symbol, String))
@@ -37,9 +26,6 @@ class Atom(object):
 
     def __eq__(self, other):
         return type(self) == type(other) and self.s == other.s
-
-    def __lt__(self, other):
-        return type(self) == type(other) and self.s < other.s
 
     def __repr__(self):
         return self.s
@@ -75,7 +61,6 @@ class Symbol(Atom):
         return '`' + s
 
 
-@total_ordering
 class List(object):
     def __init__(self, *items):
         self.items = items
@@ -91,9 +76,6 @@ class List(object):
             return List(*result)
         return result
 
-    def __add__(self, other):
-        return List(*list(chain(self.items, other.items)))
-
     def __len__(self):
         return len(self.items)
 
@@ -103,11 +85,7 @@ class List(object):
     def __eq__(self, other):
         return type(self) == type(other) and self.items == other.items
 
-    def __lt__(self, other):
-        return type(self) == type(other) and self.items < other.items
 
-
-@total_ordering
 class Bool(object):
     def __init__(self, value=False):
         self.value = bool(value)
@@ -118,8 +96,8 @@ class Bool(object):
     def __eq__(self, other):
         return type(self) == type(other) and self.value == other.value
 
-    def __lt__(self, other):
-        return type(self) == type(other) and self.value < other.value
+    def __ne__(self, other):
+        return not (self == other)
 
 
 Expr = Dict, Atom, List, Bool
