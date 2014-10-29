@@ -75,11 +75,6 @@ def rstring():
     return 'kdb://%s@%s:5000' % (getpass.getuser(), socket.gethostname())
 
 
-@pytest.fixture
-def tstring(rstring):
-    return rstring + '::t'
-
-
 @pytest.yield_fixture(scope='module')
 def kdbpar():
     kq = KQ(get_credentials(), start='restart')
