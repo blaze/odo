@@ -97,11 +97,8 @@ def get(x):
     >>> get(s)
     `t.name
     """
-    try:
-        if len(x) == 1:
-            return x[0]
-    except TypeError:  # our input has no notion of length
-        return x
+    if len(x) == 1:
+        return x[0]
     return x
 
 
@@ -124,14 +121,11 @@ def _subs(expr, old, new):
             elif isinstance(sube, q.Atom):
                 # recurse back into subs (not _subs) to have it call get
                 yield subs(sube, old, new)
-            elif isinstance(sube, (basestring, numbers.Number, q.Bool)):
-                yield sube
             elif isinstance(sube, q.Dict):
                 yield q.Dict([(subs(x, old, new), subs(y, old, new))
                               for x, y in sube.items()])
-            else:
-                raise ValueError('unknown type for substitution '
-                                 '{!r}'.format(type(sube).__name__))
+            else:  # isinstance(sube, (basestring, numbers.Number, q.Bool)):
+                yield sube
 
 
 def subs(expr, old, new):
@@ -208,10 +202,8 @@ def _desubs(expr, t):
             elif isinstance(sube, q.Dict):
                 yield q.Dict([(desubs(k, t), desubs(v, t))
                               for k, v in sube.items()])
-            elif isinstance(sube, (basestring, numbers.Number, q.Bool)):
+            else:  # isinstance(sube, (basestring, numbers.Number, q.Bool)):
                 yield sube
-            else:
-                raise NotImplementedError()
 
 
 @dispatch(numbers.Number, q.Expr)
@@ -240,11 +232,7 @@ def compute_up(expr, data, **kwargs):
 @dispatch(Field, q.Expr)
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
-
-    try:
-        return child[expr._name]
-    except TypeError:
-        return child
+    return child[expr._name]
 
 
 @dispatch(Field, q.Expr, dict)
@@ -401,7 +389,7 @@ def compute_up(expr, data, **kwargs):
         if isrecord(expr.dshape):
             qexpr = q.List(',:', qexpr)  # +: == flip
 
-    elif isinstance(index, slice):
+    else:  # isinstance(index, slice):
         start = index.start or 0
         stop = index.stop or nrows
         qexpr = q.List('sublist', q.List('enlist', start,
@@ -409,10 +397,6 @@ def compute_up(expr, data, **kwargs):
                                          q.List('![-6]', q.List('-', stop,
                                                                 start))),
                        child)
-    else:
-        raise NotImplementedError('slices of type %r are not implemented for Q '
-                                  'expressions' % type(index).__name__)
-
     return qexpr
 
 
@@ -424,25 +408,6 @@ def compute_up(expr, data, **kwargs):
 @dispatch(Expr, QTable)
 def compute_up(expr, data, **kwargs):
     return compute_up(expr, q.Symbol(data.tablename), **kwargs)
-
-
-@dispatch(pd.DataFrame, qpython.qcollection.QKeyedTable)
-def into(_, tb, **kwargs):
-    keys = tb.keys
-    names = keys.dtype.names
-    index = pd.MultiIndex.from_arrays([keys[name] for name in names],
-                                      names=names)
-    return pd.DataFrame.from_records(tb.values, index=index, **kwargs)
-
-
-@dispatch(pd.DataFrame, qpython.qcollection.QTable)
-def into(_, tb, **kwargs):
-    return pd.DataFrame.from_records(tb.values, **kwargs)
-
-
-@dispatch(pd.Series, qpython.qcollection.QDictionary)
-def into(frame, d, **kwargs):
-    return pd.Series(d.values, index=d.keys)
 
 
 @dispatch(QTable)
