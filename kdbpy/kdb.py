@@ -173,7 +173,7 @@ class Q(object):
                 archd = {
                     'Darwin': 'q',
                     'linux': 'q',
-                    'nt': 'q.exe',
+                    'Windows': 'q.exe',
                 }
                 return archd[arch_name]
             except (Exception) as e:
