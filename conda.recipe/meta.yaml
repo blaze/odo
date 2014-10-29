@@ -1,6 +1,6 @@
 package:
   name: kdbpy
-  version: {{ environ['GIT_DESCRIBE_TAG'] }}
+  version: 0.0.2
 
 build:
     number: 1
@@ -10,21 +10,21 @@ requirements:
     - python
     - numpy
     - pandas
-    - cython
-    - libpython
 
   run:
+    - python
     - numpy
     - pandas
-    - q
+    #- q
     - qpython
-
-test:
-  requires:
     - pytest
 
-  commands:
-    - py.test -r sxX --verbose --pyargs kdbpy
+#test:
+#  requires:
+#    - pytest
+
+#  commands:
+#    - py.test -r sxX --verbose --pyargs kdbpy
 
 about:
   home: https://github.com/ContinuumIO/kdbpy

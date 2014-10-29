@@ -6,16 +6,12 @@ import os
 import sys
 import shutil
 import textwrap
-import pkg_resources
 from fnmatch import fnmatchcase
 
 from distutils.core import Command, setup
 from distutils.util import convert_path
-from distutils.extension import Extension
 from distutils.command.build import build
 from distutils.command.sdist import sdist
-from distutils.command.build_ext import build_ext as _build_ext
-from Cython.Distutils import build_ext as _build_ext
 
 #------------------------------------------------------------------------
 # Top Level Packages
@@ -127,59 +123,6 @@ class CleanCommand(Command):
                 pass
 
 #------------------------------------------------------------------------
-# Extensions
-#------------------------------------------------------------------------
-
-class build_ext(_build_ext):
-    def build_extensions(self):
-        numpy_incl = pkg_resources.resource_filename('numpy', 'core/include')
-
-        for ext in self.extensions:
-            if hasattr(ext, 'include_dirs') and not numpy_incl in ext.include_dirs:
-                ext.include_dirs.append(numpy_incl)
-        _build_ext.build_extensions(self)
-
-
-class CheckingBuildExt(build_ext):
-    """Subclass build_ext to get clearer report if Cython is necessary."""
-
-    def check_cython_extensions(self, extensions):
-        for ext in extensions:
-            for src in ext.sources:
-                if not os.path.exists(src):
-                    raise Exception("""Cython-generated file '%s' not found.
-                Cython is required to compile from a development branch.
-                """ % src)
-
-    def build_extensions(self):
-        self.check_cython_extensions(self.extensions)
-        build_ext.build_extensions(self)
-
-
-class CythonCommand(build_ext):
-    """Custom distutils command subclassed from Cython.Distutils.build_ext
-    to compile pyx->c, and stop there. All this does is override the
-    C-compile method build_extension() with a no-op."""
-    def build_extension(self, ext):
-        pass
-
-
-extensions = []
-#import os
-#os.environ['CC'] = 'gcc-4.9'
-#extensions = [
-#    Extension('kdbpy.lib',
-#              sources=['kdbpy/lib.pyx','kdbpy/src/k.pxd'],
-#              depends=['kdbpy/src/k.h'],
-#              extra_objects=['kdbpy/arch/m64/c.o'],
-#              libraries=['pthread'],
-#              include_dirs=['kdbpy/src'],
-#              #extra_compile_args=['-m32']
-#              )
-#    ]
-
-
-#------------------------------------------------------------------------
 # Setup
 #------------------------------------------------------------------------
 
@@ -211,8 +154,6 @@ setup(
     scripts=[],
     cmdclass = {
         'clean'     : CleanCommand,
-        'build_ext' : CheckingBuildExt,
-        'cython' : CythonCommand,
         },
-    ext_modules=extensions,
+    ext_modules=[],
 )
