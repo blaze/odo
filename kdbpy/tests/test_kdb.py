@@ -1,11 +1,20 @@
-import os
+from __future__ import print_function
+from __future__ import division
+from __future__ import absolute_import
 
+import os
 from contextlib import contextmanager
 
 import pytest
 import pandas as pd
 import kdbpy
 from kdbpy import kdb
+from kdbpy.kdb import which
+
+try:
+    from cStringIO import StringIO
+except ImportError:  # pragma: no cover
+    from io import StringIO
 
 
 def test_basic():
@@ -167,11 +176,12 @@ def test_repr(k):
 
 
 def test_print_versions():
-    kdbpy.print_versions()
+    file = StringIO()
+    kdbpy.print_versions(file=file)
 
 
 @contextmanager
-def remove_path(path):
+def remove_from_path(path):
     current_path = os.environ['PATH']
     new_path = current_path.split(os.pathsep)
     new_path.pop(new_path.index(path))
@@ -182,18 +192,6 @@ def remove_path(path):
 
 def test_cannot_find_q():
     remove_this = os.path.dirname(which('q'))
-    with remove_path(remove_this):
+    with remove_from_path(remove_this):
         with pytest.raises(OSError):
-            kdb.Q().start()
-
-
-def test_which():
-    assert which('q') is not None
-
-
-def which(exe):
-    path = os.environ['PATH']
-    for p in path.split(os.pathsep):
-        for f in filter(lambda x: x not in ('..', '.'), os.listdir(p)):
-            if os.path.basename(f) == exe:
-                return os.path.join(p, f)
+            which('q')
