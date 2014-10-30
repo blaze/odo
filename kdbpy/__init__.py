@@ -13,7 +13,7 @@ logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 
 def print_versions(file=None):
