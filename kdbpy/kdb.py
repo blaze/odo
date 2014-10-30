@@ -1,15 +1,16 @@
 """ kdb process management """
 import os
-import time
+# import time
+import socket
 import atexit
 import platform
 import getpass
 import subprocess
 
+# from future.builtins import range
+
 from itertools import chain
 from collections import namedtuple
-
-from toolz import first
 
 import psutil
 
@@ -161,16 +162,12 @@ class Q(object):
         """
 
         if path is None:
+            arch_name = platform.system().lower()
+            archd = {'darwin': 'q', 'linux': 'q', 'windows': 'q.exe'}
             try:
-                arch_name = platform.system()
-                archd = {
-                    'Darwin': 'q',
-                    'linux': 'q',
-                    'Windows': 'q.exe',
-                }
-                return archd[arch_name]
-            except Exception as e:
-                raise OSError("cannot locate q executable: {0}".format(e))
+                return which(archd[arch_name])
+            except KeyError:
+                raise OSError("Unsupported operating system: %r" % arch_name)
         return path
 
     def find_running_process(self):
@@ -257,8 +254,6 @@ class Q(object):
 
         #### TODO - need to wait for the process to start here
         #### maybe communicate and wait till it starts before returning
-        time.sleep(0.2)
-
         return self
 
     def stop(self):
@@ -292,19 +287,25 @@ class KDB(object):
 
     __repr__ = __str__
 
-
-    def start(self):
+    def start(self, ntries=100):
         """ given credentials, start the connection to the server """
         cred = self.credentials
         self.q = qconnection.QConnection(host=cred.host,
-                                            port=cred.port,
-                                            username=cred.username,
-                                            password=cred.password,
-                                            pandas=True)
-        try:
-            self.q.open()
-        except Exception as e:
-            raise ValueError("cannot connect to the kdb server: {0}".format(e))
+                                         port=cred.port,
+                                         username=cred.username,
+                                         password=cred.password,
+                                         pandas=True)
+        e = None
+        for i in range(ntries):
+            try:
+                self.q.open()
+            except socket.error as e:
+                pass
+            else:
+                print('took %d tries' % i)
+                break
+        else:
+            raise ValueError("Unable to connect to Q server %s" % e)
         return self
 
     def stop(self):
@@ -360,6 +361,16 @@ class KDB(object):
                 result = pd.Timedelta(result)
 
         return result
+
+
+def which(exe):
+    path = os.environ['PATH']
+    for p in path.split(os.pathsep):
+        for f in [x for x in os.listdir(p) if x not in ('..', '.')]:
+            if os.path.basename(f) == exe:
+                return os.path.join(p, f)
+    raise OSError("Cannot find %r on path %s" % (exe, path))
+
 
 # TEMPORALS
 _q_base_timestamp = pd.Timestamp('2000-01-01')
