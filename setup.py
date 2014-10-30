@@ -10,8 +10,6 @@ from fnmatch import fnmatchcase
 
 from distutils.core import Command, setup
 from distutils.util import convert_path
-from distutils.command.build import build
-from distutils.command.sdist import sdist
 
 #------------------------------------------------------------------------
 # Top Level Packages
