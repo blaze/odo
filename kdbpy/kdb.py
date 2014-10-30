@@ -287,7 +287,7 @@ class KDB(object):
 
     __repr__ = __str__
 
-    def start(self, ntries=100):
+    def start(self, ntries=1000):
         """ given credentials, start the connection to the server """
         cred = self.credentials
         self.q = qconnection.QConnection(host=cred.host,
@@ -302,10 +302,10 @@ class KDB(object):
             except socket.error as e:
                 pass
             else:
-                print('took %d tries' % i)
                 break
         else:
-            raise ValueError("Unable to connect to Q server %s" % e)
+            raise ValueError("Unable to connect to Q server after %d tries: %s"
+                             % (ntries, e))
         return self
 
     def stop(self):
