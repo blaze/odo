@@ -50,7 +50,7 @@ def test_simple_op(daily):
 def test_complex_date_op_repr(daily, kdb):
     sym = bz.Symbol('daily', daily.dshape)
     result = by(sym.date.month,
-                cnt=sym.price.nrows(),
+                cnt=sym.nrows,
                 size=sym.size.sum(),
                 wprice=(sym.price * sym.size).sum() / sym.price.count())
     assert repr(result)
@@ -60,7 +60,7 @@ def test_complex_date_op_repr(daily, kdb):
                    reason='Figure out DateTime issues for By expressions')
 def test_complex_date_op(daily):
     result = by(daily.date.month,
-                cnt=daily.price.nrows(),
+                cnt=daily.nrows,
                 size=daily.size.sum(),
                 wprice=(daily.price * daily.size).sum() / daily.price.count())
     assert repr(result)
@@ -70,7 +70,7 @@ def test_complex_nondate_op(daily):
     # q) select cnt: count price, size: sum size, wprice: size wavg price
     #       by sym from daily
     qresult = by(daily.sym,
-                 cnt=daily.price.nrows(),
+                 cnt=daily.nrows,
                  size=daily.size.sum(),
                  wprice=(daily.price * daily.size).sum() / daily.price.sum())
     assert repr(qresult)

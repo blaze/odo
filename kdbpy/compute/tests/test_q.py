@@ -7,6 +7,11 @@ def x():
     return q.List(q.Symbol('a'), 1, 2)
 
 
+@pytest.fixture
+def y():
+    return q.List(q.Symbol('b'), 2)
+
+
 def test_qlist_repr(x):
     assert repr(x) == '(`a; 1; 2)'
 
@@ -22,6 +27,16 @@ def test_qlist_slice(x):
 
 def test_qlist_eq(x):
     assert x == x
+
+
+def test_qlist_add(x, y):
+    z = x + y
+    assert z == q.List(q.Symbol('a'), 1, 2, q.Symbol('b'), 2)
+
+
+def test_qlist_append(x):
+    z = x.append(q.Symbol('x'))
+    assert z == q.List(q.Symbol('a'), 1, 2, q.Symbol('x'))
 
 
 def test_qdict():
