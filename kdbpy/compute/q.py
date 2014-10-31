@@ -1,5 +1,6 @@
 import re
 import keyword
+from itertools import chain
 
 from collections import OrderedDict
 
@@ -84,6 +85,12 @@ class List(object):
 
     def __eq__(self, other):
         return type(self) == type(other) and self.items == other.items
+
+    def __add__(self, other):
+        return List(*list(chain(self.items, other.items)))
+
+    def append(self, other):
+        return self + type(self)(other)
 
 
 class Bool(object):
