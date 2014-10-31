@@ -166,8 +166,14 @@ def test_sort(t, q, df):
 
 
 def test_nrows(t, q, df):
-    qresult = compute(t.nrows(), q)
+    qresult = compute(t.nrows, q)
     expected = len(df)
+    assert qresult == expected
+
+
+def test_nelements(t, q, df):
+    qresult = compute(t.nelements(axis=1), q)
+    expected = df.shape[1]
     assert qresult == expected
 
 
