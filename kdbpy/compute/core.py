@@ -213,9 +213,10 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Join, q.Expr, q.Expr)
 def compute_up(expr, lhs, rhs, **kwargs):
-    assert expr.how == 'inner', 'only inner joins supported'
-    assert expr._on_left == expr._on_right, \
-        'can only join on same named columns'
+    if expr.how != 'inner':
+        raise NotImplementedError('only inner joins supported')
+    if expr._on_left != expr._on_right:
+        raise NotImplementedError('can only join on same named columns')
     return q.List('ej', q.List(q.Symbol(expr._on_left)), lhs, rhs)
 
 
