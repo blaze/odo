@@ -17,9 +17,9 @@ from blaze.dispatch import dispatch
 
 import blaze as bz
 from blaze import resource
-from blaze.expr import Symbol, Projection, Broadcast, Selection, Field
+from blaze.expr import Symbol, Projection, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
-from blaze.expr import nrows, Slice, Distinct, Summary
+from blaze.expr import nelements, Slice, Distinct, Summary, Relational
 
 from datashape.predicates import isrecord
 
@@ -43,12 +43,7 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Symbol, q.Expr)
 def compute_up(expr, data, **kwargs):
-    sym = q.Symbol(expr._name)
-    t = first(kwargs['scope'].keys())
-    if t.isidentical(expr) or (t._name == expr._name and
-                               t.dshape == expr.dshape):
-        return sym
-    return subs(sym, sym, q.Symbol('%s.%s' % (t._name, sym.s)))
+    return q.Symbol(expr._name)
 
 
 binops = {
@@ -61,8 +56,8 @@ binops = {
 
 
 unops = {
-    'USub': q.Atom('-:'),
-    '~': q.Atom('~:')
+    '~': q.Atom('~:'),
+    '-': q.Atom('-:')
 }
 
 
@@ -100,63 +95,6 @@ def get(x):
     if len(x) == 1:
         return x[0]
     return x
-
-
-def _subs(expr, old, new):
-    if isinstance(expr, q.Symbol):
-        # TODO: how do we handle multiple tables?
-        if '.' not in expr.s:
-            yield new if expr == old else expr
-        else:
-            subsed = [subs(e, old, new).s
-                      for e in map(q.Symbol, expr.s.split('.'))]
-            r = q.Symbol('.'.join(subsed))
-            yield r
-    elif isinstance(expr, (numbers.Number, basestring, q.Atom)):
-        yield expr
-    elif isinstance(expr, (q.List, q.Dict)):
-        for sube in expr:
-            if isinstance(sube, q.List):
-                yield q.List(*(x for x in _subs(sube, old, new)))
-            elif isinstance(sube, q.Atom):
-                # recurse back into subs (not _subs) to have it call get
-                yield subs(sube, old, new)
-            elif isinstance(sube, q.Dict):
-                yield q.Dict([(subs(x, old, new), subs(y, old, new))
-                              for x, y in sube.items()])
-            else:  # isinstance(sube, (basestring, numbers.Number, q.Bool)):
-                yield sube
-
-
-def subs(expr, old, new):
-    """Substitute a parent table name for fields in a broadcast expression.
-
-    Parameters
-    ----------
-    expr : q.Expr, q.Atom, int, basestring
-        The expression in which to substitute the parent table
-    old
-    new
-
-    Returns
-    -------
-    expression : q.Expr
-
-    Examples
-    --------
-    >>> from blaze import Symbol
-    >>> t = Symbol('t', 'var * {id: int, name: string}')
-    >>> s = q.Symbol('name')
-    >>> subs(s, s, q.Symbol('t.%s' % s.s))
-    `t.name
-    >>> s = q.Symbol('name')
-    >>> s
-    `name
-    >>> expr = q.List(q.Atom('='), s, 1)
-    >>> subs(expr, s, q.Symbol('%s.%s' % (t._name, s.s)))
-    (=; `t.name; 1)
-    """
-    return manip(_subs, expr, old, new)
 
 
 def desubs(expr, t):
@@ -211,7 +149,7 @@ def compute_up(expr, data, **kwargs):
     return expr
 
 
-@dispatch(BinOp, q.Expr)
+@dispatch((BinOp, Relational), q.Expr)
 def compute_up(expr, data, **kwargs):
     symbol = expr.symbol
     op = binops.get(symbol, symbol)
@@ -219,6 +157,13 @@ def compute_up(expr, data, **kwargs):
     lwrap, rwrap = get_wrapper(lhs), get_wrapper(rhs)
     lhs = lwrap(compute_up(lhs, data, **kwargs))
     rhs = rwrap(compute_up(rhs, data, **kwargs))
+    return q.List(op, lhs, rhs)
+
+
+@dispatch((BinOp, Relational), q.Expr, q.Expr)
+def compute_up(expr, lhs, rhs, **kwargs):
+    symbol = expr.symbol
+    op = binops.get(symbol, symbol)
     return q.List(op, lhs, rhs)
 
 
@@ -238,16 +183,12 @@ def compute_up(expr, data, **kwargs):
 @dispatch(Field, q.Expr, dict)
 def post_compute(expr, data, scope):
     table = first(scope.values())
-    final_expr = subs(data, q.Symbol(expr._leaves()[0]._name),
-                      q.Symbol(table.tablename))
+    leaf = expr._leaves()[0]
+    subsed = expr._subs({leaf: Symbol(table.tablename, leaf.dshape)})
+    final_expr = compute_up(subsed, data, scope=scope)
     result = table.engine.eval('eval [%s]' % final_expr).squeeze()
     result.name = expr._name
     return result
-
-
-@dispatch(Broadcast, q.Expr)
-def compute_up(expr, data, **kwargs):
-    return compute_up(expr._expr, data, **kwargs)
 
 
 @dispatch(Selection, q.Expr)
@@ -319,17 +260,21 @@ def compute_up(expr, data, **kwargs):
     return qexpr
 
 
-@dispatch(nrows, q.Expr)
+@dispatch(nelements, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return q.List('#:', compute_up(expr._child, data, **kwargs))
+    child = compute_up(expr._child, data, **kwargs)
+    axis_funcs = {0: q.List('#:', child),
+                  1: q.List('#:', q.List('cols', child))}
+    qexpr = q.List('prd', *[axis_funcs[i] for i in expr.axis or expr.ndim])
+    return qexpr
 
 
 @dispatch(Head, q.Expr)
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
 
-    final_index = q.List('&', expr.n, compute_up(expr._child.nrows(), data,
-                                                 **kwargs))
+    final_index = q.List('&', expr.n, compute_up(expr._child.nelements(axis=0),
+                                                 data, **kwargs))
 
     # TODO: generate different code if we are a partitioned table
     # we need to use the global index to do this
@@ -347,14 +292,10 @@ def post_compute(expr, data, scope):
     assert len(tables) == 1
     table = first(tables)
     table = getattr(table, 'data', table)
-    final_expr = subs(data, q.Symbol(expr._leaves()[0]._name),
-                      q.Symbol(table.tablename))
+    leaf = expr._leaves()[0]
+    subsed = expr._subs({leaf: Symbol(table.tablename, leaf.dshape)})
+    final_expr = compute_up(subsed, data, scope=scope)
     return table.engine.eval('eval [%s]' % final_expr)
-
-
-@dispatch(Join, q.Expr, dict)
-def post_compute(expr, data, scope):
-    raise NotImplementedError()
 
 
 @dispatch(Slice, q.Expr)
@@ -377,7 +318,7 @@ def compute_up(expr, data, **kwargs):
     """
     assert len(expr.index) == 1, 'only single slice allowed'
     index, = expr.index
-    nrows = compute_up(expr._child.nrows(), data, **kwargs)
+    nrows = compute_up(expr._child.nelements(axis=0), data, **kwargs)
     child = compute_up(expr._child, data, **kwargs)
 
     if isinstance(index, numbers.Integral):
