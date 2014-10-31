@@ -1,7 +1,12 @@
 import os
 import inspect
 from contextlib import contextmanager
+
+import pytest
+
 from kdbpy import qmagic
+
+pytest.importorskip('runipy')
 from runipy.notebook_runner import NotebookRunner
 from IPython.nbformat.current import read
 
