@@ -213,7 +213,10 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Join, q.Expr, q.Expr)
 def compute_up(expr, lhs, rhs, **kwargs):
-    raise NotImplementedError()
+    assert expr.how == 'inner', 'only inner joins supported'
+    assert expr._on_left == expr._on_right, \
+        'can only join on same named columns'
+    return q.List('ej', q.List(q.Symbol(expr._on_left)), lhs, rhs)
 
 
 @dispatch(Sort, q.Expr)
@@ -235,9 +238,8 @@ def compute_up(expr, data, **kwargs):
     ops = [compute_up(op, data, **kwargs) for op in expr.values]
     names = expr.names
     child = compute_up(expr._child, data, **kwargs)
-    qexpr = q.List('?', child, q.List(), q.Bool(),
-                   q.Dict(list(zip(map(q.Symbol, names), ops))))
-    return qexpr
+    return q.List('?', child, q.List(), q.Bool(),
+                  q.Dict(list(zip(map(q.Symbol, names), ops))))
 
 
 @dispatch(By, q.Expr)
@@ -258,8 +260,7 @@ def compute_up(expr, data, **kwargs):
     table = first(kwargs['scope'].keys())
 
     # TODO: fix this using blaze core functions
-    qexpr = desubs(qexpr, table)
-    return qexpr
+    return desubs(qexpr, table)
 
 
 @dispatch(nelements, q.Expr)
@@ -267,8 +268,7 @@ def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
     axis_funcs = {0: q.List('#:', child),
                   1: q.List('#:', q.List('cols', child))}
-    qexpr = q.List('prd', *[axis_funcs[i] for i in expr.axis or expr.ndim])
-    return qexpr
+    return q.List('prd', *[axis_funcs[i] for i in expr.axis or expr.ndim])
 
 
 @dispatch(Head, q.Expr)
@@ -284,19 +284,35 @@ def compute_up(expr, data, **kwargs):
     # q repeats if the N of take is larger than the number of rows, so we
     # need to get the min of the number of rows and the requested N from the
     # Head expression
-    qexpr = q.List('#', final_index, child)
-    return qexpr
+    return q.List('#', final_index, child)
 
 
 @dispatch(Expr, q.Expr, dict)
 def post_compute(expr, data, scope):
-    tables = set(x for x in scope.values() if isinstance(x, (bz.Data, QTable)))
+    # never a Data object
+    tables = set(x for x in scope.values() if isinstance(x, QTable))
     assert len(tables) == 1
     table = first(tables)
-    table = getattr(table, 'data', table)
     leaf = expr._leaves()[0]
+
+    # do this in optimize
     subsed = expr._subs({leaf: Symbol(table.tablename, leaf.dshape)})
     final_expr = compute_up(subsed, data, scope=scope)
+    return table.engine.eval('eval [%s]' % final_expr)
+
+
+@dispatch(Join, q.Expr, dict)
+def post_compute(expr, data, scope):
+    # never a Data object
+    # import ipdb; ipdb.set_trace()
+    tables = set(x for x in scope.values() if isinstance(x, QTable))
+    table = first(tables)
+    # leaf = expr._leaves()[0]
+
+    # do this in optimize
+    # subsed = expr._subs({leaf: Symbol(table.tablename, leaf.dshape)})
+    # final_expr = compute_up(subsed, data, scope=scope)
+    final_expr = data
     return table.engine.eval('eval [%s]' % final_expr)
 
 
@@ -329,18 +345,16 @@ def compute_up(expr, data, **kwargs):
 
         qexpr = q.List(child, index)
 
-        if isrecord(expr.dshape):
-            qexpr = q.List(',:', qexpr)  # +: == flip
+        if not isrecord(expr.dshape):
+            return qexpr
+        return q.List(',:', qexpr)
 
-    else:  # isinstance(index, slice):
-        start = index.start or 0
-        stop = index.stop or nrows
-        qexpr = q.List('sublist', q.List('enlist', start,
-                                         # eval ~ ![-6] // q is so gross
-                                         q.List('![-6]', q.List('-', stop,
-                                                                start))),
-                       child)
-    return qexpr
+    # assuming a slice here
+    start = index.start or 0
+    stop = index.stop or nrows
+    return q.List('sublist', q.List('enlist', start,
+                                    q.List('![-6]', q.List('-', stop, start))),
+                  child)
 
 
 @dispatch(Distinct, q.Expr)

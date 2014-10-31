@@ -152,7 +152,7 @@ def test_min(t, q, df):
 def test_simple_join(rt, st, rq, sq, rdf, sdf):
     expr = bz.join(rt, st)
     result = into(pd.DataFrame, compute(expr, {st: sq, rt: rq}))
-    expected = compute(expr, {st: sdf, rt: rdf})
+    expected = compute(expr, {st: sdf.reset_index(), rt: rdf.reset_index()})
     tm.assert_frame_equal(result, expected)
 
 
