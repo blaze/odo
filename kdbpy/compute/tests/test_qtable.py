@@ -4,7 +4,7 @@ from kdbpy.compute.qtable import tables
 def test_columns(q, rq, sq):
     assert q.columns == ['name', 'id', 'amount']
     assert rq.columns == ['name', 'tax', 'street']
-    assert sq.columns == ['name', 'jobcode', 'tree']
+    assert sq.columns == ['name', 'jobcode', 'tree', 'alias']
 
 
 def test_repr(q):

@@ -22,7 +22,8 @@ def rt():
 
 @pytest.fixture
 def st():
-    return bz.Symbol('st', 'var * {name: string, jobcode: int64, tree: string}')
+    return bz.Symbol('st', 'var * {name: string, jobcode: int64, tree: string,'
+                     ' alias: string}')
 
 
 @pytest.yield_fixture(scope='module')
@@ -35,7 +36,7 @@ def kdb():
     r.eval('rt: ([name: `Bob`Alice`Joe`John] tax: -3.1 2.0 0n 4.2; '
            'street: `maple`apple`pine`grove)')
     r.eval('st: ([name: `Bob`Alice`Joe] jobcode: 9 10 11; '
-           'tree: `maple`apple`pine)')
+           'tree: `maple`apple`pine; alias: `Joe`Betty`Moe)')
     yield r
     r.stop()
 
