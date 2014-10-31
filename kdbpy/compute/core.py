@@ -256,6 +256,8 @@ def compute_up(expr, data, **kwargs):
 
     qexpr = q.List('?', child, q.List(), grouper, reducer)
     table = first(kwargs['scope'].keys())
+
+    # TODO: fix this using blaze core functions
     qexpr = desubs(qexpr, table)
     return qexpr
 
