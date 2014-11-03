@@ -4,7 +4,7 @@ from kdbpy.compute.qtable import tables
 
 
 def test_columns(q, rq, sq):
-    assert q.columns == ['name', 'id', 'amount']
+    assert q.columns == ['name', 'id', 'amount', 'when', 'on']
     assert rq.columns == ['name', 'tax', 'street']
     assert sq.columns == ['name', 'jobcode', 'tree', 'alias']
 
@@ -12,7 +12,7 @@ def test_columns(q, rq, sq):
 def test_repr(q):
     expected = ("QTable(tablename='t', "
                 "dshape='var * "
-                "{ name : string, id : int64, amount : float64 }')")
+                "{ name : string, id : int64, amount : float64, when : datetime, on : date }')")
     assert repr(q) == expected
 
 

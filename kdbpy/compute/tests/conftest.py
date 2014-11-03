@@ -30,9 +30,14 @@ def st():
 def kdb():
     r = KQ(start='restart')
     r.eval('t: ([] '
-           'name: 10 ? `Bob`Alice`Joe`Smithers;'
-           'id: 1 + til 10;'
-           'amount: 10 ? 10.0)')
+           'name: `Bob`Alice`Joe`Smithers;'
+           'id: 0 1 2 3;'
+           'amount: 4 ? 10.0;'
+           'when: 2003.12.05T22:23:12 '
+           '2005.03.04T03:24:45.514 '
+           '2005.02.28T01:58:04.338 '
+           '2004.01.25T18:03:47.234;'
+           'on: 2010.01.01 + til 4)')
     r.eval('rt: ([name: `Bob`Alice`Joe`John] tax: -3.1 2.0 0n 4.2; '
            'street: `maple`apple`pine`grove)')
     r.eval('st: ([name: `Bob`Alice`Joe] jobcode: 9 10 11; '
