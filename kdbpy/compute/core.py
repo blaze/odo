@@ -9,23 +9,23 @@ import numbers
 from .. import q
 from .qtable import QTable, tables
 
-import qpython.qcollection
-
 import pandas as pd
-
-from blaze.dispatch import dispatch
-
-import blaze as bz
-from blaze import resource
-from blaze.expr import Symbol, Projection, Selection, Field
-from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
-from blaze.expr import nelements, Slice, Distinct, Summary, Relational
-
-from datashape.predicates import isrecord
 
 from toolz.curried import map
 from toolz.compatibility import zip
 from toolz import identity, first, second
+
+from blaze.dispatch import dispatch
+
+from blaze import resource
+from blaze.expr import Symbol, Projection, Selection, Field
+from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
+from blaze.expr import nelements, Slice, Distinct, Summary, Relational, DateTime
+
+from datashape.predicates import isrecord
+
+from .. import q
+from .qtable import QTable, tables
 
 
 @dispatch(basestring, q.Expr)
@@ -204,6 +204,23 @@ reductions = {
 }
 
 
+qdatetimes = {
+    'day': 'dd',
+    'month': 'mm',
+    'hour': 'hh',
+    'minute': 'mm',
+    'second': 'ss',
+}
+
+
+@dispatch(DateTime, q.Expr)
+def compute_up(expr, data, **kwargs):
+    attr = expr.attr
+    attr = qdatetimes.get(attr, attr)
+    return q.Symbol('.'.join((expr._child._child._name, expr._child._name,
+                              attr)))
+
+
 @dispatch(Reduction, q.Expr)
 def compute_up(expr, data, **kwargs):
     symbol = expr.symbol
@@ -305,7 +322,6 @@ def post_compute(expr, data, scope):
 @dispatch(Join, q.Expr, dict)
 def post_compute(expr, data, scope):
     # never a Data object
-    # import ipdb; ipdb.set_trace()
     tables = set(x for x in scope.values() if isinstance(x, QTable))
     table = first(tables)
     # leaf = expr._leaves()[0]
@@ -368,6 +384,11 @@ def compute_up(expr, data, **kwargs):
     return compute_up(expr, q.Symbol(data.tablename), **kwargs)
 
 
+@dispatch(Expr, QTable)
+def compute_down(expr, data, **kwargs):
+    return compute_down(expr, q.Symbol(data.tablename), **kwargs)
+
+
 @dispatch(QTable)
 def discover(t):
     return tables(t.engine)[t.tablename].dshape
@@ -376,3 +397,8 @@ def discover(t):
 @resource.register('kdb://.+', priority=13)
 def resource_kdb(uri, name, **kwargs):
     return QTable(uri, name=name, **kwargs)
+
+
+@dispatch(pd.DataFrame, QTable)
+def into(_, t, **kwargs):
+    return t.engine.eval(t.tablename)
