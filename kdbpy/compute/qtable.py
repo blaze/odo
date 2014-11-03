@@ -18,6 +18,7 @@ qtypes = {'b': 'bool',
           'm': 'date',  # q month
           'd': 'date',
           'z': 'datetime',
+          'p': 'datetime',  # q timestamp
           'u': 'time',  # q minute
           'v': 'time',  # q second
           't': 'time'}
