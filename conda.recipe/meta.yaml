@@ -1,6 +1,6 @@
 package:
   name: kdbpy
-  version: {{environ.get('PKG_VERSION')}}
+  version: 0.0.4
 
 build:
     number: 1
