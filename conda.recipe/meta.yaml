@@ -1,6 +1,6 @@
 package:
   name: kdbpy
-  version: 0.0.2
+  version: {{environ.get('PKG_VERSION')}}
 
 build:
     number: 1
@@ -15,6 +15,7 @@ requirements:
     - python
     - numpy
     - pandas
+    - blaze
     #- q
     - qpython
     - pytest
