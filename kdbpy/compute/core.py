@@ -18,9 +18,11 @@ from toolz import identity, first, second
 from blaze.dispatch import dispatch
 
 from blaze import resource
-from blaze.expr import Symbol, Projection, Selection, Field
+from blaze.expr import Symbol, Projection, Selection, Field, FloorDiv
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
-from blaze.expr import nelements, Slice, Distinct, Summary, Relational, DateTime
+from blaze.expr import nelements, Slice, Distinct, Summary, Relational
+from blaze.expr import DateTime, Millisecond, Microsecond
+from blaze.expr.datetime import Minute
 
 from datashape.predicates import isrecord
 
@@ -160,6 +162,11 @@ def compute_up(expr, data, **kwargs):
     return q.List(op, lhs, rhs)
 
 
+@dispatch(FloorDiv, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return q.List('_:', compute_up(expr.lhs / expr.rhs, data, **kwargs))
+
+
 @dispatch((BinOp, Relational), q.Expr, q.Expr)
 def compute_up(expr, lhs, rhs, **kwargs):
     symbol = expr.symbol
@@ -208,7 +215,6 @@ qdatetimes = {
     'day': 'dd',
     'month': 'mm',
     'hour': 'hh',
-    'minute': 'mm',
     'second': 'ss',
 }
 
@@ -219,6 +225,31 @@ def compute_up(expr, data, **kwargs):
     attr = qdatetimes.get(attr, attr)
     return q.Symbol('.'.join((expr._child._child._name, expr._child._name,
                               attr)))
+
+
+@dispatch(Microsecond, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return q.List('_:',
+                  q.List('%',
+                         q.List('mod',
+                                q.List('$', q.List(q.Symbol('long')),
+                                       q.Symbol('%s.%s' %
+                                                (expr._child._child._name,
+                                                 expr._child._name))),
+                                int(1e9)),
+                         int(1e3)))
+
+
+@dispatch(Millisecond, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return compute_up(expr._child.microsecond // 1000, data, **kwargs)
+
+
+@dispatch(Minute, q.Expr)
+def compute_up(expr, data, **kwargs):
+    # (`long$expr.minute) mod 60
+    return q.List('mod', q.List('$', q.List(q.Symbol('long')),
+                                q.Symbol(str(expr))), 60)
 
 
 @dispatch(Reduction, q.Expr)

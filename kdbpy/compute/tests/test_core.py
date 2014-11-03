@@ -295,10 +295,12 @@ def test_distinct(t, q, df):
     tm.assert_series_equal(result, expected)
 
 
-@pytest.mark.parametrize('attr', ['date', 'year', 'month', 'day', 'hour',
-                                  'minute', 'second'])
+@pytest.mark.parametrize('attr', [pytest.mark.xfail('date'),
+                                  'year', 'month', 'day', 'hour',
+                                  'minute', 'second', 'millisecond',
+                                  'microsecond'])
 def test_dates(t, q, df, attr):
-    expr = getattr(t.when, 'day')
+    expr = getattr(t.when, attr)
     result = compute(expr, q)
     expected = compute(expr, df)
     tm.assert_series_equal(result, expected, check_dtype=False)
