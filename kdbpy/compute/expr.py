@@ -12,7 +12,10 @@ class bar(Expr):
 
     @property
     def dshape(self):
-        return datashape.DataShape(datashape.Var(), datashape.int64)
+        dim = datashape.Var()
+        if isnumeric(self._child.schema):
+            return datashape.DataShape(dim, datashape.int64)
+        return datashape.DataShape(dim, self._child.measure)
 
     @property
     def fields(self):
