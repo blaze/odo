@@ -22,7 +22,8 @@ def rt():
 @pytest.fixture
 def st():
     bz = pytest.importorskip('blaze')
-    return bz.Symbol('st', 'var * {name: string, jobcode: int64, tree: string}')
+    return bz.Symbol('st', 'var * {name: string, jobcode: int64, tree: string, '
+                     'alias: string}')
 
 
 @pytest.yield_fixture(scope='module')
