@@ -10,7 +10,8 @@ from kdbpy.exampleutils import example_data
 @pytest.fixture
 def t():
     bz = pytest.importorskip('blaze')
-    return bz.Symbol('t', 'var * {name: string, id: int64, amount: float64}')
+    return bz.Symbol('t', 'var * {name: string, id: int64, amount: float64, '
+                     'when: datetime, on: date}')
 
 
 @pytest.fixture
