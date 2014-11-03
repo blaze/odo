@@ -7,7 +7,6 @@ pip
 pytest
 toolz
 sqlalchemy
-blaze
 
 # runipy # runs ipython notebooks
 # q
