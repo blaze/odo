@@ -6,7 +6,7 @@ from __future__ import absolute_import, print_function, division
 
 import numbers
 
-from . import q
+from .. import q
 from .qtable import QTable, tables
 
 import qpython.qcollection

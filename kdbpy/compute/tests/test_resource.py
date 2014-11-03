@@ -2,7 +2,7 @@ import pytest
 
 import pandas as pd
 import pandas.util.testing as tm
-import blaze as bz
+bz = pytest.importorskip('blaze')
 from toolz import first
 from blaze import Data, by, into, compute
 from blaze.compute.core import swap_resources_into_scope

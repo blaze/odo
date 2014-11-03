@@ -1,4 +1,5 @@
 import pytest
+pytest.importorskip('blaze')
 import pandas.util.testing as tm
 from qpython.qcollection import QException
 from blaze import Data, compute

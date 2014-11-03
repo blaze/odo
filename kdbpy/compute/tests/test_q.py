@@ -1,5 +1,5 @@
 import pytest
-from kdbpy.compute import q
+from kdbpy import q
 
 
 @pytest.fixture

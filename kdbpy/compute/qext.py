@@ -1,5 +1,5 @@
 from .expr import bar
-from . import q
+from .. import q
 from .core import dispatch
 
 
