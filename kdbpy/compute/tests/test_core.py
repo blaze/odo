@@ -195,7 +195,8 @@ def test_nelements(t, q, df):
 
 def test_discover(q):
     assert (str(discover(q)) ==
-            str(dshape('var * {name: string, id: int64, amount: float64}')))
+            str(dshape('var * {name: string, id: int64, amount: float64, '
+                       'when: datetime, on: date}')))
 
 
 def test_into_from_keyed(rq, rdf):
@@ -292,3 +293,12 @@ def test_distinct(t, q, df):
     result = compute(expr, q)
     expected = compute(expr, df)
     tm.assert_series_equal(result, expected)
+
+
+@pytest.mark.parametrize('attr', ['date', 'year', 'month', 'day', 'hour',
+                                  'minute', 'second'])
+def test_dates(t, q, df, attr):
+    expr = getattr(t.when, 'day')
+    result = compute(expr, q)
+    expected = compute(expr, df)
+    tm.assert_series_equal(result, expected, check_dtype=False)
