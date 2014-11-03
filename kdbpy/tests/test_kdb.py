@@ -8,6 +8,7 @@ from contextlib import contextmanager
 import pytest
 import pandas as pd
 import kdbpy
+import toolz
 from kdbpy import kdb
 from kdbpy.kdb import which
 
@@ -183,7 +184,7 @@ def test_print_versions():
 @contextmanager
 def remove_from_path(path):
     current_path = os.environ['PATH']
-    new_path = current_path.split(os.pathsep)
+    new_path = list(toolz.unique(current_path.split(os.pathsep)))
     new_path.pop(new_path.index(path))
     os.environ['PATH'] = os.pathsep.join(new_path)
     yield
