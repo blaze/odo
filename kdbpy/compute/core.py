@@ -247,6 +247,8 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Minute, q.Expr)
 def compute_up(expr, data, **kwargs):
+    # q has mm for time types and mm for datetime and date types, this makes -1
+    # amount of sense, so we bypass that and compute it our damn selves using
     # (`long$expr.minute) mod 60
     return q.List('mod', q.List('$', q.List(q.Symbol('long')),
                                 q.Symbol(str(expr))), 60)
