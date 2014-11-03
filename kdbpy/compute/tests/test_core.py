@@ -147,12 +147,28 @@ def test_min(t, q, df):
     assert result == expected
 
 
-@pytest.mark.xfail(raises=NotImplementedError,
-                   reason='Join not implemented for QTables')
 def test_simple_join(rt, st, rq, sq, rdf, sdf):
     expr = bz.join(rt, st)
     result = into(pd.DataFrame, compute(expr, {st: sq, rt: rq}))
-    expected = compute(expr, {st: sdf, rt: rdf})
+    expected = compute(expr, {st: sdf.reset_index(), rt: rdf.reset_index()})
+    tm.assert_frame_equal(result, expected)
+
+
+@pytest.mark.xfail(raises=NotImplementedError,
+                   reason='Only inner join implemented for QTable')
+def test_outer_join(rt, st, rq, sq, rdf, sdf):
+    expr = bz.join(rt, st, how='outer')
+    result = into(pd.DataFrame, compute(expr, {st: sq, rt: rq}))
+    expected = compute(expr, {st: sdf.reset_index(), rt: rdf.reset_index()})
+    tm.assert_frame_equal(result, expected)
+
+
+@pytest.mark.xfail(raises=NotImplementedError,
+                   reason='Cannot specify different columns')
+def test_different_column_join(rt, st, rq, sq, rdf, sdf):
+    expr = bz.join(rt, st, on_left='name', on_right='alias')
+    result = into(pd.DataFrame, compute(expr, {st: sq, rt: rq}))
+    expected = compute(expr, {st: sdf.reset_index(), rt: rdf.reset_index()})
     tm.assert_frame_equal(result, expected)
 
 
