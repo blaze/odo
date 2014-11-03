@@ -348,19 +348,8 @@ class KDB(object):
 
             result = result.raw
             if isinstance(result, np.datetime64):
-
-                # these are created by adding an offset to np.datetime64('2000-01-01','ns')
-                # which represents them in the local timezone; so since we want
-                # timezone naive have to jump some hoops
-                if result.dtype == 'M8[ms]':
-                    result = _q_base_timestamp + (result.astype('M8[ns]') - _q_base_np_datetime)
-
-                # this is M[D] dtype so ok
-                else:
-                    result = pd.Timestamp(result)
-
+                result = pd.Timestamp(result)
             elif isinstance(result, np.timedelta64):
-
                 result = pd.Timedelta(result)
 
         return result
