@@ -25,7 +25,7 @@ def test_single_projection(t, q, df):
 def test_selection(t, q, df):
     expr = t[t.id == 1]
     result = into(pd.DataFrame, compute(expr, q))
-    expected = compute(expr, df)
+    expected = compute(expr, df).reset_index(drop=True)
     tm.assert_frame_equal(result, expected)
 
 
