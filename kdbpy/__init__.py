@@ -4,8 +4,11 @@ import sys
 import platform
 
 # TODO: find out why "import blaze" makes import faster than not having it here
-import blaze
-from .compute import *
+try:
+    import blaze
+    from .compute import *
+except ImportError:
+    pass
 
 import logging
 

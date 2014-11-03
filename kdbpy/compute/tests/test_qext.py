@@ -1,4 +1,7 @@
+import pytest
 import pandas.util.testing as tm
+pytest.importorskip('blaze')
+pytest.importorskip('datashape')
 from datashape import dshape
 from blaze import compute
 
