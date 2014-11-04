@@ -18,7 +18,7 @@ def test_bar(t, q, df):
 
 
 def test_bar_date(t, q, df):
-    expr = t.when.date.bar(5)  # should be days
+    expr = t.when.date.bar(5)  # should be daily
     assert expr.fields == ['when_date']
     assert expr.dshape == dshape('var * date')
     assert expr.schema == dshape('date')
