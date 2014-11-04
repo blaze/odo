@@ -187,6 +187,8 @@ def test_nrows(t, q, df):
     assert qresult == expected
 
 
+@pytest.mark.xfail(raises=ValueError, reason='axis == 1 not supported on record'
+                   ' types')
 def test_nelements(t, q, df):
     qresult = compute(t.nelements(axis=1), q)
     expected = df.shape[1]
