@@ -21,6 +21,6 @@ if [ ! -x "\$qpath" ]; then
     chmod +x "\$qpath"
 fi
 
-\$qpath
+\$qpath \$@
 
 EOF
