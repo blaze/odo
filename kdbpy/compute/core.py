@@ -67,10 +67,6 @@ def get_wrapper(expr, types=(basestring,)):
     return q.List if isinstance(expr, types) else identity
 
 
-def manip(func, *args, **kwargs):
-    return get(q.List(*list(func(*args, **kwargs))))
-
-
 def get(x):
     """Get a q atom from a single element list or return the list.
 
@@ -119,7 +115,7 @@ def desubs(expr, t):
     >>> desubs(s, t)
     (first; `name)
     """
-    return manip(_desubs, expr, t)
+    return get(q.List(*list(_desubs(expr, t))))
 
 
 def compute_atom(atom, symbol):
