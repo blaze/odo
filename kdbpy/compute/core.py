@@ -6,18 +6,15 @@ from __future__ import absolute_import, print_function, division
 
 import numbers
 
-from .. import q
-from .qtable import QTable, tables
-
 import pandas as pd
 
-from toolz.curried import map
 from toolz.compatibility import zip
-from toolz import identity, first, second
+from toolz import map, identity, first, second
+
+from blaze import resource
 
 from blaze.dispatch import dispatch
 
-from blaze import resource
 from blaze.expr import Symbol, Projection, Selection, Field, FloorDiv
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
 from blaze.expr import nelements, Slice, Distinct, Summary, Relational
