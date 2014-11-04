@@ -27,24 +27,6 @@ from .. import q
 from .qtable import QTable, tables
 
 
-@dispatch(basestring, q.Expr)
-def compute_up(expr, data, **kwargs):
-    return q.Symbol(expr)
-
-
-@dispatch(Projection, q.Expr)
-def compute_up(expr, data, **kwargs):
-    child = compute_up(expr._child, data, **kwargs)
-    fields = list(map(q.Symbol, expr.fields))
-    return q.List('?', child, q.List(), q.Bool(), q.Dict(list(zip(fields,
-                                                                  fields))))
-
-
-@dispatch(Symbol, q.Expr)
-def compute_up(expr, data, **kwargs):
-    return q.Symbol(expr._name)
-
-
 binops = {
     '!=': q.Atom('<>'),
     '/': q.Atom('%'),
@@ -57,6 +39,20 @@ binops = {
 unops = {
     '~': q.Atom('~:'),
     '-': q.Atom('-:')
+}
+
+
+reductions = {
+    'mean': 'avg',
+    'std': 'dev',
+}
+
+
+qdatetimes = {
+    'day': 'dd',
+    'month': 'mm',
+    'hour': 'hh',
+    'second': 'ss',
 }
 
 
@@ -139,6 +135,24 @@ def _desubs(expr, t):
                 yield sube
 
 
+@dispatch(basestring, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return q.Symbol(expr)
+
+
+@dispatch(Projection, q.Expr)
+def compute_up(expr, data, **kwargs):
+    child = compute_up(expr._child, data, **kwargs)
+    fields = list(map(q.Symbol, expr.fields))
+    return q.List('?', child, q.List(), q.Bool(), q.Dict(list(zip(fields,
+                                                                  fields))))
+
+
+@dispatch(Symbol, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return q.Symbol(expr._name)
+
+
 @dispatch(numbers.Number, q.Expr)
 def compute_up(expr, data, **kwargs):
     return expr
@@ -155,11 +169,6 @@ def compute_up(expr, data, **kwargs):
     return q.List(op, lhs, rhs)
 
 
-@dispatch(FloorDiv, q.Expr)
-def compute_up(expr, data, **kwargs):
-    return q.List('_:', compute_up(expr.lhs / expr.rhs, data, **kwargs))
-
-
 @dispatch((BinOp, Relational), q.Expr, q.Expr)
 def compute_up(expr, lhs, rhs, **kwargs):
     symbol = expr.symbol
@@ -172,6 +181,11 @@ def compute_up(expr, data, **kwargs):
     symbol = expr.symbol
     result = compute_up(expr._child, data, **kwargs)
     return q.List(unops.get(symbol, symbol), result)
+
+
+@dispatch(FloorDiv, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return q.List('_:', compute_up(expr.lhs / expr.rhs, data, **kwargs))
 
 
 @dispatch(Field, q.Expr)
@@ -193,23 +207,10 @@ def post_compute(expr, data, scope):
 
 @dispatch(Selection, q.Expr)
 def compute_up(expr, data, **kwargs):
+    # template: ?[select, list of predicates, by, aggregations]
     predicate = compute_up(expr.predicate, data, **kwargs)
-    return q.List('?', compute_up(expr._child, data, **kwargs),
-                  q.List(q.List(predicate)), q.Bool(), q.List())
-
-
-reductions = {
-    'mean': 'avg',
-    'std': 'dev',
-}
-
-
-qdatetimes = {
-    'day': 'dd',
-    'month': 'mm',
-    'hour': 'hh',
-    'second': 'ss',
-}
+    select = compute_up(expr._child, data, **kwargs)
+    return q.List('?', select, q.List(q.List(predicate)), q.Bool(), q.List())
 
 
 @dispatch(DateTime, q.Expr)
