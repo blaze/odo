@@ -18,11 +18,33 @@ import pandas as pd
 import numpy as np
 from qpython import qconnection, qtemporal
 
+from datashape.predicates import isrecord
+import datashape as ds
+
 # credentials
 Credentials = namedtuple('Credentials', ['host', 'port', 'username',
                                          'password'])
 
 default_credentials = Credentials('localhost', 5001, getpass.getuser(), None)
+
+
+dstypes = {ds.bool_: 'b',
+           ds.int8: 'x',
+           ds.int16: 'h',
+           ds.int32: 'i',
+           ds.int64: 'j',
+           ds.float32: 'e',
+           ds.float64: 'f',
+           ds.string: 's',
+           ds.date_: 'd',
+           ds.datetime_: 'p',
+           ds.time_: 't'}
+
+
+def dshape_to_qtypes(ds):
+    assert isrecord(ds.measure), 'measure must be a record'
+    return ds.measure.names, ''.join(dstypes[dstype].upper()
+                                     for dstype in ds.measure.types)
 
 
 def get_credentials(host=None, port=None, username=None, password=None):
@@ -111,6 +133,54 @@ class KQ(object):
 
     def eval(self, *args, **kwargs):
         return self.kdb.eval(*args, **kwargs)
+
+    def load_csv(self, filename, table, sep=',', dshape=None):
+        """Put a CSV file's data into the Q namespace
+
+        Parameters
+        ----------
+        filename : str
+            The name of the CSV file to load
+        table : str
+            The name of the variable to construct in Q space
+        sep : str
+            The separator to pass to Q
+        dshape : datashape
+            The names and types of the columns
+
+        Returns
+        -------
+        n : int
+            The number of rows read in
+
+        Examples
+        --------
+        >>> import tempfile
+        >>> from blaze import discover
+        >>> from pandas import DataFrame
+        >>> from pandas.util.testing import ensure_clean
+        >>> df = DataFrame({'price': [1, 2, 3],
+        ...                 'sym': list('abc')}).sort_index(axis=1)
+        >>> dshape = discover(df)
+        >>> kq = KQ(get_credentials(), start='restart')
+        >>> with ensure_clean('temp.csv') as f:
+        ...     df.to_csv(f, index=False)
+        ...     kq.load_csv(f, table='trade', dshape=dshape)
+        >>> kq.eval('trade')
+           price sym
+        0      1   a
+        1      2   b
+        2      3   c
+        >>> kq.stop() # doctest: +SKIP
+        """
+        s = '{table}: {columns} xcol (("{types}"; enlist "{sep}") 0:`$"{filename}")'
+        columns, types = dshape_to_qtypes(dshape)
+        params = dict(table=table,
+                      columns=''.join('`%s' % column for column in columns),
+                      types=types,
+                      sep=sep,
+                      filename=filename)
+        return self.eval(s.format(**params))
 
 
 class Singleton(type):
