@@ -16,7 +16,7 @@ requirements:
     - numpy
     - pandas
     - blaze
-    #- q
+    - q
     - qpython
     - pytest
 
