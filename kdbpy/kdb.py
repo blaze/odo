@@ -155,7 +155,6 @@ class KQ(object):
 
         Examples
         --------
-        >>> import tempfile
         >>> from blaze import discover
         >>> from pandas import DataFrame
         >>> from pandas.util.testing import ensure_clean
