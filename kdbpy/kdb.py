@@ -261,7 +261,10 @@ class Q(object):
         """
         self.process = self.find_running_process()
         if self.process is not None:
-            self.process.terminate()
+            try:
+                self.process.terminate()
+            except psutil.NoSuchProcess:  # we've already been killed
+                pass
             del self.process
             self.process = None
             return True
