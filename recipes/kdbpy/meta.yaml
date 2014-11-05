@@ -20,9 +20,11 @@ requirements:
     - qpython
     - pytest
 
-#test:
-#  requires:
-#    - pytest
+test:
+  imports:
+    - kdbpy
+  requires:
+    - pytest
 
 #  commands:
 #    - py.test -r sxX --verbose --pyargs kdbpy
