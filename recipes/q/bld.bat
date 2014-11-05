@@ -1,4 +1,10 @@
 @echo off
-xcopy /E /I /Y %SRC_DIR% %SCRIPTS%\Q
-echo set QHOME=%%ANACONDA_ENVS%%\%%CONDA_DEFAULT_ENV%%\Scripts\Q> %SCRIPTS%\q.bat
-echo %%ANACONDA_ENVS%%\%%CONDA_DEFAULT_ENV%%\Scripts\Q\w32\q.exe>> %SCRIPTS%\q.bat
+
+set qlib=%PREFIX%\Lib\q
+mkdir %qlib%
+xcopy /E /I /Y %SRC_DIR%\* %qlib%
+
+> %PREFIX%\Scripts\q.bat (
+    @echo set QHOME=/opt/anaconda1anaconda2anaconda3/Lib/q
+    @echo %%QHOME%%\w32\q %*
+)
