@@ -26,7 +26,7 @@ def test_resource_doesnt_bork(daily):
 def test_field(daily):
     qresult = daily.price
     expr, daily = swap_resources_into_scope(qresult, {})
-    expected = compute(expr, first(daily.values()))
+    expected = compute(expr, into(pd.DataFrame, first(daily.values())))
     result = into(pd.Series, qresult)
     assert result.name == expected.name
     tm.assert_series_equal(result, expected)
@@ -42,8 +42,9 @@ def test_field_name(daily):
 def test_simple_op(daily):
     qresult = daily.price + 1
     result = into(pd.DataFrame, qresult)
+    df = into(pd.DataFrame, daily)
     expr, daily = swap_resources_into_scope(qresult, {})
-    expected = into(pd.DataFrame(columns=expr.fields), compute(expr, daily))
+    expected = into(pd.DataFrame(columns=expr.fields), compute(expr, df))
     tm.assert_frame_equal(result, expected)
 
 
@@ -84,14 +85,15 @@ def test_complex_nondate_op(daily):
     # q) select cnt: count price, size: sum size, wprice: size wavg price
     #       by sym from daily
     qresult = by(daily.sym,
-                 cnt=daily.nrows,
+                 cnt=daily.price.count(),
                  size=daily.size.sum(),
                  wprice=(daily.price * daily.size).sum() / daily.price.sum())
     assert repr(qresult)
-    result = into(pd.DataFrame, qresult)
+    result = sorted(into(list, into(pd.DataFrame, qresult).reset_index()))
     expr, daily = swap_resources_into_scope(qresult, {})
-    expected = compute(expr, first(daily.values()))
-    tm.assert_frame_equal(result, expected)
+    expected = sorted(compute(expr, into(list, into(pd.DataFrame,
+                                                    first(daily.values())))))
+    assert result == expected
 
 
 def test_issplayed(nbbo):
