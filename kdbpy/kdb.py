@@ -36,7 +36,7 @@ dstypes = {ds.bool_: 'b',
            ds.int64: 'j',
            ds.float32: 'e',
            ds.float64: 'f',
-           ds.string: 's',
+           ds.string: 'C',
            ds.date_: 'd',
            ds.datetime_: 'p',
            ds.time_: 't'}
@@ -47,7 +47,7 @@ dstypes = toolz.merge(dstypes, toolz.keymap(ds.Option, dstypes))
 
 def dshape_to_qtypes(ds):
     assert isrecord(ds.measure), 'measure must be a record'
-    return ds.measure.names, ''.join(dstypes[dstype].upper()
+    return ds.measure.names, ''.join(dstypes[dstype]
                                      for dstype in ds.measure.types)
 
 
