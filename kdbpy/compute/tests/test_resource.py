@@ -57,28 +57,19 @@ def test_complex_date_op_repr(daily, kdb):
     assert repr(result)
 
 
-@pytest.mark.xfail(raises=AssertionError, reason='Blaze does not support '
-                   'non child reductions yet')
 def test_complex_date_op(daily):
-    result = by(daily.date,
-                cnt=daily.price.count(),
-                size=daily.size.sum(),
-                wprice=(daily.price * daily.size).sum() / daily.price.sum()
-                )
-    expr, data = swap_resources_into_scope(result, {})
-    df = into(pd.DataFrame, data[expr._leaves()[0]]).set_index('date')
-    size = df.size.resample('D', how='sum')
-    wprice = df[['price',
-                 'size']].resample('D',
-                                   how=lambda x: (x.price * x.size).sum()).price
-    weights = df['price'].resample('D', how='sum')
-    wprice /= weights
-    cnt = df.price.resample('D', how=lambda x: len(x))
-    expected = pd.DataFrame({'cnt': cnt, 'size': size, 'wprice': wprice})
-    expected = expected[['cnt', 'size', 'wprice']].dropna()
-
-    assert repr(result)
-    tm.assert_frame_equal(into(pd.DataFrame, result), expected)
+    # q) select cnt: count price, size: sum size, wprice: size wavg price
+    #       by date from daily
+    qresult = by(daily.date,
+                 cnt=daily.price.count(),
+                 size=daily.size.sum(),
+                 wprice=(daily.size * daily.price).sum() / daily.price.sum())
+    assert repr(qresult)
+    result = sorted(into(list, into(pd.DataFrame, qresult).reset_index()))
+    expr, daily = swap_resources_into_scope(qresult, {})
+    expected = sorted(compute(expr, into(list, into(pd.DataFrame,
+                                                    first(daily.values())))))
+    assert result == expected
 
 
 def test_complex_nondate_op(daily):
@@ -87,7 +78,7 @@ def test_complex_nondate_op(daily):
     qresult = by(daily.sym,
                  cnt=daily.price.count(),
                  size=daily.size.sum(),
-                 wprice=(daily.price * daily.size).sum() / daily.price.sum())
+                 wprice=(daily.size * daily.price).sum() / daily.price.sum())
     assert repr(qresult)
     result = sorted(into(list, into(pd.DataFrame, qresult).reset_index()))
     expr, daily = swap_resources_into_scope(qresult, {})
