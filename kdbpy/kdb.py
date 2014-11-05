@@ -18,6 +18,7 @@ import pandas as pd
 import numpy as np
 from qpython import qconnection, qtemporal
 
+import toolz
 from datashape.predicates import isrecord
 import datashape as ds
 
@@ -39,6 +40,9 @@ dstypes = {ds.bool_: 'b',
            ds.date_: 'd',
            ds.datetime_: 'p',
            ds.time_: 't'}
+
+
+dstypes = toolz.merge(dstypes, toolz.keymap(ds.Option, dstypes))
 
 
 def dshape_to_qtypes(ds):
@@ -170,6 +174,23 @@ class KQ(object):
         0      1   a
         1      2   b
         2      3   c
+
+        With option types (the extra whitespace in the repr is necessary)
+
+        >>> import numpy as np
+        >>> from blaze import CSV
+        >>> df = DataFrame({'price': [1, 2, np.nan],
+        ...                 'sym': list('abc'),
+        ...                 'conn': list('AB') + [np.nan]})[['price', 'sym', 'conn']]
+        >>> with ensure_clean('temp.csv') as f:
+        ...     df.to_csv(f, index=False)
+        ...     csv = CSV(f)
+        ...     kq.load_csv(f, table='trade', dshape=csv.dshape)
+        >>> kq.eval('trade')
+           price sym conn
+        0      1   a    A
+        1      2   b    B
+        2    NaN   c     
         >>> kq.stop() # doctest: +SKIP
         """
         s = '{table}: {columns} xcol (("{types}"; enlist "{sep}") 0:`$"{filename}")'
@@ -179,7 +200,9 @@ class KQ(object):
                       types=types,
                       sep=sep,
                       filename=filename)
+        # import ipdb; ipdb.set_trace()
         return self.eval(s.format(**params))
+
 
 
 class Singleton(type):
