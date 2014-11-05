@@ -3,8 +3,8 @@ package:
   version: "3.2"
 
 source:
-  fn: windows.zip # [win32]
-  url: http://kx.com/347_d0szre-fr8917_llrsT4Yle-5839sdX/3.2/windows.zip # [win32]
+  fn: windows.zip # [win]
+  url: http://kx.com/347_d0szre-fr8917_llrsT4Yle-5839sdX/3.2/windows.zip # [win]
   fn: macosx.zip # [osx]
   url: http://kx.com/347_d0szre-fr8917_llrsT4Yle-5839sdX/3.2/macosx.zip # [osx]
 
