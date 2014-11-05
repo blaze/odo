@@ -205,6 +205,45 @@ class KQ(object):
     def set(self, name, x):
         self.kdb.q('set', np.string_(name), x)
 
+    def load_kdb(self, filename):
+        """Load a binary file in KDB format
+
+        Parameters
+        ----------
+        filename : str
+            The name of the CSV file to load
+
+        Returns
+        -------
+        n : int
+            The number of rows read in
+
+        Notes
+        -----
+        The extra whitespace in the examples is necessary for the doctest
+
+        Examples
+        --------
+        >>> import os
+        >>> from pandas.util.testing import ensure_clean
+        >>> kq = KQ(get_credentials(), start='restart')
+        >>> kq.eval('t: ([id: 1 2 3] name: `a`b`c; amount: 1.0 2.0 3.0)')
+        >>> kq.eval('save `t')
+        ':t'
+        >>> try:
+        ...     name = kq.load_kdb('t')
+        ...     t = kq.eval(name)
+        ... finally:
+        ...     os.remove('t')
+        >>> t
+           name  amount
+        id             
+        1     a       1
+        2     b       2
+        3     c       3
+        """
+        return self.eval('load `$"%s"' % filename)
+
 
 class Singleton(type):
     _instances = {}
