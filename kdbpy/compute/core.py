@@ -290,22 +290,23 @@ def compute_up(expr, data, **kwargs):
 @dispatch(By, q.Expr)
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
-    grouper = compute_up(expr.grouper, data, **kwargs)
-    grouper = q.Dict([(q.Symbol(expr.grouper._name), grouper)])
-    reducer = compute_up(expr.apply, data, **kwargs)
-
-    if not isinstance(expr.apply, Summary):
-        reducer = q.Dict([(q.Symbol(expr.apply._name), reducer)])
-    else:
-        # we only need the reduction dictionary from the result of a summary
-        # parse
-        reducer = reducer[-1]
-
-    qexpr = q.List('?', child, q.List(), grouper, reducer)
     table = first(kwargs['scope'].keys())
 
     # TODO: fix this using blaze core functions
-    return desubs(qexpr, table)
+    grouper = desubs(compute_up(expr.grouper, data, **kwargs), table)
+    grouper = q.Dict([(q.Symbol(expr.grouper._name), grouper)])
+    reducer = desubs(compute_up(expr.apply, data, **kwargs), table)
+
+    if isinstance(expr.apply, Summary):
+        # we only need the reduction dictionary from the result of a summary
+        # parse
+        reducer = reducer[-1]
+    else:
+        reducer = q.Dict([(q.Symbol(expr.apply._name), reducer)])
+
+    qexpr = q.List('?', child, q.List(), grouper, reducer)
+
+    return qexpr
 
 
 @dispatch(nelements, q.Expr)
@@ -341,8 +342,9 @@ def post_compute(expr, data, scope):
     leaf = expr._leaves()[0]
 
     # do this in optimize
-    subsed = expr._subs({leaf: Symbol(table.tablename, leaf.dshape)})
-    final_expr = compute_up(subsed, data, scope=scope)
+    sym = Symbol(table.tablename, leaf.dshape)
+    subsed = expr._subs({leaf: sym})
+    final_expr = compute_up(subsed, data, scope={sym: table})
     return table.engine.eval('eval [%s]' % final_expr)
 
 
