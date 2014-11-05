@@ -56,14 +56,28 @@ def test_complex_date_op_repr(daily, kdb):
     assert repr(result)
 
 
-@pytest.mark.xfail(raises=NotImplementedError,
-                   reason='Figure out DateTime issues for By expressions')
+@pytest.mark.xfail(raises=AssertionError, reason='Blaze does not support '
+                   'non child reductions yet')
 def test_complex_date_op(daily):
-    result = by(daily.date.month,
-                cnt=daily.nrows,
+    result = by(daily.date,
+                cnt=daily.price.count(),
                 size=daily.size.sum(),
-                wprice=(daily.price * daily.size).sum() / daily.price.count())
+                wprice=(daily.price * daily.size).sum() / daily.price.sum()
+                )
+    expr, data = swap_resources_into_scope(result, {})
+    df = into(pd.DataFrame, data[expr._leaves()[0]]).set_index('date')
+    size = df.size.resample('D', how='sum')
+    wprice = df[['price',
+                 'size']].resample('D',
+                                   how=lambda x: (x.price * x.size).sum()).price
+    weights = df['price'].resample('D', how='sum')
+    wprice /= weights
+    cnt = df.price.resample('D', how=lambda x: len(x))
+    expected = pd.DataFrame({'cnt': cnt, 'size': size, 'wprice': wprice})
+    expected = expected[['cnt', 'size', 'wprice']].dropna()
+
     assert repr(result)
+    tm.assert_frame_equal(into(pd.DataFrame, result), expected)
 
 
 def test_complex_nondate_op(daily):

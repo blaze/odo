@@ -6,44 +6,25 @@ from __future__ import absolute_import, print_function, division
 
 import numbers
 
-from .. import q
-from .qtable import QTable, tables
-
-import qpython.qcollection
-
 import pandas as pd
+
+from toolz.compatibility import zip
+from toolz import map, identity, first, second
+
+from blaze import resource
 
 from blaze.dispatch import dispatch
 
-import blaze as bz
-from blaze import resource
-from blaze.expr import Symbol, Projection, Selection, Field
+from blaze.expr import Symbol, Projection, Selection, Field, FloorDiv
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
 from blaze.expr import nelements, Slice, Distinct, Summary, Relational
+from blaze.expr import DateTime, Millisecond, Microsecond
+from blaze.expr.datetime import Minute
 
 from datashape.predicates import isrecord
 
-from toolz.curried import map
-from toolz.compatibility import zip
-from toolz import identity, first, second
-
-
-@dispatch(basestring, q.Expr)
-def compute_up(expr, data, **kwargs):
-    return q.Symbol(expr)
-
-
-@dispatch(Projection, q.Expr)
-def compute_up(expr, data, **kwargs):
-    child = compute_up(expr._child, data, **kwargs)
-    fields = list(map(q.Symbol, expr.fields))
-    return q.List('?', child, q.List(), q.Bool(), q.Dict(list(zip(fields,
-                                                                  fields))))
-
-
-@dispatch(Symbol, q.Expr)
-def compute_up(expr, data, **kwargs):
-    return q.Symbol(expr._name)
+from .. import q
+from .qtable import QTable, tables
 
 
 binops = {
@@ -61,12 +42,22 @@ unops = {
 }
 
 
+reductions = {
+    'mean': 'avg',
+    'std': 'dev',
+}
+
+
+qdatetimes = {
+    'day': 'dd',
+    'month': 'mm',
+    'hour': 'hh',
+    'second': 'ss',
+}
+
+
 def get_wrapper(expr, types=(basestring,)):
     return q.List if isinstance(expr, types) else identity
-
-
-def manip(func, *args, **kwargs):
-    return get(q.List(*list(func(*args, **kwargs))))
 
 
 def get(x):
@@ -117,7 +108,7 @@ def desubs(expr, t):
     >>> desubs(s, t)
     (first; `name)
     """
-    return manip(_desubs, expr, t)
+    return get(q.List(*list(_desubs(expr, t))))
 
 
 def compute_atom(atom, symbol):
@@ -142,6 +133,24 @@ def _desubs(expr, t):
                               for k, v in sube.items()])
             else:  # isinstance(sube, (basestring, numbers.Number, q.Bool)):
                 yield sube
+
+
+@dispatch(basestring, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return q.Symbol(expr)
+
+
+@dispatch(Projection, q.Expr)
+def compute_up(expr, data, **kwargs):
+    child = compute_up(expr._child, data, **kwargs)
+    fields = list(map(q.Symbol, expr.fields))
+    return q.List('?', child, q.List(), q.Bool(), q.Dict(list(zip(fields,
+                                                                  fields))))
+
+
+@dispatch(Symbol, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return q.Symbol(expr._name)
 
 
 @dispatch(numbers.Number, q.Expr)
@@ -174,6 +183,11 @@ def compute_up(expr, data, **kwargs):
     return q.List(unops.get(symbol, symbol), result)
 
 
+@dispatch(FloorDiv, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return q.List('_:', compute_up(expr.lhs / expr.rhs, data, **kwargs))
+
+
 @dispatch(Field, q.Expr)
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
@@ -193,15 +207,45 @@ def post_compute(expr, data, scope):
 
 @dispatch(Selection, q.Expr)
 def compute_up(expr, data, **kwargs):
+    # template: ?[select, list of predicates, by, aggregations]
     predicate = compute_up(expr.predicate, data, **kwargs)
-    return q.List('?', compute_up(expr._child, data, **kwargs),
-                  q.List(q.List(predicate)), q.Bool(), q.List())
+    select = compute_up(expr._child, data, **kwargs)
+    return q.List('?', select, q.List(q.List(predicate)), q.Bool(), q.List())
 
 
-reductions = {
-    'mean': 'avg',
-    'std': 'dev',
-}
+@dispatch(DateTime, q.Expr)
+def compute_up(expr, data, **kwargs):
+    attr = expr.attr
+    attr = qdatetimes.get(attr, attr)
+    return q.Symbol('.'.join((expr._child._child._name, expr._child._name,
+                              attr)))
+
+
+@dispatch(Microsecond, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return q.List('_:',
+                  q.List('%',
+                         q.List('mod',
+                                q.List('$', q.List(q.Symbol('long')),
+                                       q.Symbol('%s.%s' %
+                                                (expr._child._child._name,
+                                                 expr._child._name))),
+                                int(1e9)),
+                         int(1e3)))
+
+
+@dispatch(Millisecond, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return compute_up(expr._child.microsecond // 1000, data, **kwargs)
+
+
+@dispatch(Minute, q.Expr)
+def compute_up(expr, data, **kwargs):
+    # q has mm for time types and mm for datetime and date types, this makes -1
+    # amount of sense, so we bypass that and compute it our damn selves using
+    # (`long$expr.minute) mod 60
+    return q.List('mod', q.List('$', q.List(q.Symbol('long')),
+                                q.Symbol(str(expr))), 60)
 
 
 @dispatch(Reduction, q.Expr)
@@ -305,7 +349,6 @@ def post_compute(expr, data, scope):
 @dispatch(Join, q.Expr, dict)
 def post_compute(expr, data, scope):
     # never a Data object
-    # import ipdb; ipdb.set_trace()
     tables = set(x for x in scope.values() if isinstance(x, QTable))
     table = first(tables)
     # leaf = expr._leaves()[0]
@@ -368,6 +411,11 @@ def compute_up(expr, data, **kwargs):
     return compute_up(expr, q.Symbol(data.tablename), **kwargs)
 
 
+@dispatch(Expr, QTable)
+def compute_down(expr, data, **kwargs):
+    return compute_down(expr, q.Symbol(data.tablename), **kwargs)
+
+
 @dispatch(QTable)
 def discover(t):
     return tables(t.engine)[t.tablename].dshape
@@ -376,3 +424,8 @@ def discover(t):
 @resource.register('kdb://.+', priority=13)
 def resource_kdb(uri, name, **kwargs):
     return QTable(uri, name=name, **kwargs)
+
+
+@dispatch(pd.DataFrame, QTable)
+def into(_, t, **kwargs):
+    return t.engine.eval(t.tablename)

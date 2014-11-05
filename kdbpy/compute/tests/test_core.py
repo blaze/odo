@@ -25,7 +25,7 @@ def test_single_projection(t, q, df):
 def test_selection(t, q, df):
     expr = t[t.id == 1]
     result = into(pd.DataFrame, compute(expr, q))
-    expected = compute(expr, df)
+    expected = compute(expr, df).reset_index(drop=True)
     tm.assert_frame_equal(result, expected)
 
 
@@ -187,6 +187,8 @@ def test_nrows(t, q, df):
     assert qresult == expected
 
 
+@pytest.mark.xfail(raises=ValueError, reason='axis == 1 not supported on record'
+                   ' types')
 def test_nelements(t, q, df):
     qresult = compute(t.nelements(axis=1), q)
     expected = df.shape[1]
@@ -195,7 +197,8 @@ def test_nelements(t, q, df):
 
 def test_discover(q):
     assert (str(discover(q)) ==
-            str(dshape('var * {name: string, id: int64, amount: float64}')))
+            str(dshape('var * {name: string, id: int64, amount: float64, '
+                       'when: datetime, on: date}')))
 
 
 def test_into_from_keyed(rq, rdf):
@@ -292,3 +295,14 @@ def test_distinct(t, q, df):
     result = compute(expr, q)
     expected = compute(expr, df)
     tm.assert_series_equal(result, expected)
+
+
+@pytest.mark.parametrize('attr', [pytest.mark.xfail('date'),
+                                  'year', 'month', 'day', 'hour',
+                                  'minute', 'second', 'millisecond',
+                                  'microsecond'])
+def test_dates(t, q, df, attr):
+    expr = getattr(t.when, attr)
+    result = compute(expr, q)
+    expected = compute(expr, df)
+    tm.assert_series_equal(result, expected, check_dtype=False)
