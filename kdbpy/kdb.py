@@ -200,7 +200,6 @@ class KQ(object):
                       types=types,
                       sep=sep,
                       filename=filename)
-        # import ipdb; ipdb.set_trace()
         return self.eval(s.format(**params))
 
 
