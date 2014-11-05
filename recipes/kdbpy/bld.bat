@@ -1,5 +1,5 @@
 
 SET BLD_DIR=%CD%
-cd /D "%RECIPE_DIR%\.."
+cd /D "%RECIPE_DIR%\..\.."
 
 "%PYTHON%" setup.py install
