@@ -306,3 +306,21 @@ def test_dates(t, q, df, attr):
     result = compute(expr, q)
     expected = compute(expr, df)
     tm.assert_series_equal(result, expected, check_dtype=False)
+
+
+def test_by_with_where(t, q, df):
+    r = t[t.amount > 1]
+    expr = by(r.name, s=r.amount.sum(), m=r.amount.mean())
+    result = compute(expr, q)
+    expected = compute(expr, df)
+    expected = expected.set_index('name')
+    tm.assert_frame_equal(result, expected)
+
+
+def test_by_with_complex_where(t, q, df):
+    r = t[((t.amount > 1) & (t.id > 0)) | (t.amount < 4)]
+    expr = by(r.name, s=r.amount.sum(), m=r.amount.mean())
+    result = compute(expr, q)
+    expected = compute(expr, df)
+    expected = expected.set_index('name')
+    tm.assert_frame_equal(result, expected)
