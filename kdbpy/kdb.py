@@ -152,11 +152,6 @@ class KQ(object):
         dshape : datashape
             The names and types of the columns
 
-        Returns
-        -------
-        n : int
-            The number of rows read in
-
         Examples
         --------
         >>> from blaze import discover
@@ -211,16 +206,12 @@ class KQ(object):
         Parameters
         ----------
         filename : str
-            The name of the CSV file to load
+            The name of the kdb file to load. Must be a valid Q identifier
 
         Returns
         -------
-        n : int
-            The number of rows read in
-
-        Notes
-        -----
-        The extra whitespace in the examples is necessary for the doctest
+        name : str
+            The name of the table loaded
 
         Examples
         --------
@@ -235,6 +226,8 @@ class KQ(object):
         ...     t = kq.eval(name)
         ... finally:
         ...     os.remove('t')
+        >>> name
+        't'
         >>> t
            name  amount
         id             
