@@ -203,7 +203,6 @@ class KQ(object):
         return self.eval(s.format(**params))
 
 
-
 class Singleton(type):
     _instances = {}
 
