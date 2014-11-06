@@ -275,3 +275,24 @@ e,2010-10-05D00:00:01"""
     result = kdb.eval(gensym)
     tm.assert_frame_equal(expected, result)
     assert expected.date.dtype == np.dtype('datetime64[ns]')
+
+
+def test_tables(kdb, kdbpar):
+    tb = kdb.tables
+
+    # we have at least our baked in names
+    assert set(tb.name)
+    assert set(['t', 'rt', 'st']).issubset(set(tb.name))
+
+    # and they have non-empty kind that are well defined
+    assert set(tb.kind)
+    assert set(tb.kind).issubset(set(['standard', 'partitioned', 'splayed']))
+
+
+def test_memory(kdb):
+    mem = kdb.memory
+    assert isinstance(mem, pd.Series)
+    assert not mem.empty
+    assert mem.name == 'memory'
+    assert set(mem.index) == set(['used', 'heap', 'peak', 'wmax', 'mmap',
+                                  'mphy', 'syms', 'symw'])

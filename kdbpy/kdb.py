@@ -237,6 +237,20 @@ class KQ(object):
         """
         return self.eval(r'\l %s' % filename)
 
+    @property
+    def tables(self):
+        types = {True: 'par', False: 'splay', 0: 'bin'}
+        names = self.eval(r'\a').tolist()
+        parted = pd.Series(self.eval(r'{[x] .Q.qp eval x} each value "\\a"'))
+        import ipdb; ipdb.set_trace()
+        return pd.DataFrame({'name': names,
+                             'kind': pd.Series(types)[parted].values})
+
+    @property
+    def memory(self):
+        result = self.eval('.Q.w[]')
+        return pd.Series(result.values, index=result.keys, name='memory')
+
 
 class Singleton(type):
     _instances = {}
