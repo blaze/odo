@@ -9,12 +9,15 @@ import pytest
 import pandas as pd
 import kdbpy
 import toolz
-from kdbpy import kdb
+from kdbpy import kdb as k
+
 from kdbpy.kdb import which
 import pandas.util.testing as tm
+
 import qpython
 import qpython.qwriter
 
+from blaze import CSV
 
 try:
     from cStringIO import StringIO
@@ -23,7 +26,7 @@ except ImportError:  # pragma: no cover
 
 
 def test_basic():
-    kq = kdb.KQ()
+    kq = k.KQ()
     assert not kq.is_started
     kq.start()
     assert kq.is_started
@@ -40,54 +43,54 @@ def test_basic():
     kq.stop()
 
     # context
-    with kdb.KQ() as kq:
+    with k.KQ() as kq:
         assert kq.is_started
 
 
 def test_kq_repr():
     expected = ''
-    with kdb.KQ() as kq:
+    with k.KQ() as kq:
         assert repr(kq) == expected
 
 
 def test_eval_context():
-    with kdb.KQ() as kq:
+    with k.KQ() as kq:
         assert kq.eval('2 + 2') == 4
 
 
 def test_credentials():
-    cred = kdb.get_credentials(host='foo', port=1000)
+    cred = k.get_credentials(host='foo', port=1000)
     assert cred.host == 'foo'
     assert cred.port == 1000
 
 
 def test_q_process():
-    cred = kdb.get_credentials()
-    q = kdb.Q(cred).start()
+    cred = k.get_credentials()
+    q = k.Q(cred).start()
 
     assert q is not None
     assert q.pid
     assert q.process is not None
 
     # other instance
-    q2 = kdb.Q(cred).start()
+    q2 = k.Q(cred).start()
     assert q is q2
 
     # invalid instance
-    c = kdb.get_credentials(host='foo', port=1000)
+    c = k.get_credentials(host='foo', port=1000)
     with pytest.raises(ValueError):
-        kdb.Q(c)
+        k.Q(c)
 
     # restart
     prev = q.pid
-    q = kdb.Q(cred).start(start=True)
+    q = k.Q(cred).start(start=True)
     assert q.pid == prev
 
-    q2 = kdb.Q().start(start='restart')
+    q2 = k.Q().start(start='restart')
     assert q2.pid != prev
 
     with pytest.raises(ValueError):
-        kdb.Q(cred).start(start=False)
+        k.Q(cred).start(start=False)
 
     # terminate
     q2.stop()
@@ -106,78 +109,68 @@ def test_q_process_detached(qproc):
 
 @pytest.fixture(scope='module')
 def creds():
-    return kdb.get_credentials()
+    return k.get_credentials()
 
 
 @pytest.yield_fixture(scope='module')
 def qproc(creds):
-    q = kdb.Q(creds).start()
+    q = k.Q(creds).start()
     yield q
     q.stop()
 
 
 def test_construction(creds):
-    k = kdb.KDB(credentials=creds).start()
-    assert k.is_started
+    kdb = k.KDB(credentials=creds).start()
+    assert kdb.is_started
 
     # repr
-    result = str(k)
+    result = str(kdb)
     assert '[KDB: Credentials(' in result
     assert '-> connected' in result
 
-    k.stop()
-    assert not k.is_started
+    kdb.stop()
+    assert not kdb.is_started
 
-    result = str(k)
+    result = str(kdb)
     assert 'KDB: [client/server not started]'
 
     # require initilization
-    cred = kdb.get_credentials(port=0)
-    k = kdb.KDB(credentials=cred)
+    cred = k.get_credentials(port=0)
+    kdb = k.KDB(credentials=cred)
     with pytest.raises(ValueError):
-        k.start()
+        kdb.start()
 
 
-@pytest.yield_fixture(scope='module')
-def k(creds, qproc):
-    creds = kdb.get_credentials()
-    k = kdb.KDB(credentials=creds).start()
-    yield k
-    k.stop()
-
-
-def test_eval(k):
+def test_eval(kdb):
     # test function API
-    assert k.eval('42') == 42
-    f = lambda: k.eval('42') + 1
-    assert k.eval(f) == 43
-    assert k.eval(lambda x: x+5, 42) == 47
+    assert kdb.eval('42') == 42
+    f = lambda: kdb.eval('42') + 1
+    assert kdb.eval(f) == 43
+    assert kdb.eval(lambda x: x+5, 42) == 47
 
 
-def test_scalar_datetime_like_conversions(k):
+def test_scalar_datetime_like_conversions(kdb):
 
     # datetimes
     # only parses to ms resolutions
-    result = k.eval('2001.01.01T09:30:00.123')
+    result = kdb.eval('2001.01.01T09:30:00.123')
     assert result == pd.Timestamp('2001-01-01 09:30:00.123')
 
-    result = k.eval('2006.07.04T09:04:59:000')
+    result = kdb.eval('2006.07.04T09:04:59:000')
     assert result == pd.Timestamp('2006-07-04 09:04:59')
 
-    result = k.eval('2001.01.01')
+    result = kdb.eval('2001.01.01')
     assert result == pd.Timestamp('2001-01-01')
 
     # timedeltas
-    result = k.eval('00:01')
+    result = kdb.eval('00:01')
     assert result == pd.Timedelta('1 min')
-    result = k.eval('00:00:01')
+    result = kdb.eval('00:00:01')
     assert result == pd.Timedelta('1 sec')
 
 
-def test_repr(k):
-    expected = ("[KDB: Credentials(host='localhost', port=5001, "
-                "username='pcloud', password=None) -> connected]")
-    assert repr(k) == expected
+def test_repr_smoke(kdb):
+    assert repr(kdb)
 
 
 def test_print_versions():
@@ -221,3 +214,23 @@ def test_set_complex(gensym, kdb):
     kdb.set(gensym, 1.0j)
     result = kdb.eval(gensym)
     assert result == 1.0j
+
+
+def test_date(kdb, gensym):
+    csvdata = """name,date
+a,2010-10-01
+b,2010-10-02
+c,2010-10-03
+d,2010-10-04
+e,2010-10-05
+"""
+    with tm.ensure_clean('tmp.csv') as fname:
+        with open(fname, 'wb') as f:
+            f.write(csvdata)
+
+        dshape = CSV(fname, header=0).dshape
+        kdb.read_csv(fname, table=gensym, dshape=dshape)
+
+        expected = pd.read_csv(fname, header=0, parse_dates=['date'])
+    result = kdb.eval(gensym)
+    tm.assert_frame_equal(expected, result)
