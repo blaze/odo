@@ -3,6 +3,14 @@ import pytest
 from .kdb import KQ, get_credentials
 from kdbpy.exampleutils import example_data
 
+x = [0]
+
+
+@pytest.fixture
+def gensym():
+    x[0] += 1
+    return 'sym%d' % x[0]
+
 
 @pytest.yield_fixture(scope='module')
 def kdb():
@@ -46,5 +54,3 @@ def rdf(kdb):
 @pytest.fixture
 def sdf(kdb):
     return kdb.eval('st')
-
-
