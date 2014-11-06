@@ -1,6 +1,6 @@
 package:
   name: kdbpy
-  version: 0.0.4
+  version: 0.0.5
 
 build:
     number: 1
@@ -15,8 +15,7 @@ requirements:
     - python
     - numpy
     - pandas
-    - blaze 0.6.5
-    - datashape 0.4.1
+    - blaze
     - q
     - qpython
     - pytest
