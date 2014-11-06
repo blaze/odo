@@ -234,3 +234,23 @@ e,2010-10-05
         expected = pd.read_csv(fname, header=0, parse_dates=['date'])
     result = kdb.eval(gensym)
     tm.assert_frame_equal(expected, result)
+
+
+def test_timestamp(kdb, gensym):
+    csvdata = """name,date
+a,2010-10-01 00:00:05
+b,2010-10-02 00:00:04
+c,2010-10-03 00:00:03
+d,2010-10-04 00:00:02
+e,2010-10-05 00:00:01
+"""
+    with tm.ensure_clean('tmp.csv') as fname:
+        with open(fname, 'wb') as f:
+            f.write(csvdata)
+
+        dshape = CSV(fname, header=0).dshape
+        kdb.read_csv(fname, table=gensym, dshape=dshape)
+
+        expected = pd.read_csv(fname, header=0, parse_dates=['date'])
+    result = kdb.eval(gensym)
+    tm.assert_frame_equal(expected, result)
