@@ -202,6 +202,9 @@ class KQ(object):
                       filename=filename)
         return self.eval(s.format(**params))
 
+    def set(self, name, x):
+        self.kdb.q('set', np.string_(name), x)
+
 
 class Singleton(type):
     _instances = {}
