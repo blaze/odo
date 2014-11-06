@@ -163,7 +163,7 @@ class KQ(object):
         >>> kq = KQ(get_credentials(), start='restart')
         >>> with ensure_clean('temp.csv') as f:
         ...     df.to_csv(f, index=False)
-        ...     kq.load_csv(f, table='trade', dshape=dshape)
+        ...     kq.read_csv(f, table='trade', dshape=dshape)
         >>> kq.eval('trade')
            price sym
         0      1   a
@@ -180,7 +180,7 @@ class KQ(object):
         >>> with ensure_clean('temp.csv') as f:
         ...     df.to_csv(f, index=False)
         ...     csv = CSV(f)
-        ...     kq.load_csv(f, table='trade', dshape=csv.dshape)
+        ...     kq.read_csv(f, table='trade', dshape=csv.dshape)
         >>> kq.eval('trade')
            price sym conn
         0      1   a    A
@@ -222,7 +222,7 @@ class KQ(object):
         >>> kq.eval('save `t')
         ':t'
         >>> try:
-        ...     name = kq.load_kdb('t')
+        ...     name = kq.read_kdb('t')
         ...     t = kq.eval(name)
         ... finally:
         ...     os.remove('t')
