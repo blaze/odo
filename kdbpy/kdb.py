@@ -138,7 +138,7 @@ class KQ(object):
     def eval(self, *args, **kwargs):
         return self.kdb.eval(*args, **kwargs)
 
-    def load_csv(self, filename, table, sep=',', dshape=None):
+    def read_csv(self, filename, table, sep=',', dshape=None):
         """Put a CSV file's data into the Q namespace
 
         Parameters
@@ -200,7 +200,7 @@ class KQ(object):
     def set(self, name, x):
         self.kdb.q('set', np.string_(name), x)
 
-    def load_kdb(self, filename):
+    def read_kdb(self, filename):
         """Load a binary file in KDB format
 
         Parameters
