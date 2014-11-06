@@ -235,7 +235,7 @@ class KQ(object):
         2     b       2
         3     c       3
         """
-        return self.eval('load `$"%s"' % filename)
+        return self.eval(r'\l %s' % filename)
 
 
 class Singleton(type):
