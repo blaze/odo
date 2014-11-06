@@ -36,7 +36,7 @@ dstypes = {ds.bool_: 'b',
            ds.int64: 'j',
            ds.float32: 'e',
            ds.float64: 'f',
-           ds.string: 'C',
+           ds.string: '*',
            ds.date_: 'd',
            ds.datetime_: 'p',
            ds.time_: 't'}
@@ -138,7 +138,7 @@ class KQ(object):
     def eval(self, *args, **kwargs):
         return self.kdb.eval(*args, **kwargs)
 
-    def load_csv(self, filename, table, sep=',', dshape=None):
+    def read_csv(self, filename, table, sep=',', dshape=None):
         """Put a CSV file's data into the Q namespace
 
         Parameters
@@ -152,11 +152,6 @@ class KQ(object):
         dshape : datashape
             The names and types of the columns
 
-        Returns
-        -------
-        n : int
-            The number of rows read in
-
         Examples
         --------
         >>> from blaze import discover
@@ -168,7 +163,7 @@ class KQ(object):
         >>> kq = KQ(get_credentials(), start='restart')
         >>> with ensure_clean('temp.csv') as f:
         ...     df.to_csv(f, index=False)
-        ...     kq.load_csv(f, table='trade', dshape=dshape)
+        ...     kq.read_csv(f, table='trade', dshape=dshape)
         >>> kq.eval('trade')
            price sym
         0      1   a
@@ -185,7 +180,7 @@ class KQ(object):
         >>> with ensure_clean('temp.csv') as f:
         ...     df.to_csv(f, index=False)
         ...     csv = CSV(f)
-        ...     kq.load_csv(f, table='trade', dshape=csv.dshape)
+        ...     kq.read_csv(f, table='trade', dshape=csv.dshape)
         >>> kq.eval('trade')
            price sym conn
         0      1   a    A
@@ -204,6 +199,43 @@ class KQ(object):
 
     def set(self, name, x):
         self.kdb.q('set', np.string_(name), x)
+
+    def read_kdb(self, filename):
+        """Load a binary file in KDB format
+
+        Parameters
+        ----------
+        filename : str
+            The name of the kdb file to load. Must be a valid Q identifier
+
+        Returns
+        -------
+        name : str
+            The name of the table loaded
+
+        Examples
+        --------
+        >>> import os
+        >>> from pandas.util.testing import ensure_clean
+        >>> kq = KQ(get_credentials(), start='restart')
+        >>> kq.eval('t: ([id: 1 2 3] name: `a`b`c; amount: 1.0 2.0 3.0)')
+        >>> kq.eval('save `t')
+        ':t'
+        >>> try:
+        ...     name = kq.read_kdb('t')
+        ...     t = kq.eval(name)
+        ... finally:
+        ...     os.remove('t')
+        >>> name
+        't'
+        >>> t
+           name  amount
+        id             
+        1     a       1
+        2     b       2
+        3     c       3
+        """
+        return self.eval(r'\l %s' % filename)
 
 
 class Singleton(type):
