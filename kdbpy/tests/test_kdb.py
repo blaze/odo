@@ -202,25 +202,22 @@ def test_cannot_find_q():
             which('q')
 
 
-def test_set_data_frame(kdb, df):
-    name = 'gensym'
-    kdb.set(name, df)
-    result = kdb.eval(name)
+def test_set_data_frame(gensym, kdb, df):
+    kdb.set(gensym, df)
+    result = kdb.eval(gensym)
     tm.assert_frame_equal(result, df)
 
 
 @pytest.mark.parametrize('obj', (1, 1.0, 'a'))
-def test_set_objects(kdb, obj):
-    name = 'gensym'
-    kdb.set(name, obj)
-    assert kdb.eval(name) == obj
+def test_set_objects(gensym, kdb, obj):
+    kdb.set(gensym, obj)
+    assert kdb.eval(gensym) == obj
 
 
 @pytest.mark.xfail(raises=qpython.qwriter.QWriterException,
                    reason='qpython does not implement deserialization of '
                    'complex numbers')
-def test_set_complex(kdb):
-    name = 'gensym'
-    kdb.set(name, 1.0j)
-    result = kdb.eval(name)
+def test_set_complex(gensym, kdb):
+    kdb.set(gensym, 1.0j)
+    result = kdb.eval(gensym)
     assert result == 1.0j
