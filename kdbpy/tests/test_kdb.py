@@ -7,17 +7,18 @@ from contextlib import contextmanager
 
 import pytest
 import pandas as pd
-import kdbpy
-import toolz
-from kdbpy import kdb as k
-
-from kdbpy.kdb import which
 import pandas.util.testing as tm
+import numpy as np
+import toolz
+import kdbpy
+
+from blaze import CSV
 
 import qpython
 import qpython.qwriter
 
-from blaze import CSV
+from kdbpy import kdb as k
+from kdbpy.kdb import which
 
 try:
     from cStringIO import StringIO
@@ -222,8 +223,7 @@ a,2010-10-01
 b,2010-10-02
 c,2010-10-03
 d,2010-10-04
-e,2010-10-05
-"""
+e,2010-10-05"""
     with tm.ensure_clean('tmp.csv') as fname:
         with open(fname, 'wb') as f:
             f.write(csvdata)
@@ -242,8 +242,7 @@ a,2010-10-01 00:00:05
 b,2010-10-02 00:00:04
 c,2010-10-03 00:00:03
 d,2010-10-04 00:00:02
-e,2010-10-05 00:00:01
-"""
+e,2010-10-05 00:00:01"""
     with tm.ensure_clean('tmp.csv') as fname:
         with open(fname, 'wb') as f:
             f.write(csvdata)
@@ -254,3 +253,25 @@ e,2010-10-05 00:00:01
         expected = pd.read_csv(fname, header=0, parse_dates=['date'])
     result = kdb.eval(gensym)
     tm.assert_frame_equal(expected, result)
+
+
+@pytest.mark.xfail(raises=AssertionError,
+                   reason="Can't parse D timestamp as timestamps yet")
+def test_write_timestamp_from_q(kdb, gensym):
+    csvdata = """name,date
+a,2010-10-01D00:00:05
+b,2010-10-02D00:00:04
+c,2010-10-03D00:00:03
+d,2010-10-04D00:00:02
+e,2010-10-05D00:00:01"""
+    with tm.ensure_clean('tmp.csv') as fname:
+        with open(fname, 'wb') as f:
+            f.write(csvdata)
+
+        dshape = CSV(fname, header=0).dshape
+        kdb.read_csv(fname, table=gensym, dshape=dshape)
+
+        expected = pd.read_csv(fname, header=0, parse_dates=['date'])
+    result = kdb.eval(gensym)
+    tm.assert_frame_equal(expected, result)
+    assert expected.date.dtype == np.dtype('datetime64[ns]')
