@@ -11,6 +11,10 @@ import kdbpy
 import toolz
 from kdbpy import kdb
 from kdbpy.kdb import which
+import pandas.util.testing as tm
+import qpython
+import qpython.qwriter
+
 
 try:
     from cStringIO import StringIO
@@ -196,3 +200,27 @@ def test_cannot_find_q():
     with remove_from_path(remove_this):
         with pytest.raises(OSError):
             which('q')
+
+
+def test_set_data_frame(kdb, df):
+    name = 'gensym'
+    kdb.set(name, df)
+    result = kdb.eval(name)
+    tm.assert_frame_equal(result, df)
+
+
+@pytest.mark.parametrize('obj', (1, 1.0, 'a'))
+def test_set_objects(kdb, obj):
+    name = 'gensym'
+    kdb.set(name, obj)
+    assert kdb.eval(name) == obj
+
+
+@pytest.mark.xfail(raises=qpython.qwriter.QWriterException,
+                   reason='qpython does not implement deserialization of '
+                   'complex numbers')
+def test_set_complex(kdb):
+    name = 'gensym'
+    kdb.set(name, 1.0j)
+    result = kdb.eval(name)
+    assert result == 1.0j
