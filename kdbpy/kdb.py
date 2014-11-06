@@ -36,7 +36,7 @@ dstypes = {ds.bool_: 'b',
            ds.int64: 'j',
            ds.float32: 'e',
            ds.float64: 'f',
-           ds.string: 'C',
+           ds.string: '*',
            ds.date_: 'd',
            ds.datetime_: 'p',
            ds.time_: 't'}
