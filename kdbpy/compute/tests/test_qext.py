@@ -30,8 +30,8 @@ def test_bar_date(t, q, df):
 
     expected = pd.Series([pd.Timestamp('2003-12-01'),
                           pd.Timestamp('2004-01-25'),
-                          pd.Timestamp('2004-06-23'),
-                          pd.Timestamp('2004-08-27'),
+                          pd.Timestamp('2004-01-25'),
+                          pd.Timestamp('2005-02-28'),
                           pd.Timestamp('2005-02-28'),
                           pd.Timestamp('2005-02-28')],
                          name='when_date')
