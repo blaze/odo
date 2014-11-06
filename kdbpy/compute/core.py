@@ -325,7 +325,7 @@ def compute_up(expr, data, **kwargs):
     reducer = desubs(reducer, table)
 
     # desubs gets the single element out of a single element list, but Q
-    # requires a single element list of ANDs
+    # requires a single element list of conditions
     where = q.List(desubs(where, table))
 
     if isinstance(expr.apply, Summary):
