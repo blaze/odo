@@ -25,7 +25,7 @@ from blaze.expr import common_subexpression, Arithmetic, And
 from datashape.predicates import isrecord
 
 from .. import q
-from .qtable import QTable, tables
+from .qtable import QTable, tables, ispartitioned
 
 
 binops = {
@@ -358,6 +358,9 @@ def compute_up(expr, data, **kwargs):
 
     # TODO: generate different code if we are a partitioned table
     # we need to use the global index to do this
+    root = expr._leaves()[0]
+    if expr._child.isidentical(root) and ispartitioned(kwargs['scope'][root]):
+        return q.List('.Q.ind', child, q.List('til', expr.n))
 
     # q repeats if the N of take is larger than the number of rows, so we
     # need to get the min of the number of rows and the requested N from the
