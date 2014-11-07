@@ -296,3 +296,25 @@ def test_memory(kdb):
     assert mem.name == 'memory'
     assert set(mem.index) == set(['used', 'heap', 'peak', 'wmax', 'mmap',
                                   'mphy', 'syms', 'symw'])
+
+
+def test_csv_types(kdb, gensym):
+    csvdata = """name,date,count,amount,sym
+a,2010-10-01 00:00:05,1,1.0,`a
+b,2010-10-02 00:00:04,2,,`b
+c,2010-10-03 00:00:03,3,3.0,`c
+d,2010-10-04 00:00:02,4,4.0,`d
+e,2010-10-05 00:00:01,5,5.0,`e"""
+    with tm.ensure_clean('tmp.csv') as fname:
+        with open(fname, 'wb') as f:
+            f.write(csvdata)
+        dshape = CSV(fname, header=0).dshape
+        kdb.read_csv(fname, table=gensym, dshape=dshape)
+        expected = pd.read_csv(fname, header=0, parse_dates=['date'])
+    result = kdb.eval(gensym)
+    tm.assert_frame_equal(expected, result, check_dtype=False)
+    assert result.name.dtype == np.dtype(object)
+    assert result['count'].dtype == np.dtype('int16')
+    assert result.amount.dtype == np.dtype('float32')
+    assert result.sym.dtype == np.dtype(object)
+    assert result.date.dtype == np.dtype('datetime64[ns]')

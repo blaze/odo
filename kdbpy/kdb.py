@@ -193,12 +193,12 @@ class KQ(object):
         columns, types = dshape_to_qtypes(csv.dshape)
         # offset = first_newline_offset(csv.path)
         params = dict(table=table,
-                      columns=''.join('`$"%s"' % column for column in columns),
+                      columns='; '.join('`$"%s"' % column for column in columns),
                       filename=filename)
         self.eval(r'\l %s' % os.path.join(os.path.dirname(__file__), 'q',
                                           'csvutil.q'))
-        self.eval('{table}: {columns} xcol '
-                  '.csv.read[`$":{filename}"]'.format(**params))
+        s = '{table}: ({columns}) xcol .csv.read[`$":{filename}"]'.format(**params)
+        self.eval(s)
 
     def set(self, name, x):
         self.kdb.q('set', np.string_(name), x)
