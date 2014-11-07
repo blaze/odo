@@ -113,8 +113,9 @@ def desubs(expr, t):
 
 
 def compute_atom(atom, symbol):
-    if '.' in atom.s and atom.s.startswith(symbol._name):
-        return type(atom)(second(atom.s.rsplit('.', 1)))
+    s = getattr(atom, 'str', atom.s)
+    if '.' in s and s.startswith(symbol._name):
+        return type(atom)(second(s.split('.', 1)))
     return atom
 
 
@@ -208,7 +209,7 @@ def post_compute(expr, data, scope):
 
 @dispatch(Selection, q.Expr)
 def compute_up(expr, data, **kwargs):
-    # template: ?[select, list of predicates, by, aggregations]
+    # template: ?[selectable, predicate or list of predicates, by, aggregations]
     predicate = compute_up(expr.predicate, data, **kwargs)
     select = compute_up(expr._child, data, **kwargs)
     return q.List('?', select, q.List(q.List(predicate)), q.Bool(), q.List())
@@ -218,8 +219,7 @@ def compute_up(expr, data, **kwargs):
 def compute_up(expr, data, **kwargs):
     attr = expr.attr
     attr = qdatetimes.get(attr, attr)
-    return q.Symbol('.'.join((expr._child._child._name, expr._child._name,
-                              attr)))
+    return q.Symbol(expr._child._child._name, expr._child._name, attr)
 
 
 @dispatch(Microsecond, q.Expr)
@@ -228,9 +228,8 @@ def compute_up(expr, data, **kwargs):
                   q.List('%',
                          q.List('mod',
                                 q.List('$', q.List(q.Symbol('long')),
-                                       q.Symbol('%s.%s' %
-                                                (expr._child._child._name,
-                                                 expr._child._name))),
+                                       q.Symbol(expr._child._child._name,
+                                                expr._child._name)),
                                 int(1e9)),
                          int(1e3)))
 
