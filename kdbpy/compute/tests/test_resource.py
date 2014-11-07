@@ -102,3 +102,10 @@ def test_by_mean(daily):
     expected = expected.set_index('sym')
     result = into(pd.DataFrame, qresult)
     tm.assert_frame_equal(result, expected)
+
+
+def test_sum_after_subset(daily):
+    r = daily[(daily.date == daily.date[-1]) & (daily.sym == 'IBM')]
+    result = r.price.sum()
+    expected = into(pd.DataFrame, r).price.sum()
+    assert result == expected
