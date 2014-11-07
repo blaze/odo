@@ -2,7 +2,7 @@ import pytest
 pytest.importorskip('blaze')
 import pandas as pd
 import pandas.util.testing as tm
-from blaze import Data, compute, into
+from blaze import Data, compute, into, by
 from blaze.compute.core import swap_resources_into_scope
 from kdbpy.compute.qtable import ispartitioned
 
@@ -50,3 +50,8 @@ def test_simple_arithmetic(trade):
     result = into(pd.Series, qexpr)
     expected = into(pd.Series, trade.price) + 1 * 2
     tm.assert_series_equal(result, expected)
+
+
+def test_simple_by(trade):
+    qexpr = by(trade.sym, w=(trade.price * trade.size).sum())
+    assert repr(qexpr)
