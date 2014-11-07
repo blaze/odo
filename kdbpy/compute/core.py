@@ -20,6 +20,7 @@ from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
 from blaze.expr import nelements, Slice, Distinct, Summary, Relational
 from blaze.expr import DateTime, Millisecond, Microsecond
 from blaze.expr.datetime import Minute
+from blaze.expr import common_subexpression, Arithmetic, And
 
 from datashape.predicates import isrecord
 
@@ -287,15 +288,45 @@ def compute_up(expr, data, **kwargs):
                   q.Dict(list(zip(map(q.Symbol, names), ops))))
 
 
+@dispatch(Arithmetic, q.Expr)
+def optimize(expr, data, **kwargs):
+    # TODO: this is where virtual column selection should be sorted in a where
+    # clause
+    return compute_up(expr, data, **kwargs)
+
+
+@dispatch(By, q.Expr)
+def optimize(expr, data, **kwargs):
+    child = expr._child
+    grouper = expr.grouper
+    apply = expr.apply
+
+    if isinstance(child, Selection):
+        # find common predicate between expr._child, grouper and apply
+        subexpr = common_subexpression(child, apply, grouper)
+        expr = expr._subs({subexpr: subexpr._leaves()[0]})
+        where = q.List(q.List(optimize(subexpr.predicate, data, **kwargs)))
+        return expr, where
+    else:
+        # we can't (easily) optimize WRT qsql here
+        return expr, q.List()
+
+
 @dispatch(By, q.Expr)
 def compute_up(expr, data, **kwargs):
+    expr, where = optimize(expr, data, **kwargs)
     child = compute_up(expr._child, data, **kwargs)
+    grouper = compute_up(expr.grouper, data, **kwargs)
+    reducer = compute_up(expr.apply, data, **kwargs)
     table = first(kwargs['scope'].keys())
 
     # TODO: fix this using blaze core functions
-    grouper = desubs(compute_up(expr.grouper, data, **kwargs), table)
-    grouper = q.Dict([(q.Symbol(expr.grouper._name), grouper)])
-    reducer = desubs(compute_up(expr.apply, data, **kwargs), table)
+    grouper = q.Dict([(q.Symbol(expr.grouper._name), desubs(grouper, table))])
+    reducer = desubs(reducer, table)
+
+    # desubs gets the single element out of a single element list, but Q
+    # requires a single element list of conditions
+    where = q.List(desubs(where, table))
 
     if isinstance(expr.apply, Summary):
         # we only need the reduction dictionary from the result of a summary
@@ -304,8 +335,7 @@ def compute_up(expr, data, **kwargs):
     else:
         reducer = q.Dict([(q.Symbol(expr.apply._name), reducer)])
 
-    qexpr = q.List('?', child, q.List(), grouper, reducer)
-
+    qexpr = q.List('?', child, where, grouper, reducer)
     return qexpr
 
 

@@ -15,15 +15,17 @@ def gensym():
 @pytest.yield_fixture(scope='module')
 def kdb():
     r = KQ(get_credentials(), start='restart')
-    r.eval('t: ([] '
-           'name: `Bob`Alice`Joe`Smithers;'
-           'id: 0 1 2 3;'
-           'amount: 4 ? 10.0;'
+    r.eval('n: 6; t: ([] '
+           'name: `Bob`Alice`Joe`Smithers`Smithers`Alice;'
+           'id: til n;'
+           'amount: n ? 10.0;'
            'when: 2003.12.05D22:23:12 '
            '2005.03.04D03:24:45.514 '
            '2005.02.28D01:58:04.338 '
+           '2004.01.25D18:03:47.234 '
+           '2005.02.28D01:58:04.338 '
            '2004.01.25D18:03:47.234;'
-           'on: 2010.01.01 + til 4)')
+           'on: 2010.01.01 + til n)')
     r.eval('rt: ([name: `Bob`Alice`Joe`John] tax: -3.1 2.0 0n 4.2; '
            'street: `maple`apple`pine`grove)')
     r.eval('st: ([name: `Bob`Alice`Joe] jobcode: 9 10 11; '
