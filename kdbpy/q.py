@@ -19,7 +19,7 @@ class Dict(OrderedDict):
 
 class Atom(object):
     def __init__(self, s):
-        assert isinstance(s, (basestring, Symbol, String))
+        assert isinstance(s, (basestring, Atom, String))
         self.s = getattr(s, 's', s)
 
     def __hash__(self):
@@ -41,25 +41,35 @@ class String(Atom):
 
 
 class Symbol(Atom):
-    def __init__(self, s):
-        super(Symbol, self).__init__(s)
+    def __init__(self, *args):
+        """
+        Examples
+        --------
+        >>> from kdbpy import q
+        >>> t = q.Symbol('t', 's', 'a')
+        >>> t
+        `t.s.a
+        """
+        super(Symbol, self).__init__(args[0])
+        self.fields = args[1:]
+        self.str = '.'.join(chain([self.s], self.fields))
 
     def __getitem__(self, name):
         """
         Examples
         --------
-        >>> from kdbpy.compute import q
+        >>> from kdbpy import q
         >>> t = q.Symbol('t')
         >>> t['s']['a']
         `t.s.a
         """
-        return type(self)('%s.%s' % (self.s, name))
+        return type(self)(*list(chain([self.s], self.fields, [name])))
 
     def __repr__(self):
-        s = self.s
-        if not isidentifier(s) and not keyword.iskeyword(s):
-            return '`$%s' % String(s)
-        return '`' + s
+        joined = self.str
+        if not isidentifier(joined) and not keyword.iskeyword(joined):
+            return '`$"%s"' % joined
+        return '`' + joined
 
 
 class List(object):
