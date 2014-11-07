@@ -193,7 +193,10 @@ def compute_up(expr, data, **kwargs):
 @dispatch(Field, q.Expr)
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
-    return child[expr._name]
+    try:
+        return child[expr._name]
+    except TypeError:
+        return child
 
 
 @dispatch(Field, q.Expr, dict)
