@@ -196,7 +196,7 @@ def compute_up(expr, data, **kwargs):
     try:
         return child[expr._name]
     except TypeError:
-        return child
+        return q.List(child, '::', q.List(q.Symbol(expr._name)))
 
 
 @dispatch(Field, q.Expr, dict)
