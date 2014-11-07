@@ -192,6 +192,8 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Field, q.Expr)
 def compute_up(expr, data, **kwargs):
+    if is_partition_expr(expr, kwargs['scope']):
+        return compute_up(expr._child[expr.fields], data, **kwargs)
     child = compute_up(expr._child, data, **kwargs)
     try:
         return child[expr._name]
@@ -203,8 +205,9 @@ def compute_up(expr, data, **kwargs):
 def post_compute(expr, data, scope):
     table = first(scope.values())
     leaf = expr._leaves()[0]
-    subsed = expr._subs({leaf: Symbol(table.tablename, leaf.dshape)})
-    final_expr = compute_up(subsed, data, scope=scope)
+    sym = Symbol(table.tablename, leaf.dshape)
+    subsed = expr._subs({leaf: sym})
+    final_expr = compute_up(subsed, data, scope={sym: table})
     result = table.engine.eval('eval [%s]' % final_expr).squeeze()
     result.name = expr._name
     return result
@@ -341,6 +344,11 @@ def compute_up(expr, data, **kwargs):
     return qexpr
 
 
+def is_partition_expr(expr, scope):
+    root = expr._leaves()[0]
+    return expr._child.isidentical(root) and ispartitioned(scope[root])
+
+
 @dispatch(nelements, q.Expr)
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
@@ -358,8 +366,7 @@ def compute_up(expr, data, **kwargs):
 
     # TODO: generate different code if we are a partitioned table
     # we need to use the global index to do this
-    root = expr._leaves()[0]
-    if expr._child.isidentical(root) and ispartitioned(kwargs['scope'][root]):
+    if is_partition_expr(expr, kwargs['scope']):
         return q.List('.Q.ind', child, q.List('til', expr.n))
 
     # q repeats if the N of take is larger than the number of rows, so we

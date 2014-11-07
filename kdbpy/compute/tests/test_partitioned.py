@@ -1,8 +1,8 @@
 import pytest
 pytest.importorskip('blaze')
+import pandas as pd
 import pandas.util.testing as tm
-from qpython.qcollection import QException
-from blaze import Data, compute
+from blaze import Data, compute, into
 from blaze.compute.core import swap_resources_into_scope
 from kdbpy.compute.qtable import ispartitioned
 
@@ -32,8 +32,6 @@ def test_repr(trade):
     assert repr(trade)
 
 
-@pytest.mark.xfail(raises=QException,
-                   reason="We can't handle partitioned tables yet")
 def test_field(trade):
     qexpr = trade.price
     expr, data = separate(qexpr)
@@ -42,8 +40,13 @@ def test_field(trade):
     tm.assert_series_equal(result, expected)
 
 
-@pytest.mark.xfail(raises=QException,
-                   reason="We can't handle partitioned tables yet")
 def test_field_repr(trade):
     qexpr = trade.price
     assert repr(qexpr)
+
+
+def test_simple_arithmetic(trade):
+    qexpr = trade.price + 1 * 2
+    result = into(pd.Series, qexpr)
+    expected = into(pd.Series, trade.price) + 1 * 2
+    tm.assert_series_equal(result, expected)
