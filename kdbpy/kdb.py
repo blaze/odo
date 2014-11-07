@@ -239,12 +239,12 @@ class KQ(object):
 
     @property
     def tables(self):
-        types = {True: 'par', False: 'splay', 0: 'bin'}
+        types = {True: 'partitioned', False: 'splayed', -1: 'binary'}
         names = self.eval(r'\a').tolist()
-        parted = pd.Series(self.eval(r'{[x] .Q.qp eval x} each value "\\a"'))
-        import ipdb; ipdb.set_trace()
-        return pd.DataFrame({'name': names,
-                             'kind': pd.Series(types)[parted].values})
+        code = r'{[x] {t: .Q.qp[x]; $[(type t) = -7h; -1; t]}[eval x]} each value "\\a"'
+        parted = pd.Series(self.eval(code))
+        values = pd.Series(types)[parted].values
+        return pd.DataFrame({'name': names, 'kind': values})[['name', 'kind']]
 
     @property
     def memory(self):

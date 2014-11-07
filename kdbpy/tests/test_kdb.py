@@ -286,7 +286,7 @@ def test_tables(kdb, kdbpar):
 
     # and they have non-empty kind that are well defined
     assert set(tb.kind)
-    assert set(tb.kind).issubset(set(['standard', 'partitioned', 'splayed']))
+    assert set(tb.kind).issubset(set(['binary', 'partitioned', 'splayed']))
 
 
 def test_memory(kdb):
