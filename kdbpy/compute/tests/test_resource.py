@@ -1,3 +1,4 @@
+from __future__ import print_function
 import pytest
 
 import pandas as pd
@@ -12,6 +13,11 @@ from kdbpy.compute.qtable import issplayed, isstandard
 @pytest.fixture
 def daily(rstring, kdbpar):
     return Data(rstring + '/start/db::daily', engine=kdbpar)
+
+
+@pytest.fixture
+def quote(rstring, kdbpar):
+    return Data(rstring + '/start/db::quote', engine=kdbpar)
 
 
 @pytest.fixture
