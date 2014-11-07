@@ -21,6 +21,7 @@ from blaze.expr import nelements, Slice, Distinct, Summary, Relational
 from blaze.expr import DateTime, Millisecond, Microsecond
 from blaze.expr.datetime import Minute
 from blaze.expr import common_subexpression, Arithmetic, And
+from blaze.expr.broadcast import broadcast_collect
 
 from datashape.predicates import isrecord
 
@@ -192,13 +193,25 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Field, q.Expr)
 def compute_up(expr, data, **kwargs):
-    if is_partition_expr(expr, kwargs['scope']):
-        return compute_up(expr._child[expr.fields], data, **kwargs)
     child = compute_up(expr._child, data, **kwargs)
-    try:
-        return child[expr._name]
-    except TypeError:
-        return q.List(child, '::', q.List(q.Symbol(expr._name)))
+
+    if is_partition_expr(expr, kwargs['scope']):
+        # RAGE
+        sym = q.Symbol(expr._name)
+        select = q.List('?', child, q.List(), q.Bool(), q.Dict([(sym, sym)]))
+        return q.List(select, '::', q.List(sym))
+    else:
+        try:
+            return child[expr._name]
+        except TypeError:
+            return q.List(child, '::', q.List(q.Symbol(expr._name)))
+
+
+@dispatch(Field, q.Expr)
+def optimize(expr, data, **kwargs):
+    if is_partition_expr(expr, kwargs['scope']):
+        return q.Symbol(expr._name)
+    return compute_up(expr, data, **kwargs)
 
 
 @dispatch(Field, q.Expr, dict)
@@ -293,7 +306,7 @@ def compute_up(expr, data, **kwargs):
                   q.Dict(list(zip(map(q.Symbol, names), ops))))
 
 
-@dispatch(Arithmetic, q.Expr)
+@dispatch(Expr, q.Expr)
 def optimize(expr, data, **kwargs):
     # TODO: this is where virtual column selection should be sorted in a where
     # clause
@@ -305,6 +318,8 @@ def optimize(expr, data, **kwargs):
     child = expr._child
     grouper = expr.grouper
     apply = expr.apply
+
+    # make field expressions essentially no ops here
 
     if isinstance(child, Selection):
         # find common predicate between expr._child, grouper and apply
@@ -320,9 +335,9 @@ def optimize(expr, data, **kwargs):
 @dispatch(By, q.Expr)
 def compute_up(expr, data, **kwargs):
     expr, where = optimize(expr, data, **kwargs)
-    child = compute_up(expr._child, data, **kwargs)
-    grouper = compute_up(expr.grouper, data, **kwargs)
-    reducer = compute_up(expr.apply, data, **kwargs)
+    child = optimize(expr._child, data, **kwargs)
+    grouper = optimize(expr.grouper, data, **kwargs)
+    reducer = optimize(expr.apply, data, **kwargs)
     table = first(kwargs['scope'].keys())
 
     # TODO: fix this using blaze core functions
