@@ -145,6 +145,17 @@ def test_eval(kdb):
     assert kdb.eval(f) == 43
     assert kdb.eval(lambda x: x+5, 42) == 47
 
+def test_get_set(kdb):
+
+    for v in [42,
+              Timestamp('2001-01-01 09:30:00.123'),
+              'foo']:
+        kdb.set('v',v)
+        assert kdb.get('v') == v
+
+    v = tm.makeMixedFrame()
+    kdb.set('df',v)
+    tm.assert_frame_equal(v,kdb.set('df'))
 
 def test_scalar_datetime_like_conversions(kdb):
 

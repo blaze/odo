@@ -196,8 +196,32 @@ class KQ(object):
              ''.format(**params))
         self.eval(s)
 
-    def set(self, name, x):
-        self.kdb.q('set', np.string_(name), x)
+    def set(self, key, value):
+        """Set a variable `key` in kdb with the object `value`.
+
+        Parameters
+        ----------
+        key : str
+            The name of the variable to set
+        value : object
+            the value to set
+
+        """
+        self.kdb.q('set', np.string_(key), value)
+
+    def get(self, key):
+        """Return the variable `key` from kdb.
+
+        Parameters
+        ----------
+        key : str
+            The name of the variable to get
+
+        Returns
+        -------
+        obj : Python object
+        """
+        return self.kdb.eval(str(key))
 
     def read_kdb(self, filename):
         """Load a binary file in KDB format
@@ -229,7 +253,7 @@ class KQ(object):
         't'
         >>> t
            name  amount
-        id             
+        id
         1     a       1
         2     b       2
         3     c       3
