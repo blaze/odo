@@ -20,8 +20,6 @@ def test_ispartitioned(trade):
     assert ispartitioned(trade)
 
 
-@pytest.mark.xfail(raises=QException,
-                   reason="We can't handle partitioned tables yet")
 def test_head(trade):
     qexpr = trade.head()
     expr, data = separate(qexpr)
@@ -30,8 +28,6 @@ def test_head(trade):
     tm.assert_frame_equal(result, expected)
 
 
-@pytest.mark.xfail(raises=QException,
-                   reason="We can't handle partitioned tables yet")
 def test_repr(trade):
     assert repr(trade)
 
