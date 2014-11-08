@@ -302,8 +302,8 @@ def test_csv_types(kdb, gensym):
     csvdata = """name,date,count,amount,sym
 a,2010-10-01 00:00:05,1,1.0,`a
 b,2010-10-02 00:00:04,2,,`b
- ,2010-10-03 00:00:03,3,3.0,`c
-d,2010-10-04 00:00:02,4,4.0, 
+,2010-10-03 00:00:03,3,3.0,`c
+d,2010-10-04 00:00:02,4,4.0,
 e,2010-10-05 00:00:01,5,5.0,`e"""  # note the whitespace here
     with tm.ensure_clean('tmp.csv') as fname:
         with open(fname, 'wb') as f:
