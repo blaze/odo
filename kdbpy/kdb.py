@@ -150,15 +150,13 @@ class KQ(object):
         With option types (the extra whitespace in the repr is necessary)
 
         >>> import numpy as np
-        >>> from blaze import CSV
         >>> df = DataFrame({'price': [1, 2, np.nan],
         ...                 'sym': list('abc'),
         ...                 'conn': list('AB') + [np.nan]})[['price', 'sym',
         ...                                                  'conn']]
         >>> with ensure_clean('temp.csv') as f:
         ...     df.to_csv(f, index=False)
-        ...     csv = CSV(f)
-        ...     kq.read_csv(f, table='trade', dshape=csv.dshape)
+        ...     kq.read_csv(f, table='trade')
         >>> kq.eval('trade')
            price sym conn
         0      1   a    A
