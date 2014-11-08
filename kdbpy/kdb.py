@@ -28,29 +28,6 @@ Credentials = namedtuple('Credentials', ['host', 'port', 'username',
 
 default_credentials = Credentials('localhost', 5001, getpass.getuser(), None)
 
-
-dstypes = {ds.bool_: 'b',
-           ds.int8: 'x',
-           ds.int16: 'h',
-           ds.int32: 'i',
-           ds.int64: 'j',
-           ds.float32: 'e',
-           ds.float64: 'f',
-           ds.string: '*',
-           ds.date_: 'd',
-           ds.datetime_: 'p',
-           ds.time_: 't'}
-
-
-dstypes = toolz.merge(dstypes, toolz.keymap(ds.Option, dstypes))
-
-
-def dshape_to_qtypes(ds):
-    assert isrecord(ds.measure), 'measure must be a record'
-    return ds.measure.names, ''.join(dstypes[dstype]
-                                     for dstype in ds.measure.types)
-
-
 def get_credentials(host=None, port=None, username=None, password=None):
     """
     Parameters
@@ -190,14 +167,16 @@ class KQ(object):
         >>> kq.stop() # doctest: +SKIP
         """
         csv = CSV(filename, encoding=encoding, *args, **kwargs)
-        columns, types = dshape_to_qtypes(csv.dshape)
-        # offset = first_newline_offset(csv.path)
+        columns = csv.columns
         params = dict(table=table,
                       columns='; '.join('`$"%s"' % column for column in columns),
                       filename=filename)
+
+        # load up the Q CSV reader
         self.eval(r'\l %s' % os.path.join(os.path.dirname(__file__), 'q',
                                           'csvutil.q'))
-        s = '{table}: ({columns}) xcol .csv.read[`$":{filename}"]'.format(**params)
+        s = ('{table}: ({columns}) xcol .csv.read[`$":{filename}"]'
+             ''.format(**params))
         self.eval(s)
 
     def set(self, name, x):
