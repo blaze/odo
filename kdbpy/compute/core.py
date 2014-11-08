@@ -424,6 +424,33 @@ def post_compute(expr, data, scope):
     return table.engine.eval('eval [%s]' % final_expr)
 
 
+@dispatch(numbers.Integral, q.Expr, q.Expr)
+def compute_slice(index, child, nrows, dshape=None):
+    if index < 0:
+        index = q.List('+', index, nrows)
+
+    qexpr = q.List(child, index)
+
+    if not isrecord(dshape):
+        return qexpr
+    return q.List(',:', qexpr)
+
+
+@dispatch(slice, q.Expr, q.Expr)
+def compute_slice(index, child, nrows, dshape=None):
+    start = index.start or 0
+    stop = index.stop or nrows
+
+    if start < 0:
+        start = q.List('+', start, nrows)
+
+    if stop < 0:
+        stop = q.List('+', stop, nrows)
+
+    return q.List('@', child, q.List('+', start,
+                                     q.List('til', q.List('-', stop, start))))
+
+
 @dispatch(Slice, q.Expr)
 def compute_up(expr, data, **kwargs):
     """Slice expressions from Python to Q.
@@ -446,29 +473,7 @@ def compute_up(expr, data, **kwargs):
     index, = expr.index
     nrows = compute_up(expr._child.nrows, data, **kwargs)
     child = compute_up(expr._child, data, **kwargs)
-
-    if isinstance(index, numbers.Integral):
-        if index < 0:
-            index = q.List('+', index, nrows)
-
-        qexpr = q.List(child, index)
-
-        if not isrecord(expr.dshape):
-            return qexpr
-        return q.List(',:', qexpr)
-
-    # assuming a slice here
-    start = index.start or 0
-    stop = index.stop
-
-    if index.step is not None and index.step != 1:
-        raise ValueError("Slice step other than 1 or None not supported")
-    if stop is None and start < 0:
-        return q.List('#', start, child)
-    else:
-        stop = q.List('![-6]', q.List('-', stop, start))
-        indices = q.List('enlist', start, stop)
-        return q.List('sublist', indices, child)
+    return compute_slice(index, child, nrows, dshape=expr.dshape)
 
 
 @dispatch(Distinct, q.Expr)

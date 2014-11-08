@@ -247,13 +247,20 @@ def test_neg_slice(t, q, df):
     tm.assert_frame_equal(qresult, expected)
 
 
-@pytest.mark.xfail(raises=AssertionError,
-                   reason='Logic for negative slices not worked out yet')
 def test_neg_bounded_slice(t, q, df):
     # this should be empty in Q, though it's possible to do this
     expr = t[-2:5]
     qresult = compute(expr, q)
-    tm.assert_frame_equal(qresult, compute(expr, df).reset_index(drop=True))
+    expected = compute(expr, df).reset_index(drop=True)
+    tm.assert_frame_equal(qresult, expected)
+
+
+def test_neg_bounded_by_negative_slice(t, q, df):
+    # this should be empty in Q, though it's possible to do this
+    expr = t[-5:-2]
+    qresult = compute(expr, q)
+    expected = compute(expr, df).reset_index(drop=True)
+    tm.assert_frame_equal(qresult, expected)
 
 
 def test_raw_summary(t, q, df):
