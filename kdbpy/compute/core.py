@@ -196,11 +196,11 @@ def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
     sym = q.Symbol(expr._name)
 
-    if is_partition_expr(expr, kwargs['scope']):
+    if is_partition_expr(expr, **kwargs):
         # RAGE
         select = q.List('?', child, q.List(), q.Bool(), q.Dict([(sym, sym)]))
         return q.List(select, '::', q.List(sym))
-    elif is_splayed_expr(expr, kwargs['scope']):
+    elif is_splayed_expr(expr, **kwargs):
         return q.List(child, q.List(sym))
     else:
         try:
@@ -211,7 +211,7 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Field, q.Expr)
 def optimize(expr, data, **kwargs):
-    if is_partition_expr(expr, kwargs['scope']):
+    if is_partition_expr(expr, **kwargs):
         return q.Symbol(expr._name)
     return compute_up(expr, data, **kwargs)
 
@@ -386,7 +386,7 @@ def compute_up(expr, data, **kwargs):
 
     # TODO: generate different code if we are a partitioned table
     # we need to use the global index to do this
-    if is_partition_expr(expr, kwargs['scope']):
+    if is_partition_expr(expr, **kwargs):
         return q.List('.Q.ind', child, q.List('til', expr.n))
 
     # q repeats if the N of take is larger than the number of rows, so we
