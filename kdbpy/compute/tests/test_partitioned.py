@@ -5,6 +5,7 @@ import pandas.util.testing as tm
 from blaze import Data, compute, into, by
 from blaze.compute.core import swap_resources_into_scope
 from kdbpy.compute.qtable import ispartitioned
+import qpython.qcollection
 
 
 @pytest.fixture
@@ -52,6 +53,8 @@ def test_simple_arithmetic(trade):
     tm.assert_series_equal(result, expected)
 
 
+@pytest.mark.xfail(raises=qpython.qcollection.QException,
+                   reason='By expression not implemented')
 def test_simple_by(trade):
     qexpr = by(trade.sym, w=(trade.price * trade.size).sum())
     assert repr(qexpr)
