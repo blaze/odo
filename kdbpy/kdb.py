@@ -20,7 +20,11 @@ from toolz.compatibility import range
 from datashape.predicates import isrecord
 import datashape as ds
 
-from blaze import CSV
+try:
+    from blaze import Data
+    from blaze import CSV
+except ImportError:
+    pass
 
 # credentials
 Credentials = namedtuple('Credentials', ['host', 'port', 'username',
@@ -55,6 +59,17 @@ def get_credentials(host=None, port=None, username=None, password=None):
                        password=password)
 
 
+class BlazeGetter(object):
+    def __init__(self, kq):
+        self.kq = kq
+
+    def __getitem__(self, tablename):
+        creds = self.kq.credentials
+        connstring = 'kdb://%s@%s:%d::%s' % (creds.username, creds.host,
+                                             creds.port, tablename)
+        return Data(connstring, engine=self.kq)
+
+
 # launch client & server
 class KQ(object):
     """ manage the kdb & q process """
@@ -80,6 +95,7 @@ class KQ(object):
         self.kdb = KDB(credentials=self.credentials)
         if start is not None:
             self.start(start=start)
+        self._data = BlazeGetter(self)
 
     def __repr__(self):
         return '{0.__class__.__name__}(kdb={0.kdb}, q={0.q})'.format(self)
@@ -230,6 +246,10 @@ class KQ(object):
     def memory(self):
         result = self.eval('.Q.w[]')
         return pd.Series(result.values, index=result.keys, name='memory')
+
+    @property
+    def data(self):
+        return self._data
 
 
 class Singleton(type):
