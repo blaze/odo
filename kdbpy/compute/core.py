@@ -364,6 +364,11 @@ def is_partition_expr(expr, scope):
     return expr._child.isidentical(root) and ispartitioned(scope[root])
 
 
+def is_splayed_expr(expr, scope):
+    root = expr._leaves()[0]
+    return expr._child.isidentical(root) and issplayed(scope[root])
+
+
 @dispatch(nelements, q.Expr)
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
