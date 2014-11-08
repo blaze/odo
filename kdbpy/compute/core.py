@@ -26,7 +26,7 @@ from blaze.expr.broadcast import broadcast_collect
 from datashape.predicates import isrecord
 
 from .. import q
-from .qtable import QTable, tables, ispartitioned
+from .qtable import QTable, tables, ispartitioned, issplayed
 
 
 binops = {
@@ -194,17 +194,19 @@ def compute_up(expr, data, **kwargs):
 @dispatch(Field, q.Expr)
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
+    sym = q.Symbol(expr._name)
 
     if is_partition_expr(expr, kwargs['scope']):
         # RAGE
-        sym = q.Symbol(expr._name)
         select = q.List('?', child, q.List(), q.Bool(), q.Dict([(sym, sym)]))
         return q.List(select, '::', q.List(sym))
+    elif is_splayed_expr(expr, kwargs['scope']):
+        return q.List(child, q.List(sym))
     else:
         try:
             return child[expr._name]
         except TypeError:
-            return q.List(child, '::', q.List(q.Symbol(expr._name)))
+            return q.List(child, '::', q.List(sym))
 
 
 @dispatch(Field, q.Expr)
