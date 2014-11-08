@@ -12,7 +12,7 @@ import numpy as np
 import toolz
 import kdbpy
 
-from blaze import CSV
+from blaze import CSV, Data
 
 import qpython
 import qpython.qwriter
@@ -318,3 +318,10 @@ e,2010-10-05 00:00:01,5,5.0,`e"""  # note the whitespace here
     assert result.amount.dtype == np.dtype('float32')
     assert result.sym.dtype == np.dtype(object)
     assert result.date.dtype == np.dtype('datetime64[ns]')
+
+
+def test_data_getter(kdbpar):
+    for t in kdbpar.tables.name:
+        data = kdbpar.data[t]
+        assert isinstance(data, Data)
+        assert repr(data)
