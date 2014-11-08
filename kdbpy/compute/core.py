@@ -475,11 +475,6 @@ def compute_down(expr, data, **kwargs):
     return compute_down(expr, q.Symbol(data.tablename), **kwargs)
 
 
-@dispatch(QTable)
-def discover(t):
-    return tables(t.engine)[t.tablename].dshape
-
-
 @resource.register('kdb://.+', priority=13)
 def resource_kdb(uri, name, **kwargs):
     return QTable(uri, name=name, **kwargs)
