@@ -444,7 +444,7 @@ def compute_up(expr, data, **kwargs):
     """
     assert len(expr.index) == 1, 'only single slice allowed'
     index, = expr.index
-    nrows = compute_up(expr._child.nelements(axis=0), data, **kwargs)
+    nrows = compute_up(expr._child.nrows, data, **kwargs)
     child = compute_up(expr._child, data, **kwargs)
 
     if isinstance(index, numbers.Integral):
@@ -459,10 +459,16 @@ def compute_up(expr, data, **kwargs):
 
     # assuming a slice here
     start = index.start or 0
-    stop = index.stop or nrows
-    return q.List('sublist', q.List('enlist', start,
-                                    q.List('![-6]', q.List('-', stop, start))),
-                  child)
+    stop = index.stop
+
+    if index.step is not None and index.step != 1:
+        raise ValueError("Slice step other than 1 or None not supported")
+    if stop is None and start < 0:
+        return q.List('#', start, child)
+    else:
+        stop = q.List('![-6]', q.List('-', stop, start))
+        indices = q.List('enlist', start, stop)
+        return q.List('sublist', indices, child)
 
 
 @dispatch(Distinct, q.Expr)
