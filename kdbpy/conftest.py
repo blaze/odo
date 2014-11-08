@@ -1,15 +1,17 @@
 import os
+import itertools
+
 import pytest
+
 from .kdb import KQ, get_credentials
 from kdbpy.exampleutils import example_data
 
-x = [0]
+syms = itertools.count()
 
 
 @pytest.fixture
 def gensym():
-    x[0] += 1
-    return 'sym%d' % x[0]
+    return 'sym%d' % next(syms)
 
 
 @pytest.yield_fixture(scope='module')
