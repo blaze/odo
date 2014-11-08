@@ -163,7 +163,7 @@ class KQ(object):
            price sym conn
         0      1   a    A
         1      2   b    B
-        2    NaN   c     
+        2    NaN   c  NaN
         >>> kq.stop() # doctest: +SKIP
         """
         csv = CSV(filename, encoding=encoding, *args, **kwargs)
