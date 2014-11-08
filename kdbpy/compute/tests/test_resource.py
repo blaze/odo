@@ -7,6 +7,7 @@ bz = pytest.importorskip('blaze')
 from toolz import first
 from blaze import Data, by, into, compute
 from blaze.compute.core import swap_resources_into_scope
+import datashape
 from kdbpy.compute.qtable import issplayed, isstandard
 
 
@@ -23,6 +24,11 @@ def quote(rstring, kdbpar):
 @pytest.fixture
 def nbbo(rstring, kdbpar):
     return Data(rstring + '/start/db::nbbo_t', engine=kdbpar)
+
+
+@pytest.fixture
+def trade(rstring, kdbpar):
+    return Data(rstring + '/data/db::trade', engine=kdbpar)
 
 
 def test_resource_doesnt_bork(daily):
