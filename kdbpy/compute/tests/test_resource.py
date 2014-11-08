@@ -1,3 +1,4 @@
+from __future__ import print_function
 import pytest
 
 import pandas as pd
@@ -6,6 +7,7 @@ bz = pytest.importorskip('blaze')
 from toolz import first
 from blaze import Data, by, into, compute
 from blaze.compute.core import swap_resources_into_scope
+import datashape
 from kdbpy.compute.qtable import issplayed, isstandard
 
 
@@ -15,8 +17,18 @@ def daily(rstring, kdbpar):
 
 
 @pytest.fixture
+def quote(rstring, kdbpar):
+    return Data(rstring + '/start/db::quote', engine=kdbpar)
+
+
+@pytest.fixture
 def nbbo(rstring, kdbpar):
     return Data(rstring + '/start/db::nbbo_t', engine=kdbpar)
+
+
+@pytest.fixture
+def trade(rstring, kdbpar):
+    return Data(rstring + '/data/db::trade', engine=kdbpar)
 
 
 def test_resource_doesnt_bork(daily):
@@ -109,3 +121,30 @@ def test_sum_after_subset(daily):
     result = into(float, r.price.sum())
     expected = into(pd.DataFrame, r).price.sum()
     assert result == expected
+
+
+def nrows(x):
+    return into(int, x.nrows)
+
+
+def test_nrows(daily):
+    assert nrows(daily) == nrows(daily.date)
+
+
+def test_splayed_nrows(nbbo):
+    assert nrows(nbbo) == nrows(nbbo.sym)
+
+
+def test_dateattr_nrows(daily):
+    assert nrows(daily) == nrows(daily.date.day)
+
+
+def test_splayed_time_type(nbbo):
+    assert nrows(nbbo) == nrows(nbbo.time)
+
+
+@pytest.mark.xfail(raises=AssertionError,
+                   reason='No support for partitioned repeated expressions')
+def test_partitioned_nrows(quote, trade):
+    assert nrows(quote) == nrows(quote.date)
+    assert nrows(trade) == nrows(trade.date)

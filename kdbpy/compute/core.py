@@ -21,11 +21,12 @@ from blaze.expr import nelements, Slice, Distinct, Summary, Relational
 from blaze.expr import DateTime, Millisecond, Microsecond
 from blaze.expr.datetime import Minute
 from blaze.expr import common_subexpression, Arithmetic, And
+from blaze.expr.broadcast import broadcast_collect
 
 from datashape.predicates import isrecord
 
 from .. import q
-from .qtable import QTable, tables
+from .qtable import QTable, tables, ispartitioned, issplayed
 
 
 binops = {
@@ -193,18 +194,35 @@ def compute_up(expr, data, **kwargs):
 @dispatch(Field, q.Expr)
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
-    try:
-        return child[expr._name]
-    except TypeError:
-        return q.List(child, '::', q.List(q.Symbol(expr._name)))
+    sym = q.Symbol(expr._name)
+
+    if is_partitioned_expr(expr, **kwargs):
+        # RAGE
+        select = q.List('?', child, q.List(), q.Bool(), q.Dict([(sym, sym)]))
+        return q.List(select, '::', q.List(sym))
+    elif is_splayed_expr(expr, **kwargs):
+        return q.List(child, q.List(sym))
+    else:
+        try:
+            return child[expr._name]
+        except TypeError:
+            return q.List(child, '::', q.List(sym))
+
+
+@dispatch(Field, q.Expr)
+def optimize(expr, data, **kwargs):
+    if is_partitioned_expr(expr, **kwargs):
+        return q.Symbol(expr._name)
+    return compute_up(expr, data, **kwargs)
 
 
 @dispatch(Field, q.Expr, dict)
 def post_compute(expr, data, scope):
     table = first(scope.values())
     leaf = expr._leaves()[0]
-    subsed = expr._subs({leaf: Symbol(table.tablename, leaf.dshape)})
-    final_expr = compute_up(subsed, data, scope=scope)
+    sym = Symbol(table.tablename, leaf.dshape)
+    subsed = expr._subs({leaf: sym})
+    final_expr = compute_up(subsed, data, scope={sym: table})
     result = table.engine.eval('eval [%s]' % final_expr).squeeze()
     result.name = expr._name
     return result
@@ -290,7 +308,7 @@ def compute_up(expr, data, **kwargs):
                   q.Dict(list(zip(map(q.Symbol, names), ops))))
 
 
-@dispatch(Arithmetic, q.Expr)
+@dispatch(Expr, q.Expr)
 def optimize(expr, data, **kwargs):
     # TODO: this is where virtual column selection should be sorted in a where
     # clause
@@ -302,6 +320,8 @@ def optimize(expr, data, **kwargs):
     child = expr._child
     grouper = expr.grouper
     apply = expr.apply
+
+    # make field expressions essentially no ops here
 
     if isinstance(child, Selection):
         # find common predicate between expr._child, grouper and apply
@@ -317,9 +337,9 @@ def optimize(expr, data, **kwargs):
 @dispatch(By, q.Expr)
 def compute_up(expr, data, **kwargs):
     expr, where = optimize(expr, data, **kwargs)
-    child = compute_up(expr._child, data, **kwargs)
-    grouper = compute_up(expr.grouper, data, **kwargs)
-    reducer = compute_up(expr.apply, data, **kwargs)
+    child = optimize(expr._child, data, **kwargs)
+    grouper = optimize(expr.grouper, data, **kwargs)
+    reducer = optimize(expr.apply, data, **kwargs)
     table = first(kwargs['scope'].keys())
 
     # TODO: fix this using blaze core functions
@@ -341,12 +361,20 @@ def compute_up(expr, data, **kwargs):
     return qexpr
 
 
+def is_partitioned_expr(expr, scope):
+    root = expr._leaves()[0]
+    return expr._child.isidentical(root) and ispartitioned(scope[root])
+
+
+def is_splayed_expr(expr, scope):
+    root = expr._leaves()[0]
+    return expr._child.isidentical(root) and issplayed(scope[root])
+
+
 @dispatch(nelements, q.Expr)
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
-    axis_funcs = {0: q.List('#:', child),
-                  1: q.List('#:', q.List('cols', child))}
-    return q.List('prd', *[axis_funcs[i] for i in expr.axis or expr.ndim])
+    return q.List('#:', child)
 
 
 @dispatch(Head, q.Expr)
@@ -358,6 +386,8 @@ def compute_up(expr, data, **kwargs):
 
     # TODO: generate different code if we are a partitioned table
     # we need to use the global index to do this
+    if is_partitioned_expr(expr, **kwargs):
+        return q.List('.Q.ind', child, q.List('til', expr.n))
 
     # q repeats if the N of take is larger than the number of rows, so we
     # need to get the min of the number of rows and the requested N from the
@@ -394,6 +424,33 @@ def post_compute(expr, data, scope):
     return table.engine.eval('eval [%s]' % final_expr)
 
 
+@dispatch(numbers.Integral, q.Expr, q.Expr)
+def compute_slice(index, child, nrows, dshape=None):
+    if index < 0:
+        index = q.List('+', index, nrows)
+
+    qexpr = q.List(child, index)
+
+    if not isrecord(dshape):
+        return qexpr
+    return q.List(',:', qexpr)
+
+
+@dispatch(slice, q.Expr, q.Expr)
+def compute_slice(index, child, nrows, dshape=None):
+    start = index.start or 0
+    stop = index.stop or nrows
+
+    if start < 0:
+        start = q.List('+', start, nrows)
+
+    if stop < 0:
+        stop = q.List('+', stop, nrows)
+
+    return q.List('@', child, q.List('+', start,
+                                     q.List('til', q.List('-', stop, start))))
+
+
 @dispatch(Slice, q.Expr)
 def compute_up(expr, data, **kwargs):
     """Slice expressions from Python to Q.
@@ -414,25 +471,9 @@ def compute_up(expr, data, **kwargs):
     """
     assert len(expr.index) == 1, 'only single slice allowed'
     index, = expr.index
-    nrows = compute_up(expr._child.nelements(axis=0), data, **kwargs)
+    nrows = compute_up(expr._child.nrows, data, **kwargs)
     child = compute_up(expr._child, data, **kwargs)
-
-    if isinstance(index, numbers.Integral):
-        if index < 0:
-            index = q.List('+', index, nrows)
-
-        qexpr = q.List(child, index)
-
-        if not isrecord(expr.dshape):
-            return qexpr
-        return q.List(',:', qexpr)
-
-    # assuming a slice here
-    start = index.start or 0
-    stop = index.stop or nrows
-    return q.List('sublist', q.List('enlist', start,
-                                    q.List('![-6]', q.List('-', stop, start))),
-                  child)
+    return compute_slice(index, child, nrows, dshape=expr.dshape)
 
 
 @dispatch(Distinct, q.Expr)
@@ -448,11 +489,6 @@ def compute_up(expr, data, **kwargs):
 @dispatch(Expr, QTable)
 def compute_down(expr, data, **kwargs):
     return compute_down(expr, q.Symbol(data.tablename), **kwargs)
-
-
-@dispatch(QTable)
-def discover(t):
-    return tables(t.engine)[t.tablename].dshape
 
 
 @resource.register('kdb://.+', priority=13)

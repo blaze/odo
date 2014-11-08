@@ -239,21 +239,28 @@ def test_index_row(t, q, df):
     tm.assert_series_equal(qresult, compute(expr, df))
 
 
-@pytest.mark.xfail(raises=AssertionError,
-                   reason='Logic for negative slices not worked out yet')
 def test_neg_slice(t, q, df):
     expr = t[-2:]
     qresult = compute(expr, q)
-    tm.assert_frame_equal(qresult, compute(expr, df).reset_index(drop=True))
+    expected = compute(expr, df)
+    expected = expected.reset_index(drop=True)
+    tm.assert_frame_equal(qresult, expected)
 
 
-@pytest.mark.xfail(raises=AssertionError,
-                   reason='Logic for negative slices not worked out yet')
 def test_neg_bounded_slice(t, q, df):
     # this should be empty in Q, though it's possible to do this
     expr = t[-2:5]
     qresult = compute(expr, q)
-    tm.assert_frame_equal(qresult, compute(expr, df).reset_index(drop=True))
+    expected = compute(expr, df).reset_index(drop=True)
+    tm.assert_frame_equal(qresult, expected)
+
+
+def test_neg_bounded_by_negative_slice(t, q, df):
+    # this should be empty in Q, though it's possible to do this
+    expr = t[-5:-2]
+    qresult = compute(expr, q)
+    expected = compute(expr, df).reset_index(drop=True)
+    tm.assert_frame_equal(qresult, expected)
 
 
 def test_raw_summary(t, q, df):
@@ -297,14 +304,20 @@ def test_distinct(t, q, df):
     tm.assert_series_equal(result, expected)
 
 
-@pytest.mark.parametrize('attr', [pytest.mark.xfail('date'),
-                                  'year', 'month', 'day', 'hour',
-                                  'minute', 'second', 'millisecond',
-                                  'microsecond'])
+@pytest.mark.parametrize('attr', ['year', 'month', 'day', 'hour', 'minute',
+                                  'second', 'millisecond', 'microsecond'])
 def test_dates(t, q, df, attr):
     expr = getattr(t.when, attr)
     result = compute(expr, q)
     expected = compute(expr, df)
+    tm.assert_series_equal(result, expected, check_dtype=False)
+
+
+def test_dates_date(t, q, df):
+    expr = t.when.date
+    result = compute(expr, q)
+    expected = compute(expr, df)
+    expected = pd.to_datetime(expected)  # pandas returns objects here so coerce
     tm.assert_series_equal(result, expected, check_dtype=False)
 
 
