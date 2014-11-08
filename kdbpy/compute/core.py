@@ -367,9 +367,7 @@ def is_partition_expr(expr, scope):
 @dispatch(nelements, q.Expr)
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
-    axis_funcs = {0: q.List('#:', child),
-                  1: q.List('#:', q.List('cols', child))}
-    return q.List('prd', *[axis_funcs[i] for i in expr.axis or expr.ndim])
+    return q.List('#:', child)
 
 
 @dispatch(Head, q.Expr)
