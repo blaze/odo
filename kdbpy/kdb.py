@@ -66,7 +66,7 @@ class BlazeGetter(object):
         self.credentials = credentials
 
     def __getitem__(self, tablename):
-        assert isinstance(tablename, basestring)
+        assert isinstance(tablename, basestring), 'tablename must be a string'
         creds = self.credentials
         template = 'kdb://{0.username}@{0.host}:{0.port}::{tablename}'
         return Data(template.format(creds, tablename=tablename))

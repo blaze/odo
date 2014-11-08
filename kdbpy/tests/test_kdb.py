@@ -108,11 +108,6 @@ def test_q_process_detached(qproc):
     qproc.process = None
 
 
-@pytest.fixture(scope='module')
-def creds():
-    return k.get_credentials()
-
-
 @pytest.yield_fixture(scope='module')
 def qproc(creds):
     q = k.Q(creds).start()
@@ -277,7 +272,7 @@ e,2010-10-05D00:00:01"""
     assert expected.date.dtype == np.dtype('datetime64[ns]')
 
 
-def test_tables(kdb, kdbpar):
+def test_tables(kdb):
     tb = kdb.tables
 
     # we have at least our baked in names
@@ -325,3 +320,8 @@ def test_data_getter(kdbpar):
         data = kdbpar.data[t]
         assert isinstance(data, Data)
         assert repr(data)
+
+
+def test_data_getter_fails(kdb):
+    with pytest.raises(AssertionError):
+        kdb.data[object()]
