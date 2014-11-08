@@ -1,4 +1,5 @@
 import getpass
+import socket
 
 import pytest
 
@@ -24,26 +25,26 @@ def st():
 
 
 @pytest.fixture
-def q(kdb):
+def q(rstring, kdb):
     pytest.importorskip('kdbpy.compute')
     from kdbpy.compute.qtable import QTable
-    return QTable('kdb://pcloud@localhost:5000', name='t')
+    return QTable(rstring, name='t')
 
 
 @pytest.fixture
-def rq(kdb):
+def rq(rstring, kdb):
     pytest.importorskip('kdbpy.compute')
     from kdbpy.compute.qtable import QTable
-    return QTable('kdb://pcloud@localhost:5000', name='rt')
+    return QTable(rstring, name='rt')
 
 
 @pytest.fixture
-def sq(kdb):
+def sq(rstring, kdb):
     pytest.importorskip('kdbpy.compute')
     from kdbpy.compute.qtable import QTable
-    return QTable('kdb://pcloud@localhost:5000', name='st')
+    return QTable(rstring, name='st')
 
 
 @pytest.fixture
 def rstring():
-    return 'kdb://%s@%s:5000' % (getpass.getuser(), 'localhost')
+    return 'kdb://%s@%s:5000' % (getpass.getuser(), socket.gethostname())
