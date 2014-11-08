@@ -234,6 +234,7 @@ class KQ(object):
         2     b       2
         3     c       3
         """
+        filename = os.path.abspath(filename)
         if filename not in self._loaded:
             self.eval(r'\l %s' % filename)
             self._loaded.add(filename)
