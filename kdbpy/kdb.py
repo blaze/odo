@@ -30,7 +30,7 @@ except ImportError:
 Credentials = namedtuple('Credentials', ['host', 'port', 'username',
                                          'password'])
 
-default_credentials = Credentials('localhost', 5001, getpass.getuser(), None)
+default_credentials = Credentials('localhost', 5000, getpass.getuser(), None)
 
 def get_credentials(host=None, port=None, username=None, password=None):
     """
