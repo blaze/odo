@@ -26,6 +26,7 @@ try:
 except ImportError:
     pass
 
+
 # credentials
 Credentials = namedtuple('Credentials', ['host', 'port', 'username',
                                          'password'])
@@ -60,14 +61,14 @@ def get_credentials(host=None, port=None, username=None, password=None):
 
 
 class BlazeGetter(object):
-    def __init__(self, kq):
-        self.kq = kq
+    def __init__(self, credentials):
+        self.credentials = credentials
 
     def __getitem__(self, tablename):
-        creds = self.kq.credentials
-        connstring = 'kdb://%s@%s:%d::%s' % (creds.username, creds.host,
-                                             creds.port, tablename)
-        return Data(connstring, engine=self.kq)
+        assert isinstance(tablename, basestring)
+        creds = self.credentials
+        template = 'kdb://{0.username}@{0.host}:{0.port}::{tablename}'
+        return Data(template.format(creds, tablename=tablename))
 
 
 # launch client & server
@@ -95,7 +96,7 @@ class KQ(object):
         self.kdb = KDB(credentials=self.credentials)
         if start is not None:
             self.start(start=start)
-        self._data = BlazeGetter(self)
+        self._data = BlazeGetter(self.credentials)
 
     def __repr__(self):
         return '{0.__class__.__name__}(kdb={0.kdb}, q={0.q})'.format(self)
