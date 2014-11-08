@@ -236,8 +236,11 @@ class KQ(object):
         """
         filename = os.path.abspath(filename)
         if filename not in self._loaded:
-            self.eval(r'\l %s' % filename)
+            result = self.eval(r'\l %s' % filename)
             self._loaded.add(filename)
+        else:
+            result = None
+        return result
 
     @property
     def tables(self):
