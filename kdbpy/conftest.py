@@ -50,7 +50,7 @@ def kdb(kq):
 def kdbpar(kq):
     path = example_data(os.path.join('start', 'db'))
     assert os.path.exists(path)
-    kq.eval(r'\l %s' % path)
+    kq.read_kdb(path)
     return kq
 
 

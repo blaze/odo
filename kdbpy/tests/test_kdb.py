@@ -19,6 +19,7 @@ import qpython.qwriter
 
 from kdbpy import kdb as k
 from kdbpy.kdb import which
+from kdbpy.exampleutils import example_data
 
 try:
     from cStringIO import StringIO
@@ -325,3 +326,9 @@ def test_data_getter(kdbpar):
 def test_data_getter_fails(kdb):
     with pytest.raises(AssertionError):
         kdb.data[object()]
+
+
+def test_can_load_twice(kdbpar):
+    path = example_data(os.path.join('start', 'db'))
+    kdbpar.read_kdb(path)
+    kdbpar.read_kdb(path)

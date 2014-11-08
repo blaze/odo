@@ -98,6 +98,7 @@ class KQ(object):
         if start is not None:
             self.start(start=start)
         self._data = BlazeGetter(self.credentials)
+        self._loaded = set()
 
     def __repr__(self):
         return '{0.__class__.__name__}(kdb={0.kdb}, q={0.q})'.format(self)
@@ -233,7 +234,9 @@ class KQ(object):
         2     b       2
         3     c       3
         """
-        return self.eval(r'\l %s' % filename)
+        if filename not in self._loaded:
+            self.eval(r'\l %s' % filename)
+            self._loaded.add(filename)
 
     @property
     def tables(self):
