@@ -121,3 +121,30 @@ def test_sum_after_subset(daily):
     result = into(float, r.price.sum())
     expected = into(pd.DataFrame, r).price.sum()
     assert result == expected
+
+
+def nrows(x):
+    return into(int, x.nrows)
+
+
+def test_nrows(daily):
+    assert nrows(daily) == nrows(daily.date)
+
+
+def test_splayed_nrows(nbbo):
+    assert nrows(nbbo) == nrows(nbbo.sym)
+
+
+def test_dateattr_nrows(daily):
+    assert nrows(daily) == nrows(daily.date.day)
+
+
+def test_splayed_time_type(nbbo):
+    assert nrows(nbbo) == nrows(nbbo.time)
+
+
+@pytest.mark.xfail(raises=AssertionError,
+                   reason='No support for partitioned repeated expressions')
+def test_partitioned_nrows(quote, trade):
+    assert nrows(quote) == nrows(quote.date)
+    assert nrows(trade) == nrows(trade.date)
