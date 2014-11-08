@@ -13,22 +13,22 @@ from kdbpy.compute.qtable import issplayed, isstandard
 
 @pytest.fixture
 def daily(rstring, kdbpar):
-    return Data(rstring + '/start/db::daily', engine=kdbpar)
+    return Data(rstring + '/start/db::daily')
 
 
 @pytest.fixture
 def quote(rstring, kdbpar):
-    return Data(rstring + '/start/db::quote', engine=kdbpar)
+    return Data(rstring + '/start/db::quote')
 
 
 @pytest.fixture
 def nbbo(rstring, kdbpar):
-    return Data(rstring + '/start/db::nbbo_t', engine=kdbpar)
+    return Data(rstring + '/start/db::nbbo_t')
 
 
 @pytest.fixture
 def trade(rstring, kdbpar):
-    return Data(rstring + '/data/db::trade', engine=kdbpar)
+    return Data(rstring + '/data/db::trade')
 
 
 def test_resource_doesnt_bork(daily):
