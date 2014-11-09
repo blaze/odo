@@ -61,7 +61,7 @@ def test_eval_context():
 
 
 def test_credentials():
-    cred = k.get_credentials(host='foo', port=1000)
+    cred = k.Credentials(host='foo', port=1000)
     assert cred.host == 'foo'
     assert cred.port == 1000
 
@@ -78,7 +78,7 @@ def test_q_process(creds):
     assert q is q2
 
     # invalid instance
-    c = k.get_credentials(host='foo', port=1000)
+    c = k.Credentials(host='foo', port=1000)
     with pytest.raises(ValueError):
         k.Q(c)
 
@@ -131,7 +131,7 @@ def test_construction(creds):
     assert 'KDB: [client/server not started]'
 
     # require initilization
-    cred = k.get_credentials(port=0)
+    cred = k.Credentials(port=0)
     kdb = k.KDB(credentials=cred)
     with pytest.raises(ValueError):
         kdb.start()

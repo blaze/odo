@@ -7,7 +7,6 @@ import getpass
 import subprocess
 
 from itertools import chain
-from collections import namedtuple
 
 import psutil
 
@@ -21,44 +20,51 @@ from datashape.predicates import isrecord
 import datashape as ds
 
 try:
-    from blaze import Data
-    from blaze import CSV
+    from blaze import Data, CSV
 except ImportError:
     pass
 
 
-# credentials
-Credentials = namedtuple('Credentials', ['host', 'port', 'username',
-                                         'password'])
+class Credentials(object):
+    """Lightweight credentials container.
 
-default_credentials = Credentials(socket.gethostname(), 5000, getpass.getuser(),
-                                  None)
-
-def get_credentials(host=None, port=None, username=None, password=None):
-    """
     Parameters
     ----------
-    host : string or None
-    port : string/int or None
-    username : string or None
-    password : string or None
-
-    Returns
-    -------
-    a Credentials
-
+    host : str, optional
+        Defaults to ``socket.gethostname()``
+    port : int
+        Defaults to 5000
+    username : str
+        Defaults to ``getpass.getuser()``
+    password str or None
+        Defaults to None
     """
+    __slots__ = 'host', 'port', 'username', 'password'
 
-    if host is None:
-        host = default_credentials.host
-    if port is None:
-        port = default_credentials.port
-    if username is None:
-        username = default_credentials.username
-    if password is None:
-        password = default_credentials.password
-    return Credentials(host=host, port=port, username=username,
-                       password=password)
+    def __init__(self, host=socket.gethostname(), port=5000,
+                 username=getpass.getuser(), password=None):
+        super(Credentials, self).__init__()
+        self.host = host
+        self.port = port
+        self.username = username
+        self.password = password
+
+    def __hash__(self):
+        return hash(tuple(getattr(self, slot) for slot in self.__slots__))
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __repr__(self):
+        return '%s(%s)' % (type(self).__name__,
+                           ', '.join('%s=%r' % (slot, getattr(self, slot))
+                                     for slot in self.__slots__))
+
+
+default_credentials = Credentials()
 
 
 class BlazeGetter(object):

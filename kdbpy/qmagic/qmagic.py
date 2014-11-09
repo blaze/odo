@@ -5,7 +5,7 @@ from IPython.core.magic_arguments import (argument, magic_arguments,
                                           parse_argstring)
 from IPython.core.magic import (Magics, magics_class, line_cell_magic,
                                 needs_local_scope)
-from kdbpy.kdb import KQ, get_credentials
+from kdbpy.kdb import KQ, Credentials
 
 
 pattern = re.compile(r'''
@@ -30,10 +30,8 @@ def get_url(url):
     host = gd.get('ipv4host')
     if host is None:
         raise ValueError('please provide a host')
-    return get_credentials(username=username,
-                           host=host,
-                           port=gd.get('port'),
-                           password=gd.get('password'))
+    return Credentials(username=username, host=host, port=gd.get('port'),
+                       password=gd.get('password'))
 
 
 @magics_class
@@ -85,8 +83,8 @@ class QMagic(Magics):
         else:
             conn = make_url(args.connection_string)
             try:
-                creds = get_credentials(port=conn.port, username=conn.username,
-                                        host=conn.host, password=conn.password)
+                creds = Credentials(port=conn.port, username=conn.username,
+                                    host=conn.host, password=conn.password)
             except AttributeError:
                 raise ValueError("please provide a connection string")
             if creds not in self._creds:
@@ -94,9 +92,8 @@ class QMagic(Magics):
 
         user_ns = self.shell.user_ns
         user_ns.update(local_ns or {})
-        result = KQ(creds,
-                    start='restart' if args.restart else True).eval(code,
-                                                                    **user_ns)
+        kq = KQ(creds, start='restart' if args.restart else True)
+        result = kq.eval(code, **user_ns)
         if args.assign is not None:
             user_ns[args.assign] = result
         else:

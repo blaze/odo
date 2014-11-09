@@ -17,7 +17,7 @@ def gensym():
 @pytest.fixture(scope='session')
 def creds():
     # must be module scoped because of downstream
-    return k.get_credentials()
+    return k.default_credentials
 
 
 @pytest.yield_fixture(scope='module')
