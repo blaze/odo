@@ -471,7 +471,7 @@ def compute_down(expr, data, **kwargs):
 
 @resource.register('kdb://.+', priority=13)
 def resource_kdb(uri, name, **kwargs):
-    return QTable(uri, name=name, **kwargs)
+    return QTable(uri, tablename=name, **kwargs)
 
 
 @dispatch(pd.DataFrame, QTable)

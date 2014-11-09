@@ -1,3 +1,5 @@
+import IPython
+from collections import OrderedDict
 import sqlalchemy as sa
 from ..kdb import KQ, get_credentials
 from datashape import Record, var
@@ -24,6 +26,32 @@ qtypes = {'b': 'bool',
           't': 'timedelta'}
 
 
+class Tables(OrderedDict):
+    def __init__(self, *args, **kwargs):
+        super(Tables, self).__init__(*args, **kwargs)
+        for k, v in self.items():
+            if not isinstance(k, basestring):
+                raise TypeError('keys must all be strings')
+            if not isinstance(v, Symbol):
+                raise TypeError('values must all be blaze Symbol instances')
+
+    def _repr_pretty_(self, p, cycle):
+        if cycle:
+            p.text('%s(...)' % type(self).__name__)
+        else:
+            with p.group(4, '%s({' % type(self).__name__, '})'):
+                for idx, (k, v) in enumerate(self.items()):
+                    if idx:
+                        p.text(',')
+                        p.breakable()
+                    p.pretty(k)
+                    p.text(': ')
+                    p.pretty(v)
+
+    def __repr__(self):
+        return IPython.lib.pretty.pretty(self)
+
+
 def tables(kdb):
     names = kdb.tables.name
     metadata = kdb.eval(r'meta each value "\\a"')
@@ -35,7 +63,7 @@ def tables(kdb):
         columns = meta.index
         ds = var * Record(list(zip(columns, [qtypes[t] for t in types])))
         syms.append((name, Symbol(name, ds)))
-    return dict(syms)
+    return Tables(syms)
 
 
 def qp(t):
@@ -55,24 +83,22 @@ def isstandard(t):
     return qp(t) is 0
 
 
+def parse_connection_string(uri):
+    params = sa.engine.url.make_url(uri)
+    return get_credentials(username=params.username, password=params.password,
+                           host=params.host, port=params.port)
+
+
 class QTable(object):
-    def __init__(self, uri, name=None, columns=None, dshape=None, schema=None):
+    def __init__(self, uri, tablename=None, columns=None, dshape=None,
+                 schema=None):
         self.uri = uri
-        self.tablename = name
-        self.params = sa.engine.url.make_url(self.uri)
-        cred = get_credentials(username=self.params.username,
-                               password=self.params.password,
-                               host=self.params.host,
-                               port=self.params.port)
-        self.engine = KQ(cred, start=True)
-        self._dshape = dshape or discover(self)
+        self.tablename = tablename
+        self.engine = KQ(parse_connection_string(self.uri), start=True)
+        self.dshape = dshape or discover(self)
         self.columns = columns or self.engine.eval('cols[%s]' %
                                                    self.tablename).tolist()
-        self.schema = schema or self._dshape.measure
-
-    @property
-    def dshape(self):
-        return self._dshape
+        self.schema = schema or self.dshape.measure
 
     def __repr__(self):
         return ('{0.__class__.__name__}(tablename={0.tablename!r}, '
