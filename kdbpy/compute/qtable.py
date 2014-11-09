@@ -1,10 +1,10 @@
 import IPython
 from collections import OrderedDict
-import sqlalchemy as sa
-from ..kdb import KQ, get_credentials
+from kdbpy import KQ
 from datashape import Record, var
 from blaze import Symbol, discover
 from blaze.dispatch import dispatch
+from kdbpy.util import PrettyMixin, parse_connection_string
 
 
 qtypes = {'b': 'bool',
@@ -83,13 +83,7 @@ def isstandard(t):
     return qp(t) is 0
 
 
-def parse_connection_string(uri):
-    params = sa.engine.url.make_url(uri)
-    return get_credentials(username=params.username, password=params.password,
-                           host=params.host, port=params.port)
-
-
-class QTable(object):
+class QTable(PrettyMixin):
     def __init__(self, uri, tablename=None, columns=None, dshape=None,
                  schema=None):
         self.uri = uri
@@ -112,9 +106,6 @@ class QTable(object):
                 p.breakable()
                 p.text('dshape=')
                 p.pretty(str(self.dshape))
-
-    def __repr__(self):
-        return IPython.lib.pretty.pretty(self)
 
 
 @dispatch(QTable)
