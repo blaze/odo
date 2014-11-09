@@ -10,10 +10,10 @@ def test_columns(q, rq, sq):
 
 
 def test_repr(q):
-    expected = ("QTable(tablename='t', "
-                "dshape='var * "
-                "{ name : string, id : int64, amount : float64, when : datetime, on : date }')")
-    assert repr(q) == expected
+    expected = """
+QTable(tablename='t',
+       dshape='var * { name : string, id : int64, amount : float64, when : datetime, on : date }')"""
+    assert repr(q) == expected.strip()
 
 
 def test_tables(kdb, rt, st, t):

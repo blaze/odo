@@ -100,9 +100,21 @@ class QTable(object):
                                                    self.tablename).tolist()
         self.schema = schema or self.dshape.measure
 
+    def _repr_pretty_(self, p, cycle):
+        name = type(self).__name__
+        if cycle:
+            p.text('%s(...)' % name)
+        else:
+            with p.group(len(name) + 1, '%s(' % name, ')'):
+                p.text('tablename=')
+                p.pretty(self.tablename)
+                p.text(',')
+                p.breakable()
+                p.text('dshape=')
+                p.pretty(str(self.dshape))
+
     def __repr__(self):
-        return ('{0.__class__.__name__}(tablename={0.tablename!r}, '
-                'dshape={1!r})'.format(self, str(self.dshape)))
+        return IPython.lib.pretty.pretty(self)
 
 
 @dispatch(QTable)
