@@ -104,22 +104,22 @@ class QTable(PrettyMixin):
             p.pretty(str(self.dshape))
 
     @property
-    def qsymbol(self):
+    def _qsymbol(self):
         return q.Symbol(self.tablename)
 
     @property
-    def symbol(self):
+    def _symbol(self):
         return Symbol(self.tablename, self.dshape)
 
     @property
     def iskeyed(self):
-        sym = self.qsymbol
+        sym = self._qsymbol
         return self.eval(q.and_(q.istable(sym), q.isdict(sym)))
 
     @property
     def keys(self):
         if self.iskeyed:
-            expr = q.List('cols', q.List('key', self.qsymbol))
+            expr = q.List('cols', q.List('key', self._qsymbol))
             return self.eval(expr).tolist()
         return []
 

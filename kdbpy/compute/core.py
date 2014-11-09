@@ -217,7 +217,7 @@ def optimize(expr, data, **kwargs):
 def post_compute(expr, data, scope):
     table = first(scope.values())
     leaf = expr._leaves()[0]
-    sym = table.symbol
+    sym = table._symbol
     subsed = expr._subs({leaf: sym})
     final_expr = compute_up(subsed, data, scope={sym: table})
     result = table.engine.eval('eval [%s]' % final_expr).squeeze()
@@ -277,7 +277,7 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Join, QTable, QTable)
 def compute_up(expr, lhs, rhs, **kwargs):
-    return compute_up(expr, lhs.qsymbol, rhs.qsymbol, **kwargs)
+    return compute_up(expr, lhs._qsymbol, rhs._qsymbol, **kwargs)
 
 
 @dispatch(Summary, q.Expr)
@@ -382,7 +382,7 @@ def post_compute(expr, data, scope):
     leaf = expr._leaves()[0]
 
     # do this in optimize
-    sym = table.symbol
+    sym = table._symbol
     subsed = expr._subs({leaf: sym})
     final_expr = compute_up(subsed, data, scope={sym: table})
     return table.engine.eval('eval [%s]' % final_expr)
@@ -460,12 +460,12 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Expr, QTable)
 def compute_up(expr, data, **kwargs):
-    return compute_up(expr, data.qsymbol, **kwargs)
+    return compute_up(expr, data._qsymbol, **kwargs)
 
 
 @dispatch(Expr, QTable)
 def compute_down(expr, data, **kwargs):
-    return compute_down(expr, data.qsymbol, **kwargs)
+    return compute_down(expr, data._qsymbol, **kwargs)
 
 
 @resource.register('kdb://.+', priority=13)
