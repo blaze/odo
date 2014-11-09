@@ -3,10 +3,11 @@ from __future__ import absolute_import, division, print_function
 import sys
 import platform
 
+from .kdb import KQ, Credentials
+
 # TODO: find out why "import blaze" makes import faster than not having it here
 try:
     import blaze
-    from .kdb import KQ, Credentials
     from .compute import compute, QTable, discover, tables, into, resource
 except ImportError:
     pass
