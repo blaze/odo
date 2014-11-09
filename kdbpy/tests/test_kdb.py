@@ -30,8 +30,10 @@ except ImportError:  # pragma: no cover
 def test_basic():
     kq = k.KQ()
     assert not kq.is_started
+
     kq.start()
     assert kq.is_started
+
     kq.stop()
     assert not kq.is_started
 
@@ -49,15 +51,8 @@ def test_basic():
         assert kq.is_started
 
 
-def test_kq_repr():
-    expected = ''
-    with k.KQ() as kq:
-        assert repr(kq) == expected
-
-
-def test_eval_context():
-    with k.KQ() as kq:
-        assert kq.eval('2 + 2') == 4
+def test_kq_repr(kdb):
+    assert repr(kdb)
 
 
 def test_credentials():
@@ -93,22 +88,15 @@ def test_q_process(creds):
     with pytest.raises(ValueError):
         k.Q(creds).start(start=False)
 
-    # terminate
-    q2.stop()
-    assert q2.pid is None
-
 
 def test_q_process_detached(qproc):
-
-    # create a new process
+    # check our q process attributes
     assert qproc is not None
     assert qproc.pid
     assert qproc.process is not None
 
-    qproc.process = None
 
-
-@pytest.yield_fixture(scope='module')
+@pytest.yield_fixture(scope='session')
 def qproc(creds):
     q = k.Q(creds).start()
     yield q
@@ -116,7 +104,8 @@ def qproc(creds):
 
 
 def test_construction(creds):
-    kdb = k.KDB(credentials=creds).start()
+    kdb = k.KDB(credentials=creds)
+    kdb.start()
     assert kdb.is_started
 
     # repr
@@ -128,7 +117,7 @@ def test_construction(creds):
     assert not kdb.is_started
 
     result = str(kdb)
-    assert 'KDB: [client/server not started]'
+    assert result == '[KDB: q client not started]'
 
     # require initilization
     cred = k.Credentials(port=0)
@@ -185,10 +174,6 @@ def test_scalar_datetime_like_conversions(kdb):
     assert result == pd.Timedelta('1 min')
     result = kdb.eval('00:00:01')
     assert result == pd.Timedelta('1 sec')
-
-
-def test_repr_smoke(kdb):
-    assert repr(kdb)
 
 
 def test_print_versions():
