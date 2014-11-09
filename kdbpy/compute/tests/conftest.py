@@ -46,5 +46,12 @@ def sq(rstring, kdb):
 
 
 @pytest.fixture
+def ktq(rstring, kdb):
+    pytest.importorskip('kdbpy.compute')
+    from kdbpy.compute.qtable import QTable
+    return QTable(rstring, tablename='kt')
+
+
+@pytest.fixture
 def rstring():
     return 'kdb://%s@%s:5000' % (getpass.getuser(), socket.gethostname())
