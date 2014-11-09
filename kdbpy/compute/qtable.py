@@ -27,7 +27,7 @@ qtypes = {'b': 'bool',
           't': 'timedelta'}
 
 
-class Tables(OrderedDict):
+class Tables(OrderedDict, PrettyMixin):
     def __init__(self, *args, **kwargs):
         super(Tables, self).__init__(*args, **kwargs)
 
@@ -41,9 +41,6 @@ class Tables(OrderedDict):
                 p.pretty(k)
                 p.text(': ')
                 p.pretty(v)
-
-    def __repr__(self):
-        return IPython.lib.pretty.pretty(self)
 
 
 def tables(kdb):
@@ -75,7 +72,6 @@ def issplayed(t):
 
 def isstandard(t):
     return qp(t) is 0
-
 
 
 class QTable(PrettyMixin):
