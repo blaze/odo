@@ -1,6 +1,6 @@
 import pytest
 pytest.importorskip('blaze')
-from kdbpy.compute.qtable import tables, iskeyed, keys
+from kdbpy.compute.qtable import tables
 
 
 def test_columns(q, rq, sq):
@@ -34,21 +34,8 @@ def test_tablename(q, rq, sq):
     assert sq.tablename == 'st'
 
 
-def test_iskeyed(rq, sq, q):
-    assert iskeyed(rq)
-    assert iskeyed(sq)
-    assert not iskeyed(q)
-
-
 def test_keys(ktq, rq, sq, q):
-    rk = keys(rq)
-    assert rk == ['name']
-
-    sk = keys(sq)
-    assert sk == ['name']
-
-    qk = keys(q)
-    assert qk == []
-
-    kqk = keys(ktq)
-    assert kqk == ['house', 'id']
+    assert rq.keys == ['name']
+    assert sq.keys == ['name']
+    assert q.keys == []
+    assert ktq.keys == ['house', 'id']

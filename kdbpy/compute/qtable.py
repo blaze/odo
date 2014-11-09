@@ -5,6 +5,7 @@ from datashape import Record, var
 from blaze import Symbol, discover
 from blaze.dispatch import dispatch
 from kdbpy.util import PrettyMixin, parse_connection_string
+from kdbpy import q
 
 
 qtypes = {'b': 'bool',
@@ -76,6 +77,7 @@ def isstandard(t):
     return qp(t) is 0
 
 
+
 class QTable(PrettyMixin):
     def __init__(self, uri, tablename=None, columns=None, dshape=None,
                  schema=None):
@@ -87,6 +89,9 @@ class QTable(PrettyMixin):
                                                    self.tablename).tolist()
         self.schema = schema or self.dshape.measure
 
+    def eval(self, expr, *args, **kwargs):
+        return self.engine.eval('eval [%s]' % expr, *args, **kwargs)
+
     def _repr_pretty_(self, p, cycle):
         assert not cycle, 'cycles not allowed'
         name = type(self).__name__
@@ -97,6 +102,26 @@ class QTable(PrettyMixin):
             p.breakable()
             p.text('dshape=')
             p.pretty(str(self.dshape))
+
+    @property
+    def qsymbol(self):
+        return q.Symbol(self.tablename)
+
+    @property
+    def symbol(self):
+        return Symbol(self.tablename, self.dshape)
+
+    @property
+    def iskeyed(self):
+        sym = self.qsymbol
+        return self.eval(q.and_(q.istable(sym), q.isdict(sym)))
+
+    @property
+    def keys(self):
+        if self.iskeyed:
+            expr = q.List('cols', q.List('key', self.qsymbol))
+            return self.eval(expr).tolist()
+        return []
 
 
 @dispatch(QTable)
