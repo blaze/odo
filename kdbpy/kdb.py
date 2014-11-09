@@ -21,8 +21,8 @@ import datashape as ds
 
 try:
     from blaze import Data, CSV
-except ImportError:
-    pass
+except ImportError:  # pragma: no cover
+    pass  # pragma: no cover
 
 
 class Credentials(object):

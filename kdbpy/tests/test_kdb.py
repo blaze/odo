@@ -230,8 +230,8 @@ def test_set_objects(gensym, kdb, obj):
                    'complex numbers')
 def test_set_complex(gensym, kdb):
     kdb.set(gensym, 1.0j)
-    result = kdb.eval(gensym)
-    assert result == 1.0j
+    result = kdb.eval(gensym)  # pragma: no cover
+    assert result == 1.0j  # pragma: no cover
 
 
 def test_date(kdb, gensym):

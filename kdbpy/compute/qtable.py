@@ -29,24 +29,17 @@ qtypes = {'b': 'bool',
 class Tables(OrderedDict):
     def __init__(self, *args, **kwargs):
         super(Tables, self).__init__(*args, **kwargs)
-        for k, v in self.items():
-            if not isinstance(k, basestring):
-                raise TypeError('keys must all be strings')
-            if not isinstance(v, Symbol):
-                raise TypeError('values must all be blaze Symbol instances')
 
     def _repr_pretty_(self, p, cycle):
-        if cycle:
-            p.text('%s(...)' % type(self).__name__)
-        else:
-            with p.group(4, '%s({' % type(self).__name__, '})'):
-                for idx, (k, v) in enumerate(self.items()):
-                    if idx:
-                        p.text(',')
-                        p.breakable()
-                    p.pretty(k)
-                    p.text(': ')
-                    p.pretty(v)
+        assert not cycle, 'cycles not allowed'
+        with p.group(4, '%s({' % type(self).__name__, '})'):
+            for idx, (k, v) in enumerate(self.items()):
+                if idx:
+                    p.text(',')
+                    p.breakable()
+                p.pretty(k)
+                p.text(': ')
+                p.pretty(v)
 
     def __repr__(self):
         return IPython.lib.pretty.pretty(self)
@@ -95,17 +88,15 @@ class QTable(PrettyMixin):
         self.schema = schema or self.dshape.measure
 
     def _repr_pretty_(self, p, cycle):
+        assert not cycle, 'cycles not allowed'
         name = type(self).__name__
-        if cycle:
-            p.text('%s(...)' % name)
-        else:
-            with p.group(len(name) + 1, '%s(' % name, ')'):
-                p.text('tablename=')
-                p.pretty(self.tablename)
-                p.text(',')
-                p.breakable()
-                p.text('dshape=')
-                p.pretty(str(self.dshape))
+        with p.group(len(name) + 1, '%s(' % name, ')'):
+            p.text('tablename=')
+            p.pretty(self.tablename)
+            p.text(',')
+            p.breakable()
+            p.text('dshape=')
+            p.pretty(str(self.dshape))
 
 
 @dispatch(QTable)

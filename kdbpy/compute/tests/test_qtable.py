@@ -24,6 +24,10 @@ def test_tables(kdb, rt, st, t):
         assert s.isidentical(d[s._name])
 
 
+def test_tables_repr(kdb):
+    assert repr(tables(kdb))
+
+
 def test_tablename(q, rq, sq):
     assert q.tablename == 't'
     assert rq.tablename == 'rt'

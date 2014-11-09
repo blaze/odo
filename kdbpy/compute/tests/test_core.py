@@ -189,7 +189,7 @@ def test_nrows(t, q, df):
 
 @pytest.mark.xfail(raises=ValueError, reason='axis == 1 not supported on record'
                    ' types')
-def test_nelements(t, q, df):
+def test_nelements(t, q, df):  # pragma: no cover
     qresult = compute(t.nelements(axis=1), q)
     expected = df.shape[1]
     assert qresult == expected
