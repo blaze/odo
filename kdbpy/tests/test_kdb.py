@@ -145,17 +145,28 @@ def test_eval(kdb):
     assert kdb.eval(f) == 43
     assert kdb.eval(lambda x: x+5, 42) == 47
 
-def test_get_set(kdb):
 
-    for v in [42,
-              Timestamp('2001-01-01 09:30:00.123'),
-              'foo']:
-        kdb.set('v',v)
-        assert kdb.get('v') == v
+@pytest.mark.xfail(raises=qpython.qwriter.QWriterException,
+                   reason='qpython cannot serialize pandas Timestamps')
+def test_get_set_timestamp(kdb, gensym):
+    ts = pd.Timestamp('2001-01-01 09:30:00.123')
+    kdb.set(gensym, ts)
+    assert kdb.get(gensym) == ts
 
-    v = tm.makeMixedFrame()
-    kdb.set('df',v)
-    tm.assert_frame_equal(v,kdb.set('df'))
+
+def test_get_set(kdb, gensym):
+    for v in [42, 'foo']:
+        kdb.set(gensym, v)
+        assert kdb.get(gensym) == v
+
+
+@pytest.mark.xfail(raises=KeyError,
+                   reason='qpython cannot serialize pandas Timestamps')
+def test_get_set_mixed_frame(kdb, gensym):
+    gensym = tm.makeMixedDataFrame()
+    kdb.set('df', gensym)
+    tm.assert_frame_equal(gensym, kdb.get('df'))
+
 
 def test_scalar_datetime_like_conversions(kdb):
 
