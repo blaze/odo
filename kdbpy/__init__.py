@@ -6,7 +6,7 @@ import platform
 # TODO: find out why "import blaze" makes import faster than not having it here
 try:
     import blaze
-    from .kdb import KQ
+    from .kdb import KQ, Credentials
     from .compute import compute, QTable, discover, tables, into, resource
 except ImportError:
     pass
