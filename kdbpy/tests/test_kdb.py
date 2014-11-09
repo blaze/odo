@@ -338,10 +338,9 @@ e,2010-10-05 00:00:01,5,5.0,`e"""  # note the whitespace here
 
 
 def test_data_getter(kdbpar):
-    for t in kdbpar.tables.name:
-        data = kdbpar.data[t]
-        assert isinstance(data, Data)
-        assert repr(data)
+    data = kdbpar.data['t']
+    assert isinstance(data, Data)
+    assert repr(data)
 
 
 def test_data_getter_fails(kdb):
