@@ -76,7 +76,7 @@ class BlazeGetter(object):
 class KQ(object):
     """ manage the kdb & q process """
 
-    def __init__(self, credentials=None, path=None, start=None):
+    def __init__(self, credentials=default_credentials, start=False, path=None):
         """
         Parameters
         ----------
@@ -89,13 +89,10 @@ class KQ(object):
         -------
         a KDB and Q object, with a started q engine
         """
-
-        if credentials is None:
-            credentials = get_credentials()
         self.credentials = credentials
         self.q = Q(credentials=credentials, path=path)
         self.kdb = KDB(credentials=self.credentials)
-        if start is not None:
+        if start:
             self.start(start=start)
         self._data = BlazeGetter(self.credentials)
         self._loaded = set()
@@ -156,11 +153,11 @@ class KQ(object):
         >>> df = DataFrame({'price': [1, 2, 3],
         ...                 'sym': list('abc')}).sort_index(axis=1)
         >>> dshape = discover(df)
-        >>> kq = KQ(get_credentials(), start='restart')
-        >>> with ensure_clean('temp.csv') as f:
-        ...     df.to_csv(f, index=False)
-        ...     n = kq.read_csv(f, table='trade', dshape=dshape)
-        >>> kq.eval('trade')
+        >>> with KQ(start=True) as kq:
+        ...     with ensure_clean('temp.csv') as f:
+        ...         df.to_csv(f, index=False)
+        ...         n = kq.read_csv(f, table='trade', dshape=dshape)
+        ...     kq.eval('trade')
            price sym
         0      1   a
         1      2   b
@@ -173,25 +170,26 @@ class KQ(object):
         ...                 'sym': list('abc'),
         ...                 'conn': list('AB') + [np.nan]})[['price', 'sym',
         ...                                                  'conn']]
-        >>> with ensure_clean('temp.csv') as f:
-        ...     df.to_csv(f, index=False)
-        ...     kq.read_csv(f, table='trade')
-        >>> kq.eval('trade')
+        >>> with KQ(start=True) as kq:
+        ...     with ensure_clean('temp.csv') as f:
+        ...         df.to_csv(f, index=False)
+        ...         kq.read_csv(f, table='trade')
+        ...     kq.eval('trade')
            price sym conn
         0      1   a    A
         1      2   b    B
         2    NaN   c  NaN
-        >>> kq.stop() # doctest: +SKIP
         """
         csv = CSV(filename, encoding=encoding, *args, **kwargs)
         columns = csv.columns
         params = dict(table=table,
-                      columns='; '.join('`$"%s"' % column for column in columns),
+                      columns='; '.join('`$"%s"' % column for column in
+                                        columns),
                       filename=filename)
 
         # load up the Q CSV reader
-        self.eval(r'\l %s' % os.path.join(os.path.dirname(__file__), 'q',
-                                          'csvutil.q'))
+        self.read_kdb(os.path.join(os.path.dirname(__file__), 'q',
+                                   'csvutil.q'))
         s = ('{table}: ({columns}) xcol .csv.read[`$":{filename}"]'
              ''.format(**params))
         self.eval(s)
@@ -240,7 +238,7 @@ class KQ(object):
         --------
         >>> import os
         >>> from pandas.util.testing import ensure_clean
-        >>> kq = KQ(get_credentials(), start='restart')
+        >>> kq = KQ(start=True)
         >>> kq.eval('t: ([id: 1 2 3] name: `a`b`c; amount: 1.0 2.0 3.0)')
         >>> kq.eval('save `t')
         ':t'

@@ -66,16 +66,15 @@ def test_credentials():
     assert cred.port == 1000
 
 
-def test_q_process():
-    cred = k.get_credentials()
-    q = k.Q(cred).start()
+def test_q_process(creds):
+    q = k.Q(creds).start()
 
     assert q is not None
     assert q.pid
     assert q.process is not None
 
     # other instance
-    q2 = k.Q(cred).start()
+    q2 = k.Q(creds).start()
     assert q is q2
 
     # invalid instance
@@ -85,14 +84,14 @@ def test_q_process():
 
     # restart
     prev = q.pid
-    q = k.Q(cred).start(start=True)
+    q = k.Q(creds).start(start=True)
     assert q.pid == prev
 
     q2 = k.Q().start(start='restart')
     assert q2.pid != prev
 
     with pytest.raises(ValueError):
-        k.Q(cred).start(start=False)
+        k.Q(creds).start(start=False)
 
     # terminate
     q2.stop()
