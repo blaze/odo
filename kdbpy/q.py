@@ -137,6 +137,11 @@ def sort(x, key, ascending):
     return List(sort_func, symlist(key), x)
 
 
+def try_(f, x, onfail):
+    """q's horrible version of try except, where any error is caught"""
+    return List('@', f, x, onfail)
+
+
 def cast(typ):
     return lambda x: List('$', symlist(typ), x)
 
