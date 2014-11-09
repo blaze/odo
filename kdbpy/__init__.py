@@ -6,10 +6,12 @@ import platform
 # TODO: find out why "import blaze" makes import faster than not having it here
 try:
     import blaze
-    from .compute import *
+    from .kdb import KQ
+    from .compute import compute, QTable, discover, tables, into, resource
 except ImportError:
     pass
 
+from . import util
 import logging
 
 logging.basicConfig()
