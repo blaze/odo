@@ -43,6 +43,7 @@ def kdb(kq):
             'street: `maple`apple`pine`grove)')
     kq.eval('st: ([name: `Bob`Alice`Joe] jobcode: 9 10 11; '
             'tree: `maple`apple`pine; alias: `Joe`Betty`Moe)')
+    kq.eval('kt: ([house: `a`b`c; id: 1 2 3] amount: 3.0 4.0 5.0)')
     return kq
 
 
