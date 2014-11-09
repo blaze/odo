@@ -1,6 +1,6 @@
 package:
   name: kdbpy
-  version: 0.0.6
+  version: 0.0.7
 
 build:
     number: 1
