@@ -10,7 +10,7 @@ import qpython.qcollection
 
 @pytest.fixture
 def trade(rstring, kdbpar):
-    return Data(rstring + '/start/db::trade', engine=kdbpar)
+    return Data(rstring + '/start/db::trade')
 
 
 def separate(expr):

@@ -20,13 +20,19 @@ from toolz.compatibility import range
 from datashape.predicates import isrecord
 import datashape as ds
 
-from blaze import CSV
+try:
+    from blaze import Data
+    from blaze import CSV
+except ImportError:
+    pass
+
 
 # credentials
 Credentials = namedtuple('Credentials', ['host', 'port', 'username',
                                          'password'])
 
-default_credentials = Credentials('localhost', 5001, getpass.getuser(), None)
+default_credentials = Credentials(socket.gethostname(), 5000, getpass.getuser(),
+                                  None)
 
 def get_credentials(host=None, port=None, username=None, password=None):
     """
@@ -55,6 +61,17 @@ def get_credentials(host=None, port=None, username=None, password=None):
                        password=password)
 
 
+class BlazeGetter(object):
+    def __init__(self, credentials):
+        self.credentials = credentials
+
+    def __getitem__(self, tablename):
+        assert isinstance(tablename, basestring), 'tablename must be a string'
+        creds = self.credentials
+        template = 'kdb://{0.username}@{0.host}:{0.port}::{tablename}'
+        return Data(template.format(creds, tablename=tablename))
+
+
 # launch client & server
 class KQ(object):
     """ manage the kdb & q process """
@@ -80,6 +97,8 @@ class KQ(object):
         self.kdb = KDB(credentials=self.credentials)
         if start is not None:
             self.start(start=start)
+        self._data = BlazeGetter(self.credentials)
+        self._loaded = set()
 
     def __repr__(self):
         return '{0.__class__.__name__}(kdb={0.kdb}, q={0.q})'.format(self)
@@ -215,7 +234,13 @@ class KQ(object):
         2     b       2
         3     c       3
         """
-        return self.eval(r'\l %s' % filename)
+        filename = os.path.abspath(filename)
+        if filename not in self._loaded:
+            result = self.eval(r'\l %s' % filename)
+            self._loaded.add(filename)
+        else:
+            result = None
+        return result
 
     @property
     def tables(self):
@@ -230,6 +255,10 @@ class KQ(object):
     def memory(self):
         result = self.eval('.Q.w[]')
         return pd.Series(result.values, index=result.keys, name='memory')
+
+    @property
+    def data(self):
+        return self._data
 
 
 class Singleton(type):

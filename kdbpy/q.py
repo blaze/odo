@@ -1,6 +1,7 @@
 import re
 import keyword
 from itertools import chain
+import builtins
 
 from collections import OrderedDict
 
@@ -72,6 +73,89 @@ class Symbol(Atom):
         return '`' + joined
 
 
+def binop(op):
+    return lambda x, y: List(op, x, y)
+
+
+def unop(op):
+    return lambda x: List(op, x)
+
+
+eq = binop('=')
+ne = binop('<>')
+lt = binop('<')
+gt = binop('>')
+le = binop('<=')
+ge = binop('>=')
+
+add = binop('+')
+sub = binop('-')
+mul = binop('*')
+div = binop('%')
+pow = binop('xexp')
+mod = binop('mod')
+
+take = binop('#')
+partake = binop('.Q.ind')
+and_ = binop('&')
+or_ = binop('|')
+
+neg = unop('-:')
+null = unop('^:')
+not_ = unop('~:')
+floor = unop('_:')
+ceil = unop('-_-:')
+count = unop('#:')
+til = unop('til')
+distinct = unop('?:')
+
+
+unary_ops = {'-': neg,
+             '~': not_,
+             'floor': floor,
+             'ceil': ceil,
+             'sum': unop('sum'),
+             'mean': unop('avg'),
+             'std': unop('dev'),
+             'var': unop('var'),
+             'min': unop('min'),
+             'max': unop('max'),
+             'count': count,
+             'nelements': count}
+
+
+def symlist(*args):
+    return List(*list(map(Symbol, args)))
+
+
+def slice(obj, *keys):
+    return List(obj, '::', symlist(*keys))
+
+
+def sort(x, key, ascending):
+    sort_func = Atom('xasc' if ascending else 'xdesc')
+    return List(sort_func, symlist(key), x)
+
+
+def cast(typ):
+    return lambda x: List('$', symlist(typ), x)
+
+
+long = cast('long')
+int = cast('int')
+float = cast('float')
+
+
+def select(child, constraints=None, by=None, aggregates=None):
+    if constraints is None:
+        constraints = List()
+    if by is None:
+        by = Bool()
+    if aggregates is None:
+        aggregates = List()
+    return List('?', child, constraints, by, aggregates)
+
+
 class List(object):
     def __init__(self, *items):
         self.items = items
@@ -83,7 +167,7 @@ class List(object):
 
     def __getitem__(self, key):
         result = self.items[key]
-        if isinstance(key, slice):
+        if isinstance(key, builtins.slice):
             return List(*result)
         return result
 

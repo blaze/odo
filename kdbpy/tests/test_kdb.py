@@ -12,13 +12,14 @@ import numpy as np
 import toolz
 import kdbpy
 
-from blaze import CSV
+from blaze import CSV, Data
 
 import qpython
 import qpython.qwriter
 
 from kdbpy import kdb as k
 from kdbpy.kdb import which
+from kdbpy.exampleutils import example_data
 
 try:
     from cStringIO import StringIO
@@ -106,11 +107,6 @@ def test_q_process_detached(qproc):
     assert qproc.process is not None
 
     qproc.process = None
-
-
-@pytest.fixture(scope='module')
-def creds():
-    return k.get_credentials()
 
 
 @pytest.yield_fixture(scope='module')
@@ -277,7 +273,7 @@ e,2010-10-05D00:00:01"""
     assert expected.date.dtype == np.dtype('datetime64[ns]')
 
 
-def test_tables(kdb, kdbpar):
+def test_tables(kdb):
     tb = kdb.tables
 
     # we have at least our baked in names
@@ -318,3 +314,21 @@ e,2010-10-05 00:00:01,5,5.0,`e"""  # note the whitespace here
     assert result.amount.dtype == np.dtype('float32')
     assert result.sym.dtype == np.dtype(object)
     assert result.date.dtype == np.dtype('datetime64[ns]')
+
+
+def test_data_getter(kdbpar):
+    for t in kdbpar.tables.name:
+        data = kdbpar.data[t]
+        assert isinstance(data, Data)
+        assert repr(data)
+
+
+def test_data_getter_fails(kdb):
+    with pytest.raises(AssertionError):
+        kdb.data[object()]
+
+
+def test_can_load_twice(kdbpar):
+    path = example_data(os.path.join('start', 'db'))
+    kdbpar.read_kdb(path)
+    kdbpar.read_kdb(path)

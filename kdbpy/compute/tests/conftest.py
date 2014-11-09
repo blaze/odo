@@ -25,24 +25,24 @@ def st():
 
 
 @pytest.fixture
-def q(kdb):
+def q(rstring, kdb):
     pytest.importorskip('kdbpy.compute')
     from kdbpy.compute.qtable import QTable
-    return QTable('kdb://pcloud@localhost:5001', name='t', engine=kdb)
+    return QTable(rstring, name='t')
 
 
 @pytest.fixture
-def rq(kdb):
+def rq(rstring, kdb):
     pytest.importorskip('kdbpy.compute')
     from kdbpy.compute.qtable import QTable
-    return QTable('kdb://pcloud@localhost:5001', name='rt', engine=kdb)
+    return QTable(rstring, name='rt')
 
 
 @pytest.fixture
-def sq(kdb):
+def sq(rstring, kdb):
     pytest.importorskip('kdbpy.compute')
     from kdbpy.compute.qtable import QTable
-    return QTable('kdb://pcloud@localhost:5001', name='st', engine=kdb)
+    return QTable(rstring, name='st')
 
 
 @pytest.fixture

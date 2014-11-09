@@ -56,8 +56,7 @@ def isstandard(t):
 
 
 class QTable(object):
-    def __init__(self, uri, engine=None, name=None, columns=None, dshape=None,
-                 schema=None):
+    def __init__(self, uri, name=None, columns=None, dshape=None, schema=None):
         self.uri = uri
         self.tablename = name
         self.params = sa.engine.url.make_url(self.uri)
@@ -65,7 +64,7 @@ class QTable(object):
                                password=self.params.password,
                                host=self.params.host,
                                port=self.params.port)
-        self.engine = engine or KQ(cred, start=True)
+        self.engine = KQ(cred, start=True)
         self._dshape = dshape or discover(self)
         self.columns = columns or self.engine.eval('cols[%s]' %
                                                    self.tablename).tolist()
