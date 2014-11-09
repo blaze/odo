@@ -1,13 +1,10 @@
 """ kdb process management """
 import os
-# import time
 import socket
 import atexit
 import platform
 import getpass
 import subprocess
-
-# from future.builtins import range
 
 from itertools import chain
 from collections import namedtuple
@@ -19,37 +16,17 @@ import numpy as np
 from qpython import qconnection, qtemporal
 
 import toolz
+from toolz.compatibility import range
 from datashape.predicates import isrecord
 import datashape as ds
+
+from blaze import CSV
 
 # credentials
 Credentials = namedtuple('Credentials', ['host', 'port', 'username',
                                          'password'])
 
 default_credentials = Credentials('localhost', 5001, getpass.getuser(), None)
-
-
-dstypes = {ds.bool_: 'b',
-           ds.int8: 'x',
-           ds.int16: 'h',
-           ds.int32: 'i',
-           ds.int64: 'j',
-           ds.float32: 'e',
-           ds.float64: 'f',
-           ds.string: '*',
-           ds.date_: 'd',
-           ds.datetime_: 'p',
-           ds.time_: 't'}
-
-
-dstypes = toolz.merge(dstypes, toolz.keymap(ds.Option, dstypes))
-
-
-def dshape_to_qtypes(ds):
-    assert isrecord(ds.measure), 'measure must be a record'
-    return ds.measure.names, ''.join(dstypes[dstype]
-                                     for dstype in ds.measure.types)
-
 
 def get_credentials(host=None, port=None, username=None, password=None):
     """
@@ -138,7 +115,7 @@ class KQ(object):
     def eval(self, *args, **kwargs):
         return self.kdb.eval(*args, **kwargs)
 
-    def read_csv(self, filename, table, sep=',', dshape=None):
+    def read_csv(self, filename, table, encoding=None, *args, **kwargs):
         """Put a CSV file's data into the Q namespace
 
         Parameters
@@ -163,7 +140,7 @@ class KQ(object):
         >>> kq = KQ(get_credentials(), start='restart')
         >>> with ensure_clean('temp.csv') as f:
         ...     df.to_csv(f, index=False)
-        ...     kq.read_csv(f, table='trade', dshape=dshape)
+        ...     n = kq.read_csv(f, table='trade', dshape=dshape)
         >>> kq.eval('trade')
            price sym
         0      1   a
@@ -173,29 +150,32 @@ class KQ(object):
         With option types (the extra whitespace in the repr is necessary)
 
         >>> import numpy as np
-        >>> from blaze import CSV
         >>> df = DataFrame({'price': [1, 2, np.nan],
         ...                 'sym': list('abc'),
-        ...                 'conn': list('AB') + [np.nan]})[['price', 'sym', 'conn']]
+        ...                 'conn': list('AB') + [np.nan]})[['price', 'sym',
+        ...                                                  'conn']]
         >>> with ensure_clean('temp.csv') as f:
         ...     df.to_csv(f, index=False)
-        ...     csv = CSV(f)
-        ...     kq.read_csv(f, table='trade', dshape=csv.dshape)
+        ...     kq.read_csv(f, table='trade')
         >>> kq.eval('trade')
            price sym conn
         0      1   a    A
         1      2   b    B
-        2    NaN   c     
+        2    NaN   c  NaN
         >>> kq.stop() # doctest: +SKIP
         """
-        s = '{table}: {columns} xcol (("{types}"; enlist "{sep}") 0:`$"{filename}")'
-        columns, types = dshape_to_qtypes(dshape)
+        csv = CSV(filename, encoding=encoding, *args, **kwargs)
+        columns = csv.columns
         params = dict(table=table,
-                      columns=''.join('`%s' % column for column in columns),
-                      types=types,
-                      sep=sep,
+                      columns='; '.join('`$"%s"' % column for column in columns),
                       filename=filename)
-        return self.eval(s.format(**params))
+
+        # load up the Q CSV reader
+        self.eval(r'\l %s' % os.path.join(os.path.dirname(__file__), 'q',
+                                          'csvutil.q'))
+        s = ('{table}: ({columns}) xcol .csv.read[`$":{filename}"]'
+             ''.format(**params))
+        self.eval(s)
 
     def set(self, name, x):
         self.kdb.q('set', np.string_(name), x)
@@ -261,7 +241,7 @@ class Singleton(type):
                                                                  **kwargs)
         inst = cls._instances[cls]
         creds = list(filter(lambda x: isinstance(x, Credentials),
-                             chain(args, kwargs.values())))
+                            chain(args, kwargs.values())))
         try:
             creds = creds[0]
         except IndexError:
@@ -344,7 +324,6 @@ class Q(object):
         self.process = self.find_running_process()
         return self.process is not None
 
-
     def start(self, start=True):
         """
         create the q executable process, returning the handle
@@ -383,16 +362,13 @@ class Q(object):
         # alternatively we can redirect to a PIPE and use .communicate()
         # that can potentially block though
         with open(os.devnull, 'w') as wnull, open(os.devnull, 'r') as rnull:
-            self.process = psutil.Popen([self.path , '-p',
+            self.process = psutil.Popen([self.path, '-p',
                                          str(self.credentials.port)],
                                         stdin=rnull, stdout=wnull,
                                         stderr=subprocess.STDOUT)
 
         # register our exit function
         atexit.register(self.stop)
-
-        #### TODO - need to wait for the process to start here
-        #### maybe communicate and wait till it starts before returning
         return self
 
     def stop(self):
@@ -425,7 +401,7 @@ class KDB(object):
         else:
             s = 'q client not started'
 
-        return "[{0}: {1}]".format(type(self).__name__,s)
+        return "[{0}: {1}]".format(type(self).__name__, s)
 
     __repr__ = __str__
 
