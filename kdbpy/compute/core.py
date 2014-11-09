@@ -21,7 +21,6 @@ from blaze.expr import nelements, Slice, Distinct, Summary, Relational
 from blaze.expr import DateTime, Millisecond, Microsecond
 from blaze.expr.datetime import Minute
 from blaze.expr import common_subexpression, Arithmetic, And
-from blaze.expr.broadcast import broadcast_collect
 
 from datashape.predicates import isrecord
 
@@ -147,8 +146,7 @@ def compute_up(expr, data, **kwargs):
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
     fields = list(map(q.Symbol, expr.fields))
-    return q.List('?', child, q.List(), q.Bool(), q.Dict(list(zip(fields,
-                                                                  fields))))
+    return q.select(child, aggregates=q.Dict(list(zip(fields, fields))))
 
 
 @dispatch(Symbol, q.Expr)
@@ -179,16 +177,15 @@ def compute_up(expr, lhs, rhs, **kwargs):
     return q.List(op, lhs, rhs)
 
 
-@dispatch(UnaryOp, q.Expr)
+@dispatch((Reduction, UnaryOp), q.Expr)
 def compute_up(expr, data, **kwargs):
-    symbol = expr.symbol
     result = compute_up(expr._child, data, **kwargs)
-    return q.List(unops.get(symbol, symbol), result)
+    return q.unary_ops[expr.symbol](result)
 
 
 @dispatch(FloorDiv, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return q.List('_:', compute_up(expr.lhs / expr.rhs, data, **kwargs))
+    return q.floor(compute_up(expr.lhs / expr.rhs, data, **kwargs))
 
 
 @dispatch(Field, q.Expr)
@@ -198,15 +195,15 @@ def compute_up(expr, data, **kwargs):
 
     if is_partitioned_expr(expr, **kwargs):
         # RAGE
-        select = q.List('?', child, q.List(), q.Bool(), q.Dict([(sym, sym)]))
-        return q.List(select, '::', q.List(sym))
+        select = q.select(child, aggregates=q.Dict([(sym, sym)]))
+        return q.slice(select, sym)
     elif is_splayed_expr(expr, **kwargs):
         return q.List(child, q.List(sym))
     else:
         try:
             return child[expr._name]
         except TypeError:
-            return q.List(child, '::', q.List(sym))
+            return q.slice(child, sym)
 
 
 @dispatch(Field, q.Expr)
@@ -232,8 +229,8 @@ def post_compute(expr, data, scope):
 def compute_up(expr, data, **kwargs):
     # template: ?[selectable, predicate or list of predicates, by, aggregations]
     predicate = compute_up(expr.predicate, data, **kwargs)
-    select = compute_up(expr._child, data, **kwargs)
-    return q.List('?', select, q.List(q.List(predicate)), q.Bool(), q.List())
+    child = compute_up(expr._child, data, **kwargs)
+    return q.select(child, constraints=q.List(q.List(predicate)))
 
 
 @dispatch(DateTime, q.Expr)
@@ -245,14 +242,8 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Microsecond, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return q.List('_:',
-                  q.List('%',
-                         q.List('mod',
-                                q.List('$', q.List(q.Symbol('long')),
-                                       q.Symbol(expr._child._child._name,
-                                                expr._child._name)),
-                                int(1e9)),
-                         int(1e3)))
+    sym = q.Symbol(expr._child._child._name, expr._child._name)
+    return q.floor(q.div(q.mod(q.long(sym), 1000000000), 1000))
 
 
 @dispatch(Millisecond, q.Expr)
@@ -265,15 +256,8 @@ def compute_up(expr, data, **kwargs):
     # q has mm for time types and mm for datetime and date types, this makes -1
     # amount of sense, so we bypass that and compute it our damn selves using
     # (`long$expr.minute) mod 60
-    return q.List('mod', q.List('$', q.List(q.Symbol('long')),
-                                q.Symbol(str(expr))), 60)
-
-
-@dispatch(Reduction, q.Expr)
-def compute_up(expr, data, **kwargs):
-    symbol = expr.symbol
-    return q.List(reductions.get(symbol, symbol),
-                  compute_up(expr._child, data, **kwargs))
+    sym = q.Symbol(str(expr))
+    return q.mod(q.long(sym), 60)
 
 
 @dispatch(Join, q.Expr, q.Expr)
@@ -282,15 +266,13 @@ def compute_up(expr, lhs, rhs, **kwargs):
         raise NotImplementedError('only inner joins supported')
     if expr._on_left != expr._on_right:
         raise NotImplementedError('can only join on same named columns')
-    return q.List('ej', q.List(q.Symbol(expr._on_left)), lhs, rhs)
+    return q.List('ej', q.symlist(expr._on_left), lhs, rhs)
 
 
 @dispatch(Sort, q.Expr)
 def compute_up(expr, data, **kwargs):
-    sort_func = q.Atom('xasc' if expr.ascending else 'xdesc')
-    key = q.List(q.Symbol(expr._key))
     child = compute_up(expr._child, data, **kwargs)
-    return q.List(sort_func, key, child)
+    return q.sort(child, expr._key, expr.ascending)
 
 
 @dispatch(Join, QTable, QTable)
@@ -304,8 +286,8 @@ def compute_up(expr, data, **kwargs):
     ops = [compute_up(op, data, **kwargs) for op in expr.values]
     names = expr.names
     child = compute_up(expr._child, data, **kwargs)
-    return q.List('?', child, q.List(), q.Bool(),
-                  q.Dict(list(zip(map(q.Symbol, names), ops))))
+    aggregates = q.Dict(list(zip(map(q.Symbol, names), ops)))
+    return q.select(child, aggregates=aggregates)
 
 
 @dispatch(Expr, q.Expr)
@@ -357,7 +339,7 @@ def compute_up(expr, data, **kwargs):
     else:
         reducer = q.Dict([(q.Symbol(expr.apply._name), reducer)])
 
-    qexpr = q.List('?', child, where, grouper, reducer)
+    qexpr = q.select(child, where, grouper, reducer)
     return qexpr
 
 
@@ -371,28 +353,25 @@ def is_splayed_expr(expr, scope):
     return expr._child.isidentical(root) and issplayed(scope[root])
 
 
-@dispatch(nelements, q.Expr)
-def compute_up(expr, data, **kwargs):
-    child = compute_up(expr._child, data, **kwargs)
-    return q.List('#:', child)
+def nrows(expr, data, **kwargs):
+    return compute_up(expr._child.nrows, data, **kwargs)
 
 
 @dispatch(Head, q.Expr)
 def compute_up(expr, data, **kwargs):
     child = compute_up(expr._child, data, **kwargs)
-
-    final_index = q.List('&', expr.n, compute_up(expr._child.nelements(axis=0),
-                                                 data, **kwargs))
-
-    # TODO: generate different code if we are a partitioned table
-    # we need to use the global index to do this
-    if is_partitioned_expr(expr, **kwargs):
-        return q.List('.Q.ind', child, q.List('til', expr.n))
+    n = expr.n
 
     # q repeats if the N of take is larger than the number of rows, so we
     # need to get the min of the number of rows and the requested N from the
     # Head expression
-    return q.List('#', final_index, child)
+
+    # & in q is min for 2 arguments
+    final_index = q.and_(n, nrows(expr, data, **kwargs))
+
+    if is_partitioned_expr(expr, **kwargs):
+        return q.partake(child, q.til(final_index))
+    return q.take(final_index, child)
 
 
 @dispatch(Expr, q.Expr, dict)
@@ -427,7 +406,7 @@ def post_compute(expr, data, scope):
 @dispatch(numbers.Integral, q.Expr, q.Expr)
 def compute_slice(index, child, nrows, dshape=None):
     if index < 0:
-        index = q.List('+', index, nrows)
+        index = q.add(index, nrows)
 
     qexpr = q.List(child, index)
 
@@ -442,13 +421,12 @@ def compute_slice(index, child, nrows, dshape=None):
     stop = index.stop or nrows
 
     if start < 0:
-        start = q.List('+', start, nrows)
+        start = q.add(start, nrows)
 
     if stop < 0:
-        stop = q.List('+', stop, nrows)
+        stop = q.add(stop, nrows)
 
-    return q.List('@', child, q.List('+', start,
-                                     q.List('til', q.List('-', stop, start))))
+    return q.List('@', child, q.add(start, q.til(q.sub(stop, start))))
 
 
 @dispatch(Slice, q.Expr)
@@ -471,14 +449,14 @@ def compute_up(expr, data, **kwargs):
     """
     assert len(expr.index) == 1, 'only single slice allowed'
     index, = expr.index
-    nrows = compute_up(expr._child.nrows, data, **kwargs)
+    rowcount = nrows(expr, data, **kwargs)
     child = compute_up(expr._child, data, **kwargs)
-    return compute_slice(index, child, nrows, dshape=expr.dshape)
+    return compute_slice(index, child, rowcount, dshape=expr.dshape)
 
 
 @dispatch(Distinct, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return q.List(q.Atom('?:'), compute_up(expr._child, data, **kwargs))
+    return q.distinct(compute_up(expr._child, data, **kwargs))
 
 
 @dispatch(Expr, QTable)
