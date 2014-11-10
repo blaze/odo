@@ -9,5 +9,5 @@ toolz
 sqlalchemy
 
 # runipy # runs ipython notebooks
-# q
-# qpython
+q
+qpython >= 1.0.1
