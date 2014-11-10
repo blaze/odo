@@ -3,6 +3,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import os.path as osp
 import sys
 import shutil
 import textwrap
@@ -41,6 +42,31 @@ packages = find_packages()
 #------------------------------------------------------------------------
 # Minimum Versions
 #------------------------------------------------------------------------
+
+def get_package_data(name, extlist):
+    """Return data files for package *name* with extensions in *extlist*"""
+    flist = []
+    # Workaround to replace os.path.relpath (not available until Python 2.6):
+    offset = len(name)+len(os.pathsep)
+    for dirpath, _dirnames, filenames in os.walk(name):
+        for fname in filenames:
+            if not fname.startswith('.') and osp.splitext(fname)[1] in extlist:
+                flist.append(osp.join(dirpath, fname)[offset:])
+    return flist
+
+def get_subpackages(name):
+    """Return subpackages of package *name*"""
+    splist = []
+    for dirpath, _dirnames, _filenames in os.walk(name):
+        if osp.isfile(osp.join(dirpath, '__init__.py')):
+            splist.append(".".join(dirpath.split(os.sep)))
+    return splist
+
+def get_data_files():
+    """ return the data_files """
+    return []
+
+EXTLIST = ['.q']
 
 #------------------------------------------------------------------------
 # Utilities
@@ -134,6 +160,7 @@ setup(
     description='kdbpy',
     long_description=longdesc,
     data_files=[],
+    package_data={'kdbpy': get_package_data('kdbpy', EXTLIST)},
     license='BSD',
     platforms = ['any'],
     classifiers=[
