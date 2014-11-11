@@ -1,14 +1,8 @@
 ipython-notebook
 ipython
-cython
 numpy >= 1.8.1
 pandas >= 0.14.1
 psutil
-pip
-pytest
-toolz
-sqlalchemy
-
-# runipy # runs ipython notebooks
+blaze
 q
 qpython >= 1.0.1
