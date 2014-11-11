@@ -103,7 +103,8 @@ def qproc(creds):
     q.stop()
 
 
-def test_construction(creds):
+def test_construction(qproc, creds):
+    # the qproc fixture must be here because it must start before KDB
     kdb = k.KDB(credentials=creds)
     kdb.start()
     assert kdb.is_started
@@ -119,6 +120,8 @@ def test_construction(creds):
     result = str(kdb)
     assert result == '[KDB: q client not started]'
 
+
+def test_init():
     # require initilization
     cred = k.Credentials(port=0)
     kdb = k.KDB(credentials=cred)

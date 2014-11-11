@@ -14,15 +14,9 @@ import pandas as pd
 import numpy as np
 from qpython import qconnection, qtemporal
 
-import toolz
 from toolz.compatibility import range
-from datashape.predicates import isrecord
-import datashape as ds
 
-try:
-    from blaze import Data, CSV
-except ImportError:  # pragma: no cover
-    pass  # pragma: no cover
+from blaze import Data, CSV
 
 
 class Credentials(object):
@@ -41,13 +35,12 @@ class Credentials(object):
     """
     __slots__ = 'host', 'port', 'username', 'password'
 
-    def __init__(self, host=socket.gethostname(), port=5000,
-                 username=getpass.getuser(), password=None):
+    def __init__(self, host=None, port=None, username=None, password=None):
         super(Credentials, self).__init__()
-        self.host = host
-        self.port = port
-        self.username = username
-        self.password = password
+        self.host = host if host is not None else socket.gethostname()
+        self.port = port if port is not None else 5000
+        self.username = username if username is not None else getpass.getuser()
+        self.password = password if password is not None else ''
 
     def __hash__(self):
         return hash(tuple(getattr(self, slot) for slot in self.__slots__))
