@@ -184,21 +184,9 @@ def test_print_versions():
     kdbpy.print_versions(file=file)
 
 
-@contextmanager
-def remove_from_path(path):
-    current_path = os.environ['PATH']
-    new_path = list(toolz.unique(current_path.split(os.pathsep)))
-    new_path.pop(new_path.index(path))
-    os.environ['PATH'] = os.pathsep.join(new_path)
-    yield
-    os.environ['PATH'] = current_path
-
-
-def test_cannot_find_q():
-    remove_this = os.path.dirname(which('q'))
-    with remove_from_path(remove_this):
-        with pytest.raises(OSError):
-            which('q')
+def test_cannot_find_program():
+    with pytest.raises(OSError):
+        which('xasdlkjasdga0sd9g8as0dg9@s0d98)(*)#(%*@)*')
 
 
 def test_set_data_frame(gensym, kdb, df):
