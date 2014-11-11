@@ -184,7 +184,7 @@ class KQ(object):
         params = dict(table=table,
                       columns='; '.join('`$"%s"' % column for column in
                                         columns),
-                      filename=filename)
+                      filename=filename.replace(os.sep, '/'))
 
         # load up the Q CSV reader
         self.read_kdb(os.path.join(os.path.dirname(__file__), 'q',
