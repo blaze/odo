@@ -58,6 +58,7 @@ def tables(kdb):
 
 
 def qp(t):
+    import ipdb; ipdb.set_trace()
     t = getattr(t, 'data', t)
     return t.engine.eval('.Q.qp[%s]' % t.tablename).item()
 
