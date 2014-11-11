@@ -62,6 +62,9 @@ Icon?
 Thumbs.db
 .ipynb_checkpoints
 
+# conda installation #
+__conda_version__.txt
+
 # Generated Sources #
 #####################
 *.c
