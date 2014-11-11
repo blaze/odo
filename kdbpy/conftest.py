@@ -17,12 +17,12 @@ def gensym():
 @pytest.fixture(scope='session')
 def creds():
     # must be module scoped because of downstream
-    return k.get_credentials()
+    return k.default_credentials
 
 
 @pytest.yield_fixture(scope='module')
 def kq(creds):
-    with k.KQ(creds) as r:
+    with k.KQ(creds, start=True) as r:
         yield r
 
 
@@ -43,6 +43,7 @@ def kdb(kq):
             'street: `maple`apple`pine`grove)')
     kq.eval('st: ([name: `Bob`Alice`Joe] jobcode: 9 10 11; '
             'tree: `maple`apple`pine; alias: `Joe`Betty`Moe)')
+    kq.eval('kt: ([house: `a`b`c; id: 1 2 3] amount: 3.0 4.0 5.0)')
     return kq
 
 

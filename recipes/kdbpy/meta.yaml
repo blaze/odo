@@ -8,25 +8,23 @@ build:
 requirements:
   build:
     - python
-    - numpy
-    - pandas
 
   run:
     - python
-    - numpy
-    - pandas
+    - blaze
     - q
     - qpython
-    - pytest
+    - ipython
+    - ipython-notebook
+    - psutil
 
 test:
-  imports:
-    - kdbpy
   requires:
     - pytest
+    # - runipy
 
-#  commands:
-#    - py.test -r sxX --verbose --pyargs kdbpy
+  commands:
+    - py.test -s -r sxX --doctest-modules --pyargs kdbpy
 
 about:
   home: https://github.com/ContinuumIO/kdbpy

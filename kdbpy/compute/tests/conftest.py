@@ -28,21 +28,28 @@ def st():
 def q(rstring, kdb):
     pytest.importorskip('kdbpy.compute')
     from kdbpy.compute.qtable import QTable
-    return QTable(rstring, name='t')
+    return QTable(rstring, tablename='t')
 
 
 @pytest.fixture
 def rq(rstring, kdb):
     pytest.importorskip('kdbpy.compute')
     from kdbpy.compute.qtable import QTable
-    return QTable(rstring, name='rt')
+    return QTable(rstring, tablename='rt')
 
 
 @pytest.fixture
 def sq(rstring, kdb):
     pytest.importorskip('kdbpy.compute')
     from kdbpy.compute.qtable import QTable
-    return QTable(rstring, name='st')
+    return QTable(rstring, tablename='st')
+
+
+@pytest.fixture
+def ktq(rstring, kdb):
+    pytest.importorskip('kdbpy.compute')
+    from kdbpy.compute.qtable import QTable
+    return QTable(rstring, tablename='kt')
 
 
 @pytest.fixture

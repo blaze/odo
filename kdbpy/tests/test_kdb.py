@@ -30,8 +30,10 @@ except ImportError:  # pragma: no cover
 def test_basic():
     kq = k.KQ()
     assert not kq.is_started
+
     kq.start()
     assert kq.is_started
+
     kq.stop()
     assert not kq.is_started
 
@@ -49,75 +51,62 @@ def test_basic():
         assert kq.is_started
 
 
-def test_kq_repr():
-    expected = ''
-    with k.KQ() as kq:
-        assert repr(kq) == expected
-
-
-def test_eval_context():
-    with k.KQ() as kq:
-        assert kq.eval('2 + 2') == 4
+def test_kq_repr(kdb):
+    assert repr(kdb)
 
 
 def test_credentials():
-    cred = k.get_credentials(host='foo', port=1000)
+    cred = k.Credentials(host='foo', port=1000)
     assert cred.host == 'foo'
     assert cred.port == 1000
 
 
-def test_q_process():
-    cred = k.get_credentials()
-    q = k.Q(cred).start()
+def test_q_process(creds):
+    q = k.Q(creds).start()
 
     assert q is not None
     assert q.pid
     assert q.process is not None
 
     # other instance
-    q2 = k.Q(cred).start()
+    q2 = k.Q(creds).start()
     assert q is q2
 
     # invalid instance
-    c = k.get_credentials(host='foo', port=1000)
+    c = k.Credentials(host='foo', port=1000)
     with pytest.raises(ValueError):
         k.Q(c)
 
     # restart
     prev = q.pid
-    q = k.Q(cred).start(start=True)
+    q = k.Q(creds).start(start=True)
     assert q.pid == prev
 
     q2 = k.Q().start(start='restart')
     assert q2.pid != prev
 
     with pytest.raises(ValueError):
-        k.Q(cred).start(start=False)
-
-    # terminate
-    q2.stop()
-    assert q2.pid is None
+        k.Q(creds).start(start=False)
 
 
 def test_q_process_detached(qproc):
-
-    # create a new process
+    # check our q process attributes
     assert qproc is not None
     assert qproc.pid
     assert qproc.process is not None
 
-    qproc.process = None
 
-
-@pytest.yield_fixture(scope='module')
+@pytest.yield_fixture(scope='session')
 def qproc(creds):
     q = k.Q(creds).start()
     yield q
     q.stop()
 
 
-def test_construction(creds):
-    kdb = k.KDB(credentials=creds).start()
+def test_construction(qproc, creds):
+    # the qproc fixture must be here because it must start before KDB
+    kdb = k.KDB(credentials=creds)
+    kdb.start()
     assert kdb.is_started
 
     # repr
@@ -129,10 +118,12 @@ def test_construction(creds):
     assert not kdb.is_started
 
     result = str(kdb)
-    assert 'KDB: [client/server not started]'
+    assert result == '[KDB: q client not started]'
 
+
+def test_init():
     # require initilization
-    cred = k.get_credentials(port=0)
+    cred = k.Credentials(port=0)
     kdb = k.KDB(credentials=cred)
     with pytest.raises(ValueError):
         kdb.start()
@@ -188,30 +179,14 @@ def test_scalar_datetime_like_conversions(kdb):
     assert result == pd.Timedelta('1 sec')
 
 
-def test_repr_smoke(kdb):
-    assert repr(kdb)
-
-
 def test_print_versions():
     file = StringIO()
     kdbpy.print_versions(file=file)
 
 
-@contextmanager
-def remove_from_path(path):
-    current_path = os.environ['PATH']
-    new_path = list(toolz.unique(current_path.split(os.pathsep)))
-    new_path.pop(new_path.index(path))
-    os.environ['PATH'] = os.pathsep.join(new_path)
-    yield
-    os.environ['PATH'] = current_path
-
-
-def test_cannot_find_q():
-    remove_this = os.path.dirname(which('q'))
-    with remove_from_path(remove_this):
-        with pytest.raises(OSError):
-            which('q')
+def test_cannot_find_program():
+    with pytest.raises(OSError):
+        which('xasdlkjasdga0sd9g8as0dg9@s0d98)(*)#(%*@)*')
 
 
 def test_set_data_frame(gensym, kdb, df):
@@ -231,8 +206,8 @@ def test_set_objects(gensym, kdb, obj):
                    'complex numbers')
 def test_set_complex(gensym, kdb):
     kdb.set(gensym, 1.0j)
-    result = kdb.eval(gensym)
-    assert result == 1.0j
+    result = kdb.eval(gensym)  # pragma: no cover
+    assert result == 1.0j  # pragma: no cover
 
 
 def test_date(kdb, gensym):
@@ -339,10 +314,9 @@ e,2010-10-05 00:00:01,5,5.0,`e"""  # note the whitespace here
 
 
 def test_data_getter(kdbpar):
-    for t in kdbpar.tables.name:
-        data = kdbpar.data[t]
-        assert isinstance(data, Data)
-        assert repr(data)
+    data = kdbpar.data['t']
+    assert isinstance(data, Data)
+    assert repr(data)
 
 
 def test_data_getter_fails(kdb):

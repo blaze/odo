@@ -1,7 +1,11 @@
 import re
 import keyword
 from itertools import chain
-import builtins
+try:
+    import builtins
+except ImportError:
+    import __builtin__ as builtins
+from qpython.qcollection import QDICTIONARY
 
 from collections import OrderedDict
 
@@ -108,6 +112,8 @@ ceil = unop('-_-:')
 count = unop('#:')
 til = unop('til')
 distinct = unop('?:')
+typeof = unop('type')
+istable = unop('.Q.qt')
 
 
 unary_ops = {'-': neg,
@@ -135,6 +141,15 @@ def slice(obj, *keys):
 def sort(x, key, ascending):
     sort_func = Atom('xasc' if ascending else 'xdesc')
     return List(sort_func, symlist(key), x)
+
+
+def isdict(x):
+    return eq(typeof(x), QDICTIONARY)
+
+
+def try_(f, x, onfail):
+    """q's horrible version of try except, where any error is caught"""
+    return List('@', f, x, onfail)
 
 
 def cast(typ):

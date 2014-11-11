@@ -7,7 +7,6 @@ import getpass
 import subprocess
 
 from itertools import chain
-from collections import namedtuple
 
 import psutil
 
@@ -15,50 +14,50 @@ import pandas as pd
 import numpy as np
 from qpython import qconnection, qtemporal
 
-import toolz
 from toolz.compatibility import range
-from datashape.predicates import isrecord
-import datashape as ds
 
-try:
-    from blaze import Data
-    from blaze import CSV
-except ImportError:
-    pass
+from blaze import Data, CSV
 
 
-# credentials
-Credentials = namedtuple('Credentials', ['host', 'port', 'username',
-                                         'password'])
+class Credentials(object):
+    """Lightweight credentials container.
 
-default_credentials = Credentials(socket.gethostname(), 5000, getpass.getuser(),
-                                  None)
-
-def get_credentials(host=None, port=None, username=None, password=None):
-    """
     Parameters
     ----------
-    host : string or None
-    port : string/int or None
-    username : string or None
-    password : string or None
-
-    Returns
-    -------
-    a Credentials
-
+    host : str, optional
+        Defaults to ``socket.gethostname()``
+    port : int
+        Defaults to 5000
+    username : str
+        Defaults to ``getpass.getuser()``
+    password str or None
+        Defaults to None
     """
+    __slots__ = 'host', 'port', 'username', 'password'
 
-    if host is None:
-        host = default_credentials.host
-    if port is None:
-        port = default_credentials.port
-    if username is None:
-        username = default_credentials.username
-    if password is None:
-        password = default_credentials.password
-    return Credentials(host=host, port=port, username=username,
-                       password=password)
+    def __init__(self, host=None, port=None, username=None, password=None):
+        super(Credentials, self).__init__()
+        self.host = host if host is not None else socket.gethostname()
+        self.port = port if port is not None else 5000
+        self.username = username if username is not None else getpass.getuser()
+        self.password = password if password is not None else ''
+
+    def __hash__(self):
+        return hash(tuple(getattr(self, slot) for slot in self.__slots__))
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __repr__(self):
+        return '%s(%s)' % (type(self).__name__,
+                           ', '.join('%s=%r' % (slot, getattr(self, slot))
+                                     for slot in self.__slots__))
+
+
+default_credentials = Credentials()
 
 
 class BlazeGetter(object):
@@ -76,7 +75,7 @@ class BlazeGetter(object):
 class KQ(object):
     """ manage the kdb & q process """
 
-    def __init__(self, credentials=None, path=None, start=None):
+    def __init__(self, credentials=default_credentials, start=False, path=None):
         """
         Parameters
         ----------
@@ -89,13 +88,10 @@ class KQ(object):
         -------
         a KDB and Q object, with a started q engine
         """
-
-        if credentials is None:
-            credentials = get_credentials()
         self.credentials = credentials
         self.q = Q(credentials=credentials, path=path)
         self.kdb = KDB(credentials=self.credentials)
-        if start is not None:
+        if start:
             self.start(start=start)
         self._data = BlazeGetter(self.credentials)
         self._loaded = set()
@@ -156,11 +152,11 @@ class KQ(object):
         >>> df = DataFrame({'price': [1, 2, 3],
         ...                 'sym': list('abc')}).sort_index(axis=1)
         >>> dshape = discover(df)
-        >>> kq = KQ(get_credentials(), start='restart')
-        >>> with ensure_clean('temp.csv') as f:
-        ...     df.to_csv(f, index=False)
-        ...     n = kq.read_csv(f, table='trade', dshape=dshape)
-        >>> kq.eval('trade')
+        >>> with KQ(start=True) as kq:
+        ...     with ensure_clean('temp.csv') as f:
+        ...         df.to_csv(f, index=False)
+        ...         n = kq.read_csv(f, table='trade', dshape=dshape)
+        ...     kq.eval('trade')
            price sym
         0      1   a
         1      2   b
@@ -173,25 +169,26 @@ class KQ(object):
         ...                 'sym': list('abc'),
         ...                 'conn': list('AB') + [np.nan]})[['price', 'sym',
         ...                                                  'conn']]
-        >>> with ensure_clean('temp.csv') as f:
-        ...     df.to_csv(f, index=False)
-        ...     kq.read_csv(f, table='trade')
-        >>> kq.eval('trade')
+        >>> with KQ(start=True) as kq:
+        ...     with ensure_clean('temp.csv') as f:
+        ...         df.to_csv(f, index=False)
+        ...         kq.read_csv(f, table='trade')
+        ...     kq.eval('trade')
            price sym conn
         0      1   a    A
         1      2   b    B
         2    NaN   c  NaN
-        >>> kq.stop() # doctest: +SKIP
         """
         csv = CSV(filename, encoding=encoding, *args, **kwargs)
         columns = csv.columns
         params = dict(table=table,
-                      columns='; '.join('`$"%s"' % column for column in columns),
+                      columns='; '.join('`$"%s"' % column for column in
+                                        columns),
                       filename=filename)
 
         # load up the Q CSV reader
-        self.eval(r'\l %s' % os.path.join(os.path.dirname(__file__), 'q',
-                                          'csvutil.q'))
+        self.read_kdb(os.path.join(os.path.dirname(__file__), 'q',
+                                   'csvutil.q'))
         s = ('{table}: ({columns}) xcol .csv.read[`$":{filename}"]'
              ''.format(**params))
         self.eval(s)
@@ -240,7 +237,7 @@ class KQ(object):
         --------
         >>> import os
         >>> from pandas.util.testing import ensure_clean
-        >>> kq = KQ(get_credentials(), start='restart')
+        >>> kq = KQ(start=True)
         >>> kq.eval('t: ([id: 1 2 3] name: `a`b`c; amount: 1.0 2.0 3.0)')
         >>> kq.eval('save `t')
         ':t'
