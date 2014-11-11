@@ -15,38 +15,18 @@ from blaze import resource
 
 from blaze.dispatch import dispatch
 
+from blaze.compute.core import swap_resources_into_scope
 from blaze.expr import Symbol, Projection, Selection, Field, FloorDiv
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
-from blaze.expr import nelements, Slice, Distinct, Summary, Relational
+from blaze.expr import Slice, Distinct, Summary, Relational
 from blaze.expr import DateTime, Millisecond, Microsecond
 from blaze.expr.datetime import Minute
-from blaze.expr import common_subexpression, Arithmetic, And
+from blaze.expr import common_subexpression
 
 from datashape.predicates import isrecord
 
 from .. import q
-from .qtable import QTable, tables, ispartitioned, issplayed
-
-
-binops = {
-    '!=': q.Atom('<>'),
-    '/': q.Atom('%'),
-    '%': q.Atom('mod'),
-    '**': q.Atom('xexp'),
-    '==': q.Atom('=')
-}
-
-
-unops = {
-    '~': q.Atom('~:'),
-    '-': q.Atom('-:')
-}
-
-
-reductions = {
-    'mean': 'avg',
-    'std': 'dev',
-}
+from .qtable import QTable, ispartitioned, issplayed
 
 
 qdatetimes = {
@@ -162,30 +142,23 @@ def compute_up(expr, data, **kwargs):
 @dispatch((BinOp, Relational), q.Expr)
 def compute_up(expr, data, **kwargs):
     symbol = expr.symbol
-    op = binops.get(symbol, symbol)
+    op = q.binops[symbol]
     lhs, rhs = expr.lhs, expr.rhs
     lwrap, rwrap = get_wrapper(lhs), get_wrapper(rhs)
     lhs = lwrap(compute_up(lhs, data, **kwargs))
     rhs = rwrap(compute_up(rhs, data, **kwargs))
-    return q.List(op, lhs, rhs)
+    return op(lhs, rhs)
 
 
 @dispatch((BinOp, Relational), q.Expr, q.Expr)
 def compute_up(expr, lhs, rhs, **kwargs):
-    symbol = expr.symbol
-    op = binops.get(symbol, symbol)
-    return q.List(op, lhs, rhs)
+    return q.binops[expr.symbol](lhs, rhs)
 
 
 @dispatch((Reduction, UnaryOp), q.Expr)
 def compute_up(expr, data, **kwargs):
     result = compute_up(expr._child, data, **kwargs)
-    return q.unary_ops[expr.symbol](result)
-
-
-@dispatch(FloorDiv, q.Expr)
-def compute_up(expr, data, **kwargs):
-    return q.floor(compute_up(expr.lhs / expr.rhs, data, **kwargs))
+    return q.unops[expr.symbol](result)
 
 
 @dispatch(Field, q.Expr)
@@ -476,3 +449,23 @@ def resource_kdb(uri, tablename, **kwargs):
 @dispatch(pd.DataFrame, QTable)
 def into(_, t, **kwargs):
     return t.eval(t.tablename)
+
+
+def scope_subs(expr, scope):
+    tables = set(x for x in scope.values() if isinstance(x, QTable))
+    assert len(tables) == 1
+    table = first(tables)
+    leaf = expr._leaves()[0]
+
+    # do this in optimize
+    sym = Symbol(table.tablename, leaf.dshape)
+    subsed = expr._subs({leaf: sym})
+    return subsed, {sym: table}
+
+
+def inspect(expr):
+    if not expr._resources():
+        raise TypeError('Expression must come from a Data object')
+    expr, scope = swap_resources_into_scope(expr, {})
+    expr, scope = scope_subs(expr, scope)
+    return compute_up(expr, q.List(), scope=scope)
