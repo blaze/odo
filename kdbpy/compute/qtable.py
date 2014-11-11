@@ -1,4 +1,3 @@
-import IPython
 from collections import OrderedDict
 from kdbpy import KQ
 from datashape import Record, var
@@ -58,7 +57,6 @@ def tables(kdb):
 
 
 def qp(t):
-    import ipdb; ipdb.set_trace()
     t = getattr(t, 'data', t)
     return t.engine.eval('.Q.qp[%s]' % t.tablename).item()
 
@@ -72,7 +70,7 @@ def issplayed(t):
 
 
 def isstandard(t):
-    return qp(t) is 0
+    return not isinstance(qp(t), bool)
 
 
 class QTable(PrettyMixin):

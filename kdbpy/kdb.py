@@ -238,22 +238,23 @@ class KQ(object):
         >>> import os
         >>> from pandas.util.testing import ensure_clean
         >>> kq = KQ(start=True)
+        >>> path = os.path.join(os.getcwd(), 't').replace(os.sep, '/')
+        >>> kq.eval(r'\cd %s' % os.path.dirname(path))
         >>> kq.eval('t: ([id: 1 2 3] name: `a`b`c; amount: 1.0 2.0 3.0)')
         >>> kq.eval('save `t')
         ':t'
         >>> try:
-        ...     name = kq.read_kdb('t')
+        ...     name = kq.read_kdb(path)
         ...     t = kq.eval(name)
         ... finally:
-        ...     os.remove('t')
-        >>> name
-        't'
+        ...     os.remove(path)
         >>> t
            name  amount
         id             
         1     a       1
         2     b       2
         3     c       3
+        >>> kq.stop()  # doctest: +SKIP
         """
         filename = os.path.abspath(filename)
         if filename not in self._loaded:
