@@ -1,7 +1,10 @@
 import re
 import keyword
 from itertools import chain
-import builtins
+try:
+    import builtins
+except ImportError:
+    import __builtin__ as builtins
 from qpython.qcollection import QDICTIONARY
 
 from collections import OrderedDict
