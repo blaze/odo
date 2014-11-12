@@ -9,8 +9,6 @@ engine:
  - python=2.7
 
 install:
-  - conda config --set always_yes true
-  - conda config --set show_channel_urls true
   - conda config --force --add channels blaze --add channels cpcloud
   - conda install pytest
 
