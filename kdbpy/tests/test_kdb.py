@@ -291,6 +291,8 @@ def test_memory(kdb):
                                   'mphy', 'syms', 'symw'])
 
 
+@pytest.mark.xfail(reason='Need to fix qpython to return nan instead of empty '
+                   'string')
 def test_csv_types(kdb, gensym):
     csvdata = """name,date,count,amount,sym
 a,2010-10-01 00:00:05,1,1.0,`a
