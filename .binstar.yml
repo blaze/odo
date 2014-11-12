@@ -42,6 +42,7 @@ script:
   - conda config --add channels cpcloud
   - conda build recipes/kdbpy --python=2.7 --no-test
   - conda install -c blaze blaze datashape psutil ipython ipython-notebook pip
+  - conda install -c cpcloud q qpython
   - pip install runipy
   - py.test -xv --doctest-modules --pyargs kdbpy
 ## This will run after the script regardless of the result of script
