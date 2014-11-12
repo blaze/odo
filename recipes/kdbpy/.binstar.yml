@@ -41,6 +41,8 @@ engine:
 #   - echo "before_script!"
 ## Put your main computations here!
 script:
+  - conda build recipes/kdbpy
+  - conda install kdbpy --yes --use-local
   - py.test -xv --doctest-modules --pyargs kdbpy
 ## This will run after the script regardless of the result of script
 ## BINSTAR_BUILD_RESULT=[succcess|failure]
@@ -65,5 +67,5 @@ script:
 ## The special build targets 'conda' and 'pypi' may be used to
 ## upload conda builds
 ## e.g. conda is an alias for /opt/anaconda/conda-bld/<os-arch>/*.tar.bz2
-# build_targets:
-#   - conda
+build_targets:
+  - conda
