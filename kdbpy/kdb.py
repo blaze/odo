@@ -184,7 +184,7 @@ class KQ(object):
         params = dict(table=table,
                       columns='; '.join('`$"%s"' % column for column in
                                         columns),
-                      filename=filename)
+                      filename=filename.replace(os.sep, '/'))
 
         # load up the Q CSV reader
         self.read_kdb(os.path.join(os.path.dirname(__file__), 'q',
@@ -236,24 +236,16 @@ class KQ(object):
         Examples
         --------
         >>> import os
-        >>> from pandas.util.testing import ensure_clean
+        >>> from kdbpy.exampleutils import example_data
+        >>> datapath = example_data('t')
         >>> kq = KQ(start=True)
-        >>> kq.eval('t: ([id: 1 2 3] name: `a`b`c; amount: 1.0 2.0 3.0)')
-        >>> kq.eval('save `t')
-        ':t'
-        >>> try:
-        ...     name = kq.read_kdb('t')
-        ...     t = kq.eval(name)
-        ... finally:
-        ...     os.remove('t')
-        >>> name
-        't'
-        >>> t
-           name  amount
-        id             
-        1     a       1
-        2     b       2
-        3     c       3
+        >>> tablepath = kq.read_kdb(datapath)
+        >>> kq.eval('`id in cols t')
+        True
+        >>> kq.eval('.Q.qt t')
+        True
+        >>> int(kq.eval('.Q.qp t'))
+        0
         """
         filename = os.path.abspath(filename)
         if filename not in self._loaded:
@@ -332,7 +324,9 @@ class Q(object):
 
         if path is None:
             arch_name = platform.system().lower()
-            archd = {'darwin': 'q', 'linux': 'q', 'windows': 'q.exe'}
+
+            # the .bat assumes we have the q conda package installed
+            archd = {'darwin': 'q', 'linux': 'q', 'windows': 'q.bat'}
             try:
                 return which(archd[arch_name])
             except KeyError:
@@ -523,9 +517,13 @@ class KDB(object):
 def which(exe):
     path = os.environ['PATH']
     for p in path.split(os.pathsep):
-        for f in [x for x in os.listdir(p) if x not in ('..', '.')]:
-            if os.path.basename(f) == exe:
-                return os.path.join(p, f)
+
+        # windows has things on the path that may not be directories so we need
+        # to check
+        if os.path.isdir(p):
+            for f in map(os.path.basename, os.listdir(p)):
+                if f == exe:
+                    return os.path.join(p, f)
     raise OSError("Cannot find %r on path %s" % (exe, path))
 
 

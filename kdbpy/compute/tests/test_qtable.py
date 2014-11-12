@@ -19,7 +19,7 @@ QTable(tablename='t',
 def test_tables(kdb, rt, st, t):
     d = tables(kdb)
     keys = set(d.keys())
-    assert keys == set(['kt', 'rt', 'st', 't'])
+    assert set(['kt', 'rt', 'st', 't']).issubset(keys)
     for s in rt, st, t:
         assert s.isidentical(d[s._name])
 

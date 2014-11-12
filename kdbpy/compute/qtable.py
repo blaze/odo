@@ -1,4 +1,3 @@
-import IPython
 from collections import OrderedDict
 from kdbpy import KQ
 from datashape import Record, var
@@ -71,7 +70,7 @@ def issplayed(t):
 
 
 def isstandard(t):
-    return qp(t) is 0
+    return int(qp(t)) is 0
 
 
 class QTable(PrettyMixin):
