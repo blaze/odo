@@ -29,7 +29,7 @@ test:
     - pytest
 
   commands:
-    - python -c 'import kdbpy; kdbpy.test()'
+    - python -c "import kdbpy; kdbpy.test()"
 
 about:
   home: https://github.com/ContinuumIO/kdbpy
