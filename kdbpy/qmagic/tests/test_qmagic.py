@@ -6,6 +6,8 @@ import pytest
 
 from kdbpy import qmagic
 
+if os.name == 'nt':
+    pytest.skip('runipy does not work on windows')
 pytest.importorskip('runipy')
 from runipy.notebook_runner import NotebookRunner
 from IPython.nbformat.current import read
