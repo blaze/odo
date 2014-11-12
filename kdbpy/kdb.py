@@ -19,7 +19,7 @@ from qpython import qconnection, qtemporal
 from toolz.compatibility import range
 
 from blaze import Data, CSV
-from .util import normpath
+from kdbpy.util import normpath
 
 
 class Credentials(object):

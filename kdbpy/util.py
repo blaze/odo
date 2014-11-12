@@ -1,6 +1,5 @@
 import IPython
 import os
-from kdbpy.kdb import Credentials
 import sqlalchemy as sa
 
 
@@ -10,6 +9,7 @@ class PrettyMixin(object):
 
 
 def parse_connection_string(uri):
+    from kdbpy.kdb import Credentials
     params = sa.engine.url.make_url(uri)
     return Credentials(username=params.username, password=params.password,
                        host=params.host, port=params.port)
