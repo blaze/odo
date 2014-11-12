@@ -247,7 +247,7 @@ class KQ(object):
         >>> int(kq.eval('.Q.qp t'))
         0
         """
-        filename = os.path.abspath(filename)
+        filename = os.path.abspath(filename).replace(os.sep, '/')
         if filename not in self._loaded:
             result = self.eval(r'\l %s' % filename)
             self._loaded.add(filename)
