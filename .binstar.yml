@@ -44,7 +44,7 @@ script:
   - conda install -c blaze blaze datashape psutil ipython ipython-notebook pip
   - conda install -c cpcloud q qpython
   - pip install runipy
-  - py.test -xv --doctest-modules --pyargs kdbpy
+  - py.test -x --pyargs kdbpy
 ## This will run after the script regardless of the result of script
 ## BINSTAR_BUILD_RESULT=[succcess|failure]
 # after_script:
