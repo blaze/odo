@@ -70,7 +70,7 @@ def issplayed(t):
 
 
 def isstandard(t):
-    return not isinstance(qp(t), bool)
+    return int(qp(t)) is 0
 
 
 class QTable(PrettyMixin):
