@@ -40,6 +40,7 @@ engine:
 ## Put your main computations here!
 script:
   - conda config --add channels cpcloud
+  - conda config --add channels blaze
   - conda build recipes/kdbpy --python=2.7
 ## This will run after the script regardless of the result of script
 ## BINSTAR_BUILD_RESULT=[succcess|failure]
