@@ -3,7 +3,7 @@ package:
   version: 0.0.9
 
 build:
-    number: 1
+    number: {{environ.get('BINSTAR_BUILD', 1)}}
 
 requirements:
   build:
@@ -29,7 +29,7 @@ test:
     - pytest
 
   commands:
-    - python -c "print('A'); import kdbpy; print('B'); kdbpy.test()"
+    - py.test -r sxX -x --doctest-modules --pyargs kdbpy
 
 about:
   home: https://github.com/ContinuumIO/kdbpy
