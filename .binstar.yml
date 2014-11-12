@@ -18,7 +18,9 @@ script:
   - conda build recipes/kdbpy --python=2.7 --no-test
   - conda install kdbpy --use-local
   - conda install pytest
-  - py.test kdbpy/tests/test_kdb.py::test_super_basic
+  - where q.bat>tmp
+  - set /p loc=<tmp
+  - type %loc%
 
 build_targets: conda
 
