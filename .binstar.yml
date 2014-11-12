@@ -17,7 +17,7 @@ before_script:
 
 script:
   - conda build recipes/kdbpy --python=2.7 --no-test
-  - conda install kdbpy --use-local --override-channels
+  - conda install kdbpy --use-local
   - py.test -x --pyargs kdbpy --doctest-modules
 
 build_targets: conda
