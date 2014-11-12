@@ -21,10 +21,9 @@ requirements:
 test:
   requires:
     - pytest
-    # - runipy
 
   commands:
-    - py.test -s -r sxX --doctest-modules --pyargs kdbpy
+    - py.test -vx -r sxX --doctest-modules --pyargs kdbpy
 
 about:
   home: https://github.com/ContinuumIO/kdbpy

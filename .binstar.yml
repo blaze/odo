@@ -39,9 +39,8 @@ engine:
 #   - echo "before_script!"
 ## Put your main computations here!
 script:
-  - conda build recipes/kdbpy --python=2.7 --no-test
-  - conda install -c cpcloud -c blaze blaze datashape psutil ipython ipython-notebook pip q qpython
-  - py.test -x --pyargs kdbpy
+  - conda config --add channels cpcloud
+  - conda build recipes/kdbpy --python=2.7
 ## This will run after the script regardless of the result of script
 ## BINSTAR_BUILD_RESULT=[succcess|failure]
 # after_script:
@@ -65,5 +64,4 @@ script:
 ## The special build targets 'conda' and 'pypi' may be used to
 ## upload conda builds
 ## e.g. conda is an alias for /opt/anaconda/conda-bld/<os-arch>/*.tar.bz2
-build_targets:
-  - conda
+build_targets: conda
