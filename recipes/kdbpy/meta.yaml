@@ -8,6 +8,12 @@ build:
 requirements:
   build:
     - python
+    - blaze
+    - q
+    - qpython
+    - ipython
+    - ipython-notebook
+    - psutil
 
   run:
     - python
@@ -23,7 +29,7 @@ test:
     - pytest
 
   commands:
-    - py.test -vx -r sxX --doctest-modules --pyargs kdbpy
+    - python -c 'import kdbpy; kdbpy.test()'
 
 about:
   home: https://github.com/ContinuumIO/kdbpy
