@@ -6,7 +6,7 @@ package: kdbpy
 ## You can also specify the account to upload to,
 ## you must be an admin of that account, this
 ## defaults to your user account
-# user: USERNAME
+user: cpcloud
 
 #===============================================================================
 # Build Matrix Options
