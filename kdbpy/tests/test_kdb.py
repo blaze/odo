@@ -9,7 +9,6 @@ import pytest
 import pandas as pd
 import pandas.util.testing as tm
 import numpy as np
-import toolz
 import kdbpy
 
 from blaze import CSV, Data
@@ -25,6 +24,11 @@ try:
     from cStringIO import StringIO
 except ImportError:  # pragma: no cover
     from io import StringIO
+
+
+def test_super_basic():
+    with k.KQ() as kq:
+        assert kq.eval('2 + 2') == 4
 
 
 def test_basic():
