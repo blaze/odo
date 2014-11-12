@@ -40,7 +40,7 @@ engine:
 ## Put your main computations here!
 script:
   - conda install -c cpcloud q qpython --yes
-  - conda build recipes/kdbpy --python=2 --no-test
+  - conda build recipes/kdbpy --python=2.7 --no-test
   - conda install kdbpy --yes --use-local
   - py.test -xv --doctest-modules --pyargs kdbpy
 ## This will run after the script regardless of the result of script
