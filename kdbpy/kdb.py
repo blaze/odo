@@ -1,4 +1,6 @@
 """ kdb process management """
+from __future__ import print_function, absolute_import
+
 import os
 import socket
 import atexit
@@ -17,6 +19,7 @@ from qpython import qconnection, qtemporal
 from toolz.compatibility import range
 
 from blaze import Data, CSV
+from .util import normpath
 
 
 class Credentials(object):
@@ -184,7 +187,7 @@ class KQ(object):
         params = dict(table=table,
                       columns='; '.join('`$"%s"' % column for column in
                                         columns),
-                      filename=filename.replace(os.sep, '/'))
+                      filename=normpath(filename))
 
         # load up the Q CSV reader
         self.read_kdb(os.path.join(os.path.dirname(__file__), 'q',
@@ -247,7 +250,7 @@ class KQ(object):
         >>> int(kq.eval('.Q.qp t'))
         0
         """
-        filename = os.path.abspath(filename).replace(os.sep, '/')
+        filename = normpath(os.path.abspath(filename))
         if filename not in self._loaded:
             result = self.eval(r'\l %s' % filename)
             self._loaded.add(filename)
