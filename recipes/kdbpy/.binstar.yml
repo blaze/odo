@@ -16,14 +16,14 @@ package: kdbpy
 
 ## The platforms to build on.
 ## platform defaults to linux-64
-# platform:
+platform:
  - linux-64
  - linux-32
  - win-64
  - win-32
  - osx-64
 ## The engine are the inital conda packages you want to run with
-# engine:
+engine:
  - python=2
  - pytest
 ## The env param is an environment variable list
@@ -43,7 +43,6 @@ package: kdbpy
 ## Put your main computations here!
 script:
   - py.test -xv --doctest-modules --pyargs kdbpy
-  - echo "This is my binstar build!"
 ## This will run after the script regardless of the result of script
 ## BINSTAR_BUILD_RESULT=[succcess|failure]
 # after_script:
