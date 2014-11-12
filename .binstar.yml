@@ -20,8 +20,6 @@ script:
 
 build_targets: conda
 
-iotimeout: 600
-
 notifications:
   email:
     recipients: ['phillip.cloud@continuum.io']
