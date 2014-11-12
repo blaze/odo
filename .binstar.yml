@@ -9,8 +9,7 @@ engine:
  - python=2.7
 
 install:
-  - conda config --add channels blaze
-  - conda config --add channels cpcloud
+  - conda config --force --add channels blaze --add channels cpcloud
 
 before_script:
   - python -V
