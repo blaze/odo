@@ -7,4 +7,4 @@ xcopy /E /I /Y %SRC_DIR%\* %qlib%
 echo ^
 set QHOME=%PREFIX%\Lib\q^
 
-%%QHOME%%\w32\q.exe %*> %PREFIX%\Scripts\q.bat
+%%QHOME%%\w32\q.exe %%*> %PREFIX%\Scripts\q.bat
