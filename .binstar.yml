@@ -20,7 +20,7 @@ before_script:
 script:
   - conda build recipes/kdbpy --python=2.7 --no-test
   - conda install kdbpy --use-local
-  - py.test kdbpy/tests/test_kdb.py::test_super_basic
+  - py.test -x --doctest-modules --pyargs kdbpy
 
 build_targets: conda
 
