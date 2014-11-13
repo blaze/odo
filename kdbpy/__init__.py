@@ -38,3 +38,9 @@ def print_versions(file=None):
     print("Processor: %s" % processor, file=file)
     print("Byte-ordering: %s" % sys.byteorder, file=file)
     print("-=" * 38, file=file)
+
+
+def test():
+    import pytest
+    return pytest.main(args=['-r', 'sxX', '-x', '--doctest-modules',
+                             '--pyargs', 'kdbpy'])

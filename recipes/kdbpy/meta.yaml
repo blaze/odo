@@ -3,11 +3,17 @@ package:
   version: 0.0.9
 
 build:
-    number: 1
+    number: {{environ.get('BINSTAR_BUILD', 1)}}
 
 requirements:
   build:
     - python
+    - blaze
+    - q
+    - qpython
+    - ipython
+    - ipython-notebook
+    - psutil
 
   run:
     - python
@@ -21,10 +27,10 @@ requirements:
 test:
   requires:
     - pytest
-    # - runipy
 
   commands:
-    - py.test -s -r sxX --doctest-modules --pyargs kdbpy
+    - python -c "import os; print(os.getcwd()"
+    - py.test -r sxX -x --doctest-modules --pyargs kdbpy
 
 about:
   home: https://github.com/ContinuumIO/kdbpy

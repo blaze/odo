@@ -1,6 +1,6 @@
 package:
   name: q
-  version: 3.2
+  version: 3.2.1
 
 source:
   fn: windows.zip # [win]

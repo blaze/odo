@@ -6,6 +6,8 @@ import pytest
 
 from kdbpy import qmagic
 
+if os.name == 'nt':
+    pytest.skip('runipy does not work on windows')
 pytest.importorskip('runipy')
 from runipy.notebook_runner import NotebookRunner
 from IPython.nbformat.current import read
@@ -20,10 +22,10 @@ def cd(path):
 
 
 def test_qmagic_notebook():
-    path = os.path.dirname(inspect.getfile(qmagic))
+    path = os.path.abspath(os.path.dirname(inspect.getfile(qmagic)))
     with cd(path):
         with open('qmagic.ipynb') as f:
             notebook = read(f, 'json')
         r = NotebookRunner(notebook)
-        assert os.getcwd() == path
+        assert os.path.abspath(os.getcwd()) == path
         r.run_notebook()
