@@ -3,6 +3,7 @@ user: cpcloud
 
 platform:
  - win-64
+ - linux-64
  - osx-64
 
 engine:
@@ -15,7 +16,7 @@ before_script:
   - python -V
 
 script:
-  - conda build recipes/kdbpy
+  - conda build conda.recipe
 
 build_targets: conda
 
