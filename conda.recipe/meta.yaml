@@ -31,6 +31,9 @@ test:
   imports:
     - kdbpy
 
+  commands:
+    - py.test --pyargs kdbpy --doctest-modules
+
 about:
   home: https://github.com/ContinuumIO/kdbpy
   license: BSD
