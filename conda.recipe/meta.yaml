@@ -10,7 +10,7 @@ requirements:
     - python ==2.7.8
     - blaze
     - q
-    - qpython >1.0.2
+    - qpython
     - ipython
     - ipython-notebook
     - psutil
@@ -19,7 +19,7 @@ requirements:
     - python ==2.7.8
     - blaze
     - q
-    - qpython >1.0.2
+    - qpython
     - ipython
     - ipython-notebook
     - psutil
