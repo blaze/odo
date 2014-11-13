@@ -7,18 +7,18 @@ build:
 
 requirements:
   build:
-    - python
+    - python ==2.7.*
     - blaze
-    - q
+    - q >=3.2.1
     - qpython
     - ipython
     - ipython-notebook
     - psutil
 
   run:
-    - python
+    - python ==2.7.*
     - blaze
-    - q
+    - q >=3.2.1
     - qpython
     - ipython
     - ipython-notebook
@@ -28,8 +28,8 @@ test:
   requires:
     - pytest
 
-  commands:
-    - py.test -r sxX -x --doctest-modules --pyargs kdbpy
+  imports:
+    - kdbpy
 
 about:
   home: https://github.com/ContinuumIO/kdbpy

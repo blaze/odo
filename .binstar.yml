@@ -10,15 +10,12 @@ engine:
 
 install:
   - conda config --force --add channels blaze --add channels cpcloud
-  - conda install pytest
 
 before_script:
   - python -V
 
 script:
-  - conda build recipes/kdbpy --python=2.7 --no-test
-  - conda install kdbpy --use-local
-  - py.test -x --doctest-modules --pyargs kdbpy
+  - conda build recipes/kdbpy
 
 build_targets: conda
 
