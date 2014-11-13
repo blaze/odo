@@ -42,5 +42,6 @@ def print_versions(file=None):
 
 def test():
     import pytest
-    return pytest.main(args=['-r', 'sxX', '-x', '--doctest-modules',
+    sys.path.insert(0, '.')
+    return pytest.main(args=['-r', 'sxX', '--doctest-modules',
                              '--pyargs', 'kdbpy'])
