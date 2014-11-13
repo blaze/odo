@@ -29,7 +29,6 @@ test:
     - pytest
 
   commands:
-    - python -c "import os; print(os.getcwd()"
     - py.test -r sxX -x --doctest-modules --pyargs kdbpy
 
 about:
