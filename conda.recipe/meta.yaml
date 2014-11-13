@@ -7,7 +7,7 @@ build:
 
 requirements:
   build:
-    - python ==2.7.*
+    - python
     - blaze
     - q >=3.2.1
     - qpython
@@ -16,7 +16,7 @@ requirements:
     - psutil
 
   run:
-    - python ==2.7.*
+    - python
     - blaze
     - q >=3.2.1
     - qpython
