@@ -17,6 +17,8 @@ before_script:
 
 script:
   - conda build conda.recipe
+  - conda install --use-local kdbpy pytest
+  - py.test -x --doctest-modules --pyargs kdbpy
 
 build_targets: conda
 
