@@ -28,8 +28,8 @@ test:
   requires:
     - pytest
 
-  commands:
-    - py.test -r sxX -x --doctest-modules --pyargs kdbpy
+  imports:
+    - kdbpy
 
 about:
   home: https://github.com/ContinuumIO/kdbpy
