@@ -19,7 +19,7 @@ script:
   - conda build conda.recipe
   - conda install --use-local kdbpy pytest
   - "python -c \"import kdbpy, os; print(kdbpy.kdb.which({'nt': 'q.bat'}.get(os.name, 'q')))\""
-  - "python -c \"import os; print('cwd: %s' % os.getcwd())\""
+  - "python -c \"import os; print(os.getcwd())\""
   - py.test --pyargs kdbpy
 
 build_targets: conda
