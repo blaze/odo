@@ -353,7 +353,7 @@ class Q(object):
             except psutil.AccessDenied:
                 pass
             else:
-                if name == 'q':
+                if name == 'q' or name == 'q.exe':
                     conns = proc.connections()
                     for conn in conns:  # probably a single element list
                         _, port = conn.laddr
