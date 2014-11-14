@@ -17,3 +17,6 @@ def parse_connection_string(uri):
 
 def normpath(path):
     return path.replace(os.sep, '/')
+
+
+hostname = 'localhost'

@@ -2,7 +2,6 @@
 from __future__ import print_function, absolute_import
 
 import os
-import socket
 import atexit
 import platform
 import getpass
@@ -19,7 +18,7 @@ from qpython import qconnection, qtemporal
 from toolz.compatibility import range
 
 from blaze import Data, CSV
-from kdbpy.util import normpath
+from kdbpy.util import normpath, hostname
 
 
 # chosen randomly from IANA unassigned port numbers
@@ -32,7 +31,7 @@ class Credentials(object):
     Parameters
     ----------
     host : str, optional
-        Defaults to ``socket.gethostname()``
+        Defaults to ``'localhost'``
     port : int
         Defaults to %d
     username : str
@@ -44,7 +43,7 @@ class Credentials(object):
 
     def __init__(self, host=None, port=None, username=None, password=None):
         super(Credentials, self).__init__()
-        self.host = host if host is not None else socket.gethostname()
+        self.host = host if host is not None else hostname
         self.port = port if port is not None else DEFAULT_PORT_NUMBER
         self.username = username if username is not None else getpass.getuser()
         self.password = password if password is not None else ''
