@@ -501,8 +501,7 @@ class KDB(PrettyMixin):
         else:
             raise ValueError("Unable to connect to Q server after %d tries: %s"
                              % (ntries, e))
-        from pprint import pprint
-        pprint(dir(self.q))
+        print(dir(self.q))
         assert self.q._connection is not None
         assert hasattr(self.q, '_writer')
         return self
