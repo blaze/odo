@@ -32,7 +32,7 @@ test:
     - kdbpy
 
   commands:
-    - py.test --pyargs kdbpy --doctest-modules
+    - py.test -x --pyargs kdbpy --doctest-modules
 
 about:
   home: https://github.com/ContinuumIO/kdbpy
