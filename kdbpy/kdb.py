@@ -8,6 +8,7 @@ import platform
 import getpass
 import subprocess
 
+from pprint import pprint
 from itertools import chain
 
 import psutil
@@ -495,19 +496,19 @@ class KDB(PrettyMixin):
             try:
                 self.q.open()
             except socket.error as e:
-                pass
+                self.q.close()
             else:
-                break
+                try:
+                    assert hasattr(self.q, '_writer')
+                except AssertionError:
+                    pprint(dir(self.q))
+                    raise
+                else:
+                    break
         else:
             raise ValueError("Unable to connect to Q server after %d tries: %s"
                              % (ntries, e))
         assert self.q._connection is not None
-        from pprint import pprint
-        try:
-            assert hasattr(self.q, '_writer')
-        except AssertionError:
-            pprint(dir(self.q))
-            raise
         return self
 
     def stop(self):
