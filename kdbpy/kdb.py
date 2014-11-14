@@ -22,6 +22,10 @@ from blaze import Data, CSV
 from kdbpy.util import normpath
 
 
+# chosen randomly from IANA unassigned port numbers
+DEFAULT_PORT_NUMBER = 47823
+
+
 class Credentials(object):
     """Lightweight credentials container.
 
@@ -30,18 +34,18 @@ class Credentials(object):
     host : str, optional
         Defaults to ``socket.gethostname()``
     port : int
-        Defaults to 5000
+        Defaults to %d
     username : str
         Defaults to ``getpass.getuser()``
     password str or None
         Defaults to None
-    """
+    """ % DEFAULT_PORT_NUMBER
     __slots__ = 'host', 'port', 'username', 'password'
 
     def __init__(self, host=None, port=None, username=None, password=None):
         super(Credentials, self).__init__()
         self.host = host if host is not None else socket.gethostname()
-        self.port = port if port is not None else 5000
+        self.port = port if port is not None else DEFAULT_PORT_NUMBER
         self.username = username if username is not None else getpass.getuser()
         self.password = password if password is not None else ''
 
