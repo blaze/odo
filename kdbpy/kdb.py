@@ -468,6 +468,7 @@ class KDB(object):
                                          username=cred.username,
                                          password=cred.password,
                                          pandas=True)
+        assert self.q._connection is None
         e = None
         for i in range(ntries):
             try:
@@ -479,6 +480,10 @@ class KDB(object):
         else:
             raise ValueError("Unable to connect to Q server after %d tries: %s"
                              % (ntries, e))
+        from pprint import pprint
+        pprint(dir(self.q._connection))
+        assert self.q._connection is not None
+        assert hasattr(self.q, '_writer')
         return self
 
     def stop(self):
