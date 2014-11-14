@@ -9,7 +9,6 @@ engine:
 
 install:
   - conda config --add channels blaze --add channels cpcloud
-  - pip install 'git+git://github.com/ContinuumIO/datashape.git'
 
 before_script:
   - python -V
