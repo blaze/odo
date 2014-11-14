@@ -114,15 +114,13 @@ def test_construction(qproc, creds):
     assert kdb.is_started
 
     # repr
-    result = str(kdb)
-    assert '[KDB: Credentials(' in result
-    assert '-> connected' in result
+    result = repr(kdb)
+    expected = "Credentials(host='localhost', port=47823, username='pcloud', password='')"
+    assert expected in result
 
     kdb.stop()
     assert not kdb.is_started
-
-    result = str(kdb)
-    assert result == '[KDB: q client not started]'
+    assert kdb.q is None
 
 
 def test_init():
