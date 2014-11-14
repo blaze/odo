@@ -481,6 +481,10 @@ class KDB(PrettyMixin):
         name = type(self).__name__
         with p.group(len(name) + 1, '%s(' % name, ')'):
             p.pretty(self.credentials)
+            if self.q is not None:
+                p.text(',')
+                p.breakable()
+                p.text('q=QConnection(...)')
 
     def start(self, ntries=1000):
         """ given credentials, start the connection to the server """
@@ -498,13 +502,8 @@ class KDB(PrettyMixin):
             except socket.error as e:
                 self.q.close()
             else:
-                try:
-                    assert hasattr(self.q, '_writer')
-                except AssertionError:
-                    pprint(dir(self.q))
-                    raise
-                else:
-                    break
+                assert hasattr(self.q, '_writer')
+                break
         else:
             raise ValueError("Unable to connect to Q server after %d tries: %s"
                              % (ntries, e))
