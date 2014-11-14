@@ -2,7 +2,7 @@ package: kdbpy
 user: cpcloud
 
 platform:
- - osx-64
+ - linux-64
 
 engine:
  - python=2.7
