@@ -2,6 +2,7 @@
 from __future__ import print_function, absolute_import
 
 import os
+import socket
 import atexit
 import platform
 import getpass
