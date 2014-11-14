@@ -32,6 +32,9 @@ test:
     - kdbpy
 
   commands:
+    - conda remove --yes datashape
+    - conda --force --remove channels blaze
+    - conda install datashape -c blaze
     - py.test --pyargs kdbpy --doctest-modules
 
 about:
