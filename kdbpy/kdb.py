@@ -460,7 +460,7 @@ class KDB(object):
 
     __repr__ = __str__
 
-    def start(self, ntries=1000):
+    def start(self, ntries=5000):
         """ given credentials, start the connection to the server """
         cred = self.credentials
         self.q = qconnection.QConnection(host=cred.host,
