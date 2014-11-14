@@ -14,6 +14,6 @@ echo $u_version> __conda_version__.txt
 
 cp __conda_version__.txt $BLD_DIR
 
-$PYTHON setup.py install
+$PYTHON setup.py --quiet install
 popd
 
