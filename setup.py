@@ -160,7 +160,8 @@ setup(
     description='kdbpy',
     long_description=longdesc,
     data_files=[],
-    package_data={'kdbpy': get_package_data('kdbpy', EXTLIST)},
+    package_data={'kdbpy': get_package_data('kdbpy', EXTLIST) +
+                  [osp.join('kdbpy', 'examples', 'data', '*')]},
     license='BSD',
     platforms = ['any'],
     classifiers=[
