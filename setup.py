@@ -47,7 +47,7 @@ def get_package_data(name, extlist):
     """Return data files for package *name* with extensions in *extlist*"""
     flist = []
     # Workaround to replace os.path.relpath (not available until Python 2.6):
-    offset = len(name)+len(os.pathsep)
+    offset = len(name) + len(os.sep)
     for dirpath, _dirnames, filenames in os.walk(name):
         for fname in filenames:
             if not fname.startswith('.') and osp.splitext(fname)[1] in extlist:
@@ -160,7 +160,9 @@ setup(
     description='kdbpy',
     long_description=longdesc,
     data_files=[],
-    package_data={'kdbpy': get_package_data('kdbpy', EXTLIST)},
+    package_data={'kdbpy': get_package_data('kdbpy', EXTLIST) +
+                  [osp.join(dp, f).lstrip('kdbpy%s' % os.sep) for dp, _, fn in
+                   os.walk('kdbpy', 'examples', 'data') for f in fn]},
     license='BSD',
     platforms = ['any'],
     classifiers=[

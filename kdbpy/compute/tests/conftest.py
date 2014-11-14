@@ -1,6 +1,3 @@
-import getpass
-import socket
-
 import pytest
 
 
@@ -53,5 +50,5 @@ def ktq(rstring, kdb):
 
 
 @pytest.fixture
-def rstring():
-    return 'kdb://%s@%s:5000' % (getpass.getuser(), socket.gethostname())
+def rstring(creds):
+    return 'kdb://%s@%s:%d' % (creds.username, creds.host, creds.port)

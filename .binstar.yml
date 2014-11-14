@@ -2,9 +2,8 @@ package: kdbpy
 user: cpcloud
 
 platform:
- - win-64
- - linux-64
  - osx-64
+ - win-64
 
 engine:
  - python=2.7
