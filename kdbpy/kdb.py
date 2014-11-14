@@ -358,11 +358,15 @@ class Q(object):
                 pass
             else:
                 if name == 'q' or name == 'q.exe':
-                    conns = proc.connections()
-                    for conn in conns:  # probably a single element list
-                        _, port = conn.laddr
-                        if port == self.credentials.port:
-                            return proc
+                    try:
+                        conns = proc.connections()
+                    except psutil.AccessDenied:
+                        pass
+                    else:
+                        for conn in conns:  # probably a single element list
+                            _, port = conn.laddr
+                            if port == self.credentials.port:
+                                return proc
 
     @property
     def is_started(self):
