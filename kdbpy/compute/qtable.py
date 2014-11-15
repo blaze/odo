@@ -26,7 +26,7 @@ qtypes = {'b': 'bool',
           't': 'timedelta'}
 
 
-class Tables(OrderedDict, PrettyMixin):
+class Tables(PrettyMixin, OrderedDict):
     def __init__(self, *args, **kwargs):
         super(Tables, self).__init__(*args, **kwargs)
 

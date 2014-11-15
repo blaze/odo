@@ -25,7 +25,9 @@ def test_tables(kdb, rt, st, t):
 
 
 def test_tables_repr(kdb):
-    assert repr(tables(kdb))
+    r = repr(tables(kdb))
+    assert r.startswith('Tables({')
+    assert r.endswith('})')
 
 
 def test_tablename(q, rq, sq):
