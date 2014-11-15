@@ -3,7 +3,7 @@ import keyword
 from itertools import chain
 try:
     import builtins
-except ImportError:
+except ImportError:  # pragma: no cover
     import __builtin__ as builtins
 from qpython.qcollection import QDICTIONARY
 
@@ -77,100 +77,6 @@ class Symbol(Atom):
         return '`' + joined
 
 
-def binop(op):
-    return lambda x, y: List(op, x, y)
-
-
-def unop(op):
-    return lambda x: List(op, x)
-
-
-eq = binop('=')
-ne = binop('<>')
-lt = binop('<')
-gt = binop('>')
-le = binop('<=')
-ge = binop('>=')
-
-add = binop('+')
-sub = binop('-')
-mul = binop('*')
-div = binop('%')
-pow = binop('xexp')
-mod = binop('mod')
-
-take = binop('#')
-partake = binop('.Q.ind')
-and_ = binop('&')
-or_ = binop('|')
-
-neg = unop('-:')
-null = unop('^:')
-not_ = unop('~:')
-floor = unop('_:')
-ceil = unop('-_-:')
-count = unop('#:')
-til = unop('til')
-distinct = unop('?:')
-typeof = unop('type')
-istable = unop('.Q.qt')
-
-
-unary_ops = {'-': neg,
-             '~': not_,
-             'floor': floor,
-             'ceil': ceil,
-             'sum': unop('sum'),
-             'mean': unop('avg'),
-             'std': unop('dev'),
-             'var': unop('var'),
-             'min': unop('min'),
-             'max': unop('max'),
-             'count': count,
-             'nelements': count}
-
-
-def symlist(*args):
-    return List(*list(map(Symbol, args)))
-
-
-def slice(obj, *keys):
-    return List(obj, '::', symlist(*keys))
-
-
-def sort(x, key, ascending):
-    sort_func = Atom('xasc' if ascending else 'xdesc')
-    return List(sort_func, symlist(key), x)
-
-
-def isdict(x):
-    return eq(typeof(x), QDICTIONARY)
-
-
-def try_(f, x, onfail):
-    """q's horrible version of try except, where any error is caught"""
-    return List('@', f, x, onfail)
-
-
-def cast(typ):
-    return lambda x: List('$', symlist(typ), x)
-
-
-long = cast('long')
-int = cast('int')
-float = cast('float')
-
-
-def select(child, constraints=None, by=None, aggregates=None):
-    if constraints is None:
-        constraints = List()
-    if by is None:
-        by = Bool()
-    if aggregates is None:
-        aggregates = List()
-    return List('?', child, constraints, by, aggregates)
-
-
 class List(object):
     def __init__(self, *items):
         self.items = items
@@ -214,6 +120,141 @@ class Bool(object):
 
     def __ne__(self, other):
         return not (self == other)
+
+
+def binop(op):
+    return lambda x, y: List(op, x, y)
+
+
+def unop(op):
+    return lambda x: List(op, x)
+
+
+eq = binop('=')
+ne = binop('<>')
+lt = binop('<')
+gt = binop('>')
+le = binop('<=')
+ge = binop('>=')
+
+add = binop('+')
+sub = binop('-')
+mul = binop('*')
+div = binop('%')
+pow = binop('xexp')
+mod = binop('mod')
+
+take = binop('#')
+partake = binop('.Q.ind')
+and_ = binop('&')
+or_ = binop('|')
+
+
+def xor(x, y):
+    return and_(or_(x, y), not_(and_(x, y)))
+
+
+def floordiv(x, y):
+    return floor(div(x, y))
+
+
+neg = unop('-:')
+null = unop('^:')
+not_ = unop('~:')
+floor = unop('_:')
+ceil = unop('-_-:')
+count = unop('#:')
+til = unop('til')
+distinct = unop('?:')
+typeof = unop('type')
+istable = unop('.Q.qt')
+
+
+binops = {
+    '+': add,
+    '-': sub,
+    '*': mul,
+    '/': div,
+    '**': pow,
+    '%': mod,
+    '//': floordiv,
+
+    '==': eq,
+    '!=': ne,
+    '>': gt,
+    '<': lt,
+    '>=': ge,
+    '<=': le,
+    '|': or_,
+    '&': and_,
+    '^': xor,
+}
+
+
+unops = {'-': neg,
+         '~': not_,
+         'floor': floor,
+         'ceil': ceil,
+         # reductions
+         'sum': unop('sum'),
+         'mean': unop('avg'),
+         'std': unop('dev'),
+         'var': unop('var'),
+         'min': unop('min'),
+         'max': unop('max'),
+         'count': count,
+         'nelements': count}
+
+
+def symlist(*args):
+    return List(*list(map(Symbol, args)))
+
+
+def slice(obj, *keys):
+    return List(obj, '::', symlist(*keys))
+
+
+def sort(x, key, ascending):
+    sort_func = Atom('xasc' if ascending else 'xdesc')
+    return List(sort_func, symlist(key), x)
+
+
+def isdict(x):
+    return eq(typeof(x), QDICTIONARY)
+
+
+def cast(typ):
+    return lambda x: List('$', symlist(typ), x)
+
+
+long = cast('long')
+int = cast('int')
+float = cast('float')
+
+
+class select(List):
+
+    __slots__ = 'fields',
+
+    # None is the sentinel for the ? in the select statement
+    fields = None, 'child', 'constraints', 'grouper', 'aggregates'
+
+    def __init__(self, child, constraints=None, grouper=None, aggregates=None):
+        super(select, self).__init__('?', child,
+                                     constraints or List(),
+                                     grouper or Bool(),
+                                     aggregates or List())
+
+    def __str__(self):
+        return super(select, self).__str__()
+
+    def __getattr__(self, name):
+        try:
+            index = self.fields.index(name)
+        except ValueError:
+            raise AttributeError(name)
+        else:
+            return self.items[index]
 
 
 Expr = Dict, Atom, List, Bool
