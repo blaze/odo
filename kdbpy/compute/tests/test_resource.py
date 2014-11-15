@@ -159,9 +159,7 @@ def test_inspect(daily):
     assert inspect(expr) == q.add(q.Symbol('daily', 'price'), 1)
 
 
-@pytest.mark.xfail(raises=AttributeError,
-                   reason='No symbol attribute yet')
 def test_inspect_fails(daily):
-    expr = daily.data.symbol.price + 1
+    expr = daily.data._symbol.price + 1
     with pytest.raises(TypeError):
         inspect(expr)
