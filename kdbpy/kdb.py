@@ -90,7 +90,7 @@ class BlazeGetter(object):
 class KQ(PrettyMixin):
     """ manage the kdb & q process """
 
-    def __init__(self, credentials=default_credentials, start=False, path=None):
+    def __init__(self, credentials=None, start=False, path=None):
         """
         Parameters
         ----------
@@ -103,7 +103,7 @@ class KQ(PrettyMixin):
         -------
         a KDB and Q object, with a started q engine
         """
-        self.credentials = credentials
+        self.credentials = credentials or default_credentials
         self.q = Q(credentials=credentials, path=path)
         self.kdb = KDB(credentials=self.credentials)
         if start:
@@ -115,6 +115,7 @@ class KQ(PrettyMixin):
         assert not cycle, 'cycles not allowed'
         name = type(self).__name__
         start = '%s(' % name
+        p.text('connected: %s\n' % (self.kdb.q._connection is not None))
         with p.group(len(start), start, ')'):
             p.text('kdb=')
             p.pretty(self.kdb)
