@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import absolute_import
 
 import os
-from contextlib import contextmanager
+import re
 
 import pytest
 import pandas as pd
@@ -114,15 +114,13 @@ def test_construction(qproc, creds):
     assert kdb.is_started
 
     # repr
-    result = str(kdb)
-    assert '[KDB: Credentials(' in result
-    assert '-> connected' in result
+    result = repr(kdb)
+    assert "password=''" in result
+    assert "host='localhost'" in result
 
     kdb.stop()
     assert not kdb.is_started
-
-    result = str(kdb)
-    assert result == '[KDB: q client not started]'
+    assert kdb.q is None
 
 
 def test_init():

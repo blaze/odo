@@ -8,6 +8,7 @@ import platform
 import getpass
 import subprocess
 
+from pprint import pprint
 from itertools import chain
 
 import psutil
@@ -19,14 +20,14 @@ from qpython import qconnection, qtemporal
 from toolz.compatibility import range
 
 from blaze import Data, CSV
-from kdbpy.util import normpath, hostname
+from kdbpy.util import normpath, hostname, PrettyMixin
 
 
 # chosen randomly from IANA unassigned port numbers
 DEFAULT_PORT_NUMBER = 47823
 
 
-class Credentials(object):
+class Credentials(PrettyMixin):
     """Lightweight credentials container.
 
     Parameters
@@ -58,10 +59,17 @@ class Credentials(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def __repr__(self):
-        return '%s(%s)' % (type(self).__name__,
-                           ', '.join('%s=%r' % (slot, getattr(self, slot))
-                                     for slot in self.__slots__))
+    def _repr_pretty_(self, p, cycle):
+        assert not cycle, 'cycles not allowed'
+        name = type(self).__name__
+        fields = self.__slots__
+        n = len(fields)
+        with p.group(len(name) + 1, '%s(' % name, ')'):
+            for i, slot in enumerate(fields, start=1):
+                p.text('%s=%r' % (slot, getattr(self, slot)))
+                if i < n:
+                    p.text(',')
+                    p.breakable()
 
 
 default_credentials = Credentials()
@@ -79,10 +87,10 @@ class BlazeGetter(object):
 
 
 # launch client & server
-class KQ(object):
+class KQ(PrettyMixin):
     """ manage the kdb & q process """
 
-    def __init__(self, credentials=default_credentials, start=False, path=None):
+    def __init__(self, credentials=None, start=False, path=None):
         """
         Parameters
         ----------
@@ -95,7 +103,7 @@ class KQ(object):
         -------
         a KDB and Q object, with a started q engine
         """
-        self.credentials = credentials
+        self.credentials = credentials or default_credentials
         self.q = Q(credentials=credentials, path=path)
         self.kdb = KDB(credentials=self.credentials)
         if start:
@@ -103,7 +111,18 @@ class KQ(object):
         self._data = BlazeGetter(self.credentials)
         self._loaded = set()
 
-    def __repr__(self):
+    def _repr_pretty_(self, p, cycle):
+        assert not cycle, 'cycles not allowed'
+        name = type(self).__name__
+        start = '%s(' % name
+        p.text('connected: %s\n' % (self.kdb.q._connection is not None))
+        with p.group(len(start), start, ')'):
+            p.text('kdb=')
+            p.pretty(self.kdb)
+            p.text(',')
+            p.breakable()
+            p.text('q=')
+            p.pretty(self.q)
         return '{0.__class__.__name__}(kdb={0.kdb}, q={0.q})'.format(self)
 
     # context manager, so allow
@@ -301,7 +320,7 @@ class Singleton(type):
         return inst
 
 
-class Q(object):
+class Q(PrettyMixin):
     """ manage the q exec process """
     __metaclass__ = Singleton
     __slots__ = 'credentials', 'path', 'process'
@@ -311,9 +330,17 @@ class Q(object):
         self.path = self.get_executable(path)
         self.process = None
 
-    def __repr__(self):
+    def _repr_pretty_(self, p, cycle):
         """return a string representation of the connection"""
-        return "{0.__class__.__name__}(path={0.path}, pid={0.pid})".format(self)
+        name = type(self).__name__
+        start = '%s(' % name
+        with p.group(len(start), start, ')'):
+            p.text('path=')
+            p.pretty(self.path)
+            p.text(',')
+            p.breakable()
+            p.text('pid=')
+            p.pretty(self.pid)
 
     @property
     def pid(self):
@@ -441,7 +468,7 @@ class Q(object):
         return False
 
 
-class KDB(object):
+class KDB(PrettyMixin):
     """ represents the interface to qPython object """
 
     def __init__(self, credentials):
@@ -449,16 +476,16 @@ class KDB(object):
         self.credentials = credentials
         self.q = None
 
-    def __str__(self):
+    def _repr_pretty_(self, p, cycle):
         """ return a string representation of the connection """
-        if self.q is not None:
-            s = "{0} -> connected".format(str(self.credentials))
-        else:
-            s = 'q client not started'
-
-        return "[{0}: {1}]".format(type(self).__name__, s)
-
-    __repr__ = __str__
+        assert not cycle, 'cycles not allowed'
+        name = type(self).__name__
+        with p.group(len(name) + 1, '%s(' % name, ')'):
+            p.pretty(self.credentials)
+            if self.q is not None:
+                p.text(',')
+                p.breakable()
+                p.text('q=QConnection(...)')
 
     def start(self, ntries=1000):
         """ given credentials, start the connection to the server """
@@ -468,17 +495,20 @@ class KDB(object):
                                          username=cred.username,
                                          password=cred.password,
                                          pandas=True)
+        assert self.q._connection is None
         e = None
         for i in range(ntries):
             try:
                 self.q.open()
             except socket.error as e:
-                pass
+                self.q.close()
             else:
+                assert hasattr(self.q, '_writer')
                 break
         else:
             raise ValueError("Unable to connect to Q server after %d tries: %s"
                              % (ntries, e))
+        assert self.q._connection is not None
         return self
 
     def stop(self):
