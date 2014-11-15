@@ -1,37 +1,65 @@
-# kdbpy: a shared-memory kdb-python bridge and API
+# `kdbpy`: kdb+ without the horrors of `q`
 
-## What is it
+## What it is
 
+* A way to drive the KDB+ database using Python.
 
 ## Main Features
+
+* All the benefits of the fast columnar [KDB+ database](http://kx.com/kdb-plus.php)
+  without the annoyance of the [`q` language](http://en.wikipedia.org/wiki/Q_(programming_language_from_Kx_Systems)).
+* Integrates well with other libraries in the data-oriented python
+  ecosystem (e.g., `pandas`, `numpy`)
+* Easy migrations from KDB+ to other formats and in-memory stores
+  through the use of `blaze`.
+* Handles startup and teardown of a single `q` process.
+* An [IPython](http://www.ipython.org) [magic](http://ipython.org/ipython-doc/stable/interactive/tutorial.html#magic-functions)
+  for running `q` expressions in a notebook.
 
 
 ## Where to get it
 
-The source code is currently hosted on GitHub at:
-http://github.com/Continuum/kdbpy
+You can install the package from [binstar.org](http://www.binstar.org)
+using [`conda`](http://conda.pydata.org):
+
+```sh
+conda install -c cpcloud -c blaze kdbpy
+```
+
+The source code is availabe at https://github.com/ContinuumIO/kdbpy
 
 ## Dependencies
+
+* [Python 2.7.8](http://www.python.org): The Python programming language
 * [`future`](http://python-future.org): Python 2-3 compatibility
 * [`blaze`](https://github.com/ContinuumIO/blaze): Composable
   abstractions for data
+* [`q`](http://github.com/ContinuumIO/conda-q): The `q` interpreter
+* [`qpython`](https://github.com/exxceleron/qPython): Talk to the `q` interpreter over a TCP socket
 
 
 ## Development Dependencies
+
 * [`pytest`](http://www.pytest.org): For testing
+* [`runipy`](https://github.com/paulgb/runipy): For testing the `q`
+  IPython magic
 
 ## Installation from sources
 
 To install from source you need Cython in addition to the normal
 dependencies above.
 
+The easiest way to install from source is to install via `conda` as
+above, uninstall the package, then build the `conda` recipe and install
+the resulting build via the `--use-local` flag.
+
 ```sh
-python setup.py install
+conda install cython pytest kdbpy -c cpcloud -c blaze
+conda remove kdbpy
+cd kdbpy
+conda build conda.recipe --python=2.7
+conda install kdbpy --use-local
 ```
 
 ## License
 BSD
-
-## Documentation
-
-![alt text](https://github.com/ContinuumIO/kdbpy/tree/master/doc/_static/NEAT Diagram.png "NEAT Diagram")
