@@ -3,7 +3,7 @@ import keyword
 from itertools import chain
 try:
     import builtins
-except ImportError:
+except ImportError:  # pragma: no cover
     import __builtin__ as builtins
 from qpython.qcollection import QDICTIONARY
 
@@ -221,11 +221,6 @@ def sort(x, key, ascending):
 
 def isdict(x):
     return eq(typeof(x), QDICTIONARY)
-
-
-def try_(f, x, onfail):
-    """q's horrible version of try except, where any error is caught"""
-    return List('@', f, x, onfail)
 
 
 def cast(typ):
