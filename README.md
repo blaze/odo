@@ -64,6 +64,3 @@ cd kdbpy
 conda build conda.recipe --python=2.7
 conda install kdbpy --use-local
 ```
-
-## License
-BSD
