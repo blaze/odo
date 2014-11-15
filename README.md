@@ -1,4 +1,8 @@
-# `kdbpy`: kdb+ without the horrors of `q`
+# `kdbpy`: The performance of kdb+ without the inconvenience of `q`
+
+[![Binstar Badge](https://binstar.org/cpcloud/kdbpy/badges/build.svg)](https://binstar.org/cpcloud/kdbpy/builds)
+[![Binstar Badge](https://binstar.org/cpcloud/kdbpy/badges/version.svg)](https://binstar.org/cpcloud/kdbpy)
+[![Binstar Badge](https://binstar.org/cpcloud/kdbpy/badges/installer/conda.svg)](https://conda.binstar.org/cpcloud)
 
 ## What it is
 
