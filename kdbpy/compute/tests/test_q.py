@@ -67,3 +67,15 @@ def test_qbool_equal():
     assert q.Bool(False) != q.Bool(True)
     assert q.Bool([]) == q.Bool({})
     assert q.Bool() == q.Bool(0)
+
+
+def test_select_attrs():
+    s = q.select(q.Symbol('t'))
+
+    assert s.child == q.Symbol('t')
+    assert s.constraints == q.List()
+    assert s.grouper == q.Bool()
+    assert s.aggregates == q.List()
+
+    with pytest.raises(AttributeError):
+        s.blarg
