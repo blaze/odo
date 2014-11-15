@@ -103,8 +103,10 @@ class KQ(PrettyMixin):
         -------
         a KDB and Q object, with a started q engine
         """
-        self.credentials = credentials or default_credentials
-        self.q = Q(credentials=credentials, path=path)
+        self.credentials = (credentials
+                            if credentials is not None
+                            else default_credentials)
+        self.q = Q(credentials=self.credentials, path=path)
         self.kdb = KDB(credentials=self.credentials)
         if start:
             self.start(start=start)
