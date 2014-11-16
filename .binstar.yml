@@ -24,3 +24,28 @@ build_targets: conda
 notifications:
   email:
     recipients: ['phillip.cloud@continuum.io']
+---
+package: kdbpy
+user: cpcloud
+
+platform:
+ - linux-64
+
+engine:
+ - python=2.7
+
+install:
+  - sudo yum groupinstall "Legacy UNIX compatibility"
+  - conda config --add channels blaze --add channels cpcloud
+
+before_script:
+  - python -V
+
+script:
+  - conda build conda.recipe
+
+build_targets: conda
+
+notifications:
+  email:
+    recipients: ['phillip.cloud@continuum.io']
