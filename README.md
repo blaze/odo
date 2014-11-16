@@ -71,6 +71,13 @@ libraries:
 * [`runipy`](https://github.com/paulgb/runipy): For testing the `q`
   IPython magic
 
+**Note:** `runipy` must be installed using `pip` as there is no `conda`
+package for it:
+
+```sh
+pip install runipy
+```
+
 ## Installation from sources
 
 To install from source you need Cython in addition to the normal
