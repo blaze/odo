@@ -11,13 +11,15 @@
 ## Main Features
 
 * All the benefits of the fast columnar [KDB+ database](http://kx.com/kdb-plus.php)
-  without the annoyance of the [`q` language](http://en.wikipedia.org/wiki/Q_(programming_language_from_Kx_Systems)).
+  without the annoyance of the [`q`
+  language](http://en.wikipedia.org/wiki/Q_(programming_language_from_Kx_Systems)).
 * Integrates well with other libraries in the data-oriented python
   ecosystem (e.g., `pandas`, `numpy`)
 * Easy migrations from KDB+ to other formats and in-memory stores
   through the use of `blaze`.
 * Handles startup and teardown of a single `q` process.
-* An [IPython](http://www.ipython.org) [magic](http://ipython.org/ipython-doc/stable/interactive/tutorial.html#magic-functions)
+* An [IPython](http://www.ipython.org)
+  [magic](http://ipython.org/ipython-doc/stable/interactive/tutorial.html#magic-functions)
   for running `q` expressions in a notebook.
 
 
@@ -34,15 +36,36 @@ The source code is availabe at https://github.com/ContinuumIO/kdbpy
 
 ## Dependencies
 
+**Note:** *Every dependency listed here can be obtained using*
+[`conda`](http://conda.pydata.org):
+
+```sh
+conda install <name-of-dependency>
+```
+
+### Required Dependencies
+
 * [Python 2.7.8](http://www.python.org): The Python programming language
 * [`future`](http://python-future.org): Python 2-3 compatibility
 * [`blaze`](https://github.com/ContinuumIO/blaze): Composable
   abstractions for data
 * [`q`](http://github.com/ContinuumIO/conda-q): The `q` interpreter
-* [`qpython`](https://github.com/exxceleron/qPython): Talk to the `q` interpreter over a TCP socket
+* [`qpython`](https://github.com/exxceleron/qPython): Talk to the `q`
+  interpreter over a TCP socket
 
 
-## Development Dependencies
+### Optional Dependencies
+
+* [`ipython`](http://www.ipython.org): Awesome interactive shell for Python
+* [`ipython-notebook`](http://ipython.org/notebook.html): Awesome
+  web-based notebook-style interface for executing Python code
+
+
+### Development Dependencies
+
+In addition to the [Required](#Required Dependencies) and
+[Optional](#Optional Dependencies) deps you need the following
+libraries:
 
 * [`pytest`](http://www.pytest.org): For testing
 * [`runipy`](https://github.com/paulgb/runipy): For testing the `q`
