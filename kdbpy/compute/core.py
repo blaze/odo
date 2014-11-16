@@ -179,21 +179,17 @@ def compute_up(expr, data, **kwargs):
             return q.slice(child, sym)
 
 
-@dispatch(Field, q.Expr)
-def optimize(expr, data, **kwargs):
-    if is_partitioned_expr(expr, **kwargs):
-        return q.Symbol(expr._name)
-    return compute_up(expr, data, **kwargs)
+@dispatch(Expr, QTable)
+def optimize(expr, data):
+    leaf = expr._leaves()[0]
+    new_leaf = Symbol(data.tablename, leaf.dshape)
+    return expr._subs({leaf: new_leaf})
 
 
 @dispatch(Field, q.Expr, dict)
 def post_compute(expr, data, scope):
-    table = first(scope.values())
-    leaf = expr._leaves()[0]
-    sym = table._symbol
-    subsed = expr._subs({leaf: sym})
-    final_expr = compute_up(subsed, data, scope={sym: table})
-    result = table.engine.eval('eval [%s]' % final_expr).squeeze()
+    table = scope[expr._leaves()[0]]
+    result = table.eval(data).squeeze()
     result.name = expr._name
     return result
 
@@ -262,15 +258,8 @@ def compute_up(expr, data, **kwargs):
     return q.select(child, aggregates=aggregates)
 
 
-@dispatch(Expr, q.Expr)
-def optimize(expr, data, **kwargs):
-    # TODO: this is where virtual column selection should be sorted in a where
-    # clause
-    return compute_up(expr, data, **kwargs)
-
-
 @dispatch(By, q.Expr)
-def optimize(expr, data, **kwargs):
+def pre_compute(expr, data, **kwargs):
     child = expr._child
     grouper = expr.grouper
     apply = expr.apply
@@ -281,7 +270,7 @@ def optimize(expr, data, **kwargs):
         # find common predicate between expr._child, grouper and apply
         subexpr = common_subexpression(child, apply, grouper)
         expr = expr._subs({subexpr: subexpr._leaves()[0]})
-        where = q.List(q.List(optimize(subexpr.predicate, data, **kwargs)))
+        where = q.List(q.List(compute_up(subexpr.predicate, data, **kwargs)))
         return expr, where
     else:
         # we can't (easily) optimize WRT qsql here
@@ -290,19 +279,20 @@ def optimize(expr, data, **kwargs):
 
 @dispatch(By, q.Expr)
 def compute_up(expr, data, **kwargs):
-    expr, where = optimize(expr, data, **kwargs)
-    child = optimize(expr._child, data, **kwargs)
-    grouper = optimize(expr.grouper, data, **kwargs)
-    reducer = optimize(expr.apply, data, **kwargs)
-    table = first(kwargs['scope'].keys())
+    expr, where = pre_compute(expr, data, **kwargs)
+    child = compute_up(expr._child, data, **kwargs)
+    grouper = compute_up(expr.grouper, data, **kwargs)
+    reducer = compute_up(expr.apply, data, **kwargs)
+    table = kwargs['scope'][expr._leaves()[0]]
+    sym = table._symbol
 
     # TODO: fix this using blaze core functions
-    grouper = q.Dict([(q.Symbol(expr.grouper._name), desubs(grouper, table))])
-    reducer = desubs(reducer, table)
+    grouper = q.Dict([(q.Symbol(expr.grouper._name), desubs(grouper, sym))])
+    reducer = desubs(reducer, sym)
 
     # desubs gets the single element out of a single element list, but Q
     # requires a single element list of conditions
-    where = q.List(desubs(where, table))
+    where = q.List(desubs(where, sym))
 
     if isinstance(expr.apply, Summary):
         # we only need the reduction dictionary from the result of a summary
@@ -348,31 +338,9 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Expr, q.Expr, dict)
 def post_compute(expr, data, scope):
-    # never a Data object
-    tables = set(x for x in scope.values() if isinstance(x, QTable))
-    assert len(tables) == 1
-    table = first(tables)
     leaf = expr._leaves()[0]
-
-    # do this in optimize
-    sym = table._symbol
-    subsed = expr._subs({leaf: sym})
-    final_expr = compute_up(subsed, data, scope={sym: table})
-    return table.engine.eval('eval [%s]' % final_expr)
-
-
-@dispatch(Join, q.Expr, dict)
-def post_compute(expr, data, scope):
-    # never a Data object
-    tables = set(x for x in scope.values() if isinstance(x, QTable))
-    table = first(tables)
-    # leaf = expr._leaves()[0]
-
-    # do this in optimize
-    # subsed = expr._subs({leaf: Symbol(table.tablename, leaf.dshape)})
-    # final_expr = compute_up(subsed, data, scope=scope)
-    final_expr = data
-    return table.engine.eval('eval [%s]' % final_expr)
+    table = scope[leaf]
+    return table.eval(data)
 
 
 @dispatch(numbers.Integral, q.Expr, q.Expr)
@@ -433,12 +401,9 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Expr, QTable)
 def compute_up(expr, data, **kwargs):
+    leaf = expr._leaves()[0]
+    kwargs['scope'].update({leaf: data})
     return compute_up(expr, data._qsymbol, **kwargs)
-
-
-@dispatch(Expr, QTable)
-def compute_down(expr, data, **kwargs):
-    return compute_down(expr, data._qsymbol, **kwargs)
 
 
 @resource.register('kdb://.+', priority=13)
