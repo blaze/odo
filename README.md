@@ -52,13 +52,13 @@ conda install <name-of-dependency>
 * [`q`](http://github.com/ContinuumIO/conda-q): The `q` interpreter
 * [`qpython`](https://github.com/exxceleron/qPython): Talk to the `q`
   interpreter over a TCP socket
+* [`ipython`](http://www.ipython.org): Awesome interactive shell for Python
 
 
 ### Optional Dependencies
 
-* [`ipython`](http://www.ipython.org): Awesome interactive shell for Python
-* [`ipython-notebook`](http://ipython.org/notebook.html): Awesome
-  web-based notebook-style interface for executing Python code
+* [`ipython-notebook`](http://ipython.org/notebook.html): Needed to use
+  the `%q` and `%%q` magics.
 
 
 ### Development Dependencies
