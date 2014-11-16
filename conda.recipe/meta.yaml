@@ -12,8 +12,6 @@ requirements:
     - q
     - qpython
     - ipython
-    - ipython-notebook
-    - psutil
 
   run:
     - python ==2.7.8
@@ -21,8 +19,6 @@ requirements:
     - q
     - qpython
     - ipython
-    - ipython-notebook
-    - psutil
 
 test:
   requires:
