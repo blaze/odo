@@ -4,6 +4,7 @@ user: cpcloud
 platform:
  - osx-64
  - linux-32
+ - linux-64
  - win-64
  - win-32
 
@@ -24,10 +25,3 @@ build_targets: conda
 notifications:
   email:
     recipients: ['phillip.cloud@continuum.io']
----
-platform:
- - linux-64
-
-install:
-  - sudo yum install glibc.i686
-  - conda config --add channels blaze --add channels cpcloud
