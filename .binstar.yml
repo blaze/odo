@@ -35,7 +35,7 @@ engine:
  - python=2.7
 
 install:
-  - sudo yum groupinstall "Legacy UNIX compatibility"
+  - yum groupinstall "Legacy UNIX compatibility"
   - conda config --add channels blaze --add channels cpcloud
 
 before_script:
