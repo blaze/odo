@@ -63,8 +63,8 @@ conda install <name-of-dependency>
 
 ### Development Dependencies
 
-In addition to the [Required](#Required Dependencies) and
-[Optional](#Optional Dependencies) deps you need the following
+In addition to the [Required](#required-dependencies) and
+[Optional](#optional-dependencies) deps you need the following
 libraries:
 
 * [`pytest`](http://www.pytest.org): For testing
