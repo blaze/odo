@@ -11,18 +11,12 @@ requirements:
     - blaze
     - q
     - qpython
-    - ipython
-    - ipython-notebook
-    - psutil
 
   run:
     - python ==2.7.8
     - blaze
     - q
     - qpython
-    - ipython
-    - ipython-notebook
-    - psutil
 
 test:
   requires:
