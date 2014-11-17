@@ -115,10 +115,12 @@ def test_construction(qproc, creds):
 
     # repr
     result = repr(kdb)
+    assert 'connected: True' in result
     assert "password=''" in result
     assert "host='localhost'" in result
 
     kdb.stop()
+    assert 'connected: False' in repr(kdb)
     assert not kdb.is_started
     assert kdb.q is None
 
