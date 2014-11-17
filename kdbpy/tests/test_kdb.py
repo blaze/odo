@@ -117,6 +117,8 @@ def test_construction(qproc, creds):
     kdb.start()
     assert kdb.is_started
 
+    result = repr(kdb)
+
     assert "password=''" in result
     assert "host='localhost'" in result
 
