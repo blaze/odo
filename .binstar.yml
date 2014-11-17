@@ -18,7 +18,7 @@ before_script:
   - python -V
 
 script:
-  - conda build --quiet conda.recipe
+  - conda build conda.recipe
 
 build_targets: conda
 
