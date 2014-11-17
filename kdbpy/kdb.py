@@ -117,7 +117,8 @@ class KQ(PrettyMixin):
         assert not cycle, 'cycles not allowed'
         name = type(self).__name__
         start = '%s(' % name
-        p.text('connected: %s\n' % (self.kdb.q._connection is not None))
+        p.text('connected: %s\n' % (getattr(self.kdb.q, '_connection', None)
+                                    is not None))
         with p.group(len(start), start, ')'):
             p.text('kdb=')
             p.pretty(self.kdb)

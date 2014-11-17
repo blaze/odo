@@ -55,8 +55,12 @@ def test_basic():
         assert kq.is_started
 
 
-def test_kq_repr(kdb):
-    assert repr(kdb)
+def test_kq_repr():
+    with k.KQ() as kq:
+        result = repr(kdb)
+        assert 'connected: True' in result
+
+    assert 'connected: False' in repr(kq)
 
 
 def test_credentials():
@@ -113,8 +117,8 @@ def test_construction(qproc, creds):
     kdb.start()
     assert kdb.is_started
 
-    # repr
     result = repr(kdb)
+
     assert "password=''" in result
     assert "host='localhost'" in result
 
