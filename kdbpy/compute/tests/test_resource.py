@@ -3,10 +3,13 @@ import pytest
 
 import pandas as pd
 import pandas.util.testing as tm
-bz = pytest.importorskip('blaze')
+
 from toolz import first
+
+import blaze as bz
 from blaze import Data, by, into, compute
 from blaze.compute.core import swap_resources_into_scope
+
 from kdbpy.compute.qtable import issplayed, isstandard
 from kdbpy.compute.core import inspect
 from kdbpy import q

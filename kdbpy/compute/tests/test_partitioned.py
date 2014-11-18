@@ -1,11 +1,14 @@
 import pytest
-pytest.importorskip('blaze')
+
 import pandas as pd
 import pandas.util.testing as tm
+
 from blaze import Data, compute, into, by
 from blaze.compute.core import swap_resources_into_scope
-from kdbpy.compute.qtable import ispartitioned
+
 import qpython.qcollection
+
+from kdbpy.compute.qtable import ispartitioned
 
 
 @pytest.fixture
