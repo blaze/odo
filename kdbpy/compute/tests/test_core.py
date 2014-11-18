@@ -1,11 +1,13 @@
 from __future__ import print_function, division, absolute_import
 
 import pytest
-bz = pytest.importorskip('blaze')
 
 import numpy as np
+
 import pandas as pd
 import pandas.util.testing as tm
+
+import blaze as bz
 from blaze import compute, into, by, discover, dshape, summary
 
 

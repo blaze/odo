@@ -1,5 +1,3 @@
-import pytest
-pytest.importorskip('blaze')
 from kdbpy.compute.qtable import tables
 
 
