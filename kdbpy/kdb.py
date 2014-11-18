@@ -289,8 +289,7 @@ class KQ(PrettyMixin):
         types = {True: 'partitioned', False: 'splayed', -1: 'binary'}
         names = self.eval(r'\a').tolist()
         code = r'{[x] {t: .Q.qp[x]; $[(type t) = -7h; -1; t]}[eval x]} each value "\\a"'
-        parted = pd.Series(self.eval(code))
-        values = pd.Series(types)[parted].values
+        values = [types[p] for p in self.eval(code)]
         return pd.DataFrame({'name': names, 'kind': values})[['name', 'kind']]
 
     @property
