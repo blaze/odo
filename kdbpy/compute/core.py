@@ -15,13 +15,14 @@ from blaze import resource
 
 from blaze.dispatch import dispatch
 
-from blaze.compute.core import swap_resources_into_scope
-from blaze.expr import Symbol, Projection, Selection, Field, FloorDiv
+from blaze.compute.core import swap_resources_into_scope, optimize
+from blaze.expr import Symbol, Projection, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
-from blaze.expr import Slice, Distinct, Summary, Relational
+from blaze.expr import Slice, Distinct, Summary
 from blaze.expr import DateTime, Millisecond, Microsecond
 from blaze.expr.datetime import Minute
 from blaze.expr import common_subexpression
+from blaze.expr.broadcast import broadcast_collect
 
 from datashape.predicates import isrecord
 
@@ -139,7 +140,7 @@ def compute_up(expr, data, **kwargs):
     return expr
 
 
-@dispatch((BinOp, Relational), q.Expr)
+@dispatch(BinOp, q.Expr)
 def compute_up(expr, data, **kwargs):
     symbol = expr.symbol
     op = q.binops[symbol]
@@ -148,11 +149,6 @@ def compute_up(expr, data, **kwargs):
     lhs = lwrap(compute_up(lhs, data, **kwargs))
     rhs = rwrap(compute_up(rhs, data, **kwargs))
     return op(lhs, rhs)
-
-
-@dispatch((BinOp, Relational), q.Expr, q.Expr)
-def compute_up(expr, lhs, rhs, **kwargs):
-    return q.binops[expr.symbol](lhs, rhs)
 
 
 @dispatch((Reduction, UnaryOp), q.Expr)
@@ -186,8 +182,8 @@ def optimize(expr, data):
     return expr._subs({leaf: new_leaf})
 
 
-@dispatch(Field, q.Expr, dict)
-def post_compute(expr, data, scope):
+@dispatch(Field, q.Expr)
+def post_compute(expr, data, scope=None):
     table = scope[expr._leaves()[0]]
     result = table.eval(data).squeeze()
     result.name = expr._name
@@ -307,12 +303,14 @@ def compute_up(expr, data, **kwargs):
 
 def is_partitioned_expr(expr, scope):
     root = expr._leaves()[0]
-    return expr._child.isidentical(root) and ispartitioned(scope[root])
+    child = getattr(expr, '_child', expr)
+    return child.isidentical(root) and ispartitioned(scope[root])
 
 
 def is_splayed_expr(expr, scope):
     root = expr._leaves()[0]
-    return expr._child.isidentical(root) and issplayed(scope[root])
+    child = getattr(expr, '_child', expr)
+    return child.isidentical(root) and issplayed(scope[root])
 
 
 def nrows(expr, data, **kwargs):
@@ -336,8 +334,8 @@ def compute_up(expr, data, **kwargs):
     return q.take(final_index, child)
 
 
-@dispatch(Expr, q.Expr, dict)
-def post_compute(expr, data, scope):
+@dispatch(Expr, q.Expr)
+def post_compute(expr, data, scope=None):
     leaf = expr._leaves()[0]
     table = scope[leaf]
     return table.eval(data)
@@ -401,8 +399,6 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Expr, QTable)
 def compute_up(expr, data, **kwargs):
-    leaf = expr._leaves()[0]
-    kwargs['scope'].update({leaf: data})
     return compute_up(expr, data._qsymbol, **kwargs)
 
 

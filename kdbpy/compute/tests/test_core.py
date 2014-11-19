@@ -14,7 +14,8 @@ from blaze import compute, into, by, discover, dshape, summary
 def test_projection(t, q, df):
     expr = t[['id', 'amount']]
     expected = compute(expr, df)
-    result = into(pd.DataFrame, compute(expr, q))
+    qresult = compute(expr, q)
+    result = into(pd.DataFrame, qresult)
     tm.assert_frame_equal(result, expected)
 
 
