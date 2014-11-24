@@ -84,7 +84,7 @@ def test_string_compare(t, q, df):
 
 def test_simple_by(t, q, df):
     # q) select name, amount_sum: sum amount from t
-    expr = by(t.name, t.amount.sum())
+    expr = by(t.name, amount=t.amount.sum())
     qresult = compute(expr, q)
     result = into(pd.DataFrame, qresult).reset_index()
 
