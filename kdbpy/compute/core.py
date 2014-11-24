@@ -249,8 +249,12 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(By, q.Expr)
 def compute_up(expr, data, **kwargs):
-    child = getattr(data, 'child', data)
-    constraints = getattr(data, 'constraints', q.List())
+    if isinstance(data, q.select):  # we are combining multiple selects
+        child = data.child
+        constraints = data.constraints
+    else:
+        child = data
+        constraints = q.List()
     grouper = compute(expr.grouper, child)
     grouper = q.Dict([(grouper, grouper)])
     aggregates = compute(expr.apply, child).aggregates
