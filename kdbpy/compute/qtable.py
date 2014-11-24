@@ -57,7 +57,6 @@ def tables(kdb):
 
 
 def qp(t):
-    return False
     t = getattr(t, 'data', t)
     return t.engine.eval('.Q.qp[%s]' % t.tablename).item()
 
