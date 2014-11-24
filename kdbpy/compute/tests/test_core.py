@@ -77,7 +77,8 @@ def test_unary_op(t, q, df):
 
 def test_string_compare(t, q, df):
     expr = t.name == 'Alice'
-    result = into(pd.Series, compute(expr, q))
+    qresult = compute(expr, q)
+    result = into(pd.Series, qresult)
     expected = compute(expr, df)
     tm.assert_series_equal(result, expected)
 
