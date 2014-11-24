@@ -112,7 +112,7 @@ def test_isstandard(daily):
 
 
 def test_by_mean(daily):
-    qresult = by(daily.sym, daily.price.mean())
+    qresult = by(daily.sym, avg=daily.price.mean())
     expr, daily = swap_resources_into_scope(qresult, {})
     expected = compute(expr, into(pd.DataFrame, first(daily.values())))
     expected = expected.set_index('sym')
