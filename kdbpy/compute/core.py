@@ -187,35 +187,29 @@ def compute_up(expr, data, **kwargs):
     return q.select(data, constraints=q.List(q.List(predicate)))
 
 
-@dispatch(DateTime, q.Expr)  # WTF?
+@dispatch(DateTime, q.Expr)
 def compute_up(expr, data, **kwargs):
-    assert False
     attr = expr.attr
     attr = qdatetimes.get(attr, attr)
-    return q.Symbol(expr._child._child._name, expr._child._name, attr)
+    return data[attr]
 
 
 @dispatch(Microsecond, q.Expr)
 def compute_up(expr, data, **kwargs):
-    assert False
-    sym = q.Symbol(expr._child._child._name, expr._child._name)
-    return q.floor(q.div(q.mod(q.long(sym), 1000000000), 1000))
+    return q.floor(q.div(q.mod(q.long(data), 1000000000), 1000))
 
 
 @dispatch(Millisecond, q.Expr)
 def compute_up(expr, data, **kwargs):
-    assert False
-    return compute_up(expr._child.microsecond // 1000, data, **kwargs)
+    return compute(expr._child.microsecond // 1000, data)
 
 
 @dispatch(Minute, q.Expr)
 def compute_up(expr, data, **kwargs):
-    assert False
     # q has mm for time types and mm for datetime and date types, this makes -1
     # amount of sense, so we bypass that and compute it our damn selves using
     # (`long$expr.minute) mod 60
-    sym = q.Symbol(str(expr))
-    return q.mod(q.long(sym), 60)
+    return q.mod(q.long(data[expr.attr]), 60)
 
 
 @dispatch(Join, q.Expr, q.Expr)
