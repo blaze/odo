@@ -126,6 +126,7 @@ def discover(t):
 
 
 @dispatch(KQ)
-def discover(t):
-    ts = tables(t.engine)
-    return discover({t.tablename: ts[t.tablename]})
+def discover(kq):
+    keys = kq.tables.name
+    values = [kq.data[k] for k in keys]
+    return discover(OrderedDict(zip(keys, values)))
