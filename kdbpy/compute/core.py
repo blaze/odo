@@ -361,15 +361,3 @@ def resource_kdb(uri, tablename, **kwargs):
 @dispatch(pd.DataFrame, QTable)
 def into(_, t, **kwargs):
     return t.eval(t.tablename)
-
-
-def scope_subs(expr, scope):
-    tables = set(x for x in scope.values() if isinstance(x, QTable))
-    assert len(tables) == 1
-    table = first(tables)
-    leaf = expr._leaves()[0]
-
-    # do this in optimize
-    sym = Symbol(table.tablename, leaf.dshape)
-    subsed = expr._subs({leaf: sym})
-    return subsed, {sym: table}
