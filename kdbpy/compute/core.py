@@ -36,10 +36,6 @@ qdatetimes = {
 }
 
 
-def get_wrapper(expr, types=(basestring,)):
-    return q.List if isinstance(expr, types) else identity
-
-
 def get(x):
     """Get a q atom from a single element list or return the list.
 
@@ -122,11 +118,6 @@ def _desubs(expr, t):
 def compute_up(expr, data, **kwargs):
     fields = list(map(q.Symbol, expr.fields))
     return q.select(data, aggregates=q.Dict(list(zip(fields, fields))))
-
-
-@dispatch(numbers.Number, q.Expr)
-def compute_up(expr, data, **kwargs):
-    return expr
 
 
 @dispatch(BinOp, q.Expr, q.Expr)
@@ -349,8 +340,6 @@ def compute_down(expr, lhs, rhs, **kwargs):
     scope = {new_lhs_leaf: lhs._qsymbol, new_rhs_leaf: rhs._qsymbol}
     result_expr = compute(new_expr, scope)  # Return q.Expr, not data
     result = lhs.eval(result_expr)
-    if isinstance(result, pd.Series):
-        result.name = expr._name
     return result
 
 

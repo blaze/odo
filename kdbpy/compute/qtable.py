@@ -104,10 +104,6 @@ class QTable(PrettyMixin):
                         is_splayed=is_splayed(self))
 
     @property
-    def _symbol(self):
-        return Symbol(self.tablename, self.dshape)
-
-    @property
     def iskeyed(self):
         sym = self._qsymbol
         return self.eval(q.and_(q.istable(sym), q.isdict(sym)))
