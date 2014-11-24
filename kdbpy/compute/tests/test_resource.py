@@ -11,7 +11,6 @@ from blaze import Data, by, into, compute
 from blaze.compute.core import swap_resources_into_scope
 
 from kdbpy.compute.qtable import is_splayed, is_standard
-from kdbpy.compute.core import inspect
 from kdbpy import q
 
 
@@ -152,17 +151,3 @@ def test_splayed_time_type(nbbo):
 def test_partitioned_nrows_on_virtual_column(quote, trade):
     assert nrows(quote) == nrows(quote.date)
     assert nrows(trade) == nrows(trade.date)
-
-
-def test_inspect(daily):
-    expr = daily.price
-    assert inspect(expr) == q.Symbol('daily', 'price')
-
-    expr = daily.price + 1
-    assert inspect(expr) == q.add(q.Symbol('daily', 'price'), 1)
-
-
-def test_inspect_fails(daily):
-    expr = daily.data._symbol.price + 1
-    with pytest.raises(TypeError):
-        inspect(expr)
