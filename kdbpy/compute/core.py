@@ -136,6 +136,19 @@ def compute_up(expr, lhs, rhs, **kwargs):
 
 
 def qify(x):
+    """Deal with putting q symbols in the AST.
+
+    Examples
+    --------
+    >>> from blaze import Symbol
+    >>> s = Symbol('s', 'var * {amount: float64, name: string}')
+    >>> expr = s.name == 'Alice'
+    >>> result = qify(expr.rhs)
+    >>> result
+    (,:[`Alice])
+    >>> qify(1)
+    1
+    """
     assert not isinstance(x, Expr), 'input cannot be a blaze expression'
     if isinstance(x, basestring):
         return q.List(q.Symbol(x))
