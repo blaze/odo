@@ -242,9 +242,8 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Summary, q.Expr)
 def compute_up(expr, data, **kwargs):
-    ops = [compute(op, data) for op in expr.values]
-    names = expr.names
-    aggregates = q.Dict(list(zip(map(q.Symbol, names), ops)))
+    ops = [compute(op, {expr._child: data}) for op in expr.values]
+    aggregates = q.Dict(list(zip(map(q.Symbol, expr.names), ops)))
     return desubs(q.select(data, aggregates=aggregates), expr._leaves()[0])
 
 
