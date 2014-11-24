@@ -14,7 +14,8 @@ from blaze import compute, into, by, discover, dshape, summary
 def test_projection(t, q, df):
     expr = t[['id', 'amount']]
     expected = compute(expr, df)
-    result = into(pd.DataFrame, compute(expr, q))
+    qresult = compute(expr, q)
+    result = into(pd.DataFrame, qresult)
     tm.assert_frame_equal(result, expected)
 
 
@@ -76,14 +77,15 @@ def test_unary_op(t, q, df):
 
 def test_string_compare(t, q, df):
     expr = t.name == 'Alice'
-    result = into(pd.Series, compute(expr, q))
+    qresult = compute(expr, q)
+    result = into(pd.Series, qresult)
     expected = compute(expr, df)
     tm.assert_series_equal(result, expected)
 
 
 def test_simple_by(t, q, df):
     # q) select name, amount_sum: sum amount from t
-    expr = by(t.name, t.amount.sum())
+    expr = by(t.name, amount=t.amount.sum())
     qresult = compute(expr, q)
     result = into(pd.DataFrame, qresult).reset_index()
 

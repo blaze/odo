@@ -1,3 +1,5 @@
+from blaze import discover
+from collections import OrderedDict
 from kdbpy.compute.qtable import tables
 
 
@@ -39,3 +41,10 @@ def test_keys(ktq, rq, sq, q):
     assert sq.keys == ['name']
     assert q.keys == []
     assert ktq.keys == ['house', 'id']
+
+
+def test_discover_kq(kq, ktq, rq, sq, q):
+    result = discover(kq)
+    expected = OrderedDict([('kt', ktq), ('rt', rq), ('st', sq), ('t', q)])
+    expected = discover(expected)
+    assert result == expected

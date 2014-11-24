@@ -11,22 +11,21 @@ import pandas as pd
 from toolz.compatibility import zip
 from toolz import map, identity, first, second
 
-from blaze import resource
+from blaze import resource, compute
 
 from blaze.dispatch import dispatch
 
-from blaze.compute.core import swap_resources_into_scope
-from blaze.expr import Symbol, Projection, Selection, Field, FloorDiv
+from blaze.compute.core import swap_resources_into_scope, compute
+from blaze.expr import Symbol, Projection, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
-from blaze.expr import Slice, Distinct, Summary, Relational
+from blaze.expr import Slice, Distinct, Summary
 from blaze.expr import DateTime, Millisecond, Microsecond
 from blaze.expr.datetime import Minute
-from blaze.expr import common_subexpression
 
 from datashape.predicates import isrecord
 
 from .. import q
-from .qtable import QTable, ispartitioned, issplayed
+from .qtable import QTable
 
 
 qdatetimes = {
@@ -35,10 +34,6 @@ qdatetimes = {
     'hour': 'hh',
     'second': 'ss',
 }
-
-
-def get_wrapper(expr, types=(basestring,)):
-    return q.List if isinstance(expr, types) else identity
 
 
 def get(x):
@@ -79,23 +74,25 @@ def desubs(expr, t):
     Examples
     --------
     >>> import blaze as bz
-    >>> t = bz.Symbol('t', 'var * {name: string, amount: float64}')
     >>> s = q.Symbol('t.name')
-    >>> desubs(s, t)
+    >>> desubs(s, 't')
     `name
     >>> s = q.List(q.Atom('first'), q.Symbol('t.name'))
     >>> s
     (first; `t.name)
-    >>> desubs(s, t)
+    >>> desubs(s, 't')
     (first; `name)
     """
-    return get(q.List(*list(_desubs(expr, t))))
+    # ignore the question mark needed for select, that's why we use *args[1:]
+    result_type = {q.select: lambda *args: q.select(*args[1:])}
+    return get(result_type.get(type(expr), q.List)(*list(_desubs(expr, t))))
 
 
 def compute_atom(atom, symbol):
     s = getattr(atom, 'str', atom.s)
-    if '.' in s and s.startswith(symbol._name):
-        return type(atom)(second(s.split('.', 1)))
+    split = s.split('.', 1)
+    if '.' in s and first(split) == symbol:
+        return type(atom)(second(split))
     return atom
 
 
@@ -117,111 +114,99 @@ def _desubs(expr, t):
                 yield sube
 
 
-@dispatch(basestring, q.Expr)
-def compute_up(expr, data, **kwargs):
-    return q.Symbol(expr)
-
-
 @dispatch(Projection, q.Expr)
 def compute_up(expr, data, **kwargs):
-    child = compute_up(expr._child, data, **kwargs)
     fields = list(map(q.Symbol, expr.fields))
-    return q.select(child, aggregates=q.Dict(list(zip(fields, fields))))
+    return q.select(data, aggregates=q.Dict(list(zip(fields, fields))))
 
 
-@dispatch(Symbol, q.Expr)
-def compute_up(expr, data, **kwargs):
-    return q.Symbol(expr._name)
-
-
-@dispatch(numbers.Number, q.Expr)
-def compute_up(expr, data, **kwargs):
-    return expr
-
-
-@dispatch((BinOp, Relational), q.Expr)
-def compute_up(expr, data, **kwargs):
-    symbol = expr.symbol
-    op = q.binops[symbol]
-    lhs, rhs = expr.lhs, expr.rhs
-    lwrap, rwrap = get_wrapper(lhs), get_wrapper(rhs)
-    lhs = lwrap(compute_up(lhs, data, **kwargs))
-    rhs = rwrap(compute_up(rhs, data, **kwargs))
+@dispatch(BinOp, q.Expr, q.Expr)
+def compute_up(expr, lhs, rhs, **kwargs):
+    op = q.binops[expr.symbol]
     return op(lhs, rhs)
 
 
-@dispatch((BinOp, Relational), q.Expr, q.Expr)
-def compute_up(expr, lhs, rhs, **kwargs):
-    return q.binops[expr.symbol](lhs, rhs)
+def qify(x):
+    """Deal with putting q symbols in the AST.
+
+    Examples
+    --------
+    >>> from blaze import Symbol
+    >>> s = Symbol('s', 'var * {amount: float64, name: string}')
+    >>> expr = s.name == 'Alice'
+    >>> result = qify(expr.rhs)
+    >>> result
+    (,:[`Alice])
+    >>> qify(1)
+    1
+    """
+    assert not isinstance(x, Expr), 'input cannot be a blaze expression'
+    if isinstance(x, basestring):
+        return q.List(q.Symbol(x))
+    return x
 
 
-@dispatch((Reduction, UnaryOp), q.Expr)
+@dispatch(BinOp, q.Expr)
 def compute_up(expr, data, **kwargs):
-    result = compute_up(expr._child, data, **kwargs)
-    return q.unops[expr.symbol](result)
+    op = q.binops[expr.symbol]
+    if isinstance(expr.lhs, Expr):
+        lhs, rhs = data, qify(expr.rhs)
+    else:
+        lhs, rhs = qify(expr.lhs), data
+    return op(lhs, rhs)
+
+
+@dispatch(Reduction, q.Expr)
+def compute_up(expr, data, **kwargs):
+    if expr.axis != (0,):
+        raise ValueError("Axis keyword arugment on reductions not supported")
+    return q.unops[expr.symbol](data)
+
+
+@dispatch(UnaryOp, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return q.unops[expr.symbol](data)
 
 
 @dispatch(Field, q.Expr)
 def compute_up(expr, data, **kwargs):
-    child = compute_up(expr._child, data, **kwargs)
     sym = q.Symbol(expr._name)
 
-    if is_partitioned_expr(expr, **kwargs):
+    if data.is_partitioned:
         # RAGE
-        select = q.select(child, aggregates=q.Dict([(sym, sym)]))
+        select = q.select(data, aggregates=q.Dict([(sym, sym)]))
         return q.slice(select, sym)
-    elif is_splayed_expr(expr, **kwargs):
-        return q.List(child, q.List(sym))
+    elif data.is_splayed:
+        return q.List(data, q.List(sym))
     else:
         try:
-            return child[expr._name]
+            return data[expr._name]
         except TypeError:
-            return q.slice(child, sym)
-
-
-@dispatch(Field, q.Expr)
-def optimize(expr, data, **kwargs):
-    if is_partitioned_expr(expr, **kwargs):
-        return q.Symbol(expr._name)
-    return compute_up(expr, data, **kwargs)
-
-
-@dispatch(Field, q.Expr, dict)
-def post_compute(expr, data, scope):
-    table = first(scope.values())
-    leaf = expr._leaves()[0]
-    sym = table._symbol
-    subsed = expr._subs({leaf: sym})
-    final_expr = compute_up(subsed, data, scope={sym: table})
-    result = table.engine.eval('eval [%s]' % final_expr).squeeze()
-    result.name = expr._name
-    return result
+            return q.slice(data, sym)
 
 
 @dispatch(Selection, q.Expr)
 def compute_up(expr, data, **kwargs):
     # template: ?[selectable, predicate or list of predicates, by, aggregations]
-    predicate = compute_up(expr.predicate, data, **kwargs)
-    child = compute_up(expr._child, data, **kwargs)
-    return q.select(child, constraints=q.List(q.List(predicate)))
+    predicate = compute(expr.predicate, {expr._child: data})
+    return q.select(data, constraints=q.List(q.List(predicate)))
 
 
 @dispatch(DateTime, q.Expr)
 def compute_up(expr, data, **kwargs):
     attr = expr.attr
     attr = qdatetimes.get(attr, attr)
-    return q.Symbol(expr._child._child._name, expr._child._name, attr)
+    return data[attr]
 
 
 @dispatch(Microsecond, q.Expr)
 def compute_up(expr, data, **kwargs):
-    sym = q.Symbol(expr._child._child._name, expr._child._name)
-    return q.floor(q.div(q.mod(q.long(sym), 1000000000), 1000))
+    return q.floor(q.div(q.mod(q.long(data), 1000000000), 1000))
 
 
 @dispatch(Millisecond, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return compute_up(expr._child.microsecond // 1000, data, **kwargs)
+    return compute(expr._child.microsecond // 1000, data)
 
 
 @dispatch(Minute, q.Expr)
@@ -229,8 +214,7 @@ def compute_up(expr, data, **kwargs):
     # q has mm for time types and mm for datetime and date types, this makes -1
     # amount of sense, so we bypass that and compute it our damn selves using
     # (`long$expr.minute) mod 60
-    sym = q.Symbol(str(expr))
-    return q.mod(q.long(sym), 60)
+    return q.mod(q.long(data[expr.attr]), 60)
 
 
 @dispatch(Join, q.Expr, q.Expr)
@@ -244,85 +228,29 @@ def compute_up(expr, lhs, rhs, **kwargs):
 
 @dispatch(Sort, q.Expr)
 def compute_up(expr, data, **kwargs):
-    child = compute_up(expr._child, data, **kwargs)
-    return q.sort(child, expr._key, expr.ascending)
-
-
-@dispatch(Join, QTable, QTable)
-def compute_up(expr, lhs, rhs, **kwargs):
-    return compute_up(expr, lhs._qsymbol, rhs._qsymbol, **kwargs)
+    return q.sort(data, expr._key, expr.ascending)
 
 
 @dispatch(Summary, q.Expr)
 def compute_up(expr, data, **kwargs):
-    ops = [compute_up(op, data, **kwargs) for op in expr.values]
-    names = expr.names
-    child = compute_up(expr._child, data, **kwargs)
-    aggregates = q.Dict(list(zip(map(q.Symbol, names), ops)))
-    return q.select(child, aggregates=aggregates)
-
-
-@dispatch(Expr, q.Expr)
-def optimize(expr, data, **kwargs):
-    # TODO: this is where virtual column selection should be sorted in a where
-    # clause
-    return compute_up(expr, data, **kwargs)
-
-
-@dispatch(By, q.Expr)
-def optimize(expr, data, **kwargs):
-    child = expr._child
-    grouper = expr.grouper
-    apply = expr.apply
-
-    # make field expressions essentially no ops here
-
-    if isinstance(child, Selection):
-        # find common predicate between expr._child, grouper and apply
-        subexpr = common_subexpression(child, apply, grouper)
-        expr = expr._subs({subexpr: subexpr._leaves()[0]})
-        where = q.List(q.List(optimize(subexpr.predicate, data, **kwargs)))
-        return expr, where
-    else:
-        # we can't (easily) optimize WRT qsql here
-        return expr, q.List()
+    ops = [compute(op, {expr._child: data}) for op in expr.values]
+    aggregates = q.Dict(list(zip(map(q.Symbol, expr.names), ops)))
+    return desubs(q.select(data, aggregates=aggregates), expr._leaves()[0])
 
 
 @dispatch(By, q.Expr)
 def compute_up(expr, data, **kwargs):
-    expr, where = optimize(expr, data, **kwargs)
-    child = optimize(expr._child, data, **kwargs)
-    grouper = optimize(expr.grouper, data, **kwargs)
-    reducer = optimize(expr.apply, data, **kwargs)
-    table = first(kwargs['scope'].keys())
-
-    # TODO: fix this using blaze core functions
-    grouper = q.Dict([(q.Symbol(expr.grouper._name), desubs(grouper, table))])
-    reducer = desubs(reducer, table)
-
-    # desubs gets the single element out of a single element list, but Q
-    # requires a single element list of conditions
-    where = q.List(desubs(where, table))
-
-    if isinstance(expr.apply, Summary):
-        # we only need the reduction dictionary from the result of a summary
-        # parse
-        reducer = reducer[-1]
+    if isinstance(data, q.select):  # we are combining multiple selects
+        child = data.child
+        constraints = data.constraints
     else:
-        reducer = q.Dict([(q.Symbol(expr.apply._name), reducer)])
-
-    qexpr = q.select(child, where, grouper, reducer)
-    return qexpr
-
-
-def is_partitioned_expr(expr, scope):
-    root = expr._leaves()[0]
-    return expr._child.isidentical(root) and ispartitioned(scope[root])
-
-
-def is_splayed_expr(expr, scope):
-    root = expr._leaves()[0]
-    return expr._child.isidentical(root) and issplayed(scope[root])
+        child = data
+        constraints = q.List()
+    grouper = compute(expr.grouper, child)
+    grouper = q.Dict([(grouper, grouper)])
+    aggregates = compute(expr.apply, child).aggregates
+    return desubs(q.select(child, q.List(constraints), grouper, aggregates),
+                  child.s)
 
 
 def nrows(expr, data, **kwargs):
@@ -331,7 +259,6 @@ def nrows(expr, data, **kwargs):
 
 @dispatch(Head, q.Expr)
 def compute_up(expr, data, **kwargs):
-    child = compute_up(expr._child, data, **kwargs)
     n = expr.n
 
     # q repeats if the N of take is larger than the number of rows, so we
@@ -341,38 +268,9 @@ def compute_up(expr, data, **kwargs):
     # & in q is min for 2 arguments
     final_index = q.and_(n, nrows(expr, data, **kwargs))
 
-    if is_partitioned_expr(expr, **kwargs):
-        return q.partake(child, q.til(final_index))
-    return q.take(final_index, child)
-
-
-@dispatch(Expr, q.Expr, dict)
-def post_compute(expr, data, scope):
-    # never a Data object
-    tables = set(x for x in scope.values() if isinstance(x, QTable))
-    assert len(tables) == 1
-    table = first(tables)
-    leaf = expr._leaves()[0]
-
-    # do this in optimize
-    sym = table._symbol
-    subsed = expr._subs({leaf: sym})
-    final_expr = compute_up(subsed, data, scope={sym: table})
-    return table.engine.eval('eval [%s]' % final_expr)
-
-
-@dispatch(Join, q.Expr, dict)
-def post_compute(expr, data, scope):
-    # never a Data object
-    tables = set(x for x in scope.values() if isinstance(x, QTable))
-    table = first(tables)
-    # leaf = expr._leaves()[0]
-
-    # do this in optimize
-    # subsed = expr._subs({leaf: Symbol(table.tablename, leaf.dshape)})
-    # final_expr = compute_up(subsed, data, scope=scope)
-    final_expr = data
-    return table.engine.eval('eval [%s]' % final_expr)
+    if data.is_partitioned:
+        return q.partake(data, q.til(final_index))
+    return q.take(final_index, data)
 
 
 @dispatch(numbers.Integral, q.Expr, q.Expr)
@@ -422,23 +320,42 @@ def compute_up(expr, data, **kwargs):
     assert len(expr.index) == 1, 'only single slice allowed'
     index, = expr.index
     rowcount = nrows(expr, data, **kwargs)
-    child = compute_up(expr._child, data, **kwargs)
-    return compute_slice(index, child, rowcount, dshape=expr.dshape)
+    return compute_slice(index, data, rowcount, dshape=expr.dshape)
 
 
 @dispatch(Distinct, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return q.distinct(compute_up(expr._child, data, **kwargs))
+    return q.distinct(data)
 
 
-@dispatch(Expr, QTable)
-def compute_up(expr, data, **kwargs):
-    return compute_up(expr, data._qsymbol, **kwargs)
+@dispatch(Expr, QTable, QTable)
+def compute_down(expr, lhs, rhs, **kwargs):
+    # TODO: this is an anti-pattern
+    # we should probably evaluate on the Q database
+    lhs_leaf = expr._leaves()[0]
+    rhs_leaf = expr._leaves()[1]
+    new_lhs_leaf = Symbol(lhs.tablename, lhs_leaf.dshape)
+    new_rhs_leaf = Symbol(rhs.tablename, rhs_leaf.dshape)
+    new_expr = expr._subs({lhs_leaf: new_lhs_leaf, rhs_leaf: new_rhs_leaf})
+    scope = {new_lhs_leaf: lhs._qsymbol, new_rhs_leaf: rhs._qsymbol}
+    result_expr = compute(new_expr, scope)  # Return q.Expr, not data
+    result = lhs.eval(result_expr)
+    return result
 
 
 @dispatch(Expr, QTable)
 def compute_down(expr, data, **kwargs):
-    return compute_down(expr, data._qsymbol, **kwargs)
+    leaf = expr._leaves()[0]
+    new_leaf = Symbol(data.tablename, leaf.dshape)
+    new_expr = expr._subs({leaf: new_leaf})
+    data_leaf = data._qsymbol
+
+    result_expr = compute(new_expr,
+                          {new_leaf: data_leaf})  # Return q.Expr, not data
+    result = data.eval(result_expr)
+    if isinstance(result, pd.Series):
+        result.name = expr._name
+    return result
 
 
 @resource.register('kdb://.+', priority=13)
@@ -449,23 +366,3 @@ def resource_kdb(uri, tablename, **kwargs):
 @dispatch(pd.DataFrame, QTable)
 def into(_, t, **kwargs):
     return t.eval(t.tablename)
-
-
-def scope_subs(expr, scope):
-    tables = set(x for x in scope.values() if isinstance(x, QTable))
-    assert len(tables) == 1
-    table = first(tables)
-    leaf = expr._leaves()[0]
-
-    # do this in optimize
-    sym = Symbol(table.tablename, leaf.dshape)
-    subsed = expr._subs({leaf: sym})
-    return subsed, {sym: table}
-
-
-def inspect(expr):
-    if not expr._resources():
-        raise TypeError('Expression must come from a Data object')
-    expr, scope = swap_resources_into_scope(expr, {})
-    expr, scope = scope_subs(expr, scope)
-    return compute_up(expr, q.List(), scope=scope)

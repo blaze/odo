@@ -61,15 +61,15 @@ def qp(t):
     return t.engine.eval('.Q.qp[%s]' % t.tablename).item()
 
 
-def ispartitioned(t):
+def is_partitioned(t):
     return qp(t) is True
 
 
-def issplayed(t):
+def is_splayed(t):
     return qp(t) is False
 
 
-def isstandard(t):
+def is_standard(t):
     return int(qp(t)) is 0
 
 
@@ -100,11 +100,8 @@ class QTable(PrettyMixin):
 
     @property
     def _qsymbol(self):
-        return q.Symbol(self.tablename)
-
-    @property
-    def _symbol(self):
-        return Symbol(self.tablename, self.dshape)
+        return q.Symbol(self.tablename, is_partitioned=is_partitioned(self),
+                        is_splayed=is_splayed(self))
 
     @property
     def iskeyed(self):
@@ -122,3 +119,10 @@ class QTable(PrettyMixin):
 @dispatch(QTable)
 def discover(t):
     return tables(t.engine)[t.tablename].dshape
+
+
+@dispatch(KQ)
+def discover(kq):
+    keys = kq.tables.name
+    values = [kq.data[k] for k in keys]
+    return discover(OrderedDict(zip(keys, values)))

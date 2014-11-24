@@ -57,7 +57,7 @@ def test_basic():
 
 def test_kq_repr():
     with k.KQ() as kq:
-        result = repr(kdb)
+        result = repr(kq)
         assert 'connected: True' in result
 
     assert 'connected: False' in repr(kq)

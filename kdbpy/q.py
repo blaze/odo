@@ -14,6 +14,12 @@ def isidentifier(s, rx=re.compile(r'[a-zA-Z_]\w*')):
     return rx.match(s) is not None and ' ' not in s
 
 
+class Expr(object):
+    def __init__(self, is_splayed=False, is_partitioned=False):
+        self.is_splayed = is_splayed
+        self.is_partitioned = is_partitioned
+
+
 class Dict(OrderedDict):
     def __init__(self, items):
         super(Dict, self).__init__(items)
@@ -22,8 +28,9 @@ class Dict(OrderedDict):
         return '%s!%s' % (List(*self.keys()), List(*self.values()))
 
 
-class Atom(object):
-    def __init__(self, s):
+class Atom(Expr):
+    def __init__(self, s, **kwargs):
+        super(Atom, self).__init__(**kwargs)
         assert isinstance(s, (basestring, Atom, String))
         self.s = getattr(s, 's', s)
 
@@ -38,15 +45,15 @@ class Atom(object):
 
 
 class String(Atom):
-    def __init__(self, s):
-        super(String, self).__init__(str(s))
+    def __init__(self, s, **kwargs):
+        super(String, self).__init__(str(s), **kwargs)
 
     def __repr__(self):
         return '"%s"' % self.s
 
 
 class Symbol(Atom):
-    def __init__(self, *args):
+    def __init__(self, *args, **kwargs):
         """
         Examples
         --------
@@ -55,7 +62,7 @@ class Symbol(Atom):
         >>> t
         `t.s.a
         """
-        super(Symbol, self).__init__(args[0])
+        super(Symbol, self).__init__(args[0], **kwargs)
         self.fields = args[1:]
         self.str = '.'.join(chain([self.s], self.fields))
 
@@ -78,8 +85,11 @@ class Symbol(Atom):
 
 
 class List(object):
+    is_partitioned = False
+    is_splayed = False
+
     def __init__(self, *items):
-        self.items = items
+        self.items = list(items)
 
     def __repr__(self):
         if len(self) == 1:
@@ -109,6 +119,9 @@ class List(object):
 
 
 class Bool(object):
+    is_partitioned = False
+    is_splayed = False
+
     def __init__(self, value=False):
         self.value = bool(value)
 
@@ -252,9 +265,17 @@ class select(List):
         try:
             index = self.fields.index(name)
         except ValueError:
-            raise AttributeError(name)
+            return object.__getattribute__(self, name)
         else:
             return self.items[index]
+
+    def __setattr__(self, name, value):
+        try:
+            index = self.fields.index(name)
+        except ValueError:
+            object.__setattr__(self, name, value)
+        else:
+            self.items[index] = value
 
 
 Expr = Dict, Atom, List, Bool

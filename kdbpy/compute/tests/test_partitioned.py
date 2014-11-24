@@ -8,7 +8,7 @@ from blaze.compute.core import swap_resources_into_scope
 
 import qpython.qcollection
 
-from kdbpy.compute.qtable import ispartitioned
+from kdbpy.compute.qtable import is_partitioned
 
 
 @pytest.fixture
@@ -20,8 +20,8 @@ def separate(expr):
     return swap_resources_into_scope(expr, {})
 
 
-def test_ispartitioned(trade):
-    assert ispartitioned(trade)
+def test_is_partitioned(trade):
+    assert is_partitioned(trade)
 
 
 def test_head(trade):

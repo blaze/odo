@@ -69,7 +69,7 @@ def test_qbool_equal():
     assert q.Bool() == q.Bool(0)
 
 
-def test_select_attrs():
+def test_select_getattr():
     s = q.select(q.Symbol('t'))
 
     assert s.child == q.Symbol('t')
@@ -79,3 +79,16 @@ def test_select_attrs():
 
     with pytest.raises(AttributeError):
         s.blarg
+
+
+def test_select_setattr():
+    s = q.select(q.Symbol('t'))
+    expected = q.List(q.gt(q.Symbol('x'), 1))
+    s.constraints = expected
+    assert s.constraints == expected
+    s.constraints = q.List()
+    assert s.constraints == q.List()
+    s.blarg = 1
+    assert s.blarg == 1
+    s.blarg = 2
+    assert s.blarg == 2
