@@ -117,11 +117,6 @@ def _desubs(expr, t):
                 yield sube
 
 
-@dispatch(basestring, q.Expr)
-def compute_up(expr, data, **kwargs):
-    return q.Symbol(expr)
-
-
 @dispatch(Projection, q.Expr)
 def compute_up(expr, data, **kwargs):
     fields = list(map(q.Symbol, expr.fields))
@@ -139,13 +134,20 @@ def compute_up(expr, lhs, rhs, **kwargs):
     return op(lhs, rhs)
 
 
+def qify(x):
+    assert not isinstance(x, Expr), 'input cannot be a blaze expression'
+    if isinstance(x, basestring):
+        return q.List(q.Symbol(x))
+    return x
+
+
 @dispatch(BinOp, q.Expr)
 def compute_up(expr, data, **kwargs):
     op = q.binops[expr.symbol]
     if isinstance(expr.lhs, Expr):
-        lhs, rhs = data, expr.rhs
+        lhs, rhs = data, qify(expr.rhs)
     else:
-        lhs, rhs = expr.lhs, data
+        lhs, rhs = qify(expr.lhs), data
     return op(lhs, rhs)
 
 
@@ -232,7 +234,7 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Summary, q.Expr)
 def compute_up(expr, data, **kwargs):
-    ops = [compute_up(op, data, **kwargs) for op in expr.values]
+    ops = [compute(op, data) for op in expr.values]
     names = expr.names
     aggregates = q.Dict(list(zip(map(q.Symbol, names), ops)))
     return q.select(data, aggregates=aggregates)
@@ -271,13 +273,7 @@ def compute_up(expr, data, **kwargs):
     # requires a single element list of conditions
     where = q.List(desubs(where, sym))
 
-    if isinstance(expr.apply, Summary):
-        # we only need the reduction dictionary from the result of a summary
-        # parse
-        reducer = reducer[-1]
-    else:
-        reducer = q.Dict([(q.Symbol(expr.apply._name), reducer)])
-
+    reducer = reducer[-1]
     qexpr = q.select(data, where, grouper, reducer)
     return qexpr
 
@@ -365,8 +361,9 @@ def compute_down(expr, lhs, rhs, **kwargs):
     rhs_leaf = expr._leaves()[1]
     new_lhs_leaf = Symbol(lhs.tablename, lhs_leaf.dshape)
     new_rhs_leaf = Symbol(rhs.tablename, rhs_leaf.dshape)
-    scope = {new_lhs_leaf: lhs, new_rhs_leaf: rhs}
-    result_expr = compute(expr, scope)  # Return q.Expr, not data
+    new_expr = expr._subs({lhs_leaf: new_lhs_leaf, rhs_leaf: new_rhs_leaf})
+    scope = {new_lhs_leaf: lhs._qsymbol, new_rhs_leaf: rhs._qsymbol}
+    result_expr = compute(new_expr, scope)  # Return q.Expr, not data
     return lhs.eval(result_expr)
 
 
