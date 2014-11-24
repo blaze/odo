@@ -78,14 +78,13 @@ def desubs(expr, t):
     Examples
     --------
     >>> import blaze as bz
-    >>> t = bz.Symbol('t', 'var * {name: string, amount: float64}')
     >>> s = q.Symbol('t.name')
-    >>> desubs(s, t)
+    >>> desubs(s, 't')
     `name
     >>> s = q.List(q.Atom('first'), q.Symbol('t.name'))
     >>> s
     (first; `t.name)
-    >>> desubs(s, t)
+    >>> desubs(s, 't')
     (first; `name)
     """
     # ignore the question mark needed for select, that's why we use *args[1:]
@@ -333,7 +332,10 @@ def compute_down(expr, lhs, rhs, **kwargs):
     new_expr = expr._subs({lhs_leaf: new_lhs_leaf, rhs_leaf: new_rhs_leaf})
     scope = {new_lhs_leaf: lhs._qsymbol, new_rhs_leaf: rhs._qsymbol}
     result_expr = compute(new_expr, scope)  # Return q.Expr, not data
-    return lhs.eval(result_expr)
+    result = lhs.eval(result_expr)
+    if isinstance(result, pd.Series):
+        result.name = expr._name
+    return result
 
 
 @dispatch(Expr, QTable)
@@ -345,7 +347,10 @@ def compute_down(expr, data, **kwargs):
 
     result_expr = compute(new_expr,
                           {new_leaf: data_leaf})  # Return q.Expr, not data
-    return data.eval(result_expr)
+    result = data.eval(result_expr)
+    if isinstance(result, pd.Series):
+        result.name = expr._name
+    return result
 
 
 @resource.register('kdb://.+', priority=13)
@@ -368,11 +373,3 @@ def scope_subs(expr, scope):
     sym = Symbol(table.tablename, leaf.dshape)
     subsed = expr._subs({leaf: sym})
     return subsed, {sym: table}
-
-
-def inspect(expr):
-    if not expr._resources():
-        raise TypeError('Expression must come from a Data object')
-    expr, scope = swap_resources_into_scope(expr, {})
-    expr, scope = scope_subs(expr, scope)
-    return compute_up(expr, q.List(), scope=scope)
