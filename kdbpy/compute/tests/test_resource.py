@@ -10,7 +10,7 @@ import blaze as bz
 from blaze import Data, by, into, compute
 from blaze.compute.core import swap_resources_into_scope
 
-from kdbpy.compute.qtable import issplayed, isstandard
+from kdbpy.compute.qtable import is_splayed, is_standard
 from kdbpy.compute.core import inspect
 from kdbpy import q
 
@@ -103,16 +103,16 @@ def test_complex_nondate_op(daily):
     assert result == expected
 
 
-def test_issplayed(nbbo):
-    assert issplayed(nbbo)
+def test_is_splayed(nbbo):
+    assert is_splayed(nbbo)
 
 
-def test_isstandard(daily):
-    assert isstandard(daily)
+def test_is_standard(daily):
+    assert is_standard(daily)
 
 
 def test_by_mean(daily):
-    qresult = by(daily.sym, daily.price.mean())
+    qresult = by(daily.sym, price=daily.price.mean())
     expr, daily = swap_resources_into_scope(qresult, {})
     expected = compute(expr, into(pd.DataFrame, first(daily.values())))
     expected = expected.set_index('sym')
