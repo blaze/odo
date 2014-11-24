@@ -9,7 +9,7 @@ __all__ = ['bar']
 
 
 class bar(Expr):
-    __slots__ = '_child', 'n'
+    __slots__ = '_hash', '_child', 'n'
 
     @property
     def dshape(self):
