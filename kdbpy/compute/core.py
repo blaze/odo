@@ -21,7 +21,6 @@ from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
 from blaze.expr import Slice, Distinct, Summary
 from blaze.expr import DateTime, Millisecond, Microsecond
 from blaze.expr.datetime import Minute
-from blaze.expr import common_subexpression
 
 from datashape.predicates import isrecord
 
@@ -89,13 +88,16 @@ def desubs(expr, t):
     >>> desubs(s, t)
     (first; `name)
     """
-    return get(q.List(*list(_desubs(expr, t))))
+    # ignore the question mark needed for select, that's why we use *args[1:]
+    result_type = {q.select: lambda *args: q.select(*args[1:])}
+    return get(result_type.get(type(expr), q.List)(*list(_desubs(expr, t))))
 
 
 def compute_atom(atom, symbol):
     s = getattr(atom, 'str', atom.s)
-    if '.' in s and s.startswith(symbol._name):
-        return type(atom)(second(s.split('.', 1)))
+    split = s.split('.', 1)
+    if '.' in s and first(split) == symbol:
+        return type(atom)(second(split))
     return atom
 
 
@@ -231,45 +233,18 @@ def compute_up(expr, data, **kwargs):
     ops = [compute(op, data) for op in expr.values]
     names = expr.names
     aggregates = q.Dict(list(zip(map(q.Symbol, names), ops)))
-    return q.select(data, aggregates=aggregates)
-
-
-def by_pre_compute(expr, data, **kwargs):
-    child = expr._child
-    grouper = expr.grouper
-    apply = expr.apply
-
-    # make field expressions essentially no ops here
-
-    if isinstance(child, Selection):
-        # find common predicate between expr._child, grouper and apply
-        subexpr = common_subexpression(child, apply, grouper)
-        expr = expr._subs({subexpr: subexpr._leaves()[0]})
-        where = q.List(q.List(compute_up(subexpr.predicate, data, **kwargs)))
-        return expr, where
-    else:
-        # we can't (easily) optimize WRT qsql here
-        return expr, q.List()
+    return desubs(q.select(data, aggregates=aggregates), expr._leaves()[0])
 
 
 @dispatch(By, q.Expr)
 def compute_up(expr, data, **kwargs):
-    expr, where = by_pre_compute(expr, data, **kwargs)
-    grouper = compute_up(expr.grouper, data, **kwargs)
-    reducer = compute_up(expr.apply, data, **kwargs)
-    sym = expr._leaves()[0]
-
-    # TODO: fix this using blaze core functions
-    grouper = q.Dict([(q.Symbol(expr.grouper._name), desubs(grouper, sym))])
-    reducer = desubs(reducer, sym)
-
-    # desubs gets the single element out of a single element list, but Q
-    # requires a single element list of conditions
-    where = q.List(desubs(where, sym))
-
-    reducer = reducer[-1]
-    qexpr = q.select(data, where, grouper, reducer)
-    return qexpr
+    child = getattr(data, 'child', data)
+    constraints = getattr(data, 'constraints', q.List())
+    grouper = compute(expr.grouper, child)
+    grouper = q.Dict([(grouper, grouper)])
+    aggregates = compute(expr.apply, child).aggregates
+    return desubs(q.select(child, q.List(constraints), grouper, aggregates),
+                  child.s)
 
 
 def nrows(expr, data, **kwargs):
