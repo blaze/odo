@@ -15,7 +15,7 @@ from blaze import resource, compute
 
 from blaze.dispatch import dispatch
 
-from blaze.compute.core import swap_resources_into_scope, optimize
+from blaze.compute.core import swap_resources_into_scope, compute
 from blaze.expr import Symbol, Projection, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
 from blaze.expr import Slice, Distinct, Summary
@@ -133,27 +133,32 @@ def compute_up(expr, data, **kwargs):
     return expr
 
 
-@dispatch(BinOp, q.Expr)
-def compute_up(expr, data, **kwargs):
-    symbol = expr.symbol
-    op = q.binops[symbol]
-    lhs, rhs = expr.lhs, expr.rhs
-    lwrap, rwrap = get_wrapper(lhs), get_wrapper(rhs)
-    lhs = lwrap(compute_up(lhs, data, **kwargs))
-    rhs = rwrap(compute_up(rhs, data, **kwargs))
+@dispatch(BinOp, q.Expr, q.Expr)
+def compute_up(expr, lhs, rhs, **kwargs):
+    op = q.binops[expr.symbol]
     return op(lhs, rhs)
 
 
-@dispatch((Reduction, UnaryOp), q.Expr)
+@dispatch(BinOp, q.Expr)
 def compute_up(expr, data, **kwargs):
+    op = q.binops[expr.symbol]
+    if isinstance(expr.lhs, Expr):
+        lhs, rhs = data, expr.rhs
+    else:
+        lhs, rhs = expr.lhs, data
+    return op(lhs, rhs)
+
+
+@dispatch(Reduction, q.Expr)
+def compute_up(expr, data, **kwargs):
+    if expr.axis != (0,):
+        raise ValueError("Axis keyword arugment on reductions not supported")
     return q.unops[expr.symbol](data)
 
 
-@dispatch(Expr, QTable)
-def compute_down(expr, data, **kwargs):
-    leaf = data._qsymbol
-    result = compute(expr, leaf)
-    return data.eval(result)
+@dispatch(UnaryOp, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return q.unops[expr.symbol](data)
 
 
 @dispatch(Field, q.Expr)
@@ -173,22 +178,16 @@ def compute_up(expr, data, **kwargs):
             return q.slice(data, sym)
 
 
-@dispatch(Expr, QTable)
-def optimize(expr, data):
-    leaf = expr._leaves()[0]
-    new_leaf = Symbol(data.tablename, leaf.dshape)
-    return expr._subs({leaf: new_leaf})
-
-
 @dispatch(Selection, q.Expr)
 def compute_up(expr, data, **kwargs):
     # template: ?[selectable, predicate or list of predicates, by, aggregations]
-    predicate = compute_up(expr.predicate, data, **kwargs)
+    predicate = compute(expr.predicate, {expr._child: data})
     return q.select(data, constraints=q.List(q.List(predicate)))
 
 
-@dispatch(DateTime, q.Expr)
+@dispatch(DateTime, q.Expr)  # WTF?
 def compute_up(expr, data, **kwargs):
+    assert False
     attr = expr.attr
     attr = qdatetimes.get(attr, attr)
     return q.Symbol(expr._child._child._name, expr._child._name, attr)
@@ -196,17 +195,20 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Microsecond, q.Expr)
 def compute_up(expr, data, **kwargs):
+    assert False
     sym = q.Symbol(expr._child._child._name, expr._child._name)
     return q.floor(q.div(q.mod(q.long(sym), 1000000000), 1000))
 
 
 @dispatch(Millisecond, q.Expr)
 def compute_up(expr, data, **kwargs):
+    assert False
     return compute_up(expr._child.microsecond // 1000, data, **kwargs)
 
 
 @dispatch(Minute, q.Expr)
 def compute_up(expr, data, **kwargs):
+    assert False
     # q has mm for time types and mm for datetime and date types, this makes -1
     # amount of sense, so we bypass that and compute it our damn selves using
     # (`long$expr.minute) mod 60
@@ -228,11 +230,6 @@ def compute_up(expr, data, **kwargs):
     return q.sort(data, expr._key, expr.ascending)
 
 
-@dispatch(Join, QTable, QTable)
-def compute_up(expr, lhs, rhs, **kwargs):
-    return compute_up(expr, lhs._qsymbol, rhs._qsymbol, **kwargs)
-
-
 @dispatch(Summary, q.Expr)
 def compute_up(expr, data, **kwargs):
     ops = [compute_up(op, data, **kwargs) for op in expr.values]
@@ -241,8 +238,7 @@ def compute_up(expr, data, **kwargs):
     return q.select(data, aggregates=aggregates)
 
 
-@dispatch(By, q.Expr)
-def pre_compute(expr, data, **kwargs):
+def by_pre_compute(expr, data, **kwargs):
     child = expr._child
     grouper = expr.grouper
     apply = expr.apply
@@ -262,7 +258,7 @@ def pre_compute(expr, data, **kwargs):
 
 @dispatch(By, q.Expr)
 def compute_up(expr, data, **kwargs):
-    expr, where = pre_compute(expr, data, **kwargs)
+    expr, where = by_pre_compute(expr, data, **kwargs)
     grouper = compute_up(expr.grouper, data, **kwargs)
     reducer = compute_up(expr.apply, data, **kwargs)
     sym = expr._leaves()[0]
@@ -359,6 +355,31 @@ def compute_up(expr, data, **kwargs):
 @dispatch(Distinct, q.Expr)
 def compute_up(expr, data, **kwargs):
     return q.distinct(data)
+
+
+@dispatch(Expr, QTable, QTable)
+def compute_down(expr, lhs, rhs, **kwargs):
+    # TODO: this is an anti-pattern
+    # we should probably evaluate on the Q database
+    lhs_leaf = expr._leaves()[0]
+    rhs_leaf = expr._leaves()[1]
+    new_lhs_leaf = Symbol(lhs.tablename, lhs_leaf.dshape)
+    new_rhs_leaf = Symbol(rhs.tablename, rhs_leaf.dshape)
+    scope = {new_lhs_leaf: lhs, new_rhs_leaf: rhs}
+    result_expr = compute(expr, scope)  # Return q.Expr, not data
+    return lhs.eval(result_expr)
+
+
+@dispatch(Expr, QTable)
+def compute_down(expr, data, **kwargs):
+    leaf = expr._leaves()[0]
+    new_leaf = Symbol(data.tablename, leaf.dshape)
+    new_expr = expr._subs({leaf: new_leaf})
+    data_leaf = data._qsymbol
+
+    result_expr = compute(new_expr,
+                          {new_leaf: data_leaf})  # Return q.Expr, not data
+    return data.eval(result_expr)
 
 
 @resource.register('kdb://.+', priority=13)

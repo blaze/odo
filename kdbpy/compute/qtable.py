@@ -57,6 +57,7 @@ def tables(kdb):
 
 
 def qp(t):
+    return False
     t = getattr(t, 'data', t)
     return t.engine.eval('.Q.qp[%s]' % t.tablename).item()
 
@@ -123,3 +124,9 @@ class QTable(PrettyMixin):
 @dispatch(QTable)
 def discover(t):
     return tables(t.engine)[t.tablename].dshape
+
+
+@dispatch(KQ)
+def discover(t):
+    ts = tables(t.engine)
+    return discover({t.tablename: ts[t.tablename]})
