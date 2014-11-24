@@ -89,7 +89,7 @@ class List(object):
     is_splayed = False
 
     def __init__(self, *items):
-        self.items = items
+        self.items = list(items)
 
     def __repr__(self):
         if len(self) == 1:
@@ -265,9 +265,17 @@ class select(List):
         try:
             index = self.fields.index(name)
         except ValueError:
-            raise AttributeError(name)
+            return object.__getattribute__(self, name)
         else:
             return self.items[index]
+
+    def __setattr__(self, name, value):
+        try:
+            index = self.fields.index(name)
+        except ValueError:
+            object.__setattr__(self, name, value)
+        else:
+            self.items[index] = value
 
 
 Expr = Dict, Atom, List, Bool
