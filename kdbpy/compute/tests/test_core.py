@@ -6,9 +6,10 @@ import numpy as np
 
 import pandas as pd
 import pandas.util.testing as tm
+from datashape import null, dshape, Record, var
 
 import blaze as bz
-from blaze import compute, into, by, discover, dshape, summary
+from blaze import compute, into, by, discover, dshape, summary, Data
 from kdbpy import QTable
 
 
@@ -345,8 +346,26 @@ def test_by_with_complex_where(t, q, df):
 
 
 def test_table_with_timespan(rstring, kdb):
-    kdb.eval('ts: ([] ts: 00:00:00.000000000 + 1 + til 10; amount: til 10)')
-    qt = QTable(rstring, tablename='ts')
+    name = 'ts'
+    kdb.eval('%s: ([] ts: 00:00:00.000000000 + 1 + til 10; amount: til 10)' %
+             name)
+    qt = QTable(rstring, tablename=name)
     result = discover(qt)
     expected = dshape('var * {ts: timedelta[unit="ns"], amount: int64}')
     assert expected == result
+
+
+def test_empty_table(rstring, kdb):
+    name = 'no_rows'
+    kdb.eval('%s: ([oid: ()] a: (); b: ())' % name)
+    d = Data('%s::%s' % (rstring, name))
+    expected = dshape(var * Record([('oid', null), ('a', null), ('b', null)]))
+    assert discover(d) == expected
+
+
+def test_empty_table_with_types(rstring, kdb):
+    name = 'no_rows_typed'
+    kdb.eval('%s: ([oid: `long$()] a: `float$(); b: `symbol$())' % name)
+    d = Data('%s::%s' % (rstring, name))
+    expected = dshape('var * {oid: int64, a: float64, b: string}')
+    assert discover(d) == expected
