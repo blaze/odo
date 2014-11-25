@@ -271,7 +271,7 @@ def compute_up(expr, data, **kwargs):
         child = data
         constraints = q.List()
     grouper = compute(expr.grouper, child)
-    grouper = q.Dict([(grouper, grouper)])
+    grouper = q.Dict([(q.Symbol(expr.grouper._name), grouper)])
     aggregates = compute(expr.apply, child).aggregates
     return desubs(q.select(child, q.List(constraints), grouper, aggregates),
                   child.s)
