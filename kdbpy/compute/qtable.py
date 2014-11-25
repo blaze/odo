@@ -2,7 +2,7 @@ from collections import OrderedDict
 from kdbpy import KQ
 from datashape import Record, var, bool_, int8, int16, int32, int64
 from datashape import float32, float64, string, date_, datetime_
-from datashape import TimeDelta
+from datashape import TimeDelta, null
 from blaze import Symbol, discover
 from blaze.dispatch import dispatch
 from kdbpy.util import PrettyMixin, parse_connection_string
@@ -26,7 +26,8 @@ qtypes = {'b': bool_,
           'u': TimeDelta(unit='m'),  # q minute
           'v': TimeDelta(unit='s'),  # q second
           'n': TimeDelta(unit='ns'),  # q timespan
-          't': TimeDelta(unit='ms')}
+          't': TimeDelta(unit='ms'),
+          '': null}
 
 
 class Tables(PrettyMixin, OrderedDict):
@@ -52,7 +53,7 @@ def tables(kdb):
     # t is the type column of the result of "meta `t" in q
     syms = []
     for name, meta in zip(names, metadata):
-        types = meta.t
+        types = meta.t.fillna('')
         columns = meta.index
         ds = var * Record(list(zip(columns, [qtypes[t] for t in types])))
         syms.append((name, Symbol(name, ds)))
