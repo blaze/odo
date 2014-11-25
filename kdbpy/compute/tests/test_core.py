@@ -9,6 +9,7 @@ import pandas.util.testing as tm
 
 import blaze as bz
 from blaze import compute, into, by, discover, dshape, summary
+from kdbpy import QTable
 
 
 def test_projection(t, q, df):
@@ -341,3 +342,11 @@ def test_by_with_complex_where(t, q, df):
     expected = compute(expr, df)
     expected = expected.set_index('name')
     tm.assert_frame_equal(result, expected)
+
+
+def test_table_with_timespan(rstring, kdb):
+    kdb.eval('ts: ([] ts: 00:00:00.000000000 + 1 + til 10; amount: til 10)')
+    qt = QTable(rstring, tablename='ts')
+    result = discover(qt)
+    expected = dshape('var * {ts: timedelta[unit="ns"], amount: int64}')
+    assert expected == result
