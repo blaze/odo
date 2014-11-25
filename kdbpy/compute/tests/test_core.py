@@ -347,18 +347,27 @@ def test_by_with_complex_where(t, q, df):
     tm.assert_frame_equal(result, expected)
 
 
-@pytest.mark.parametrize('obj', ('2014-01-02', pd.Timestamp('2014-01-02')))
-def test_datelike_compare(kdb, rstring, obj):
+@pytest.mark.parametrize('d, ts',
+                         [('2014-01-02', pd.Timestamp('2014-01-02 00:00:00.000000001')),
+                          (pd.Timestamp('2014-01-02'), '2014-01-02 00:00:00.000000001')])
+def test_datelike_compare(kdb, rstring, d, ts):
     name = 'date_t'
-    t = bz.Symbol(name, 'var * {d: date}')
-    kdb.eval('%s: ([] d: 2014.01.01 + til 10)' % name)
+    t = bz.Symbol(name, 'var * {d: date, ts: datetime}')
+    kdb.eval('%s: ([] d: 2014.01.01 + til 10; '
+             'ts: 2014.01.01D00:00:00.000000000 + til 10)' % name)
     df = kdb.eval(name)
     q = QTable(rstring, tablename=name)
-    for x, y in ((t, obj), (obj, t)):
-        expr = t[getattr(x, 'd', x) == getattr(y, 'd', y)]
+
+    def compare(lhs, rhs):
+        expr = t[lhs == rhs]
         result = compute(expr, q)
         expected = compute(expr, df).reset_index(drop=True)
         tm.assert_frame_equal(result, expected)
+
+    compare(t.d, d)
+    compare(d, t.d)
+    compare(t.ts, ts)
+    compare(ts, t.ts)
 
 
 def test_table_with_timespan(rstring, kdb):
