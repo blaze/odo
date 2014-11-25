@@ -5,17 +5,18 @@ A blaze backend that generates Q code
 from __future__ import absolute_import, print_function, division
 
 import numbers
+import datetime
 
 import pandas as pd
 
 from toolz.compatibility import zip
-from toolz import map, identity, first, second
+from toolz import map, first, second
 
 from blaze import resource, compute
 
 from blaze.dispatch import dispatch
 
-from blaze.compute.core import swap_resources_into_scope, compute
+from blaze.compute.core import compute
 from blaze.expr import Symbol, Projection, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
 from blaze.expr import Slice, Distinct, Summary
@@ -114,6 +115,19 @@ def _desubs(expr, t):
                 yield sube
 
 
+@dispatch(q.Atom, datetime.datetime)
+def into(atom, d, **kwargs):
+    # if we have a date only do the proper q conversion
+    if pd.Timestamp(d) == pd.Timestamp(d.date()):
+        return into(atom, d.date())
+    return q.Atom(d.strftime('%Y.%m.%dD%H:%M:%S.%f000'))
+
+
+@dispatch(q.Atom, datetime.date)
+def into(atom, d, **kwargs):
+    return q.Atom(d.strftime('%Y.%m.%d'))
+
+
 @dispatch(Projection, q.Expr)
 def compute_up(expr, data, **kwargs):
     fields = list(map(q.Symbol, expr.fields))
@@ -139,11 +153,21 @@ def qify(x):
     (,:[`Alice])
     >>> qify(1)
     1
+    >>> qify('2014-01-02')
+    2014.01.02
+    >>> qify(pd.Timestamp('2014-01-02'))
+    2014.01.02
     """
     assert not isinstance(x, Expr), 'input cannot be a blaze expression'
     if isinstance(x, basestring):
-        return q.List(q.Symbol(x))
-    return x
+        try:
+            return into(q.Atom, pd.Timestamp(x))
+        except ValueError:
+            return q.List(q.Symbol(x))
+    elif isinstance(x, (datetime.date, datetime.datetime)):
+        return into(q.Atom, x)
+    else:
+        return x
 
 
 @dispatch(BinOp, q.Expr)
