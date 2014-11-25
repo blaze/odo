@@ -1,5 +1,6 @@
 from __future__ import print_function, division, absolute_import
 
+import string
 import pytest
 
 import numpy as np
@@ -11,6 +12,7 @@ from datashape import null, dshape, Record, var
 import blaze as bz
 from blaze import compute, into, by, discover, dshape, summary, Data
 from kdbpy import QTable
+from kdbpy.compute.qtable import qtypes
 
 
 def test_projection(t, q, df):
@@ -363,9 +365,17 @@ def test_empty_table(rstring, kdb):
     assert discover(d) == expected
 
 
-def test_empty_table_with_types(rstring, kdb):
-    name = 'no_rows_typed'
-    kdb.eval('%s: ([oid: `long$()] a: `float$(); b: `symbol$())' % name)
+def test_empty_all_types(rstring, kdb):
+    types = sorted(filter(None, qtypes))
+    name = 'all_types'
+    names = string.ascii_uppercase[:len(types)]
+    single_template = '%s: "%s" $ ()'
+    query = '%s: ([] %s)' % (name, '; '.join(single_template % (name, t)
+                                             for name, t in zip(names, types)))
+
+    kdb.eval(query)
     d = Data('%s::%s' % (rstring, name))
-    expected = dshape('var * {oid: int64, a: float64, b: string}')
-    assert discover(d) == expected
+    s = '{name}: {type}'
+    expected = ', '.join(s.format(name=name, type=qtypes[t])
+                         for name, t in zip(names, types))
+    assert discover(d) == dshape('var * {%s}' % expected)
