@@ -17,7 +17,6 @@ qtypes = {'b': bool_,
           'e': float32,
           'f': float64,
           'c': string,  # q char
-          'C': string,  # q char
           's': string,  # q symbol
           'm': date_,  # q month
           'd': date_,
@@ -53,9 +52,9 @@ def tables(kdb):
     # t is the type column of the result of "meta `t" in q
     syms = []
     for name, meta in zip(names, metadata):
-        types = meta.t.fillna('')
+        types = [qtypes[t.lower()] for t in meta.t.fillna('')]
         columns = meta.index
-        ds = var * Record(list(zip(columns, [qtypes[t] for t in types])))
+        ds = var * Record(list(zip(columns, types)))
         syms.append((name, Symbol(name, ds)))
     return Tables(syms)
 
