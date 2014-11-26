@@ -196,17 +196,10 @@ def compute_up(expr, data, **kwargs):
 def compute_up(expr, data, **kwargs):
     sym = q.Symbol(expr._name)
 
-    if data.is_partitioned:
-        # RAGE
-        select = q.select(data, aggregates=q.Dict([(sym, sym)]))
-        return q.slice(select, sym)
-    elif data.is_splayed:
-        return q.List(data, q.List(sym))
-    else:
-        try:
-            return data[expr._name]
-        except TypeError:
-            return q.slice(data, sym)
+    try:
+        return data[expr._name]
+    except TypeError:
+        return q.slice(data, sym)
 
 
 @dispatch(Selection, q.Expr)
@@ -365,6 +358,23 @@ def compute_down(expr, lhs, rhs, **kwargs):
     result_expr = compute(new_expr, scope)  # Return q.Expr, not data
     result = lhs.eval(result_expr)
     return result
+
+
+@dispatch(Field, QTable)
+def compute_down(expr, data, **kwargs):
+    leaf = expr._leaves()[0]
+    new_leaf = Symbol(data.tablename, leaf.dshape)
+    new_expr = expr._subs({leaf: new_leaf})
+    data_leaf = data._qsymbol
+
+    if data_leaf.is_partitioned or data_leaf.is_splayed:
+        result_expr = compute(new_expr._child[[new_expr._name]],
+                              {new_leaf: data_leaf})
+    else:
+        # Return q.Expr, not data
+        result_expr = compute(new_expr, {new_leaf: data_leaf})
+
+    return data.eval(result_expr).squeeze()
 
 
 @dispatch(Expr, QTable)
