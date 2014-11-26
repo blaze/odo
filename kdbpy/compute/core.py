@@ -271,7 +271,16 @@ def compute_up(expr, data, **kwargs):
 
 
 def nrows(expr, data, **kwargs):
-    return compute_up(expr._child.nrows, data, **kwargs)
+    return compute(expr._child.nrows, data)
+
+
+@dispatch(nelements, q.Expr)
+def compute_down(expr, data, **kwargs):
+    if expr.axis != (0,):
+        raise ValueError("axis == 1 not supported on record types")
+    if getattr(data, 'fields', ()) and not isinstance(data, q.select):
+        return q.count(q.Symbol(data.s))
+    return q.count(data)
 
 
 @dispatch(Head, q.Expr)
