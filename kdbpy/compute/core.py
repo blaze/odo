@@ -273,8 +273,8 @@ def compute_up(expr, data, **kwargs):
     grouper = compute(expr.grouper, child)
     grouper = q.Dict([(q.Symbol(expr.grouper._name), grouper)])
     aggregates = compute(expr.apply, child).aggregates
-    return desubs(q.select(child, q.List(constraints), grouper, aggregates),
-                  child.s)
+    select = q.select(child, q.List(constraints), grouper, aggregates)
+    return desubs(select, child.s)
 
 
 def nrows(expr, data, **kwargs):
