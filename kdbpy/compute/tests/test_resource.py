@@ -11,7 +11,6 @@ from blaze import Data, by, into, compute
 from blaze.compute.core import swap_resources_into_scope
 
 from kdbpy.compute.qtable import is_splayed, is_standard
-from kdbpy import q
 
 
 @pytest.fixture
@@ -121,7 +120,7 @@ def test_by_mean(daily):
 
 def test_sum_after_subset(daily):
     r = daily[(daily.date == daily.date[-1]) & (daily.sym == 'IBM')]
-    result = into(float, r.price.sum())
+    result = compute(r.price.sum())
     expected = into(pd.DataFrame, r).price.sum()
     assert result == expected
 
