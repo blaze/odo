@@ -254,9 +254,9 @@ class select(List):
 
     def __init__(self, child, constraints=None, grouper=None, aggregates=None):
         super(select, self).__init__('?', child,
-                                     constraints or List(),
-                                     grouper or Bool(),
-                                     aggregates or List())
+                                     constraints if constraints is not None else List(),
+                                     grouper if grouper is not None else Bool(),
+                                     aggregates if aggregates is not None else List())
 
     def __str__(self):
         return super(select, self).__str__()
