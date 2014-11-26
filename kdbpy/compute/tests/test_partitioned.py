@@ -46,8 +46,8 @@ def test_repr(trade):
 def test_field(trade):
     qexpr = trade.price
     expr, data = separate(qexpr)
-    result = compute(expr, data)
-    expected = trade.data.engine.eval('select price from trade').squeeze()
+    result = compute(qexpr)
+    expected = trade.data.eval('select price from trade').squeeze()
     tm.assert_series_equal(result, expected)
 
 
