@@ -19,7 +19,7 @@ from blaze.dispatch import dispatch
 from blaze.compute.core import compute
 from blaze.expr import Symbol, Projection, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
-from blaze.expr import Slice, Distinct, Summary
+from blaze.expr import Slice, Distinct, Summary, nelements
 from blaze.expr import DateTime, Millisecond, Microsecond
 from blaze.expr.datetime import Minute
 
