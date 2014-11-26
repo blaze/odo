@@ -208,7 +208,9 @@ def compute_up(expr, data, **kwargs):
 def compute_up(expr, data, **kwargs):
     # template: ?[selectable, predicate or list of predicates, by, aggregations]
     predicate = compute(expr.predicate, {expr._child: data})
-    return q.select(data, constraints=q.List(q.List(predicate)))
+    result = q.select(data, constraints=q.List(q.List(q.List(predicate))))
+    leaf_name = expr._leaves()[0]._name
+    return desubs(result, leaf_name)
 
 
 @dispatch(DateTime, q.Expr)
