@@ -24,6 +24,13 @@ def test_is_partitioned(trade):
     assert is_partitioned(trade)
 
 
+def test_projection(trade):
+    qexpr = trade[['price', 'sym']]
+    result = compute(qexpr)
+    expected = trade.data.eval('select price, sym from trade')
+    tm.assert_frame_equal(result, expected)
+
+
 def test_head(trade):
     qexpr = trade.head()
     expr, data = separate(qexpr)
