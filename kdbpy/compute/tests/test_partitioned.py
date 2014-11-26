@@ -63,8 +63,11 @@ def test_simple_arithmetic(trade):
     tm.assert_series_equal(result, expected)
 
 
-@pytest.mark.xfail(raises=qpython.qcollection.QException,
-                   reason='By expression not implemented')
 def test_simple_by(trade):
-    qexpr = by(trade.sym, w=(trade.price * trade.size).sum())
-    assert repr(qexpr)
+    qexpr = by(trade.sym, w=trade.price.mean())
+    expr, data = separate(qexpr)
+    result = compute(qexpr)
+    expected = compute(expr, trade.data.eval('select from trade'))
+    tm.assert_frame_equal(result, expected.set_index('sym'))
+
+
