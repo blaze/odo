@@ -37,6 +37,11 @@ qdatetimes = {
 }
 
 
+def is_compute_symbol(x):
+    return isinstance(x, q.List) and len(x) == 1 and isinstance(first(x),
+                                                                q.Symbol)
+
+
 def get(x):
     """Get a q atom from a single element list or return the list.
 
@@ -99,7 +104,9 @@ def compute_atom(atom, symbol):
 
 
 def _desubs(expr, t):
-    if isinstance(expr, q.Atom):
+    if is_compute_symbol(expr):
+        yield q.List(compute_atom(first(expr), t))
+    elif isinstance(expr, q.Atom):
         yield compute_atom(expr, t)
     elif isinstance(expr, (basestring, numbers.Number, q.Bool)):
         yield expr
@@ -108,7 +115,10 @@ def _desubs(expr, t):
             if isinstance(sube, q.Atom):
                 yield compute_atom(sube, t)
             elif isinstance(sube, q.List):
-                yield q.List(*(desubs(s, t) for s in sube))
+                if is_compute_symbol(sube):
+                    yield q.List(compute_atom(first(sube), t))
+                else:
+                    yield q.List(*(desubs(s, t) for s in sube))
             elif isinstance(sube, q.Dict):
                 yield q.Dict([(desubs(k, t), desubs(v, t))
                               for k, v in sube.items()])
