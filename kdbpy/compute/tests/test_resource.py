@@ -146,8 +146,6 @@ def test_splayed_time_type(nbbo):
     assert nrows(nbbo) == nrows(nbbo.time)
 
 
-@pytest.mark.xfail(raises=AssertionError,
-                   reason='No support for expression on virtual columns')
 def test_partitioned_nrows_on_virtual_column(quote, trade):
     assert nrows(quote) == nrows(quote.date)
     assert nrows(trade) == nrows(trade.date)
