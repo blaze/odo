@@ -121,7 +121,7 @@ def test_by_mean(daily):
 def test_sum_after_subset(daily):
     r = daily[(daily.date == daily.date[-1]) & (daily.sym == 'IBM')]
     result = compute(r.price.sum())
-    expected = into(pd.DataFrame, r).price.sum()
+    expected = into(pd.Series, r.price).sum()
     assert result == expected
 
 
