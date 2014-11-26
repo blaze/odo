@@ -184,7 +184,7 @@ def compute_up(expr, data, **kwargs):
 @dispatch(Reduction, q.Expr)
 def compute_up(expr, data, **kwargs):
     if expr.axis != (0,):
-        raise ValueError("Axis keyword arugment on reductions not supported")
+        raise ValueError("Axis keyword argument on reductions not supported")
     return q.unops[expr.symbol](data)
 
 
