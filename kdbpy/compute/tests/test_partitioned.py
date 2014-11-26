@@ -50,15 +50,19 @@ def test_field(trade):
     tm.assert_series_equal(result, expected)
 
 
-def test_field_repr(trade):
-    qexpr = trade.price
-    assert repr(qexpr)
+@pytest.mark.xfail(raises=QException)
+def test_field_head(trade):
+    result = compute(trade.price.head(5))
+    expected = trade.data.eval('select price from .Q.ind[trade; til 5]').squeeze()
+    tm.assert_series_equal(result, expected)
 
 
+@pytest.mark.xfail(raises=QException,
+                   reason='field expressions not working')
 def test_simple_arithmetic(trade):
     qexpr = trade.price + 1 * 2
-    result = into(pd.Series, qexpr)
-    expected = into(pd.Series, trade.price) + 1 * 2
+    result = compute(qexpr)
+    expected = trade.eval('select ((price + 1) * 2) from trade')
     tm.assert_series_equal(result, expected)
 
 
