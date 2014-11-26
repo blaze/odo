@@ -200,7 +200,8 @@ def compute_up(expr, data, **kwargs):
     try:
         return data[expr._name]
     except TypeError:
-        return q.slice(data, sym)
+        # this is actually an exec call in q
+        return q.select(data, grouper=q.List(), aggregates=q.List(sym))
 
 
 @dispatch(Selection, q.Expr)
