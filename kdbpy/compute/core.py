@@ -86,7 +86,8 @@ def desubs(expr, t):
     """
     # ignore the question mark needed for select, that's why we use *args[1:]
     result_type = {q.select: lambda *args: q.select(*args[1:])}
-    return get(result_type.get(type(expr), q.List)(*list(_desubs(expr, t))))
+    result = list(_desubs(expr, t))
+    return get(result_type.get(type(expr), q.List)(*result))
 
 
 def compute_atom(atom, symbol):
