@@ -19,7 +19,7 @@ from blaze.dispatch import dispatch
 from blaze.compute.core import compute
 from blaze.expr import Symbol, Projection, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
-from blaze.expr import Slice, Distinct, Summary
+from blaze.expr import Slice, Distinct, Summary, nelements
 from blaze.expr import DateTime, Millisecond, Microsecond
 from blaze.expr.datetime import Minute
 
@@ -35,6 +35,11 @@ qdatetimes = {
     'hour': 'hh',
     'second': 'ss',
 }
+
+
+def is_compute_symbol(x):
+    return isinstance(x, q.List) and len(x) == 1 and isinstance(first(x),
+                                                                q.Symbol)
 
 
 def get(x):
@@ -86,7 +91,8 @@ def desubs(expr, t):
     """
     # ignore the question mark needed for select, that's why we use *args[1:]
     result_type = {q.select: lambda *args: q.select(*args[1:])}
-    return get(result_type.get(type(expr), q.List)(*list(_desubs(expr, t))))
+    result = list(_desubs(expr, t))
+    return get(result_type.get(type(expr), q.List)(*result))
 
 
 def compute_atom(atom, symbol):
@@ -98,7 +104,9 @@ def compute_atom(atom, symbol):
 
 
 def _desubs(expr, t):
-    if isinstance(expr, q.Atom):
+    if is_compute_symbol(expr):
+        yield q.List(compute_atom(first(expr), t))
+    elif isinstance(expr, q.Atom):
         yield compute_atom(expr, t)
     elif isinstance(expr, (basestring, numbers.Number, q.Bool)):
         yield expr
@@ -107,7 +115,10 @@ def _desubs(expr, t):
             if isinstance(sube, q.Atom):
                 yield compute_atom(sube, t)
             elif isinstance(sube, q.List):
-                yield q.List(*(desubs(s, t) for s in sube))
+                if is_compute_symbol(sube):
+                    yield q.List(compute_atom(first(sube), t))
+                else:
+                    yield q.List(*(desubs(s, t) for s in sube))
             elif isinstance(sube, q.Dict):
                 yield q.Dict([(desubs(k, t), desubs(v, t))
                               for k, v in sube.items()])
@@ -183,7 +194,7 @@ def compute_up(expr, data, **kwargs):
 @dispatch(Reduction, q.Expr)
 def compute_up(expr, data, **kwargs):
     if expr.axis != (0,):
-        raise ValueError("Axis keyword arugment on reductions not supported")
+        raise ValueError("Axis keyword argument on reductions not supported")
     return q.unops[expr.symbol](data)
 
 
@@ -196,24 +207,20 @@ def compute_up(expr, data, **kwargs):
 def compute_up(expr, data, **kwargs):
     sym = q.Symbol(expr._name)
 
-    if data.is_partitioned:
-        # RAGE
-        select = q.select(data, aggregates=q.Dict([(sym, sym)]))
-        return q.slice(select, sym)
-    elif data.is_splayed:
-        return q.List(data, q.List(sym))
-    else:
-        try:
-            return data[expr._name]
-        except TypeError:
-            return q.slice(data, sym)
+    try:
+        return data[expr._name]
+    except TypeError:
+        # this is actually an exec call in q
+        return q.select(data, grouper=q.List(), aggregates=q.List(sym))
 
 
 @dispatch(Selection, q.Expr)
 def compute_up(expr, data, **kwargs):
     # template: ?[selectable, predicate or list of predicates, by, aggregations]
     predicate = compute(expr.predicate, {expr._child: data})
-    return q.select(data, constraints=q.List(q.List(predicate)))
+    result = q.select(data, constraints=q.List(q.List(q.List(predicate))))
+    leaf_name = expr._leaves()[0]._name
+    return desubs(result, leaf_name)
 
 
 @dispatch(DateTime, q.Expr)
@@ -271,14 +278,23 @@ def compute_up(expr, data, **kwargs):
         child = data
         constraints = q.List()
     grouper = compute(expr.grouper, child)
-    grouper = q.Dict([(grouper, grouper)])
+    grouper = q.Dict([(q.Symbol(expr.grouper._name), grouper)])
     aggregates = compute(expr.apply, child).aggregates
-    return desubs(q.select(child, q.List(constraints), grouper, aggregates),
-                  child.s)
+    select = q.select(child, q.List(constraints), grouper, aggregates)
+    return desubs(select, child.s)
 
 
 def nrows(expr, data, **kwargs):
-    return compute_up(expr._child.nrows, data, **kwargs)
+    return compute(expr._child.nrows, data)
+
+
+@dispatch(nelements, q.Expr)
+def compute_down(expr, data, **kwargs):
+    if expr.axis != (0,):
+        raise ValueError("axis == 1 not supported on record types")
+    if getattr(data, 'fields', ()) and not isinstance(data, q.select):
+        return q.count(q.Symbol(data.s))
+    return q.count(data)
 
 
 @dispatch(Head, q.Expr)
@@ -365,6 +381,23 @@ def compute_down(expr, lhs, rhs, **kwargs):
     result_expr = compute(new_expr, scope)  # Return q.Expr, not data
     result = lhs.eval(result_expr)
     return result
+
+
+@dispatch(Field, QTable)
+def compute_down(expr, data, **kwargs):
+    leaf = expr._leaves()[0]
+    new_leaf = Symbol(data.tablename, leaf.dshape)
+    new_expr = expr._subs({leaf: new_leaf})
+    data_leaf = data._qsymbol
+
+    if data_leaf.is_partitioned or data_leaf.is_splayed:
+        result_expr = compute(new_expr._child[[new_expr._name]],
+                              {new_leaf: data_leaf})
+    else:
+        # Return q.Expr, not data
+        result_expr = compute(new_expr, {new_leaf: data_leaf})
+
+    return data.eval(result_expr).squeeze()
 
 
 @dispatch(Expr, QTable)

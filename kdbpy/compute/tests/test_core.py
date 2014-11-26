@@ -338,6 +338,14 @@ def test_by_with_where(t, q, df):
     tm.assert_frame_equal(result, expected)
 
 
+def test_by_name(t, q, df):
+    expr = by(t.when.day, m=t.amount.mean())
+    name = 'when_day'
+    result = compute(expr, q)
+    expected = compute(expr, df).rename(columns={'index': name})
+    tm.assert_frame_equal(result, expected.set_index(name))
+
+
 def test_by_with_complex_where(t, q, df):
     r = t[((t.amount > 1) & (t.id > 0)) | (t.amount < 4)]
     expr = by(r.name, s=r.amount.sum(), m=r.amount.mean())

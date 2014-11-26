@@ -1,12 +1,11 @@
 import pytest
 
-import pandas as pd
 import pandas.util.testing as tm
 
-from blaze import Data, compute, into, by
+from blaze import Data, compute, by
 from blaze.compute.core import swap_resources_into_scope
 
-import qpython.qcollection
+from qpython.qcollection import QException
 
 from kdbpy.compute.qtable import is_partitioned
 
@@ -24,6 +23,13 @@ def test_is_partitioned(trade):
     assert is_partitioned(trade)
 
 
+def test_projection(trade):
+    qexpr = trade[['price', 'sym']]
+    result = compute(qexpr)
+    expected = trade.data.eval('select price, sym from trade')
+    tm.assert_frame_equal(result, expected)
+
+
 def test_head(trade):
     qexpr = trade.head()
     expr, data = separate(qexpr)
@@ -39,25 +45,39 @@ def test_repr(trade):
 def test_field(trade):
     qexpr = trade.price
     expr, data = separate(qexpr)
-    result = compute(expr, data)
-    expected = trade.data.engine.eval('select price from trade').squeeze()
+    result = compute(qexpr)
+    expected = trade.data.eval('select price from trade').squeeze()
     tm.assert_series_equal(result, expected)
 
 
-def test_field_repr(trade):
-    qexpr = trade.price
-    assert repr(qexpr)
+@pytest.mark.xfail(raises=QException)
+def test_field_head(trade):
+    result = compute(trade.price.head(5))
+    expected = trade.data.eval('select price from .Q.ind[trade; til 5]').squeeze()
+    tm.assert_series_equal(result, expected)
 
 
+@pytest.mark.xfail(raises=QException,
+                   reason='field expressions not working')
 def test_simple_arithmetic(trade):
     qexpr = trade.price + 1 * 2
-    result = into(pd.Series, qexpr)
-    expected = into(pd.Series, trade.price) + 1 * 2
+    result = compute(qexpr)
+    expected = trade.eval('select ((price + 1) * 2) from trade')
     tm.assert_series_equal(result, expected)
 
 
-@pytest.mark.xfail(raises=qpython.qcollection.QException,
-                   reason='By expression not implemented')
 def test_simple_by(trade):
-    qexpr = by(trade.sym, w=(trade.price * trade.size).sum())
-    assert repr(qexpr)
+    qexpr = by(trade.sym, w=trade.price.mean())
+    expr, data = separate(qexpr)
+    result = compute(qexpr)
+    expected = compute(expr, trade.data.eval('select from trade'))
+    tm.assert_frame_equal(result, expected.set_index('sym'))
+
+
+def test_selection(trade):
+    qexpr = trade[trade.sym == 'AAPL']
+    expr, data = separate(qexpr)
+    result = compute(qexpr)
+    expected = compute(expr,
+                       trade.data.eval('select from trade where sym = `AAPL'))
+    tm.assert_frame_equal(result, expected)
