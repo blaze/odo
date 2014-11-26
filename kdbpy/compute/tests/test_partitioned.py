@@ -71,3 +71,10 @@ def test_simple_by(trade):
     tm.assert_frame_equal(result, expected.set_index('sym'))
 
 
+def test_selection(trade):
+    qexpr = trade[trade.sym == 'AAPL']
+    expr, data = separate(qexpr)
+    result = compute(qexpr)
+    expected = compute(expr,
+                       trade.data.eval('select from trade where sym = `AAPL'))
+    tm.assert_frame_equal(result, expected)
