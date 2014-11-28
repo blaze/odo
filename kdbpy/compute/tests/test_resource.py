@@ -78,7 +78,6 @@ def test_complex_date_op(daily):
                  cnt=daily.price.count(),
                  size=daily.size.sum(),
                  wprice=(daily.size * daily.price).sum() / daily.price.sum())
-    assert repr(qresult)
     result = sorted(into(list, into(pd.DataFrame, qresult).reset_index()))
     expr, daily = swap_resources_into_scope(qresult, {})
     expected = sorted(compute(expr, into(list, into(pd.DataFrame,
