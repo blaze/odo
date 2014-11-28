@@ -13,22 +13,22 @@ from blaze.compute.core import swap_resources_into_scope
 from kdbpy.compute.qtable import is_splayed, is_standard
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def daily(rstring, kdbpar):
     return Data(rstring + '/start/db::daily')
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def quote(rstring, kdbpar):
     return Data(rstring + '/start/db::quote')
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def nbbo(rstring, kdbpar):
     return Data(rstring + '/start/db::nbbo_t')
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def trade(rstring, kdbpar):
     return Data(rstring + '/data/db::trade')
 
@@ -145,6 +145,5 @@ def test_splayed_time_type(nbbo):
     assert nrows(nbbo) == nrows(nbbo.time)
 
 
-def test_partitioned_nrows_on_virtual_column(quote, trade):
+def test_partitioned_nrows_on_virtual_column(quote):
     assert nrows(quote) == nrows(quote.date)
-    assert nrows(trade) == nrows(trade.date)

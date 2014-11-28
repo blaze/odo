@@ -10,7 +10,7 @@ from qpython.qcollection import QException
 from kdbpy.compute.qtable import is_partitioned
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def trade(rstring, kdbpar):
     return Data(rstring + '/start/db::trade')
 

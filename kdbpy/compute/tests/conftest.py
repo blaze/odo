@@ -41,6 +41,6 @@ def ktq(rstring, kdb):
     return QTable(tablename='kt', engine=kdb)
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def rstring(creds):
     return 'kdb://%s@%s:%d' % (creds.username, creds.host, creds.port)
