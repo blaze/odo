@@ -2,10 +2,10 @@ from collections import OrderedDict
 from kdbpy import KQ
 from datashape import Record, var, bool_, int8, int16, int32, int64
 from datashape import float32, float64, string, date_, datetime_
-from datashape import TimeDelta, null
+from datashape import TimeDelta, null, DataShape
 from blaze import Symbol, discover
 from blaze.dispatch import dispatch
-from kdbpy.util import PrettyMixin, parse_connection_string
+from kdbpy.util import PrettyMixin
 from kdbpy import q
 
 
@@ -125,6 +125,4 @@ def discover(t):
 
 @dispatch(KQ)
 def discover(kq):
-    keys = kq.tables.name
-    values = [kq.data[k] for k in keys]
-    return discover(OrderedDict(zip(keys, values)))
+    return DataShape(Record([(k, v.dshape) for k, v in tables(kq).items()]))
