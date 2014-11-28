@@ -12,7 +12,7 @@ import pandas as pd
 from toolz.compatibility import zip
 from toolz import map, first, second
 
-from blaze import resource, compute
+from blaze import resource, compute, symbol
 
 from blaze.dispatch import dispatch
 
@@ -415,6 +415,11 @@ def compute_down(expr, data, **kwargs):
     if isinstance(result, pd.Series):
         result.name = expr._name
     return result
+
+
+@dispatch(Field, KQ)
+def compute_up(expr, data, **kwargs):
+    return data[expr._name].data
 
 
 @resource.register('kdb://.+', priority=13)
