@@ -146,3 +146,11 @@ def test_splayed_time_type(nbbo):
 
 def test_partitioned_nrows_on_virtual_column(quote):
     assert nrows(quote) == nrows(quote.date)
+
+
+@pytest.mark.xfail(raises=AssertionError,
+                   reason='Cannot compute on KQ objects yet')
+def test_kq_as_resource(kdb):
+    result = Data(kdb)
+    for field in result.fields:
+        assert isinstance(getattr(result, field), Data)
