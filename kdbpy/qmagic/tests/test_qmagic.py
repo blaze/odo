@@ -1,8 +1,10 @@
+import sys
 import pytest
 
 import numpy as np
 import pandas as pd
 import pandas.util.testing as tm
+from cStringIO import StringIO
 
 from kdbpy import qmagic
 
@@ -13,13 +15,6 @@ class FakeShell(object):
         self.ns = {}
         self.user_ns = {}
         self.qmagic = qmagic.QMagic(shell=self)
-
-    def run_code(self, code):
-        exec(code, self.ns)
-        self.qmagic.post_execute_hook()
-
-    def push(self, items):
-        self.ns.update(items)
 
     def run(self, param):
         return self.qmagic.q(param)
@@ -36,6 +31,17 @@ def test_connect(sh, rstring):
 
 def test_restart_connection(sh, rstring):
     sh.run('-r -c %s' % rstring)
+
+
+def test_debug_arg(sh):
+    curstdout = sys.stdout
+    try:
+        sys.stdout = StringIO()
+        sh.run('-d t: 1; t + 1')
+        value = sys.stdout.getvalue()
+        assert value == 't: 1; t + 1\n'
+    finally:
+        sys.stdout = curstdout
 
 
 def test_line_magic(sh):
