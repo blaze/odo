@@ -321,15 +321,15 @@ e,2010-10-05 00:00:01,5,5.0,`e"""  # note the whitespace here
     assert result.date.dtype == np.dtype('datetime64[ns]')
 
 
-def test_data_getter(kdb):
-    data = kdb.data['t']
+def test_data_getter(kdbpar):
+    data = kdbpar['t']
     assert isinstance(data, Data)
     assert repr(data)
 
 
 def test_data_getter_fails(kdb):
     with pytest.raises(AssertionError):
-        kdb.data[object()]
+        kdb[object()]
 
 
 def test_can_load_twice(kdbpar):
