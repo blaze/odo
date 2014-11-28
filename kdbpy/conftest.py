@@ -68,3 +68,8 @@ def rdf(kdb):
 @pytest.fixture
 def sdf(kdb):
     return kdb.eval('st')
+
+
+@pytest.fixture(scope='session')
+def rstring(creds):
+    return 'kdb://%s@%s:%d' % (creds.username, creds.host, creds.port)

@@ -6,41 +6,36 @@ from kdbpy.compute.qtable import QTable
 
 @pytest.fixture
 def t():
-    return bz.Symbol('t', 'var * {name: string, id: int64, amount: float64, '
+    return bz.symbol('t', 'var * {name: string, id: int64, amount: float64, '
                      'when: datetime, on: date}')
 
 
 @pytest.fixture
 def rt():
-    return bz.Symbol('rt', 'var * {name: string, tax: float64, street: string}')
+    return bz.symbol('rt', 'var * {name: string, tax: float64, street: string}')
 
 
 @pytest.fixture
 def st():
-    return bz.Symbol('st', 'var * {name: string, jobcode: int64, tree: string, '
+    return bz.symbol('st', 'var * {name: string, jobcode: int64, tree: string, '
                      'alias: string}')
 
 
 @pytest.fixture
 def q(rstring, kdb):
-    return QTable(rstring, tablename='t')
+    return QTable(tablename='t', engine=kdb)
 
 
 @pytest.fixture
-def rq(rstring, kdb):
-    return QTable(rstring, tablename='rt')
+def rq(kdb):
+    return QTable(tablename='rt', engine=kdb)
 
 
 @pytest.fixture
 def sq(rstring, kdb):
-    return QTable(rstring, tablename='st')
+    return QTable(tablename='st', engine=kdb)
 
 
 @pytest.fixture
 def ktq(rstring, kdb):
-    return QTable(rstring, tablename='kt')
-
-
-@pytest.fixture
-def rstring(creds):
-    return 'kdb://%s@%s:%d' % (creds.username, creds.host, creds.port)
+    return QTable(tablename='kt', engine=kdb)

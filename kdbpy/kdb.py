@@ -76,14 +76,16 @@ default_credentials = Credentials()
 
 
 class BlazeGetter(object):
-    def __init__(self, credentials):
+    def __init__(self, credentials, engine):
         self.credentials = credentials
+        self.engine = engine
 
     def __getitem__(self, tablename):
         assert isinstance(tablename, basestring), 'tablename must be a string'
         creds = self.credentials
         template = 'kdb://{0.username}@{0.host}:{0.port}::{tablename}'
-        return Data(template.format(creds, tablename=tablename))
+        return Data(template.format(creds, tablename=tablename),
+                    engine=self.engine)
 
 
 # launch client & server
@@ -110,7 +112,7 @@ class KQ(PrettyMixin):
         self.kdb = KDB(credentials=self.credentials)
         if start:
             self.start(start=start)
-        self._data = BlazeGetter(self.credentials)
+        self._data = BlazeGetter(self.credentials, self)
         self._loaded = set()
 
     def _repr_pretty_(self, p, cycle):

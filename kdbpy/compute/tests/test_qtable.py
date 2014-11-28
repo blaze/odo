@@ -1,12 +1,10 @@
 from blaze import discover
-from collections import OrderedDict
+from datashape import dshape
 from kdbpy.compute.qtable import tables
 
 
-def test_columns(q, rq, sq):
+def test_columns(q):
     assert q.columns == ['name', 'id', 'amount', 'when', 'on']
-    assert rq.columns == ['name', 'tax', 'street']
-    assert sq.columns == ['name', 'jobcode', 'tree', 'alias']
 
 
 def test_repr(q):
@@ -45,6 +43,10 @@ def test_keys(ktq, rq, sq, q):
 
 def test_discover_kq(kq, ktq, rq, sq, q):
     result = discover(kq)
-    expected = OrderedDict([('kt', ktq), ('rt', rq), ('st', sq), ('t', q)])
-    expected = discover(expected)
+    expected = dshape("""{
+  kt: var * {house: string, id: int64, amount: float64},
+  rt: var * {name: string, tax: float64, street: string},
+  st: var * {name: string, jobcode: int64, tree: string, alias: string},
+  t: var * {name: string, id: int64, amount: float64, when: datetime, on: date}
+}""")
     assert result == expected

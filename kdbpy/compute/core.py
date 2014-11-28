@@ -27,6 +27,8 @@ from datashape.predicates import isrecord
 
 from .. import q
 from .qtable import QTable
+from ..kdb import KQ
+from ..util import parse_connection_string
 
 
 qdatetimes = {
@@ -416,8 +418,10 @@ def compute_down(expr, data, **kwargs):
 
 
 @resource.register('kdb://.+', priority=13)
-def resource_kdb(uri, tablename, **kwargs):
-    return QTable(uri, tablename=tablename, **kwargs)
+def resource_kdb(uri, tablename, engine=None, **kwargs):
+    if engine is None:
+        engine = KQ(parse_connection_string(uri), start=True)
+    return QTable(tablename=tablename, engine=engine, **kwargs)
 
 
 @dispatch(pd.DataFrame, QTable)

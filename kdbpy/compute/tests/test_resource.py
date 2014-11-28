@@ -13,22 +13,22 @@ from blaze.compute.core import swap_resources_into_scope
 from kdbpy.compute.qtable import is_splayed, is_standard
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def daily(rstring, kdbpar):
     return Data(rstring + '/start/db::daily')
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def quote(rstring, kdbpar):
     return Data(rstring + '/start/db::quote')
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def nbbo(rstring, kdbpar):
     return Data(rstring + '/start/db::nbbo_t')
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def trade(rstring, kdbpar):
     return Data(rstring + '/data/db::trade')
 
@@ -78,7 +78,6 @@ def test_complex_date_op(daily):
                  cnt=daily.price.count(),
                  size=daily.size.sum(),
                  wprice=(daily.size * daily.price).sum() / daily.price.sum())
-    assert repr(qresult)
     result = sorted(into(list, into(pd.DataFrame, qresult).reset_index()))
     expr, daily = swap_resources_into_scope(qresult, {})
     expected = sorted(compute(expr, into(list, into(pd.DataFrame,
@@ -145,6 +144,13 @@ def test_splayed_time_type(nbbo):
     assert nrows(nbbo) == nrows(nbbo.time)
 
 
-def test_partitioned_nrows_on_virtual_column(quote, trade):
+def test_partitioned_nrows_on_virtual_column(quote):
     assert nrows(quote) == nrows(quote.date)
-    assert nrows(trade) == nrows(trade.date)
+
+
+@pytest.mark.xfail(raises=AssertionError,
+                   reason='Cannot compute on KQ objects yet')
+def test_kq_as_resource(kdb):
+    result = Data(kdb)
+    for field in result.fields:
+        assert isinstance(getattr(result, field), Data)
