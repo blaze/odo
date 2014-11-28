@@ -3,10 +3,8 @@ from datashape import dshape
 from kdbpy.compute.qtable import tables
 
 
-def test_columns(q, rq, sq):
+def test_columns(q):
     assert q.columns == ['name', 'id', 'amount', 'when', 'on']
-    assert rq.columns == ['name', 'tax', 'street']
-    assert sq.columns == ['name', 'jobcode', 'tree', 'alias']
 
 
 def test_repr(q):
