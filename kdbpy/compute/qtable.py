@@ -77,11 +77,10 @@ def is_standard(t):
 
 
 class QTable(PrettyMixin):
-    def __init__(self, uri, tablename=None, columns=None, dshape=None,
+    def __init__(self, tablename, engine, columns=None, dshape=None,
                  schema=None):
-        self.uri = uri
         self.tablename = tablename
-        self.engine = KQ(parse_connection_string(self.uri), start=True)
+        self.engine = engine
         self.dshape = dshape or discover(self)
         self.columns = columns or self.engine.eval('cols[%s]' %
                                                    self.tablename).tolist()
