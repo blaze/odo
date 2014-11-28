@@ -12,7 +12,7 @@ import pandas as pd
 from toolz.compatibility import zip
 from toolz import map, first, second
 
-from blaze import resource, compute, symbol
+from blaze import resource, compute
 
 from blaze.dispatch import dispatch
 
