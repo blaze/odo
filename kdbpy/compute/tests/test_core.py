@@ -358,13 +358,13 @@ def test_by_with_complex_where(t, q, df):
 @pytest.mark.parametrize('d, ts',
                          [('2014-01-02', pd.Timestamp('2014-01-02 00:00:00.000000001')),
                           (pd.Timestamp('2014-01-02'), '2014-01-02 00:00:00.000000001')])
-def test_datelike_compare(kdb, rstring, d, ts):
+def test_datelike_compare(kdb, d, ts):
     name = 'date_t'
     t = bz.Symbol(name, 'var * {d: date, ts: datetime}')
     kdb.eval('%s: ([] d: 2014.01.01 + til 10; '
              'ts: 2014.01.01D00:00:00.000000000 + til 10)' % name)
     df = kdb.eval(name)
-    q = QTable(rstring, tablename=name)
+    q = QTable(tablename=name, engine=kdb)
 
     def compare(lhs, rhs):
         expr = t[lhs == rhs]
@@ -378,11 +378,11 @@ def test_datelike_compare(kdb, rstring, d, ts):
     compare(ts, t.ts)
 
 
-def test_table_with_timespan(rstring, kdb):
+def test_table_with_timespan(kdb):
     name = 'ts'
     kdb.eval('%s: ([] ts: 00:00:00.000000000 + 1 + til 10; amount: til 10)' %
              name)
-    qt = QTable(rstring, tablename=name)
+    qt = QTable(tablename=name, engine=kdb)
     result = discover(qt)
     expected = dshape('var * {ts: timedelta[unit="ns"], amount: int64}')
     assert expected == result
