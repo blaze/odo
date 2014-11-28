@@ -102,4 +102,4 @@ class QMagic(Magics):
 
 def load_ipython_extension(ip):
     """Load the extension in IPython."""
-    ip.register_magics(QMagic)
+    ip.register_magics(QMagic)  # pragma: no cover
