@@ -223,8 +223,12 @@ def symlist(*args):
     return List(*list(map(Symbol, args)))
 
 
-def slice(obj, *keys):
-    return List(obj, '::', symlist(*keys))
+def slice(obj, start, stop):
+    return List('.kdbpy.slice', obj, start, stop)
+
+
+def slice1(obj, index):
+    return List('.kdbpy.slice1', obj, index)
 
 
 def sort(x, key, ascending):

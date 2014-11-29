@@ -23,8 +23,6 @@ from blaze.expr import Slice, Distinct, Summary, nelements
 from blaze.expr import DateTime, Millisecond, Microsecond
 from blaze.expr.datetime import Minute
 
-from datashape.predicates import isrecord
-
 from .. import q
 from .qtable import QTable
 from ..kdb import KQ
@@ -286,10 +284,6 @@ def compute_up(expr, data, **kwargs):
     return desubs(select, child.s)
 
 
-def nrows(expr, data, **kwargs):
-    return compute(expr._child.nrows, data)
-
-
 @dispatch(nelements, q.Expr)
 def compute_down(expr, data, **kwargs):
     if expr.axis != (0,):
@@ -301,68 +295,22 @@ def compute_down(expr, data, **kwargs):
 
 @dispatch(Head, q.Expr)
 def compute_up(expr, data, **kwargs):
-    n = expr.n
-
-    # q repeats if the N of take is larger than the number of rows, so we
-    # need to get the min of the number of rows and the requested N from the
-    # Head expression
-
-    # & in q is min for 2 arguments
-    final_index = q.and_(n, nrows(expr, data, **kwargs))
-
-    if data.is_partitioned:
-        return q.partake(data, q.til(final_index))
-    return q.take(final_index, data)
-
-
-@dispatch(numbers.Integral, q.Expr, q.Expr)
-def compute_slice(index, child, nrows, dshape=None):
-    if index < 0:
-        index = q.add(index, nrows)
-
-    qexpr = q.List(child, index)
-
-    if not isrecord(dshape):
-        return qexpr
-    return q.List(',:', qexpr)
-
-
-@dispatch(slice, q.Expr, q.Expr)
-def compute_slice(index, child, nrows, dshape=None):
-    start = index.start or 0
-    stop = index.stop or nrows
-
-    if start < 0:
-        start = q.add(start, nrows)
-
-    if stop < 0:
-        stop = q.add(stop, nrows)
-
-    return q.List('@', child, q.add(start, q.til(q.sub(stop, start))))
+    return compute_up(expr._child[:expr.n], data, **kwargs)
 
 
 @dispatch(Slice, q.Expr)
 def compute_up(expr, data, **kwargs):
-    """Slice expressions from Python to Q.
-
-    Notes
-    -----
-    ``sublist`` is actually defined in K land so we have to jump through hoops
-    to actually evaluate it properly.
-
-    In Q::
-
-        r: X sublist Y
-        3 sublist 1 2 3 4 5 = 1 2 3
-        1 3 sublist 1 2 3 4 5 = 2 3 4
-        x = [1, 2, 3, 4, 5]
-        Y[2:5] == 2 3 sublist Y
-        Y[a:b] == a (b - a) sublist Y
-    """
     assert len(expr.index) == 1, 'only single slice allowed'
     index, = expr.index
-    rowcount = nrows(expr, data, **kwargs)
-    return compute_slice(index, data, rowcount, dshape=expr.dshape)
+
+    # slicing a single row/element
+    if isinstance(index, numbers.Integral):
+        return q.slice1(data, int(index))
+
+    rowcount = compute(expr._child.nrows, data)
+    start = getattr(index, 'start', 0) or 0
+    stop = getattr(index, 'stop', rowcount) or rowcount
+    return q.slice(data, start, stop)
 
 
 @dispatch(Distinct, q.Expr)
