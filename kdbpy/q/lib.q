@@ -2,9 +2,8 @@
 
 qp: .Q.qp
 
-is_scalar: {[x] type[x] < 0}
 is_table: .Q.qt
-is_keyed_table: {[x] (.Q.qt[x]) & (typename[x] = `dict)}
+is_keyed_table: {[x] is_table[x] & (typename[x] = `dict)}
 
 typenums: `short$(0 1 2 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 98 99)
 longnames: (`list`boolean`guid`byte`short`int`long`real`float`char`symbol,
@@ -13,12 +12,6 @@ longnames: (`list`boolean`guid`byte`short`int`long`real`float`char`symbol,
 types: typenums!longnames
 
 typename: {[x] types[abs[type[x]]]}
-
-is_bool: {[x] typename[x] = `boolean}
-is_integer: {[x] typename[x] in `byte`short`int`long}
-is_datelike: {[x]
-    typename[x] in `timestamp`month`date`datetime`timespan`minute`second`time}
-is_floating: {[x] typename[x] in `real`float}
 
 is_long: {[x] typename[x] = `long}
 
@@ -29,8 +22,6 @@ is_partitioned: {[x]
 is_splayed: {[x]
     p: qp[x];
     $[is_long[p]; 0b; not p]}
-
-is_binary: {[x] (not is_partitioned[x]) & (not is_splayed[x])}
 
 index_into: {[x; indices]
     $[is_partitioned[x];
@@ -46,6 +37,9 @@ index_into: {[x; indices]
 gen_indices: {[x; start; stop]
     nrows: count x;
     start: $[start < 0; start + nrows; start];
+
+    // <= here otherwise we get things like s[-1:0] == s[nrows:0]
+    // when it really should be s[-1:0] == s[nrows - 1:nrows]
     stop: $[stop <= 0; stop + nrows; stop];
     stop: stop & nrows;
     indices: start + (til (stop - start));
