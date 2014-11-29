@@ -81,3 +81,9 @@ def test_selection(trade):
     expected = compute(expr,
                        trade.data.eval('select from trade where sym = `AAPL'))
     tm.assert_frame_equal(result, expected)
+
+
+@pytest.mark.xfail(raises=QException, reason='not yet implemented')
+def test_nunique(trade):
+    expr, data = swap_resources_into_scope(trade.sym.nunique(), {})
+    assert compute(expr, data) == compute(expr, into(pd.Series, trade.sym))
