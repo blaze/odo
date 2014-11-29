@@ -3,7 +3,6 @@ from __future__ import division
 from __future__ import absolute_import
 
 import os
-import numbers
 
 import pytest
 import pandas as pd
@@ -14,6 +13,7 @@ import kdbpy
 from blaze import CSV, Data
 
 import qpython
+from qpython.qwriter import QWriterException
 import qpython.qwriter
 
 from kdbpy import kdb as k
@@ -143,12 +143,13 @@ def test_eval(kdb):
     assert kdb.eval(lambda x: x+5, 42) == 47
 
 
-@pytest.mark.xfail(raises=qpython.qwriter.QWriterException,
-                   reason='qpython cannot serialize pandas Timestamps')
 def test_get_set_timestamp(kdb, gensym):
     ts = pd.Timestamp('2001-01-01 09:30:00.123')
     kdb.set(gensym, ts)
     assert kdb.get(gensym) == ts
+    kdb[gensym] = ts
+    result = kdb[gensym]
+    assert result == ts
 
 
 def test_get_set(kdb, gensym):
@@ -157,8 +158,6 @@ def test_get_set(kdb, gensym):
         assert kdb.get(gensym) == v
 
 
-@pytest.mark.xfail(raises=KeyError,
-                   reason='qpython cannot serialize pandas Timestamps')
 def test_get_set_mixed_frame(kdb, gensym):
     gensym = tm.makeMixedDataFrame()
     kdb.set('df', gensym)
@@ -207,7 +206,7 @@ def test_set_objects(gensym, kdb, obj):
     assert kdb.eval(gensym) == obj
 
 
-@pytest.mark.xfail(raises=qpython.qwriter.QWriterException,
+@pytest.mark.xfail(raises=QWriterException,
                    reason='qpython does not implement deserialization of '
                    'complex numbers')
 def test_set_complex(gensym, kdb):
