@@ -19,6 +19,7 @@ from qpython import qconnection, qtemporal
 from toolz.compatibility import range
 
 import blaze as bz
+import kdbpy
 from kdbpy.util import normpath, hostname, PrettyMixin
 
 
@@ -99,6 +100,16 @@ class KQ(PrettyMixin):
         if start:
             self.start(start=start)
         self._loaded = set()
+
+    def load_libs(self, libpath=None, libs=None):
+        if libpath is None:
+            libpath = os.path.join(os.path.dirname(kdbpy.__file__), 'q')
+
+        if libs is None:
+            libs = 'lib.q',
+
+        for lib in libs:
+            self.read_kdb(normpath(os.path.join(libpath, lib)))
 
     def _repr_pretty_(self, p, cycle):
         assert not cycle, 'cycles not allowed'

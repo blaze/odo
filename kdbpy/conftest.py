@@ -23,6 +23,7 @@ def creds():
 @pytest.yield_fixture(scope='module')
 def kq(creds):
     with k.KQ(creds, start=True) as r:
+        r.load_libs()
         yield r
 
 
