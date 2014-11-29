@@ -29,11 +29,6 @@ def nbbo(rstring, kdbpar):
     return Data(rstring + '/start/db::nbbo_t')
 
 
-@pytest.fixture(scope='module')
-def trade(rstring, kdbpar):
-    return Data(rstring + '/data/db::trade')
-
-
 def test_resource_doesnt_bork(daily):
     assert repr(daily)
 
