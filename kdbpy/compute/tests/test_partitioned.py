@@ -11,6 +11,11 @@ from kdbpy.compute.qtable import is_partitioned
 
 
 @pytest.fixture(scope='module')
+def quote(rstring, kdbpar):
+    return Data(rstring + '/start/db::quote')
+
+
+@pytest.fixture(scope='module')
 def trade(rstring, kdbpar):
     return Data(rstring + '/start/db::trade')
 
@@ -87,3 +92,7 @@ def test_selection(trade):
 def test_nunique(trade):
     expr, data = swap_resources_into_scope(trade.sym.nunique(), {})
     assert compute(expr, data) == compute(expr, into(pd.Series, trade.sym))
+
+
+def test_partitioned_nrows_on_virtual_column(quote):
+    assert compute(quote.nrows) == compute(quote.date.nrows)
