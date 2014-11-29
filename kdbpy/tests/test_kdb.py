@@ -3,8 +3,6 @@ from __future__ import division
 from __future__ import absolute_import
 
 import os
-import sys
-import numbers
 import datetime
 
 import pytest
@@ -15,9 +13,7 @@ import kdbpy
 
 from blaze import CSV, Data
 
-import qpython
 from qpython.qwriter import QWriterException
-import qpython.qwriter
 
 from kdbpy import kdb as k
 from kdbpy.kdb import which
