@@ -72,7 +72,7 @@ all r"""
 
 def test_assign_to_python(sh):
     q_code = """-a result
-([id: til 5]; name: `a`b`c`d`e; amount: `float$(1 + til 5))"""
+([id: til 5] name: `a`b`c`d`e; amount: `float$(1 + til 5))"""
     sh.run(q_code)
     expected = pd.DataFrame({'name': list('abcde'),
                              'amount': np.arange(1, 6, dtype='float64')},
