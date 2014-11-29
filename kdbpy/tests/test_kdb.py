@@ -147,6 +147,9 @@ def test_get_set_timestamp(kdb, gensym):
     ts = pd.Timestamp('2001-01-01 09:30:00.123')
     kdb.set(gensym, ts)
     assert kdb.get(gensym) == ts
+    kdb[gensym] = ts
+    result = kdb[gensym]
+    assert result == ts
 
 
 def test_get_set(kdb, gensym):
