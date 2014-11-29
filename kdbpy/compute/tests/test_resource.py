@@ -8,6 +8,7 @@ from toolz import first
 
 import blaze as bz
 from blaze import Data, by, into, compute
+from blaze.expr import Field
 from blaze.compute.core import swap_resources_into_scope
 
 from kdbpy.compute.qtable import is_splayed, is_standard
@@ -26,11 +27,6 @@ def quote(rstring, kdbpar):
 @pytest.fixture(scope='module')
 def nbbo(rstring, kdbpar):
     return Data(rstring + '/start/db::nbbo_t')
-
-
-@pytest.fixture(scope='module')
-def trade(rstring, kdbpar):
-    return Data(rstring + '/data/db::trade')
 
 
 def test_resource_doesnt_bork(daily):
@@ -148,9 +144,7 @@ def test_partitioned_nrows_on_virtual_column(quote):
     assert nrows(quote) == nrows(quote.date)
 
 
-@pytest.mark.xfail(raises=AssertionError,
-                   reason='Cannot compute on KQ objects yet')
 def test_kq_as_resource(kdb):
     result = Data(kdb)
     for field in result.fields:
-        assert isinstance(getattr(result, field), Data)
+        assert isinstance(getattr(result, field), Field)

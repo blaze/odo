@@ -8,7 +8,6 @@ import platform
 import getpass
 import subprocess
 
-from pprint import pprint
 from itertools import chain
 
 import psutil
@@ -19,7 +18,8 @@ from qpython import qconnection, qtemporal
 
 from toolz.compatibility import range
 
-from blaze import Data, CSV
+import blaze as bz
+import kdbpy
 from kdbpy.util import normpath, hostname, PrettyMixin
 
 
@@ -75,19 +75,6 @@ class Credentials(PrettyMixin):
 default_credentials = Credentials()
 
 
-class BlazeGetter(object):
-    def __init__(self, credentials, engine):
-        self.credentials = credentials
-        self.engine = engine
-
-    def __getitem__(self, tablename):
-        assert isinstance(tablename, basestring), 'tablename must be a string'
-        creds = self.credentials
-        template = 'kdb://{0.username}@{0.host}:{0.port}::{tablename}'
-        return Data(template.format(creds, tablename=tablename),
-                    engine=self.engine)
-
-
 # launch client & server
 class KQ(PrettyMixin):
     """ manage the kdb & q process """
@@ -112,8 +99,17 @@ class KQ(PrettyMixin):
         self.kdb = KDB(credentials=self.credentials)
         if start:
             self.start(start=start)
-        self._data = BlazeGetter(self.credentials, self)
         self._loaded = set()
+
+    def load_libs(self, libpath=None, libs=None):
+        if libpath is None:
+            libpath = os.path.join(os.path.dirname(kdbpy.__file__), 'q')
+
+        if libs is None:
+            libs = 'lib.q',
+
+        for lib in libs:
+            self.read_kdb(normpath(os.path.join(libpath, lib)))
 
     def _repr_pretty_(self, p, cycle):
         assert not cycle, 'cycles not allowed'
@@ -210,7 +206,7 @@ class KQ(PrettyMixin):
         1      2   b    B
         2    NaN   c  NaN
         """
-        csv = CSV(filename, encoding=encoding, *args, **kwargs)
+        csv = bz.CSV(filename, encoding=encoding, *args, **kwargs)
         columns = csv.columns
         params = dict(table=table,
                       columns='; '.join('`$"%s"' % column for column in
@@ -299,9 +295,15 @@ class KQ(PrettyMixin):
         result = self.eval('.Q.w[]')
         return pd.Series(result.values, index=result.keys, name='memory')
 
-    @property
-    def data(self):
-        return self._data
+    def __getitem__(self, key):
+        assert isinstance(key, basestring), 'key must be a string'
+        if key in set(self.tables.name):
+            template = 'kdb://{0.username}@{0.host}:{0.port}::{key}'
+            return bz.Data(template.format(self.credentials, key=key))
+        return self.get(key)
+
+    def __setitem__(self, key, value):
+        self.set(key, value)
 
 
 class Singleton(type):
