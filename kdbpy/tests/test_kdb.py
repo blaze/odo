@@ -3,6 +3,9 @@ from __future__ import division
 from __future__ import absolute_import
 
 import os
+import sys
+import numbers
+import datetime
 
 import pytest
 import pandas as pd
@@ -253,8 +256,6 @@ e,2010-10-05 00:00:01"""
     tm.assert_frame_equal(expected, result)
 
 
-@pytest.mark.xfail(raises=AssertionError,
-                   reason="Can't parse D timestamp as timestamps yet")
 def test_write_timestamp_from_q(kdb, gensym):
     csvdata = """name,date
 a,2010-10-01D00:00:05
@@ -269,7 +270,10 @@ e,2010-10-05D00:00:01"""
         dshape = CSV(fname, header=0).dshape
         kdb.read_csv(fname, table=gensym, dshape=dshape)
 
-        expected = pd.read_csv(fname, header=0, parse_dates=['date'])
+        date_parser = lambda x: datetime.datetime.strptime(x,
+                                                           '%Y-%m-%dD%H:%M:%S')
+        expected = pd.read_csv(fname, header=0, parse_dates=['date'],
+                               date_parser=date_parser)
     result = kdb.eval(gensym)
     tm.assert_frame_equal(expected, result)
     assert expected.date.dtype == np.dtype('datetime64[ns]')
