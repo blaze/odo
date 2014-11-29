@@ -11,22 +11,12 @@ from blaze import Data, by, into, compute
 from blaze.expr import Field
 from blaze.compute.core import swap_resources_into_scope
 
-from kdbpy.compute.qtable import is_splayed, is_standard
+from kdbpy.compute.qtable import is_standard
 
 
 @pytest.fixture(scope='module')
 def daily(rstring, kdbpar):
     return Data(rstring + '/start/db::daily')
-
-
-@pytest.fixture(scope='module')
-def quote(rstring, kdbpar):
-    return Data(rstring + '/start/db::quote')
-
-
-@pytest.fixture(scope='module')
-def nbbo(rstring, kdbpar):
-    return Data(rstring + '/start/db::nbbo_t')
 
 
 def test_resource_doesnt_bork(daily):
@@ -96,10 +86,6 @@ def test_complex_nondate_op(daily):
     assert result == expected
 
 
-def test_is_splayed(nbbo):
-    assert is_splayed(nbbo)
-
-
 def test_is_standard(daily):
     assert is_standard(daily)
 
@@ -120,12 +106,8 @@ def test_sum_after_subset(daily):
     assert result == expected
 
 
-def nrows(x):
-    return into(int, x.nrows)
-
-
 def test_nrows(daily):
-    assert nrows(daily) == nrows(daily.date)
+    assert compute(daily.nrows) == compute(daily.date.nrows)
 
 
 def test_nunique(daily):
@@ -133,20 +115,8 @@ def test_nunique(daily):
     assert compute(expr, data) == compute(expr, into(pd.Series, daily.sym))
 
 
-def test_splayed_nrows(nbbo):
-    assert nrows(nbbo) == nrows(nbbo.sym)
-
-
 def test_dateattr_nrows(daily):
-    assert nrows(daily) == nrows(daily.date.day)
-
-
-def test_splayed_time_type(nbbo):
-    assert nrows(nbbo) == nrows(nbbo.time)
-
-
-def test_partitioned_nrows_on_virtual_column(quote):
-    assert nrows(quote) == nrows(quote.date)
+    assert compute(daily.nrows) == compute(daily.date.day.nrows)
 
 
 def test_kq_as_resource(kdb):
