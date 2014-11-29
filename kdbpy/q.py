@@ -216,7 +216,8 @@ unops = {'-': neg,
          'min': unop('min'),
          'max': unop('max'),
          'count': count,
-         'nelements': count}
+         'nelements': count,
+         'nunique': unop('.kdbpy.nunique')}
 
 
 def symlist(*args):

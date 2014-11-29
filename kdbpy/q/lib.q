@@ -70,4 +70,7 @@ get_field: {[table; name]
             (table; name);
             "" sv (string table; enlist["."]; string name)]]}
 
+
+nunique: {[x] count distinct x}
+
 \d .

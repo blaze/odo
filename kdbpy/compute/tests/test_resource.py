@@ -128,6 +128,11 @@ def test_nrows(daily):
     assert nrows(daily) == nrows(daily.date)
 
 
+def test_nunique(daily):
+    expr, data = swap_resources_into_scope(daily.sym.nunique(), {})
+    assert compute(expr, data) == compute(expr, into(pd.Series, daily.sym))
+
+
 def test_splayed_nrows(nbbo):
     assert nrows(nbbo) == nrows(nbbo.sym)
 

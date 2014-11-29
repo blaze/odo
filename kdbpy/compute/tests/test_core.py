@@ -312,6 +312,13 @@ def test_distinct(t, q, df):
     tm.assert_series_equal(result, expected)
 
 
+def test_nunique(t, q, df):
+    expr = t.name.nunique()
+    result = compute(expr, q)
+    expected = compute(expr, df)
+    assert result == expected
+
+
 @pytest.mark.parametrize('attr', ['year', 'month', 'day', 'hour', 'minute',
                                   'second', 'millisecond', 'microsecond'])
 def test_dates(t, q, df, attr):
