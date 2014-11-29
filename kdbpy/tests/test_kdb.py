@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import absolute_import
 
 import os
-import re
+import numbers
 
 import pytest
 import pandas as pd
@@ -325,11 +325,22 @@ def test_data_getter(kdb):
     data = kdb['t']
     assert isinstance(data, Data)
     assert repr(data)
+    assert isinstance(kdb['n'], np.integer)
 
 
 def test_data_getter_fails(kdb):
     with pytest.raises(AssertionError):
         kdb[object()]
+
+
+def test_setitem(kdb):
+    kdb['xyz'] = 1
+    assert isinstance(kdb['xyz'], np.integer)
+
+
+def test_setitem_table(kdb):
+    kdb['mydf'] = pd.DataFrame({'a': [1, 2, 3], 'b': [3.0, 4.0, 5.0]})
+    assert isinstance(kdb['mydf'], Data)
 
 
 def test_can_load_twice(kdbpar):
