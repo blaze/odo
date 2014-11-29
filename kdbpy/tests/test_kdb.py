@@ -143,7 +143,7 @@ def test_eval(kdb):
     assert kdb.eval('42') == 42
     f = lambda: kdb.eval('42') + 1
     assert kdb.eval(f) == 43
-    assert kdb.eval(lambda x: x+5, 42) == 47
+    assert kdb.eval(lambda x: x + 5, 42) == 47
 
 
 def test_get_set_timestamp(kdb, gensym):
