@@ -4,6 +4,7 @@ from __future__ import absolute_import
 
 import os
 import datetime
+import sys
 
 import pytest
 import pandas as pd
@@ -346,3 +347,17 @@ def test_can_load_twice(kdbpar):
     path = example_data(os.path.join('start', 'db'))
     kdbpar.read_kdb(path)
     kdbpar.read_kdb(path)
+
+
+def test_verbose_mode(kdb):
+    oldstdout = sys.stdout
+    sys.stdout = StringIO()
+    kdb.verbose = True
+    try:
+        kdb.eval('2 + 2')
+        expected = "(('2 + 2',), {})\n"
+        result = sys.stdout.getvalue()
+        assert expected == result
+    finally:
+        sys.stdout = oldstdout
+        kdb.verbose = False

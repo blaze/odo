@@ -7,6 +7,7 @@ import atexit
 import platform
 import getpass
 import subprocess
+import pprint
 
 from itertools import chain
 
@@ -79,7 +80,7 @@ default_credentials = Credentials()
 class KQ(PrettyMixin):
     """ manage the kdb & q process """
 
-    def __init__(self, credentials=None, start=False, path=None):
+    def __init__(self, credentials=None, start=False, path=None, verbose=False):
         """
         Parameters
         ----------
@@ -100,6 +101,7 @@ class KQ(PrettyMixin):
         if start:
             self.start(start=start)
         self._loaded = set()
+        self.verbose = verbose
 
     def load_libs(self, libpath=None, libs=None):
         if libpath is None:
@@ -155,6 +157,8 @@ class KQ(PrettyMixin):
         return self
 
     def eval(self, *args, **kwargs):
+        if self.verbose:
+            pprint.pprint((args, kwargs))
         return self.kdb.eval(*args, **kwargs)
 
     def read_csv(self, filename, table, encoding=None, *args, **kwargs):
