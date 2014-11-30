@@ -1,8 +1,9 @@
 import re
+import shlex
+
 from sqlalchemy.engine.url import make_url
 
-from IPython.core.magic_arguments import (argument, magic_arguments,
-                                          parse_argstring)
+from IPython.core.magic_arguments import argument, magic_arguments
 from IPython.core.magic import (Magics, magics_class, line_cell_magic,
                                 needs_local_scope)
 from kdbpy.kdb import KQ, Credentials
@@ -67,7 +68,7 @@ class QMagic(Magics):
 
           df = %q t: ([] name: `a`b; amount: 1 2); select from t where amount > 1
         """
-        args = parse_argstring(self.q, line)
+        args = self.q.parser.parse_args(shlex.split(line))
         code = '%s\n%s' % (' '.join(args.code), cell)
         rx = re.compile(r'\s{2,}')
         code = code.strip().replace('\n', ' ').replace('\r', '').encode('utf8')
