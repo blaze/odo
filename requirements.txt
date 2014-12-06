@@ -1,0 +1,3 @@
+datashape
+numpy
+pandas
