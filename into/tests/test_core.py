@@ -4,11 +4,11 @@ def test_basic():
     d = NetworkDispatcher('foo')
 
     @d.register(float, int, cost=1.0)
-    def f(_, x):
+    def f(x, **kwargs):
         return float(x)
 
     @d.register(str, float, cost=1.0)
-    def g(_, x):
+    def g(x, **kwargs):
         return str(x)
 
     assert d.path(int, str) == [f, g]

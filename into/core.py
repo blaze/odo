@@ -27,7 +27,7 @@ class NetworkDispatcher(object):
             x
             for f in self.path(a, b):
                 oldx = x
-                x = f(None, x)
+                x = f(x, **kwargs)
             return x
         return transform
 
