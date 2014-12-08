@@ -3,11 +3,11 @@ import sqlalchemy as sa
 from itertools import chain
 from collections import Iterator
 from datashape import (DataShape, Record, Option, var, dshape)
-from datashape.predicates import isdimension
+from datashape.predicates import isdimension, isrecord
 from datashape import discover
 from datashape.dispatch import dispatch
 import datashape
-from toolz import partition_all, keyfilter
+from toolz import partition_all, keyfilter, first
 
 from ..utils import keywords
 from ..convert import convert
