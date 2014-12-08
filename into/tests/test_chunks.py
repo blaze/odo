@@ -26,3 +26,8 @@ def test_callables():
 
     assert first(cl) == [0, 1, 2]
     assert first(cl) == [0, 1, 2]
+
+
+def test_discover():
+    cl = CL([[1, 2, 3], [4, 5, 6]])
+    assert discover(cl).measure == discover(1).measure

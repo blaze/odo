@@ -1,6 +1,6 @@
-
+from toolz import memoize, first
+from datashape import discover, var
 from .utils import cls_name
-from toolz import memoize
 
 
 class Chunks(object):
@@ -41,3 +41,9 @@ def chunks(cls):
 chunks.__doc__ = Chunks.__doc__
 
 chunks = memoize(chunks)
+
+
+@discover.register(Chunks)
+def discover_chunks(c, **kwargs):
+    return var * discover(first(c)).subshape[0]
+
