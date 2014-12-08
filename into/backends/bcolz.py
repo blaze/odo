@@ -8,6 +8,7 @@ from ..append import append
 from ..convert import convert
 from ..create import create
 from ..resource import resource
+from ..chunks import chunks, Chunks
 
 keywords = ['rootdir']
 
@@ -36,3 +37,18 @@ def convert_numpy_to_bcolz_carray(x, **kwargs):
 @convert.register(np.ndarray, (carray, ctable))
 def convert_bcolz_to_numpy(x, **kwargs):
     return x[:]
+
+
+@append.register((carray, ctable), Chunks)
+def append_carray_with_chunks(a, c, **kwargs):
+    for chunk in c:
+        append(a, chunk)
+    return a
+
+
+@convert.register(chunks(np.ndarray), (ctable, carray))
+def bcolz_to_numpy_chunks(x, chunksize=2**20, **kwargs):
+    def load():
+        for i in range(0, x.shape[0], chunksize):
+            yield x[i*chunksize: (i+1) * chunksize]
+    return chunks(np.ndarray)(load)
