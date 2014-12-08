@@ -1,6 +1,7 @@
 from .convert import convert
 from .append import append
 from .create import create
+from .resource import resource
 from .into import into
 
 try:
