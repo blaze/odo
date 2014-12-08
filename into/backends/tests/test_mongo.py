@@ -42,3 +42,11 @@ def test_append_convert():
         append(c, bank, dshape=dshape)
 
         assert convert(list, c, dshape=dshape) == list(pluck(['name', 'amount'], bank))
+
+
+def test_resource():
+    coll = resource('mongodb://localhost:27017/db::mycoll')
+    assert coll.name == 'mycoll'
+    assert coll.database.name == 'db'
+    assert coll.database.connection.host == 'localhost'
+    assert coll.database.connection.port == 27017
