@@ -4,6 +4,10 @@ from .create import create
 from .into import into
 
 try:
+     from .backends import bcolz
+except:
+    pass
+try:
      from .backends import h5py
 except:
     pass
