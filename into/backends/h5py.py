@@ -84,7 +84,7 @@ def append_h5py(dset, x, **kwargs):
     return dset
 
 
-@append.register(h5py.Dataset, Chunks)
+@append.register(h5py.Dataset, chunks(np.ndarray))
 def append_h5py(dset, c, **kwargs):
     for chunk in c:
         append(dset, chunk)

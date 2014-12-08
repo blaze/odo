@@ -1,6 +1,5 @@
 
-from into.convert import dot_graph
-from into import *
+from into.dot import dot_graph
 
 def test_create_pydot_image():
     try:

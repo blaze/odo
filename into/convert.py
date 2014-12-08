@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 from toolz import concat
 from collections import Iterator
-import os
 import datashape
 from .core import NetworkDispatcher
 from .chunks import chunks
@@ -88,14 +87,6 @@ def list_to_iterator(L, **kwargs):
 @convert.register(list, Iterator, cost=1.0)
 def iterator_to_list(seq, **kwargs):
     return list(seq)
-
-
-def dot_graph(filename='convert'):
-    with open(filename + '.dot', 'w') as f:
-        f.write(convert.to_pydot().to_string())
-
-    os.system('dot -Tpdf %s.dot -o %s.pdf' % (filename, filename))
-    print("Wrote convert graph to %s.pdf" % filename)
 
 
 @convert.register(Iterator, chunks(np.ndarray))

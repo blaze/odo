@@ -19,13 +19,6 @@ class NetworkDispatcher(object):
             return func
         return _
 
-    def to_pydot(self):
-        dg = nx.DiGraph()
-        for a, b in self.graph.edges():
-            cost = self.graph.edge[a][b]['cost']
-            dg.add_edge(cls_name(a), cls_name(b), cost=cost)
-        return nx.to_pydot(dg)
-
     def path(self, source, target, excluded_edges=None):
         with without_edges(self.graph, excluded_edges) as g:
             path = nx.shortest_path(g, source=source, target=target, weight='cost')
