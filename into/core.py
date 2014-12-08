@@ -19,10 +19,15 @@ class NetworkDispatcher(object):
         return _
 
     def to_pydot(self):
+        def name(cls):
+            if 'builtin' in cls.__module__:
+                return cls.__name__
+            else:
+                return cls.__module__.split('.')[0] + '.' + cls.__name__
         dg = nx.DiGraph()
         for a, b in self.graph.edges():
             cost = self.graph.edge[a][b]['cost']
-            dg.add_edge(a.__name__, b.__name__, cost=cost)
+            dg.add_edge(name(a), name(b), cost=cost)
         return nx.to_pydot(dg)
 
 
