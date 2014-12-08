@@ -1,6 +1,9 @@
-from into.backends.bcolz import create, append, convert, ctable, carray
+from into.backends.bcolz import (create, append, convert, ctable, carray,
+        resource)
 from into.chunks import chunks
 import numpy as np
+from into.utils import tmpfile
+import os
 
 
 def eq(a, b):
@@ -33,3 +36,21 @@ def test_append_chunks():
     append(b, chunks(np.ndarray)([x, x]))
 
     assert len(b) == len(x) * 3
+
+
+def test_resource_ctable():
+    with tmpfile('.bcolz') as fn:
+        os.remove(fn)
+        r = resource(fn, dshape='var * {name: string[5, "ascii"], balance: int32}')
+
+        assert isinstance(r, ctable)
+        assert r.dtype == [('name', 'S5'), ('balance', 'i4')]
+
+
+def test_resource_carray():
+    with tmpfile('.bcolz') as fn:
+        os.remove(fn)
+        r = resource(fn, dshape='var * int32')
+
+        assert isinstance(r, carray)
+        assert r.dtype == 'i4'
