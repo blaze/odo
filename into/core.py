@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import networkx as nx
 from blaze import discover
-from .utils import expand_tuples
+from .utils import expand_tuples, cls_name
 from contextlib import contextmanager
 
 
@@ -20,11 +20,6 @@ class NetworkDispatcher(object):
         return _
 
     def to_pydot(self):
-        def name(cls):
-            if 'builtin' in cls.__module__:
-                return cls.__name__
-            else:
-                return cls.__module__.split('.')[0] + '.' + cls.__name__
         dg = nx.DiGraph()
         for a, b in self.graph.edges():
             cost = self.graph.edge[a][b]['cost']

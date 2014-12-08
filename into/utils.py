@@ -55,3 +55,10 @@ def keywords(func):
     if isinstance(func, type):
         return keywords(func.__init__)
     return inspect.getargspec(func).args
+
+
+def cls_name(cls):
+    if 'builtin' in cls.__module__:
+        return cls.__name__
+    else:
+        return cls.__module__.split('.')[0] + '.' + cls.__name__
