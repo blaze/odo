@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function
+
 import networkx as nx
 from blaze import discover
 from .utils import expand_tuples
@@ -15,6 +17,14 @@ class NetworkDispatcher(object):
                 self.graph.add_edge(b, a, cost=1.0, func=func)
             return func
         return _
+
+    def to_pydot(self):
+        dg = nx.DiGraph()
+        for a, b in self.graph.edges():
+            cost = self.graph.edge[a][b]['cost']
+            dg.add_edge(a.__name__, b.__name__, cost=cost)
+        return nx.to_pydot(dg)
+
 
     def path(self, a, b):
         path = nx.shortest_path(self.graph, source=a, target=b, weight='cost')

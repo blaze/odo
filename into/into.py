@@ -4,6 +4,7 @@ from toolz import merge
 from multipledispatch import Dispatcher
 from .convert import convert
 from .append import append
+from .resource import resource
 
 into = Dispatcher('into')
 
@@ -16,6 +17,14 @@ def into_type(a, b, **kwargs):
 @into.register(object, object)
 def into_object(a, b, **kwargs):
     return append(a, b)
+
+
+@into.register(str, object)
+def into_string(uri, b, **kwargs):
+    if 'dshape' not in kwargs:
+        kwargs['dshape'] = discover(b)
+    a = resource(uri, **kwargs)
+    return into(a, b, **kwargs)
 
 
 @into.register(object)
