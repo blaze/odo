@@ -1,4 +1,5 @@
 from into.convert import convert
+from into.chunks import chunks
 from datashape import discover
 import numpy as np
 import pandas as pd
@@ -37,3 +38,11 @@ def test_dataframe_and_series():
     assert isinstance(s2, pd.Series)
 
     assert s2.name == 'foo'
+
+
+def test_iterator_and_numpy_chunks():
+    c = convert(chunks(np.ndarray), [1, 2, 3])
+    assert isinstance(c, chunks(np.ndarray))
+
+    L = convert(list, c)
+    assert L == [1, 2, 3]

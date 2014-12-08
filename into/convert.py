@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import pandas as pd
+from toolz import concat
 from collections import Iterator
 import os
 import datashape
@@ -95,3 +96,16 @@ def dot_graph(filename='convert'):
 
     os.system('dot -Tpdf %s.dot -o %s.pdf' % (filename, filename))
     print("Wrote convert graph to %s.pdf" % filename)
+
+
+@convert.register(Iterator, chunks(np.ndarray))
+def numpy_chunks_to_iterator(c, **kwargs):
+    return concat(map(into(Iterator), c))
+
+
+@convert.register(chunks(np.ndarray), Iterator)
+def iterator_to_numpy_chunks(seq, chunksize=1024, **kwargs):
+    from toolz.curried import pipe, partition_all, map
+    return pipe(seq, parition_all(chunksize),
+                     map(into(np.ndarray)),
+                     chunks(np.ndarray))
