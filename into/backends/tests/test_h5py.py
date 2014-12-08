@@ -1,6 +1,7 @@
-from into.backends.h5py import append, create, resource, discover
+from into.backends.h5py import append, create, resource, discover, convert
 from contextlib import contextmanager
 from into.utils import tmpfile
+from into.chunks import chunks
 import datashape
 import h5py
 import numpy as np
@@ -39,6 +40,24 @@ def test_append():
     with file(x) as (fn, f, dset):
         append(dset, x)
         assert eq(dset[:], np.concatenate([x, x]))
+
+
+def test_numpy():
+    with file(x) as (fn, f, dset):
+        assert eq(convert(np.ndarray, dset), x)
+
+
+def test_chunks():
+    with file(x) as (fn, f, dset):
+        c = convert(chunks(np.ndarray), dset)
+        assert eq(convert(np.ndarray, c), x)
+
+
+def test_append_chunks():
+    with file(x) as (fn, f, dset):
+        append(dset, chunks(np.ndarray)([x, x]))
+
+        assert len(dset) == len(x) * 3
 
 
 def test_create():

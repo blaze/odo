@@ -6,6 +6,7 @@ from collections import Iterator
 import os
 import datashape
 from .core import NetworkDispatcher
+from .chunks import chunks
 
 convert = NetworkDispatcher('convert')
 
@@ -50,6 +51,11 @@ def series_to_array(s, **kwargs):
 @convert.register(list, np.ndarray, cost=1.0)
 def numpy_to_list(x, **kwargs):
     return x.tolist()
+
+
+@convert.register(np.ndarray, chunks(np.ndarray), cost=1.0)
+def numpy_to_list(c, **kwargs):
+    return np.concatenate(list(c))
 
 
 @convert.register(set, (list, tuple), cost=1.0)

@@ -9,8 +9,10 @@ import numpy as np
 from toolz import assoc, keyfilter
 
 from ..append import append
+from ..convert import convert
 from ..create import create
 from ..resource import resource
+from ..chunks import chunks, Chunks
 
 h5py_attributes = ['chunks', 'compression', 'compression_opts', 'dtype',
                    'fillvalue', 'fletcher32', 'maxshape', 'shape']
@@ -80,6 +82,30 @@ def append_h5py(dset, x, **kwargs):
     dset.resize(shape)
     dset[-len(x):] = x
     return dset
+
+
+@append.register(h5py.Dataset, Chunks)
+def append_h5py(dset, c, **kwargs):
+    for chunk in c:
+        append(dset, chunk)
+    return dset
+
+
+@convert.register(np.ndarray, h5py.Dataset)
+def h5py_to_numpy(dset, force=False, **kwargs):
+    if dset.size > 1e9:
+        raise MemoryError("File size is large: %0.2f GB.\n"
+        "Convert with flag force=True to force loading" % d.size / 1e9)
+    else:
+        return dset[:]
+
+
+@convert.register(chunks(np.ndarray), h5py.Dataset)
+def h5py_to_numpy_chunks(dset, chunksize=2**20, **kwargs):
+    def load():
+        for i in range(0, dset.shape[0], chunksize):
+            yield dset[i*chunksize:(i+1) * chunksize]
+    return chunks(np.ndarray)(load)
 
 
 """
