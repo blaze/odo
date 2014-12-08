@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from contextlib import contextmanager
+import inspect
 import tempfile
 import os
 
@@ -40,3 +41,17 @@ def tmpfile(extension=''):
                 os.remove(filename)
             except OSError:  # finally give up
                 pass
+
+
+def keywords(func):
+    """ Get the argument names of a function
+
+    >>> def f(x, y=2):
+    ...     pass
+
+    >>> keywords(f)
+    ['x', 'y']
+    """
+    if isinstance(func, type):
+        return keywords(func.__init__)
+    return inspect.getargspec(func).args
