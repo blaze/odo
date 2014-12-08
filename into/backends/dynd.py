@@ -20,7 +20,7 @@ def numpy_to_dynd(x, **kwargs):
 
 @convert.register(list, nd.array)
 def dynd_to_list(x, **kwargs):
-    return nd.as_py(x)
+    return nd.as_py(x, tuple=True)
 
 
 @convert.register(nd.array, list)

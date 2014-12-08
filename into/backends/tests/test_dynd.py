@@ -20,3 +20,6 @@ def test_convert():
         y = convert(cls, x)
         assert isinstance(y, cls)
         assert isinstance(convert(nd.array, y), nd.array)
+
+    x = nd.array([('a', 1)], type='1 * {a: string, b: int32}')
+    assert convert(list, x) == [('a', 1)]
