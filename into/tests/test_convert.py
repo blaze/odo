@@ -37,15 +37,3 @@ def test_dataframe_and_series():
     assert isinstance(s2, pd.Series)
 
     assert s2.name == 'foo'
-
-
-def test_convert_is_robust_to_failures():
-    class A(object): pass
-    class B(object): pass
-    class C(object): pass
-    discover.register((A, B, C))(lambda x: 'int')
-    convert.register(B, A, cost=1.0)(lambda x, **kwargs: 1)
-    convert.register(C, B, cost=1.0)(lambda x, **kwargs: x / 0) # note that this errs
-    convert.register(C, A, cost=10.0)(lambda x, **kwargs: 2)
-
-    assert convert(C, A()) == 2
