@@ -24,3 +24,15 @@ def test_set_to_Series():
 
 def test_Series_to_set():
     assert convert(set, pd.Series([1, 2, 3])) == set([1, 2, 3])
+
+
+def test_dataframe_and_series():
+    s = pd.Series([1, 2, 3], name='foo')
+    df = convert(pd.DataFrame, s)
+    assert isinstance(df, pd.DataFrame)
+    assert list(df.columns) == ['foo']
+
+    s2 = convert(pd.Series, df)
+    assert isinstance(s2, pd.Series)
+
+    assert s2.name == 'foo'

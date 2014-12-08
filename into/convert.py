@@ -28,6 +28,16 @@ def recarray_to_dataframe(x, **kwargs):
     return pd.Series(x)
 
 
+@convert.register(pd.Series, pd.DataFrame, cost=1.0)
+def DataFrame_to_Series(x, **kwargs):
+    assert len(x.columns) == 1
+    return x[x.columns[0]]
+
+
+@convert.register(pd.DataFrame, pd.Series, cost=1.0)
+def series_to_dataframe(x, **kwargs):
+    return x.to_frame()
+
 convert.register(np.recarray, np.ndarray, cost=0.0)(identity)
 convert.register(np.ndarray, np.recarray, cost=0.0)(identity)
 
