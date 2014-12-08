@@ -11,6 +11,6 @@ def test_basic():
     def g(x, **kwargs):
         return str(x)
 
-    assert d.path(int, str) == [f, g]
+    assert [func for a, b, func in d.path(int, str)] == [f, g]
 
     assert d.func(int, str)(1) == '1.0'
