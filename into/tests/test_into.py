@@ -9,3 +9,9 @@ def test_into_append():
     result = into(L, (1, 2, 3))
     assert result == [1, 2, 3]
     assert result is L
+
+
+def test_into_curry():
+    assert callable(into(list))
+    data = (1, 2, 3)
+    assert into(list)(data) == into(list, data)
