@@ -23,7 +23,7 @@ class NetworkDispatcher(object):
         dg = nx.DiGraph()
         for a, b in self.graph.edges():
             cost = self.graph.edge[a][b]['cost']
-            dg.add_edge(name(a), name(b), cost=cost)
+            dg.add_edge(cls_name(a), cls_name(b), cost=cost)
         return nx.to_pydot(dg)
 
     def path(self, source, target, excluded_edges=None):
