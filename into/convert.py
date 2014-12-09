@@ -104,3 +104,26 @@ def iterator_to_numpy_chunks(seq, chunksize=1024, **kwargs):
         for i in rest:
             yield convert(np.ndarray, i, **kwargs)
     return chunks(np.ndarray)(_)
+
+
+@convert.register(chunks(pd.DataFrame), Iterator)
+def iterator_to_DataFrame_chunks(seq, chunksize=1024, **kwargs):
+    seq2 = partition_all(chunksize, seq)
+    first, rest = next(seq2), seq2
+    def _():
+        yield convert(pd.DataFrame, first, **kwargs)
+        for i in rest:
+            yield convert(pd.DataFrame, i, **kwargs)
+    return chunks(pd.DataFrame)(_)
+
+
+@convert.register(chunks(np.ndarray), chunks(pd.DataFrame))
+def chunked_pandas_to_chunked_numpy(c, **kwargs):
+    return chunks(np.ndarray)(lambda: (into(np.ndarray, chunk) for chunk in c))
+
+@convert.register(chunks(pd.DataFrame), chunks(np.ndarray))
+def chunked_numpy_to_chunked_pandas(c, **kwargs):
+    return chunks(pd.DataFrame)(lambda: (into(pd.DataFrame, chunk) for chunk in c))
+
+
+ooc_types = set([Iterator, Chunks])
