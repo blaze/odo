@@ -51,7 +51,7 @@ class NetworkDispatcher(object):
                 oldx = x
                 x = f(x, **kwargs)
             return x
-        except:
+        except Exception as e:
             print("Failed on %s -> %s. Working around" %
                         (A.__name__,  B.__name__))
             new_exclusions = excluded_edges | set([(A, B)])
