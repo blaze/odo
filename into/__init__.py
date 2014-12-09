@@ -6,6 +6,10 @@ from .into import into
 from datashape import discover
 
 try:
+     from .backends.pandas import discover
+except:
+    pass
+try:
      from .backends import bcolz
 except:
     pass

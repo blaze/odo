@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import networkx as nx
-from blaze import discover
+from datashape import discover
 from .utils import expand_tuples, cls_name
 from contextlib import contextmanager
 

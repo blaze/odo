@@ -6,6 +6,7 @@ from bcolz import ctable, carray
 import numpy as np
 from toolz import keyfilter
 import datashape
+from datashape import discover
 from ..append import append
 from ..convert import convert
 from ..create import create
@@ -13,6 +14,11 @@ from ..resource import resource
 from ..chunks import chunks, Chunks
 
 keywords = ['rootdir']
+
+
+@discover.register((ctable, carray))
+def discover_bcolz(c, **kwargs):
+    return datashape.from_numpy(c.shape, c.dtype)
 
 
 @append.register((ctable, carray), np.ndarray)

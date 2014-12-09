@@ -1,5 +1,5 @@
 from into.backends.bcolz import (create, append, convert, ctable, carray,
-        resource)
+        resource, discover)
 from into.chunks import chunks
 import numpy as np
 from into.utils import tmpfile
@@ -16,6 +16,9 @@ def eq(a, b):
 a = carray([1, 2, 3, 4])
 x = np.array([1, 2])
 
+
+def test_discover():
+    assert discover(a) == discover(a[:])
 
 def test_convert():
     assert isinstance(convert(carray, np.ones([1, 2, 3])), carray)
