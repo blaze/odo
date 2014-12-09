@@ -20,6 +20,10 @@ class NetworkDispatcher(object):
         return _
 
     def path(self, source, target, excluded_edges=None):
+        if not isinstance(source, type):
+            source = type(source)
+        if not isinstance(target, type):
+            target = type(target)
         with without_edges(self.graph, excluded_edges) as g:
             path = nx.shortest_path(g, source=source, target=target, weight='cost')
             result = [(source, target, self.graph.edge[source][target]['func'])
