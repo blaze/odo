@@ -1,6 +1,8 @@
-from into.convert import convert, list_to_numpy
+from into.convert import convert, list_to_numpy, iterator_to_numpy_chunks
 from into.chunks import chunks
 from datashape import discover
+from toolz import first
+from collections import Iterator
 import datashape
 import numpy as np
 import pandas as pd
@@ -42,8 +44,9 @@ def test_dataframe_and_series():
 
 
 def test_iterator_and_numpy_chunks():
-    c = convert(chunks(np.ndarray), [1, 2, 3])
+    c = iterator_to_numpy_chunks([1, 2, 3], chunksize=2)
     assert isinstance(c, chunks(np.ndarray))
+    assert isinstance(first(c), np.ndarray)
 
     L = convert(list, c)
     assert L == [1, 2, 3]

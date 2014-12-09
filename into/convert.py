@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import pandas as pd
-from toolz import concat, curry
+from toolz import concat, curry, partition_all
 from collections import Iterator
 import datashape
 from .core import NetworkDispatcher
@@ -55,7 +55,7 @@ def numpy_to_list(x, **kwargs):
 
 
 @convert.register(np.ndarray, chunks(np.ndarray), cost=1.0)
-def numpy_to_list(c, **kwargs):
+def numpy_chunks_to_numpy(c, **kwargs):
     return np.concatenate(list(c))
 
 
@@ -90,7 +90,7 @@ def iterator_to_list(seq, **kwargs):
     return list(seq)
 
 
-@convert.register(Iterator, chunks(np.ndarray))
+@convert.register(Iterator, (chunks(pd.DataFrame), chunks(np.ndarray)))
 def numpy_chunks_to_iterator(c, **kwargs):
     return concat(convert(Iterator, chunk) for chunk in c)
 
@@ -100,7 +100,7 @@ def iterator_to_numpy_chunks(seq, chunksize=1024, **kwargs):
     seq2 = partition_all(chunksize, seq)
     first, rest = next(seq2), seq2
     def _():
-        yield first
+        yield convert(np.ndarray, first, **kwargs)
         for i in rest:
-            yield i
-    return _
+            yield convert(np.ndarray, i, **kwargs)
+    return chunks(np.ndarray)(_)
