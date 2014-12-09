@@ -1,3 +1,6 @@
 datashape
 numpy
 pandas
+toolz
+multipledispatch
+networkx
