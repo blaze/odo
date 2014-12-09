@@ -5,6 +5,7 @@ from into.chunks import chunks
 import datashape
 import h5py
 import numpy as np
+import os
 
 
 @contextmanager
@@ -67,3 +68,39 @@ def test_create():
         assert isinstance(f, h5py.File)
         assert f.filename == fn
         assert discover(f) == ds
+
+
+def test_create_partially_present_dataset():
+    with tmpfile('.hdf5') as fn:
+        os.remove(fn)
+        ds1 = datashape.dshape('{x: int32}')
+        f = create(h5py.File, dshape=ds1, path=fn)
+
+        ds2 = datashape.dshape('{x: int32, y: 5 * int32}')
+        f2 = create(h5py.File, dshape=ds2, path=fn)
+
+        assert f.filename == f2.filename
+        assert f.keys() == f2.keys()
+        assert f['y'].dtype == 'i4'
+
+
+def test_resource():
+    with tmpfile('.hdf5') as fn:
+        os.remove(fn)
+        ds = datashape.dshape('{x: int32, y: 3 * int32}')
+        r = resource(fn, dshape=ds)
+
+        assert isinstance(r, h5py.File)
+        assert discover(r) == ds
+
+
+def test_resource_with_datapath():
+    with tmpfile('.hdf5') as fn:
+        os.remove(fn)
+        ds = datashape.dshape('3 * 4 * int32')
+        r = resource(fn + '::/data', dshape=ds)
+
+        assert isinstance(r, h5py.Dataset)
+        assert discover(r) == ds
+        assert r.file.filename == fn
+        assert r.file['/data'] == r
