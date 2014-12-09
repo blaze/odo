@@ -5,7 +5,8 @@ from multipledispatch import Dispatcher
 from .convert import convert
 from .append import append
 from .resource import resource
-from datashape import discover
+from datashape import discover, var
+from datashape.predicates import isdimension
 
 into = Dispatcher('into')
 
@@ -23,7 +24,10 @@ def into_object(a, b, **kwargs):
 @into.register(str, object)
 def into_string(uri, b, **kwargs):
     if 'dshape' not in kwargs:
-        kwargs['dshape'] = discover(b)
+        ds = discover(b)
+        if isdimension(ds[0]):
+            ds = var * ds.subshape[0]
+        kwargs['dshape'] = ds
     a = resource(uri, **kwargs)
     return into(a, b, **kwargs)
 

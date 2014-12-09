@@ -113,3 +113,11 @@ def test_resource_with_variable_length():
         r = resource(fn + '::/data', dshape=ds)
 
         assert r.shape == (0, 4)
+
+
+def test_copy_with_into():
+    from into import into
+    with tmpfile('.hdf5') as fn:
+        dset = into(fn + '::/data', [1, 2, 3])
+        assert dset.shape == (3,)
+        assert eq(dset[:], [1, 2, 3])

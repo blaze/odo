@@ -91,6 +91,11 @@ def append_h5py(dset, c, **kwargs):
     return dset
 
 
+@append.register(h5py.Dataset, object)
+def append_h5py(dset, x, **kwargs):
+    return append(dset, convert(chunks(np.ndarray), x, **kwargs), **kwargs)
+
+
 @convert.register(np.ndarray, h5py.Dataset)
 def h5py_to_numpy(dset, force=False, **kwargs):
     if dset.size > 1e9:
