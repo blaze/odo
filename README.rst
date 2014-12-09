@@ -42,7 +42,7 @@ transformations.  That network is below:
 Each node is a container type (like ``DataFrame``) and each directed edge is a
 function that transforms or appends one container into or onto another.  Edges
 are annotated with relative costs.  This network approach allows ``into`` to
-select the shortest path between any two types (thank you ``networkx``_).
+select the shortest path between any two types (thank you networkx_).
 These functions often leverage non-Pythonic systems like NumPy arrays or native
 ``CSV->SQL`` loading functions.  ``Into`` is not dependent on Python iterators.
 
@@ -84,4 +84,4 @@ Into was factored out from the Blaze_ project.
 
 
 .. _Blaze: http://blaze.pydata.org/
-.. _``networkx``: https://networkx.github.io/
+.. _networkx: https://networkx.github.io/
