@@ -41,8 +41,8 @@ def dataset_from_dshape(file, datapath, ds, **kwargs):
     dtype = varlen_dtype(to_numpy_dtype(ds))
     if datashape.var not in list(ds):
         shape = to_numpy(ds)[0]
-    elif len(ds.shape) == 1:
-        shape = (0,)
+    elif datashape.var not in list(ds)[1:]:
+        shape = (0,) + to_numpy(ds.subshape[0])[0]
     else:
         raise ValueError("Don't know how to handle varlen nd shapes")
 

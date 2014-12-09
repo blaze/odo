@@ -104,3 +104,12 @@ def test_resource_with_datapath():
         assert discover(r) == ds
         assert r.file.filename == fn
         assert r.file['/data'] == r
+
+
+def test_resource_with_variable_length():
+    with tmpfile('.hdf5') as fn:
+        os.remove(fn)
+        ds = datashape.dshape('var * 4 * int32')
+        r = resource(fn + '::/data', dshape=ds)
+
+        assert r.shape == (0, 4)
