@@ -15,10 +15,7 @@ def g(x, **kwargs):
 def test_basic():
     assert [func for a, b, func in d.path(int, str)] == [f, g]
 
-    assert d.func(int, str)(1) == '1.0'
-
     assert d.path(int, str) == d.path(1, '')
-
 
 
 def test_convert_is_robust_to_failures():

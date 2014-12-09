@@ -20,7 +20,6 @@ for a, b in append.funcs:
         dg.add_edge(cls_name(b), cls_name(a))
 
 
-import pdb; pdb.set_trace()
 # Color edges
 for n in convert.graph.nodes() + list(pluck(0, append.funcs)):
     if issubclass(n, tuple(ooc_types)):

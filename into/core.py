@@ -19,44 +19,43 @@ class NetworkDispatcher(object):
             return func
         return _
 
-    def path(self, source, target, excluded_edges=None):
-        if not isinstance(source, type):
-            source = type(source)
-        if not isinstance(target, type):
-            target = type(target)
-        with without_edges(self.graph, excluded_edges) as g:
-            path = nx.shortest_path(g, source=source, target=target, weight='cost')
-            result = [(source, target, self.graph.edge[source][target]['func'])
-                        for source, target in zip(path, path[1:])]
-        return result
+    def path(self, *args, **kwargs):
+        return path(self.graph, *args, **kwargs)
 
-    def func(self, a, b):
-        def transform(x, **kwargs):
-            if 'dshape' not in kwargs:
-                kwargs['dshape'] = discover(x)
-            for (A, B, f) in self.path(a, b):
-                oldx = x
-                x = f(x, **kwargs)
-            return x
-        return transform
+    def __call__(self, *args, **kwargs):
+        return _transform(self.graph, *args, **kwargs)
 
-    def __call__(self, target, source, excluded_edges=None, **kwargs):
-        x = source
-        excluded_edges = excluded_edges or set()
-        if 'dshape' not in kwargs:
-            kwargs['dshape'] = discover(x)
-        path = self.path(type(source), target, excluded_edges=excluded_edges)
-        try:
-            for (A, B, f) in path:
-                oldx = x
-                x = f(x, **kwargs)
-            return x
-        except Exception as e:
-            print("Failed on %s -> %s. Working around" %
-                        (A.__name__,  B.__name__))
-            new_exclusions = excluded_edges | set([(A, B)])
-            return self(target, source, excluded_edges=new_exclusions, **kwargs)
 
+def _transform(graph, target, source, excluded_edges=None, **kwargs):
+    """ Transform source to target type using graph of transformations """
+    x = source
+    excluded_edges = excluded_edges or set()
+    if 'dshape' not in kwargs:
+        kwargs['dshape'] = discover(x)
+    pth = path(graph, type(source), target, excluded_edges=excluded_edges)
+    try:
+        for (A, B, f) in pth:
+            oldx = x
+            x = f(x, **kwargs)
+        return x
+    except Exception as e:
+        print("Failed on %s -> %s. Working around" %
+                    (A.__name__,  B.__name__))
+        new_exclusions = excluded_edges | set([(A, B)])
+        return _transform(graph, target, source, excluded_edges=new_exclusions, **kwargs)
+
+
+def path(graph, source, target, excluded_edges=None):
+    """ Path of functions between two types """
+    if not isinstance(source, type):
+        source = type(source)
+    if not isinstance(target, type):
+        target = type(target)
+    with without_edges(graph, excluded_edges) as g:
+        path = nx.shortest_path(g, source=source, target=target, weight='cost')
+        result = [(source, target, graph.edge[source][target]['func'])
+                    for source, target in zip(path, path[1:])]
+    return result
 
 
 @contextmanager
