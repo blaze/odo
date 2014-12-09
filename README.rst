@@ -24,14 +24,16 @@ containers (as below)
    >>> into('postgresql://user:pass@host::my-table', 'myfile.hdf5::/data')
    Table('my-table', MetaData(bind=Engine(postgresql://user:****@host)), ...)
 
+Into leverages the existing Python ecosystem.  The example above uses
+``sqlalchemy`` for SQL interation and ``h5py`` for HDF5 interaction.
+
+
 Method
 ------
 
 Into accomplishes data migration migration through a network of small data
-conversion functions that leverage the existing Python ecosystem.  The example
-above uses ``sqlalchemy`` for SQL interation and ``h5py`` for HDF5 interaction.
-It migrates data between a network of known transformations.  That network is
-below:
+conversion functions It migrates data between a network of known
+transformations.  That network is below:
 
 .. image:: https://github.com/ContinuumIO/into/blob/master/doc/images/conversions.png
    :width: 400 px

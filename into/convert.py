@@ -21,8 +21,8 @@ def dataframe_to_numpy(df, **kwargs):
 
 
 @convert.register(pd.DataFrame, np.ndarray, cost=1.0)
-def numpy_to_dataframe(df, **kwargs):
-    return pd.DataFrame(df)
+def numpy_to_dataframe(x, **kwargs):
+    return pd.DataFrame(x)
 
 
 @convert.register(pd.Series, np.ndarray, cost=1.0)
