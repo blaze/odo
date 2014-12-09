@@ -6,6 +6,9 @@ from .utils import expand_tuples, cls_name
 from contextlib import contextmanager
 
 
+ooc_types = set()  # Out-of-Core types
+
+
 class NetworkDispatcher(object):
     def __init__(self, name):
         self.name = name
@@ -26,7 +29,7 @@ class NetworkDispatcher(object):
         return _transform(self.graph, *args, **kwargs)
 
 
-def _transform(graph, target, source, excluded_edges=None, **kwargs):
+def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types, **kwargs):
     """ Transform source to target type using graph of transformations """
     x = source
     excluded_edges = excluded_edges or set()
@@ -45,16 +48,24 @@ def _transform(graph, target, source, excluded_edges=None, **kwargs):
         return _transform(graph, target, source, excluded_edges=new_exclusions, **kwargs)
 
 
-def path(graph, source, target, excluded_edges=None):
+def path(graph, source, target, excluded_edges=None, ooc_types=None):
     """ Path of functions between two types """
     if not isinstance(source, type):
         source = type(source)
     if not isinstance(target, type):
         target = type(target)
+
+    # If both source and target are Out-Of-Core types then restrict ourselves
+    # to the graph of out-of-core types
+    if ooc_types:
+        oocs = tuple(ooc_types)
+        if issubclass(source, oocs) and issubclass(target, oocs):
+            oldgraph = graph
+            graph = graph.subgraph([n for n in graph.nodes() if issubclass(n, oocs)])
     with without_edges(graph, excluded_edges) as g:
-        path = nx.shortest_path(g, source=source, target=target, weight='cost')
+        pth = nx.shortest_path(g, source=source, target=target, weight='cost')
         result = [(source, target, graph.edge[source][target]['func'])
-                    for source, target in zip(path, path[1:])]
+                    for source, target in zip(pth, pth[1:])]
     return result
 
 

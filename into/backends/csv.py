@@ -45,7 +45,7 @@ class CSV(object):
 
 @append.register(CSV, object)
 def append_object_to_csv(c, seq, **kwargs):
-    append(c, convert(pd.DataFrame, seq, **kwargs), **kwargs)
+    append(c, convert(chunks(pd.DataFrame), seq, **kwargs), **kwargs)
     return c
 
 

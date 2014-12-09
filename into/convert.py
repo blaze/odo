@@ -5,7 +5,7 @@ import pandas as pd
 from toolz import concat, curry, partition_all
 from collections import Iterator
 import datashape
-from .core import NetworkDispatcher
+from .core import NetworkDispatcher, ooc_types
 from .chunks import chunks, Chunks
 from .numpy_dtype import dshape_to_numpy
 
@@ -119,11 +119,11 @@ def iterator_to_DataFrame_chunks(seq, chunksize=1024, **kwargs):
 
 @convert.register(chunks(np.ndarray), chunks(pd.DataFrame))
 def chunked_pandas_to_chunked_numpy(c, **kwargs):
-    return chunks(np.ndarray)(lambda: (into(np.ndarray, chunk) for chunk in c))
+    return chunks(np.ndarray)(lambda: (convert(np.ndarray, chunk) for chunk in c))
 
 @convert.register(chunks(pd.DataFrame), chunks(np.ndarray))
 def chunked_numpy_to_chunked_pandas(c, **kwargs):
-    return chunks(pd.DataFrame)(lambda: (into(pd.DataFrame, chunk) for chunk in c))
+    return chunks(pd.DataFrame)(lambda: (convert(pd.DataFrame, chunk) for chunk in c))
 
 
-ooc_types = set([Iterator, Chunks])
+ooc_types |= set([Iterator, Chunks])
