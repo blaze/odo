@@ -42,9 +42,9 @@ transformations.  That network is below:
 Each node is a container type (like ``DataFrame``) and each directed edge is a
 function that transforms or appends one container into or onto another.  Edges
 are annotated with relative costs.  This network approach allows ``into`` to
-select the shortest path between any two types.  These functions often leverage
-non-Pythonic systems like NumPy arrays or native ``CSV->SQL`` loading
-functions.  ``Into`` is not dependent on Python iterators.
+select the shortest path between any two types (thank you ``networkx``_).
+These functions often leverage non-Pythonic systems like NumPy arrays or native
+``CSV->SQL`` loading functions.  ``Into`` is not dependent on Python iterators.
 
 This network approach is also robust.  Into can work around missing edges or
 types due to lack of dependencies or runtime errors.  This network approach is
@@ -66,6 +66,11 @@ function must fulfill, in this case with the ``DataFrame.to_records`` method.
 Similar functions exist for ``append``, to add to existing data, and
 ``resource`` for URI resolution.
 
+Finally, ``into`` is also aware of which containers must reside in memory and
+which do not.  In the graph above the red-colored nodes are robust to
+larger-than-memory datasets.  Transformations between two out-of-core datasets
+operate only on the subgraph of the red nodes.
+
 
 LICENSE
 -------
@@ -79,3 +84,4 @@ Into was factored out from the Blaze_ project.
 
 
 .. _Blaze: http://blaze.pydata.org/
+.. _``networkx``: https://networkx.github.io/
