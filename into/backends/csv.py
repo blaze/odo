@@ -117,7 +117,7 @@ def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
 @convert.register(chunks(pd.DataFrame), CSV)
 def CSV_to_chunks_of_dataframes(c, chunksize=2**20, **kwargs):
     return chunks(pd.DataFrame)(
-            lambda: csv_to_DataFrame(c, chunksize=chunksize, **kwargs))
+            lambda: iter(csv_to_DataFrame(c, chunksize=chunksize, **kwargs)))
 
 
 @discover.register(CSV)

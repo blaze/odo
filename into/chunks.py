@@ -36,7 +36,7 @@ class Chunks(object):
 
 def chunks(cls):
     """ Parametrized Chunks Class """
-    return type('Chunks_' + cls_name(cls), (Chunks,), {'container': cls})
+    return type('Chunks_' + cls_name(cls).replace('.', '_'), (Chunks,), {'container': cls})
 
 chunks.__doc__ = Chunks.__doc__
 

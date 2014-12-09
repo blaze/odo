@@ -32,6 +32,12 @@ def into_string(uri, b, **kwargs):
     return into(a, b, **kwargs)
 
 
+@into.register((type, str), str)
+def into_string_string(a, b, **kwargs):
+    r = resource(b, **kwargs)
+    return into(a, r, **kwargs)
+
+
 @into.register(object)
 def into_curried(o, **kwargs1):
     def curried_into(other, **kwargs2):
