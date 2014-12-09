@@ -9,7 +9,7 @@ import numpy as np
 from toolz import assoc, keyfilter
 
 from ..append import append
-from ..convert import convert
+from ..convert import convert, ooc_types
 from ..create import create
 from ..resource import resource
 from ..chunks import chunks, Chunks
@@ -130,3 +130,6 @@ def resource_hdf5(uri, datapath=None, dshape=None, **kwargs):
         return f[olddatapath]
     else:
         return f
+
+
+ooc_types.add(h5py.Dataset)

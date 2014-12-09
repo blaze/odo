@@ -13,7 +13,7 @@ import gzip
 import bz2
 
 from ..append import append
-from ..convert import convert
+from ..convert import convert, ooc_types
 from ..resource import resource
 from ..chunks import chunks
 from ..numpy_dtype import dshape_to_pandas
@@ -162,3 +162,6 @@ try:
 except ImportError:
     pass
 """
+
+
+ooc_types.add(CSV)

@@ -46,4 +46,3 @@ chunks = memoize(chunks)
 @discover.register(Chunks)
 def discover_chunks(c, **kwargs):
     return var * discover(first(c)).subshape[0]
-

@@ -6,7 +6,7 @@ from toolz import concat, curry, partition_all
 from collections import Iterator
 import datashape
 from .core import NetworkDispatcher
-from .chunks import chunks
+from .chunks import chunks, Chunks
 from .numpy_dtype import dshape_to_numpy
 
 convert = NetworkDispatcher('convert')

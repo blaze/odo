@@ -1,3 +1,4 @@
+from __future__ import absolute_import, division, print_function
 
 import sqlalchemy as sa
 from itertools import chain
@@ -10,7 +11,7 @@ import datashape
 from toolz import partition_all, keyfilter, first
 
 from ..utils import keywords
-from ..convert import convert
+from ..convert import convert, ooc_types
 from ..append import append
 from ..resource import resource
 
@@ -262,3 +263,6 @@ def resource_monet(uri, *args, **kwargs):
     except ImportError:
         raise ImportError("Please install the `sqlalchemy_monetdb` library")
     return resource_sql(uri, *args, **kwargs)
+
+
+ooc_types.add(sa.Table)

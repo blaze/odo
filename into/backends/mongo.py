@@ -8,7 +8,7 @@ from datashape.predicates import isdimension
 from toolz import take, partition_all, concat, pluck
 import copy
 import re
-from ..convert import convert
+from ..convert import convert, ooc_types
 from ..append import append
 from ..resource import resource
 
@@ -95,3 +95,6 @@ def _resource_mongo(d, collection_name):
         db.authenticate(d['user'], d['pass'])
     coll = getattr(db, collection_name)
     return coll
+
+
+ooc_types.add(Collection)

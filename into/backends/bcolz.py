@@ -8,7 +8,7 @@ from toolz import keyfilter
 import datashape
 from datashape import discover
 from ..append import append
-from ..convert import convert
+from ..convert import convert, ooc_types
 from ..create import create
 from ..resource import resource
 from ..chunks import chunks, Chunks
@@ -79,3 +79,6 @@ def resource_bcolz(uri, dshape=None, **kwargs):
             return ctable(x, rootdir=uri, **keyfilter(keywords.__contains__, kwargs))
         else:
             return carray(x, rootdir=uri, **keyfilter(keywords.__contains__, kwargs))
+
+
+ooc_types |= set((carray, ctable))

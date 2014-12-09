@@ -1,7 +1,8 @@
 import os
 import networkx as nx
 
-from .convert import convert
+from toolz import pluck
+from .convert import convert, ooc_types
 from .append import append
 from .utils import cls_name
 
@@ -17,6 +18,13 @@ for a, b in convert.graph.edges():
 for a, b in append.funcs:
     if b is not object and a != b:
         dg.add_edge(cls_name(b), cls_name(a))
+
+
+import pdb; pdb.set_trace()
+# Color edges
+for n in convert.graph.nodes() + list(pluck(0, append.funcs)):
+    if issubclass(n, tuple(ooc_types)):
+        dg.node[cls_name(n)]['color'] = 'red'
 
 # Convert to pydot
 p = nx.to_pydot(dg)
