@@ -10,7 +10,7 @@ import pandas.util.testing as tm
 from datashape import null, dshape, Record, var
 
 import blaze as bz
-from blaze import compute, into, by, discover, dshape, summary, Data
+from blaze import compute, into, by, discover, dshape, summary, Data, symbol
 from kdbpy import QTable
 from kdbpy.compute.qtable import qtypes
 
@@ -99,6 +99,29 @@ def test_simple_by(t, q, df):
 
     result = into(pd.DataFrame, compute(expr, q))
     expected = compute(expr, df).set_index('name', drop=True).fillna(0)
+    tm.assert_frame_equal(result, expected)
+
+
+def test_multikey_by(t, q, df):
+    expr = by(t[['name', 'on']], amount=t.amount.mean())
+    qresult = compute(expr, q)
+    result = qresult.reset_index()
+    expected = compute(expr, df)
+    tm.assert_frame_equal(result, expected)
+
+
+@pytest.mark.xfail(raises=AttributeError, reason='Cannot nest joins in '
+                   'groupbys yet')
+def test_join_then_by(kdb):
+    dates_data = kdb['dates'].data
+    dates = symbol('dates', discover(dates_data))
+    prices_data = kdb['prices'].data
+    prices = symbol('prices', discover(prices_data))
+    joined = bz.join(dates, prices, on_left='account', on_right='account')
+    expr = by(joined.date, amt_mean=joined.amount.mean())
+    result = compute(expr, {dates: dates_data, prices: prices_data})
+    expected = compute(expr, {dates: kdb.eval('dates'),
+                              prices: kdb.eval('prices')})
     tm.assert_frame_equal(result, expected)
 
 
