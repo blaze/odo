@@ -36,7 +36,7 @@ for SQL interation and ``h5py`` for HDF5 interaction.  It migrates data between
 a network of known transformations.  That network is below:
 
 
-.. image:: https://github.com/ContinuumIO/into/blob/master/docs/images/conversions.png
+.. image:: https://github.com/ContinuumIO/into/blob/master/doc/images/conversions.png
    :width: 400 px
    :alt: into conversions
 
