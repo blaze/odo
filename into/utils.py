@@ -62,3 +62,18 @@ def cls_name(cls):
         return cls.__name__
     else:
         return cls.__module__.split('.')[0] + '.' + cls.__name__
+
+
+@contextmanager
+def filetext(text, extension='', open=open, mode='wt'):
+    with tmpfile(extension=extension) as filename:
+        f = open(filename, mode=mode)
+        try:
+            f.write(text)
+        finally:
+            try:
+                f.close()
+            except AttributeError:
+                pass
+
+        yield filename

@@ -25,3 +25,7 @@ try:
      from .backends import mongo
 except:
     pass
+try:
+     from .backends import csv
+except:
+    pass

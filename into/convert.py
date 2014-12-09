@@ -7,6 +7,7 @@ from collections import Iterator
 import datashape
 from .core import NetworkDispatcher
 from .chunks import chunks
+from .numpy_dtype import dshape_to_numpy
 
 convert = NetworkDispatcher('convert')
 
@@ -14,18 +15,18 @@ convert = NetworkDispatcher('convert')
 def identity(x, **kwargs):
     return x
 
-@convert.register(np.recarray, pd.DataFrame, cost=1.0)
-def convert_recarray(df, **kwargs):
+@convert.register(np.ndarray, pd.DataFrame, cost=1.0)
+def dataframe_to_numpy(df, **kwargs):
     return df.to_records(index=False)
 
 
-@convert.register(pd.DataFrame, np.recarray, cost=1.0)
-def recarray_to_dataframe(df, **kwargs):
+@convert.register(pd.DataFrame, np.ndarray, cost=1.0)
+def numpy_to_dataframe(df, **kwargs):
     return pd.DataFrame(df)
 
 
 @convert.register(pd.Series, np.ndarray, cost=1.0)
-def recarray_to_dataframe(x, **kwargs):
+def numpy_to_series(x, **kwargs):
     return pd.Series(x)
 
 
@@ -74,8 +75,8 @@ def iterable_to_tuple(x, **kwargs):
 
 
 @convert.register(np.ndarray, list, cost=1.0)
-def list_to_recarray(seq, dshape=None, **kwargs):
-    dtype = datashape.to_numpy_dtype(dshape)
+def list_to_numpy(seq, dshape=None, **kwargs):
+    dtype = dshape_to_numpy(dshape)
     return np.array(seq, dtype=dtype)
 
 

@@ -1,6 +1,7 @@
-from into.convert import convert
+from into.convert import convert, list_to_numpy
 from into.chunks import chunks
 from datashape import discover
+import datashape
 import numpy as np
 import pandas as pd
 
@@ -46,3 +47,15 @@ def test_iterator_and_numpy_chunks():
 
     L = convert(list, c)
     assert L == [1, 2, 3]
+
+
+def test_list_to_numpy():
+    ds = datashape.dshape('3 * int32')
+    x = list_to_numpy([1, 2, 3], dshape=ds)
+    assert (x == [1, 2, 3]).all()
+    assert isinstance(x, np.ndarray)
+
+
+    ds = datashape.dshape('3 * ?int32')
+    x = list_to_numpy([1, None, 3], dshape=ds)
+    assert np.isnan(x[1])
