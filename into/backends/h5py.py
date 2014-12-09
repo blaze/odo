@@ -77,6 +77,8 @@ def create_h5py_file(cls, path=None, dshape=None, **kwargs):
 
 @append.register(h5py.Dataset, np.ndarray)
 def append_h5py(dset, x, **kwargs):
+    if not sum(x.shape):
+        return dset
     shape = list(dset.shape)
     shape[0] += len(x)
     dset.resize(shape)
@@ -109,7 +111,7 @@ def h5py_to_numpy(dset, force=False, **kwargs):
 def h5py_to_numpy_chunks(dset, chunksize=2**20, **kwargs):
     def load():
         for i in range(0, dset.shape[0], chunksize):
-            yield dset[i*chunksize:(i+1) * chunksize]
+            yield dset[i: i + chunksize]
     return chunks(np.ndarray)(load)
 
 

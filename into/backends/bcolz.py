@@ -52,7 +52,7 @@ def append_carray_with_chunks(a, c, **kwargs):
 def bcolz_to_numpy_chunks(x, chunksize=2**20, **kwargs):
     def load():
         for i in range(0, x.shape[0], chunksize):
-            yield x[i*chunksize: (i+1) * chunksize]
+            yield x[i: i + chunksize]
     return chunks(np.ndarray)(load)
 
 

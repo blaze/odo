@@ -24,8 +24,10 @@ def test_convert():
 
 
 def test_chunks():
-    c = convert(chunks(np.ndarray), a)
+    c = convert(chunks(np.ndarray), a, chunksize=2)
     assert isinstance(c, chunks(np.ndarray))
+    assert len(list(c)) == 2
+    assert eq(list(c)[1], [3, 4])
 
     assert eq(convert(np.ndarray, c), a[:])
 
