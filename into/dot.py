@@ -30,12 +30,14 @@ p = nx.to_pydot(dg)
 
 
 # Write out as dot
-def dot_graph(filename='convert'):
+def dot_graph(filename='conversions'):
     with open(filename + '.dot', 'w') as f:
         f.write(p.to_string())
 
     os.system('dot -Tpdf %s.dot -o %s.pdf' % (filename, filename))
-    print("Wrote convert graph to %s.pdf" % filename)
+    print("Writing graph to %s.pdf" % filename)
+    os.system('dot -Tpng %s.dot -o %s.png' % (filename, filename))
+    print("Writing graph to %s.png" % filename)
 
 if __name__ == '__main__':
     dot_graph()
