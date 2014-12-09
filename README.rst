@@ -31,26 +31,29 @@ Into leverages the existing Python ecosystem.  The example above uses
 Method
 ------
 
-Into accomplishes data migration migration through a network of small data
-conversion functions It migrates data between a network of known
-transformations.  That network is below:
+Into migrates data using network of small data conversion functions between
+type pairs. That network is below:
 
 .. image:: https://github.com/ContinuumIO/into/blob/master/doc/images/conversions.png
    :width: 400 px
    :alt: into conversions
 
-Each node is a container type (like ``DataFrame``) and each directed edge is a
-function that transforms or appends one container into or onto another.  Edges
-are annotated with relative costs.  This network approach allows ``into`` to
-select the shortest path between any two types (thank you networkx_).
-These functions often leverage non-Pythonic systems like NumPy arrays or native
-``CSV->SQL`` loading functions.  ``Into`` is not dependent on Python iterators.
+Each node is a container type (like ``pandas.DataFrame`` or
+``sqlalchemy.Table``) and each directed edge is a function that transforms or
+appends one container into or onto another.  We annotate these functions/edges
+with relative costs.
 
-This network approach is also robust.  Into can work around missing edges or
-types due to lack of dependencies or runtime errors.  This network approach is
-extensible.  It is easy to write small functions and register them to the
-overall graph as in the following example showing how we convert from
-``pandas.DataFrame`` to a ``numpy.ndarray``.
+This network approach allows ``into`` to select the shortest path between any
+two types (thank you networkx_).  For performance reasons these functions often
+leverage non-Pythonic systems like NumPy arrays or native ``CSV->SQL`` loading
+functions.  Into is not dependent on only Python iterators.
+
+This network approach is also robust.  When libraries go missing or runtime
+errors occur ``into`` can work around these holes and find new paths.
+
+This network approach is extensible.  It is easy to write small functions and
+register them to the overall graph.  In the following example showing how we
+convert from ``pandas.DataFrame`` to a ``numpy.ndarray``.
 
 .. code-block:: python
 
@@ -62,12 +65,19 @@ overall graph as in the following example showing how we convert from
 
 We decorate ``convert`` functions with the target and source types as well as a
 relative cost.  This decoration establishes a contract that the underlying
-function must fulfill, in this case with the ``DataFrame.to_records`` method.
-Similar functions exist for ``append``, to add to existing data, and
+function must fulfill, in this case with the fast ``DataFrame.to_records``
+method.  Similar functions exist for ``append``, to add to existing data, and
 ``resource`` for URI resolution.
 
+* ``convert``: Transform dataset into new container
+* ``append``: Add dataset onto existing container
+* ``resource``: Given a URI find the appropriate data resource
+* ``into``: Call one of the above based on inputs.
+  E.g. ``into(list, (1, 2, 3)) -> convert(list, (1, 2, 3))``
+  while ``L = []; into(L, (1, 2, 3)) -> append(L, (1, 2, 3))``
+
 Finally, ``into`` is also aware of which containers must reside in memory and
-which do not.  In the graph above the red-colored nodes are robust to
+which do not.  In the graph above the *red-colored* nodes are robust to
 larger-than-memory datasets.  Transformations between two out-of-core datasets
 operate only on the subgraph of the red nodes.
 
