@@ -6,6 +6,7 @@ import datashape
 from datashape import discover
 from datashape.predicates import isrecord
 from collections import Iterator
+from toolz import concat
 import pandas
 import pandas as pd
 import os
@@ -30,16 +31,16 @@ class CSV(object):
 
     path : str
         Path to file on disk
-    header : bool
+    has_header : bool
         If the csv file has a header or not
     encoding : str (default utf-8)
         File encoding
     kwargs : other...
         Various choices about dialect
     """
-    def __init__(self, path, header=None, encoding='utf-8', **kwargs):
+    def __init__(self, path, has_header=None, encoding='utf-8', **kwargs):
         self.path = path
-        self.header = header
+        self.has_header = has_header
         self.encoding = encoding
         self.dialect = {d: kwargs[d] for d in dialect_terms if d in kwargs}
 
@@ -55,9 +56,9 @@ compressed_open = {'gz': gzip.open, 'bz2': bz2.BZ2File}
 @append.register(CSV, pd.DataFrame)
 def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
     if not os.path.exists(c.path) or os.path.getsize(c.path) == 0:
-        header = kwargs.pop('header', c.header)
+        has_header = kwargs.pop('has_header', c.has_header)
     else:
-        header = False
+        has_header = False
 
     sep = kwargs.get('sep', kwargs.get('delimiter', c.dialect.get('delimiter', ',')))
     encoding=kwargs.get('encoding', c.encoding)
@@ -68,7 +69,7 @@ def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
         f = c.path
 
     df.to_csv(f, mode='a',
-                    header=header,
+                    header=has_header,
                     index=False,
                     sep=sep,
                     encoding=encoding)
@@ -93,14 +94,23 @@ def ext(path):
 
 @convert.register(pd.DataFrame, CSV)
 def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
-    header = kwargs.get('header', c.header)
+    has_header = kwargs.get('has_header', c.has_header)
+    if has_header is False:
+        header = None
+    elif has_header is True:
+        header = 0
+    else:
+        header = 'infer'
     sep = kwargs.get('sep', kwargs.get('delimiter', c.dialect.get('delimiter', ',')))
     encoding = kwargs.get('encoding', c.encoding)
-    dtypes, parse_dates = dshape_to_pandas(dshape)
-    if isrecord(dshape.measure):
-        names = kwargs.get('names', dshape.measure.names)
+    if dshape:
+        dtypes, parse_dates = dshape_to_pandas(dshape)
+        if isrecord(dshape.measure):
+            names = kwargs.get('names', dshape.measure.names)
+        else:
+            names = kwargs.get('names')
     else:
-        names = kwargs.get('names')
+        dtypes = parse_dates = names = None
     compression={'gz': 'gzip',
                  'bz2': 'bz2'}.get(ext(c.path))
 
@@ -123,15 +133,36 @@ def CSV_to_chunks_of_dataframes(c, chunksize=2**20, **kwargs):
 
 @discover.register(CSV)
 def discover_csv(c):
-    df = pd.read_csv(c.path, chunksize=50).get_chunk()
+    df = csv_to_DataFrame(c, chunksize=50).get_chunk()
     df = coerce_datetimes(df)
 
     return datashape.var * discover(df).subshape[0]
 
 
-@resource.register('.+\.(csv|tsv|ssv|data|dat)(.bz)?')
+@resource.register('.+\.(csv|tsv|ssv|data|dat)(\.gz|\.bz)?')
 def resource_csv(uri, **kwargs):
     return CSV(uri, **kwargs)
+
+
+from glob import glob
+@resource.register('.+\*.+')
+def resource_glob(uri, **kwargs):
+    filenames = glob(uri)
+    r = resource(filenames[0], **kwargs)
+    return chunks(type(r))([resource(u, **kwargs) for u in glob(uri)])
+
+    # Alternatively check each time we iterate?
+    def _():
+        return (resource(u, **kwargs) for u in glob(uri))
+    return chunks(type(r))(_)
+
+
+@convert.register(chunks(pd.DataFrame), chunks(CSV))
+def convert_glob_of_csvs_to_chunks_of_dataframes(csvs, **kwargs):
+    def _():
+        return concat(convert(chunks(pd.DataFrame), csv, **kwargs) for csv in csvs)
+    return chunks(pd.DataFrame)(_)
+
 
 
 """

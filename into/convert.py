@@ -101,7 +101,7 @@ def iterator_to_list(seq, **kwargs):
 
 @convert.register(Iterator, (chunks(pd.DataFrame), chunks(np.ndarray)))
 def numpy_chunks_to_iterator(c, **kwargs):
-    return concat(convert(Iterator, chunk) for chunk in c)
+    return concat(convert(Iterator, chunk, **kwargs) for chunk in c)
 
 
 @convert.register(chunks(np.ndarray), Iterator)
@@ -128,11 +128,11 @@ def iterator_to_DataFrame_chunks(seq, chunksize=1024, **kwargs):
 
 @convert.register(chunks(np.ndarray), chunks(pd.DataFrame))
 def chunked_pandas_to_chunked_numpy(c, **kwargs):
-    return chunks(np.ndarray)(lambda: (convert(np.ndarray, chunk) for chunk in c))
+    return chunks(np.ndarray)(lambda: (convert(np.ndarray, chunk, **kwargs) for chunk in c))
 
 @convert.register(chunks(pd.DataFrame), chunks(np.ndarray))
 def chunked_numpy_to_chunked_pandas(c, **kwargs):
-    return chunks(pd.DataFrame)(lambda: (convert(pd.DataFrame, chunk) for chunk in c))
+    return chunks(pd.DataFrame)(lambda: (convert(pd.DataFrame, chunk, **kwargs) for chunk in c))
 
 
 ooc_types |= set([Iterator, Chunks])

@@ -29,7 +29,8 @@ class NetworkDispatcher(object):
         return _transform(self.graph, *args, **kwargs)
 
 
-def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types, **kwargs):
+def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types,
+        **kwargs):
     """ Transform source to target type using graph of transformations """
     x = source
     excluded_edges = excluded_edges or set()
@@ -42,6 +43,8 @@ def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types, 
             x = f(x, **kwargs)
         return x
     except Exception as e:
+        if kwargs.get('raise_on_errors'):
+            raise
         print("Failed on %s -> %s. Working around" %
                     (A.__name__,  B.__name__))
         print("Error message:\n%s" % e.message)

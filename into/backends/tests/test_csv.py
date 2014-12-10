@@ -18,7 +18,7 @@ def test_csv():
 
 def test_csv_append():
     with tmpfile('.csv') as fn:
-        csv = CSV(fn)
+        csv = CSV(fn, has_header=False)
 
         data = [('Alice', 100), ('Bob', 200)]
         append(csv, data)
@@ -75,7 +75,7 @@ def test_pandas_write():
     with tmpfile('.csv') as fn:
         ds = datashape.dshape('var * {name: string, amount: int}')
         data = [('Alice', 1), ('Bob', 2)]
-        csv = CSV(fn, header=True)
+        csv = CSV(fn, has_header=True)
         append(csv, data, dshape=ds)
 
         with open(fn) as f:
@@ -94,7 +94,7 @@ def test_pandas_write_gzip():
     with tmpfile('.csv.gz') as fn:
         ds = datashape.dshape('var * {name: string, amount: int}')
         data = [('Alice', 1), ('Bob', 2)]
-        csv = CSV(fn, header=True)
+        csv = CSV(fn, has_header=True)
         append(csv, data, dshape=ds)
 
         with gzip.open(fn) as f:
@@ -105,9 +105,25 @@ def test_pandas_write_gzip():
 
 def test_pandas_loads_in_datetimes_naively():
     with filetext('name,when\nAlice,2014-01-01\nBob,2014-02-02') as fn:
-        csv = CSV(fn, header=True)
+        csv = CSV(fn, has_header=True)
         ds = datashape.dshape('var * {name: string, when: datetime}')
         assert discover(csv) == ds
 
         df = convert(pd.DataFrame, csv)
         assert df.dtypes['when'] == 'M8[ns]'
+
+
+def test_pandas_discover_on_gzipped_files():
+    with filetext('name,when\nAlice,2014-01-01\nBob,2014-02-02',
+            open=gzip.open, extension='.csv.gz') as fn:
+        csv = CSV(fn, has_header=True)
+        ds = datashape.dshape('var * {name: string, when: datetime}')
+        assert discover(csv) == ds
+
+
+def test_discover_csv_files_without_header():
+    with filetext('Alice,2014-01-01\nBob,2014-02-02') as fn:
+        csv = CSV(fn, has_header=False)
+        df = convert(pd.DataFrame, csv)
+        assert len(df) == 2
+        assert 'Alice' not in list(df.columns)

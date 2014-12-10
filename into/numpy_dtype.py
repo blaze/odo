@@ -50,7 +50,7 @@ def dshape_to_numpy(ds):
     if isinstance(ds, DataShape):
         ds = ds.measure
     if isrecord(ds):
-        return np.dtype([(name, unit_to_dtype(typ))
+        return np.dtype([(str(name), unit_to_dtype(typ))
             for name, typ in zip(ds.names, ds.types)])
     if isinstance(ds, Tuple):
         return np.dtype([('f%d' % i, unit_to_dtype(typ))
