@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import networkx as nx
 
+from math import log
 from toolz import pluck
 from .convert import convert, ooc_types
 from .append import append
@@ -13,13 +14,15 @@ from .utils import cls_name
 dg = nx.DiGraph()
 for a, b in convert.graph.edges():
     cost = convert.graph.edge[a][b]['cost']
-    dg.add_edge(cls_name(a), cls_name(b), cost=cost)
+    dg.add_edge(cls_name(a), cls_name(b),
+                cost=cost,
+                penwidth=max(log(1./(cost + 0.06)), 1))
 
 
 # Edges from Append
 for a, b in append.funcs:
     if b is not object and a != b:
-        dg.add_edge(cls_name(b), cls_name(a))
+        dg.add_edge(cls_name(b), cls_name(a), color='blue')
 
 
 # Color edges
