@@ -84,3 +84,10 @@ def test_numpy_launders_python_types():
     ds = datashape.dshape('3 * int32')
     x = convert(np.ndarray, ['1', '2', '3'], dshape=ds)
     assert convert(list, x) == [1, 2, 3]
+
+
+def test_numpy_asserts_type_after_dataframe():
+    df = pd.DataFrame({'name': ['Alice'], 'amount': [100]})
+    ds = datashape.dshape('1 * {name: string[10, "ascii"], amount: int32}')
+    x = convert(np.ndarray, df, dshape=ds)
+    assert discover(x) == ds

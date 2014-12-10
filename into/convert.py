@@ -21,8 +21,12 @@ def identity(x, **kwargs):
     return x
 
 @convert.register(np.ndarray, pd.DataFrame, cost=1.0)
-def dataframe_to_numpy(df, **kwargs):
-    return df.to_records(index=False)
+def dataframe_to_numpy(df, dshape=None, **kwargs):
+    dtype = dshape_to_numpy(dshape)
+    x = df.to_records(index=False)
+    if x.dtype != dtype:
+        x = x.astype(dtype)
+    return x
 
 
 @convert.register(pd.DataFrame, np.ndarray, cost=1.0)
