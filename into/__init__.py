@@ -35,3 +35,6 @@ try:
      from .backends import csv
 except:
     pass
+
+
+__version__ = '0.1.0'
