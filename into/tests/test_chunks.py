@@ -22,7 +22,7 @@ def test_chunks_is_memoized():
 
 
 def test_callables():
-    cl = CL(lambda: (range(3) for i in range(3)))
+    cl = CL(lambda: (list(range(3)) for i in range(3)))
 
     assert first(cl) == [0, 1, 2]
     assert first(cl) == [0, 1, 2]

@@ -80,7 +80,7 @@ def test_create_partially_present_dataset():
         f2 = create(h5py.File, dshape=ds2, path=fn)
 
         assert f.filename == f2.filename
-        assert f.keys() == f2.keys()
+        assert list(f.keys()) == list(f2.keys())
         assert f['y'].dtype == 'i4'
 
 

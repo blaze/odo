@@ -13,6 +13,11 @@ convert = NetworkDispatcher('convert')
 
 
 def identity(x, **kwargs):
+    """
+
+    >>> identity('anything')
+    'anything'
+    """
     return x
 
 @convert.register(np.ndarray, pd.DataFrame, cost=1.0)
