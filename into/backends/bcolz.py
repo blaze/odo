@@ -51,6 +51,7 @@ def convert_bcolz_to_numpy(x, **kwargs):
 def append_carray_with_chunks(a, c, **kwargs):
     for chunk in c:
         append(a, chunk)
+    a.flush()
     return a
 
 
