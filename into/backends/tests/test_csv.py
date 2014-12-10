@@ -1,6 +1,8 @@
+from __future__ import absolute_import, division, print_function
 
 from into.backends.csv import CSV, append, convert, resource, csv_to_DataFrame
 from into.utils import tmpfile, filetext
+from into import into, append, convert, resource, discover
 from collections import Iterator
 import pandas as pd
 import gzip

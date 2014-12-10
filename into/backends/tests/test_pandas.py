@@ -1,6 +1,9 @@
+from __future__ import absolute_import, division, print_function
+
 from into.backends.pandas import discover
 import pandas as pd
 from datashape import dshape
+from into import into, append, convert, resource, discover
 
 data = [('Alice', 100), ('Bob', 200)]
 

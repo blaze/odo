@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function
+
 from toolz import memoize, first
 from datashape import discover, var
 from .utils import cls_name

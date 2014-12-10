@@ -1,7 +1,10 @@
+from __future__ import absolute_import, division, print_function
+
 from into.backends.h5py import append, create, resource, discover, convert
 from contextlib import contextmanager
 from into.utils import tmpfile
 from into.chunks import chunks
+from into import into, append, convert, resource, discover
 import datashape
 import h5py
 import numpy as np
@@ -116,7 +119,6 @@ def test_resource_with_variable_length():
 
 
 def test_copy_with_into():
-    from into import into
     with tmpfile('.hdf5') as fn:
         dset = into(fn + '::/data', [1, 2, 3])
         assert dset.shape == (3,)

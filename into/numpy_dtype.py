@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function
+
 import numpy as np
 from datashape import *
 from datashape.predicates import isscalar, isnumeric

@@ -1,7 +1,9 @@
+from __future__ import absolute_import, division, print_function
+
 import pymongo
 from contextlib import contextmanager
 import datashape
-from into import discover, convert, append, resource
+from into import discover, convert, append, resource, discover
 from into.backends.mongo import *
 from toolz import pluck
 from copy import deepcopy
