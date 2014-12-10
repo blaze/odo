@@ -44,6 +44,7 @@ def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types, 
     except Exception as e:
         print("Failed on %s -> %s. Working around" %
                     (A.__name__,  B.__name__))
+        print("Error message:\n%s" % e.message)
         new_exclusions = excluded_edges | set([(A, B)])
         return _transform(graph, target, source, excluded_edges=new_exclusions, **kwargs)
 
