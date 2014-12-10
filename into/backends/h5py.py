@@ -13,6 +13,7 @@ from ..convert import convert, ooc_types
 from ..create import create
 from ..resource import resource
 from ..chunks import chunks, Chunks
+from ..compatibility import unicode
 
 h5py_attributes = ['chunks', 'compression', 'compression_opts', 'dtype',
                    'fillvalue', 'fletcher32', 'maxshape', 'shape']
