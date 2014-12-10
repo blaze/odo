@@ -1,6 +1,9 @@
+from __future__ import absolute_import, division, print_function
+
 from into.backends.bcolz import (create, append, convert, ctable, carray,
         resource, discover)
 from into.chunks import chunks
+from into import into, append, convert, resource, discover
 import numpy as np
 from into.utils import tmpfile
 import os
@@ -37,10 +40,14 @@ def test_chunks():
 
 def test_append_chunks():
     b = carray(x)
-
     append(b, chunks(np.ndarray)([x, x]))
-
     assert len(b) == len(x) * 3
+
+
+def test_append_other():
+    b = carray(x)
+    append(b, convert(list, x))
+    assert len(b) == 2 * len(x)
 
 
 def test_resource_ctable():
@@ -59,3 +66,25 @@ def test_resource_carray():
 
         assert isinstance(r, carray)
         assert r.dtype == 'i4'
+
+
+y = np.array([('Alice', 100), ('Bob', 200)],
+            dtype=[('name', 'S7'), ('amount', 'i4')])
+
+def test_convert_numpy_to_ctable():
+    b = convert(ctable, y)
+    assert isinstance(b, ctable)
+    assert eq(b[:], y)
+
+
+def test_resource_existing_carray():
+    with tmpfile('.bcolz') as fn:
+        os.remove(fn)
+        r = resource(fn, dshape=discover(y))
+        append(r, y)
+        r.flush()
+
+        r2 = resource(fn)
+        assert eq(r2[:], y)
+
+
