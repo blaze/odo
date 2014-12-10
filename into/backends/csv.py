@@ -17,6 +17,7 @@ from ..convert import convert, ooc_types
 from ..resource import resource
 from ..chunks import chunks
 from ..numpy_dtype import dshape_to_pandas
+from .pandas import coerce_datetimes
 
 dialect_terms = '''delimiter doublequote escapechar lineterminator quotechar
 quoting skipinitialspace strict'''.split()
@@ -123,6 +124,7 @@ def CSV_to_chunks_of_dataframes(c, chunksize=2**20, **kwargs):
 @discover.register(CSV)
 def discover_csv(c):
     df = pd.read_csv(c.path, chunksize=50).get_chunk()
+    df = coerce_datetimes(df)
 
     return datashape.var * discover(df).subshape[0]
 

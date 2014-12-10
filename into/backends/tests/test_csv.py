@@ -101,3 +101,13 @@ def test_pandas_write_gzip():
             s = f.read()
             assert 'name' in s
             assert 'Alice,1' in s
+
+
+def test_pandas_loads_in_datetimes_naively():
+    with filetext('name,when\nAlice,2014-01-01\nBob,2014-02-02') as fn:
+        csv = CSV(fn, header=True)
+        ds = datashape.dshape('var * {name: string, when: datetime}')
+        assert discover(csv) == ds
+
+        df = convert(pd.DataFrame, csv)
+        assert df.dtypes['when'] == 'M8[ns]'
