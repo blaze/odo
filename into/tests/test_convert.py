@@ -79,3 +79,8 @@ def test_chunks_numpy_pandas():
     assert isinstance(num, chunks(np.ndarray))
     assert all(isinstance(chunk, np.ndarray) for chunk in num)
 
+
+def test_numpy_launders_python_types():
+    ds = datashape.dshape('3 * int32')
+    x = convert(np.ndarray, ['1', '2', '3'], dshape=ds)
+    assert convert(list, x) == [1, 2, 3]
