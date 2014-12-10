@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from into.backends.csv import CSV, append, convert, resource, csv_to_DataFrame
-from into.utils import tmpfile, filetext
+from into.utils import tmpfile, filetext, filetexts
 from into import into, append, convert, resource, discover
 from collections import Iterator
 import pandas as pd
@@ -127,3 +127,12 @@ def test_discover_csv_files_without_header():
         df = convert(pd.DataFrame, csv)
         assert len(df) == 2
         assert 'Alice' not in list(df.columns)
+
+
+def test_glob():
+    d = {'accounts1.csv': 'name,when\nAlice,100\nBob,200',
+         'accounts2.csv': 'name,when\nAlice,300\nBob,400'}
+    with filetexts(d) as fns:
+        r = resource('accounts*.csv', has_header=True)
+        assert convert(list, r) == [('Alice', 100), ('Bob', 200),
+                                    ('Alice', 300), ('Bob', 400)]

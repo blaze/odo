@@ -147,9 +147,9 @@ def resource_csv(uri, **kwargs):
 from glob import glob
 @resource.register('.+\*.+')
 def resource_glob(uri, **kwargs):
-    filenames = glob(uri)
+    filenames = sorted(glob(uri))
     r = resource(filenames[0], **kwargs)
-    return chunks(type(r))([resource(u, **kwargs) for u in glob(uri)])
+    return chunks(type(r))([resource(u, **kwargs) for u in sorted(glob(uri))])
 
     # Alternatively check each time we iterate?
     def _():
