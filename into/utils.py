@@ -6,6 +6,14 @@ import tempfile
 import os
 
 
+def raises(err, lamda):
+    try:
+        lamda()
+        return False
+    except err:
+        return True
+
+
 def expand_tuples(L):
     """
 

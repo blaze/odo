@@ -81,6 +81,14 @@ def test_pandas_write():
         with open(fn) as f:
             assert 'name' in f.read()
 
+        # Doesn't write header twice
+        append(csv, data, dshape=ds)
+        with open(fn) as f:
+            s = f.read()
+            assert s.count('name') == 1
+
+
+
 
 def test_pandas_write_gzip():
     with tmpfile('.csv.gz') as fn:

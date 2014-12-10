@@ -123,3 +123,12 @@ def test_copy_with_into():
         dset = into(fn + '::/data', [1, 2, 3])
         assert dset.shape == (3,)
         assert eq(dset[:], [1, 2, 3])
+
+
+def test_varlen_dtypes():
+    y = np.array([('Alice', 100), ('Bob', 200)],
+                dtype=[('name', 'O'), ('amount', 'i4')])
+    with tmpfile('.hdf5') as fn:
+        dset = into(fn + '::/data', y)
+
+        assert into(list, dset) == into(list, dset)

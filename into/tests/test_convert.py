@@ -46,8 +46,9 @@ def test_dataframe_and_series():
 def test_iterator_and_numpy_chunks():
     c = iterator_to_numpy_chunks([1, 2, 3], chunksize=2)
     assert isinstance(c, chunks(np.ndarray))
-    assert isinstance(first(c), np.ndarray)
+    assert all(isinstance(chunk, np.ndarray) for chunk in c)
 
+    c = iterator_to_numpy_chunks([1, 2, 3], chunksize=2)
     L = convert(list, c)
     assert L == [1, 2, 3]
 
@@ -62,3 +63,19 @@ def test_list_to_numpy():
     ds = datashape.dshape('3 * ?int32')
     x = list_to_numpy([1, None, 3], dshape=ds)
     assert np.isnan(x[1])
+
+
+def test_chunks_numpy_pandas():
+    x = np.array([('Alice', 100), ('Bob', 200)],
+                 dtype=[('name', 'S7'), ('amount', 'i4')])
+    n = chunks(np.ndarray)([x, x])
+
+    pan = convert(chunks(pd.DataFrame), n)
+    num = convert(chunks(np.ndarray), pan)
+
+    assert isinstance(pan, chunks(pd.DataFrame))
+    assert all(isinstance(chunk, pd.DataFrame) for chunk in pan)
+
+    assert isinstance(num, chunks(np.ndarray))
+    assert all(isinstance(chunk, np.ndarray) for chunk in num)
+

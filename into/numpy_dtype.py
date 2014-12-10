@@ -15,6 +15,8 @@ def unit_to_dtype(ds):
     dtype('float64')
     >>> unit_to_dtype('string')
     dtype('O')
+    >>> unit_to_dtype('?datetime')
+    dtype('<M8[us]')
     """
     if isinstance(ds, str):
         ds = dshape(ds)
