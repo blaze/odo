@@ -44,7 +44,9 @@ def test_keys(ktq, rq, sq, q):
 def test_discover_kq(kq, ktq, rq, sq, q):
     result = discover(kq)
     expected = dshape("""{
+  dates: var * {account: string, date: date},
   kt: var * {house: string, id: int64, amount: float64},
+  prices: var * {account: string, amount: float64},
   rt: var * {name: string, tax: float64, street: string},
   st: var * {name: string, jobcode: int64, tree: string, alias: string},
   t: var * {name: string, id: int64, amount: float64, when: datetime, on: date}
