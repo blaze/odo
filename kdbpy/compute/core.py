@@ -277,8 +277,16 @@ def compute_up(expr, data, **kwargs):
     else:
         child = data
         constraints = q.List()
+
+    if not isinstance(expr.grouper, (Projection, Field, DateTime)):
+        raise NotImplementedError('Grouping only allowed on Projection, Field '
+                                  'and DateTime expressions')
     grouper = compute(expr.grouper, child)
-    grouper = q.Dict([(q.Symbol(expr.grouper._name), grouper)])
+
+    if hasattr(grouper, 'aggregates'):  # we have multiple grouping keys
+        grouper = grouper.aggregates
+    else:
+        grouper = q.Dict([(q.Symbol(expr.grouper._name), grouper)])
     aggregates = compute(expr.apply, child).aggregates
     select = q.select(child, q.List(constraints), grouper, aggregates)
     return desubs(select, child.s)
