@@ -6,7 +6,7 @@ k: 6
 t: ([] name: `Bob`Alice`Joe`Smithers`Smithers`Alice;
        id: til k;
        amount: k ? 10.0;
-       when: 2013.12.05D22:23:12
+       when: 2003.12.05D22:23:12
              2005.03.04D03:24:45.514
              2005.02.28D01:58:04.338
              2004.01.25D18:03:47.234
