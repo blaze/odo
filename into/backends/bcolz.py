@@ -24,6 +24,7 @@ def discover_bcolz(c, **kwargs):
 @append.register((ctable, carray), np.ndarray)
 def numpy_append_to_bcolz(a, b, **kwargs):
     a.append(b)
+    a.flush()
     return a
 
 
@@ -32,17 +33,17 @@ def numpy_append_to_bcolz(a, b, **kwargs):
     return append(a, convert(np.ndarray, b), **kwargs)
 
 
-@convert.register(ctable, np.ndarray)
+@convert.register(ctable, np.ndarray, cost=2.0)
 def convert_numpy_to_bcolz_ctable(x, **kwargs):
     return ctable(x, **keyfilter(keywords.__contains__, kwargs))
 
 
-@convert.register(carray, np.ndarray)
+@convert.register(carray, np.ndarray, cost=2.0)
 def convert_numpy_to_bcolz_carray(x, **kwargs):
     return carray(x, **keyfilter(keywords.__contains__, kwargs))
 
 
-@convert.register(np.ndarray, (carray, ctable))
+@convert.register(np.ndarray, (carray, ctable), cost=1.0)
 def convert_bcolz_to_numpy(x, **kwargs):
     return x[:]
 
@@ -55,7 +56,7 @@ def append_carray_with_chunks(a, c, **kwargs):
     return a
 
 
-@convert.register(chunks(np.ndarray), (ctable, carray))
+@convert.register(chunks(np.ndarray), (ctable, carray), cost=1.2)
 def bcolz_to_numpy_chunks(x, chunksize=2**20, **kwargs):
     def load():
         for i in range(0, x.shape[0], chunksize):

@@ -188,7 +188,7 @@ def dshape_to_alchemy(dshape):
             % dshape)
 
 
-@convert.register(Iterator, sa.Table)
+@convert.register(Iterator, sa.Table, cost=300.0)
 def sql_to_iterator(t, **kwargs):
     engine = t.bind
     with engine.connect() as conn:

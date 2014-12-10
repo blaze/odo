@@ -99,7 +99,7 @@ def append_h5py(dset, x, **kwargs):
     return append(dset, convert(chunks(np.ndarray), x, **kwargs), **kwargs)
 
 
-@convert.register(np.ndarray, h5py.Dataset)
+@convert.register(np.ndarray, h5py.Dataset, cost=3.0)
 def h5py_to_numpy(dset, force=False, **kwargs):
     if dset.size > 1e9:
         raise MemoryError("File size is large: %0.2f GB.\n"
@@ -108,7 +108,7 @@ def h5py_to_numpy(dset, force=False, **kwargs):
         return dset[:]
 
 
-@convert.register(chunks(np.ndarray), h5py.Dataset)
+@convert.register(chunks(np.ndarray), h5py.Dataset, cost=3.0)
 def h5py_to_numpy_chunks(dset, chunksize=2**20, **kwargs):
     def load():
         for i in range(0, dset.shape[0], chunksize):

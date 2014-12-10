@@ -92,7 +92,7 @@ def ext(path):
     return e.lstrip('.')
 
 
-@convert.register(pd.DataFrame, CSV)
+@convert.register(pd.DataFrame, CSV, cost=20.0)
 def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
     has_header = kwargs.get('has_header', c.has_header)
     if has_header is False:
@@ -125,7 +125,7 @@ def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
                              chunksize=chunksize)
 
 
-@convert.register(chunks(pd.DataFrame), CSV)
+@convert.register(chunks(pd.DataFrame), CSV, cost=10.0)
 def CSV_to_chunks_of_dataframes(c, chunksize=2**20, **kwargs):
     return chunks(pd.DataFrame)(
             lambda: iter(csv_to_DataFrame(c, chunksize=chunksize, **kwargs)))
@@ -157,12 +157,11 @@ def resource_glob(uri, **kwargs):
     return chunks(type(r))(_)
 
 
-@convert.register(chunks(pd.DataFrame), chunks(CSV))
+@convert.register(chunks(pd.DataFrame), chunks(CSV), cost=10.0)
 def convert_glob_of_csvs_to_chunks_of_dataframes(csvs, **kwargs):
     def _():
         return concat(convert(chunks(pd.DataFrame), csv, **kwargs) for csv in csvs)
     return chunks(pd.DataFrame)(_)
-
 
 
 """

@@ -43,7 +43,7 @@ def _into_iter_mongodb(coll, columns=None, dshape=None):
     return columns, pluck(columns, seq)
 
 
-@convert.register(Iterator, Collection)
+@convert.register(Iterator, Collection, cost=500.0)
 def collection_to_iterator(coll, columns=None, dshape=None, **kwargs):
     columns, seq = _into_iter_mongodb(coll, columns=columns, dshape=dshape)
     return seq
