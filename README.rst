@@ -34,7 +34,7 @@ Method
 Into migrates data using network of small data conversion functions between
 type pairs. That network is below:
 
-.. image:: https://github.com/ContinuumIO/into/blob/master/doc/images/conversions.png
+.. image:: https://raw.githubusercontent.com/ContinuumIO/into/master/doc/images/conversions.png
    :width: 400 px
    :alt: into conversions
 
