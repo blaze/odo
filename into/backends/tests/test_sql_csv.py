@@ -1,5 +1,7 @@
 from into.backends.sql_csv import *
-from into import resource
+from into import resource, into
+import datashape
+from into.utils import tmpfile
 
 
 def normalize(s):
@@ -29,7 +31,7 @@ def test_sqlite_load():
 
 def test_mysql_load():
     assert normalize(copy_command('mysql', tbl, csv)) == normalize(r"""
-            LOAD DATA '' INFILE '/var/tmp/myfile.csv'
+            LOAD DATA  INFILE '/var/tmp/myfile.csv'
             INTO TABLE my_table
             CHARACTER SET utf-8
             FIELDS
@@ -38,3 +40,16 @@ def test_mysql_load():
                 ESCAPED BY '\'
             LINES TERMINATED BY '\n\r'
             IGNORE 1 LINES;""")
+
+
+def test_into_sqlite():
+    data = [('Alice', 100), ('Bob', 200)]
+    ds = datashape.dshape('var * {name: string, amount: int}')
+
+    with tmpfile('.db') as dbpath:
+        with tmpfile('.csv') as csvpath:
+            csv = into(csvpath, data, dshape=ds)
+            sql = resource('sqlite:///%s::mytable' % dbpath, dshape=ds)
+            append_csv_to_sql_table(sql, csv)
+
+            assert into(list, sql) == data

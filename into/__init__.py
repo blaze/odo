@@ -39,6 +39,10 @@ try:
      from .backends import csv
 except:
     pass
+try:
+     from .backends import sql_csv
+except:
+    pass
 
 
 restart_ordering() # Restart multipledispatch ordering and do ordering
