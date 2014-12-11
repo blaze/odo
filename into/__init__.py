@@ -9,6 +9,7 @@ from .append import append
 from .create import create
 from .resource import resource
 from .into import into
+from .drop import drop
 from datashape import discover
 
 try:
