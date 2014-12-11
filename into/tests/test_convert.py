@@ -65,6 +65,13 @@ def test_list_to_numpy():
     assert np.isnan(x[1])
 
 
+def test_list_to_numpy_on_tuples():
+    data = [['a', 1], ['b', 2], ['c', 3]]
+    ds = datashape.dshape('var * (string[1], int32)')
+    x = list_to_numpy(data, dshape=ds)
+    assert convert(list, x) == [('a', 1), ('b', 2), ('c', 3)]
+
+
 def test_chunks_numpy_pandas():
     x = np.array([('Alice', 100), ('Bob', 200)],
                  dtype=[('name', 'S7'), ('amount', 'i4')])

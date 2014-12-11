@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import pandas as pd
+from datashape.predicates import isscalar
 from toolz import concat, curry, partition_all
 from collections import Iterator
 import datashape
@@ -86,6 +87,8 @@ def iterable_to_tuple(x, **kwargs):
 
 @convert.register(np.ndarray, list, cost=10.0)
 def list_to_numpy(seq, dshape=None, **kwargs):
+    if seq and isinstance(seq[0], list) and not isscalar(dshape):
+        seq = list(map(tuple, seq))
     dtype = dshape_to_numpy(dshape)
     return np.array(seq, dtype=dtype)
 
