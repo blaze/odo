@@ -112,8 +112,9 @@ def numpy_chunks_to_iterator(c, **kwargs):
 def iterator_to_numpy_chunks(seq, chunksize=1024, **kwargs):
     seq2 = partition_all(chunksize, seq)
     first, rest = next(seq2), seq2
+    x = convert(np.ndarray, first, **kwargs)
     def _():
-        yield convert(np.ndarray, first, **kwargs)
+        yield x
         for i in rest:
             yield convert(np.ndarray, i, **kwargs)
     return chunks(np.ndarray)(_)
@@ -123,8 +124,9 @@ def iterator_to_numpy_chunks(seq, chunksize=1024, **kwargs):
 def iterator_to_DataFrame_chunks(seq, chunksize=1024, **kwargs):
     seq2 = partition_all(chunksize, seq)
     first, rest = next(seq2), seq2
+    df = convert(pd.DataFrame, first, **kwargs)
     def _():
-        yield convert(pd.DataFrame, first, **kwargs)
+        yield df
         for i in rest:
             yield convert(pd.DataFrame, i, **kwargs)
     return chunks(pd.DataFrame)(_)
