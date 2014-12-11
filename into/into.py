@@ -10,7 +10,6 @@ from datashape.predicates import isdimension
 
 into = Dispatcher('into')
 
-
 @into.register(type, object)
 def into_type(a, b, **kwargs):
     return convert(a, b, **kwargs)
@@ -18,6 +17,31 @@ def into_type(a, b, **kwargs):
 
 @into.register(object, object)
 def into_object(a, b, **kwargs):
+    """ Push one dataset into another
+
+    Examples
+    --------
+
+    >>> # Convert things into new things
+    >>> L = into(list, (1, 2, 3))
+    >>> L
+    [1, 2, 3]
+
+    >>> # Add things onto existing things
+    >>> _ = into(L, (1, 2, 3))
+    >>> L
+    [1, 2, 3, 4, 5, 6]
+
+    >>> # Specify things with strings
+    >>> into('myfile.csv', [('Alice', 1), ('Bob', 2)])  # doctest: +SKIP
+
+    See Also
+    --------
+
+    into.convert.convert    - Convert things into new things
+    into.append.append      - Add things onto existing things
+    into.resource.resource  - Specify things with strings
+    """
     return append(a, b, **kwargs)
 
 
