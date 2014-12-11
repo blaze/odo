@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from into.backends.csv import CSV, append, convert, resource, csv_to_DataFrame
 from into.utils import tmpfile, filetext, filetexts
 from into import into, append, convert, resource, discover
+from into.compatibility import unicode
 from collections import Iterator
 import os
 import pandas as pd
@@ -172,3 +173,12 @@ def test_header_argument_set_with_or_without_header():
 
     with filetext('Alice,100\nBob,200', extension='csv') as fn:
         assert into(list, fn) == [('Alice', 100), ('Bob', 200)]
+
+
+def test_first_csv_establishes_consistent_dshape():
+    d = {'accounts1.csv': 'name,when\nAlice,one\nBob,two',
+         'accounts2.csv': 'name,when\nAlice,300\nBob,400'}
+    with filetexts(d) as fns:
+        L = into(list, 'accounts*.csv')
+        assert len(L) == 4
+        assert all(isinstance(val, (str, unicode)) for name, val in L)
