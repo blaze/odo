@@ -4,6 +4,7 @@ from into.backends.csv import CSV, append, convert, resource, csv_to_DataFrame
 from into.utils import tmpfile, filetext, filetexts
 from into import into, append, convert, resource, discover
 from collections import Iterator
+import os
 import pandas as pd
 import gzip
 import datashape
@@ -121,6 +122,12 @@ def test_pandas_discover_on_gzipped_files():
         assert discover(csv) == ds
 
 
+def test_csv_into_list():
+    with filetext('name,val\nAlice,100\nBob,200', extension='csv') as fn:
+        L = into(list, fn)
+        assert L == [('Alice', 100), ('Bob', 200)]
+
+
 def test_discover_csv_files_without_header():
     with filetext('Alice,2014-01-01\nBob,2014-02-02') as fn:
         csv = CSV(fn, has_header=False)
@@ -145,7 +152,23 @@ def test_pandas_csv_naive_behavior_results_in_columns():
                        [4, 'Denis',   400],
                        [5, 'Edith',  -500]], columns=['id', 'name', 'amount'])
     with tmpfile('.csv') as fn:
+        os.remove(fn)
         into(fn, df)
 
         with open(fn) as f:
             assert next(f).strip() == 'id,name,amount'
+
+
+def test_discover_csv_without_columns():
+    with filetext('Alice,100\nBob,200', extension='csv') as fn:
+        csv = CSV(fn)
+        ds = discover(csv)
+        assert '100' not in str(ds)
+
+
+def test_header_argument_set_with_or_without_header():
+    with filetext('name,val\nAlice,100\nBob,200', extension='csv') as fn:
+        assert into(list, fn) == [('Alice', 100), ('Bob', 200)]
+
+    with filetext('Alice,100\nBob,200', extension='csv') as fn:
+        assert into(list, fn) == [('Alice', 100), ('Bob', 200)]

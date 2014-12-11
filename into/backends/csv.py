@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import csv
 
+import re
 import datashape
 from datashape import discover
 from datashape.predicates import isrecord
@@ -40,8 +41,11 @@ class CSV(object):
     """
     def __init__(self, path, has_header='no-input', encoding='utf-8', **kwargs):
         self.path = path
-        if has_header == 'no-input' and not os.path.exists(path):
-            self.has_header = True
+        if has_header == 'no-input':
+            if not os.path.exists(path):
+                self.has_header = True
+            else:
+                self.has_header = None
         else:
             self.has_header = has_header
         self.encoding = encoding
@@ -104,8 +108,10 @@ def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
         header = 0
     else:
         header = 'infer'
+
     sep = kwargs.get('sep', kwargs.get('delimiter', c.dialect.get('delimiter', ',')))
     encoding = kwargs.get('encoding', c.encoding)
+
     if dshape:
         dtypes, parse_dates = dshape_to_pandas(dshape)
         if isrecord(dshape.measure):
@@ -114,8 +120,17 @@ def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
             names = kwargs.get('names')
     else:
         dtypes = parse_dates = names = None
+
     compression={'gz': 'gzip',
                  'bz2': 'bz2'}.get(ext(c.path))
+
+    # See read_csv docs for header for reasoning
+    if names:
+        if pd.read_csv(c.path, encoding=encoding, compression=compression,
+                nrows=1).columns.equals(pd.Index(names)):
+            header = 0
+        else:
+            header = None
 
     return pandas.read_csv(c.path,
                              header=header,
@@ -138,6 +153,10 @@ def CSV_to_chunks_of_dataframes(c, chunksize=2**20, **kwargs):
 def discover_csv(c):
     df = csv_to_DataFrame(c, chunksize=50).get_chunk()
     df = coerce_datetimes(df)
+    if (not list(df.columns) == list(range(len(df.columns)))
+        and any(re.match('^[-\d_]*$', c) for c in df.columns)):
+        df = csv_to_DataFrame(c, chunksize=50, has_header=False).get_chunk()
+        df = coerce_datetimes(df)
 
     return datashape.var * discover(df).subshape[0]
 
