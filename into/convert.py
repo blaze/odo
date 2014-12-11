@@ -9,6 +9,7 @@ from .core import NetworkDispatcher, ooc_types
 from .chunks import chunks, Chunks
 from .numpy_dtype import dshape_to_numpy
 
+
 convert = NetworkDispatcher('convert')
 
 
