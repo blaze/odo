@@ -6,6 +6,7 @@ import re
 import datashape
 from datashape import discover
 from datashape.predicates import isrecord
+from datashape.dispatch import dispatch
 from collections import Iterator
 from toolz import concat
 import pandas
@@ -184,6 +185,11 @@ def convert_glob_of_csvs_to_chunks_of_dataframes(csvs, **kwargs):
     def _():
         return concat(convert(chunks(pd.DataFrame), csv, **kwargs) for csv in csvs)
     return chunks(pd.DataFrame)(_)
+
+
+@dispatch(CSV)
+def drop(c):
+    os.unlink(c.path)
 
 
 """

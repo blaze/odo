@@ -5,6 +5,7 @@ from pymongo.collection import Collection
 from collections import Iterator
 from datashape import discover
 from datashape.predicates import isdimension
+from datashape.dispatch import dispatch
 from toolz import take, partition_all, concat, pluck
 import copy
 import re
@@ -98,3 +99,8 @@ def _resource_mongo(d, collection_name):
 
 
 ooc_types.add(Collection)
+
+
+@dispatch(Collection)
+def drop(m):
+    m.drop()

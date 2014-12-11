@@ -4,6 +4,7 @@ import datashape
 from datashape import (DataShape, Record, Mono, dshape, to_numpy,
         to_numpy_dtype, discover)
 from datashape.predicates import isrecord, iscollection
+from datashape.dispatch import dispatch
 import h5py
 import numpy as np
 from toolz import assoc, keyfilter
@@ -131,6 +132,16 @@ def resource_hdf5(uri, datapath=None, dshape=None, **kwargs):
         return f[olddatapath]
     else:
         return f
+
+
+@dispatch((h5py.Group, h5py.Dataset))
+def drop(h):
+    del h.file[h.name]
+
+
+@dispatch(h5py.File)
+def drop(h):
+    os.remove(h.filename)
 
 
 ooc_types.add(h5py.Dataset)
