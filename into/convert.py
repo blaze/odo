@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from datashape.predicates import isscalar
 from toolz import concat, curry, partition_all
-from collections import Iterator
+from collections import Iterator, Iterable
 import datashape
 from .core import NetworkDispatcher, ooc_types
 from .chunks import chunks, Chunks
@@ -70,8 +70,18 @@ def numpy_chunks_to_numpy(c, **kwargs):
     return np.concatenate(list(c))
 
 
+def ishashable(x):
+    try:
+        hash(x)
+        return True
+    except:
+        return False
+
+
 @convert.register(set, (list, tuple), cost=5.0)
 def iterable_to_set(x, **kwargs):
+    if isinstance(x[0], Iterable) and not ishashable(x):
+        x = map(tuple, x)
     return set(x)
 
 

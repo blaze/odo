@@ -116,3 +116,7 @@ def test_generator_is_iterator():
     g = (1 for i in range(3))
     L = convert(list, g)
     assert L == [1, 1, 1]
+
+
+def test_list_of_lists_to_set_creates_tuples():
+    assert convert(set, [[1], [2]]) == set([(1,), (2,)])
