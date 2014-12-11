@@ -110,3 +110,9 @@ def test_list_to_dataframe_without_datashape():
 
 def test_noop():
     assert convert(list, [1, 2, 3]) == [1, 2, 3]
+
+
+def test_generator_is_iterator():
+    g = (1 for i in range(3))
+    L = convert(list, g)
+    assert L == [1, 1, 1]

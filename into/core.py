@@ -62,6 +62,12 @@ def path(graph, source, target, excluded_edges=None, ooc_types=None):
     if not isinstance(target, type):
         target = type(target)
 
+    if source not in graph:
+        for cls in valid_subclasses:
+            if issubclass(source, cls):
+                source = cls
+                break
+
     # If both source and target are Out-Of-Core types then restrict ourselves
     # to the graph of out-of-core types
     if ooc_types:
@@ -74,6 +80,12 @@ def path(graph, source, target, excluded_edges=None, ooc_types=None):
         result = [(source, target, graph.edge[source][target]['func'])
                     for source, target in zip(pth, pth[1:])]
     return result
+
+
+# Catch-all subclasses
+from collections import Iterator
+import numpy as np
+valid_subclasses = [Iterator, np.ndarray]
 
 
 @contextmanager
