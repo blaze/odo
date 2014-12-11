@@ -109,6 +109,11 @@ def discover_sqlalchemy_engine(engine):
     return DataShape(Record(pairs))
 
 
+@discover.register(sa.engine.RowProxy)
+def discover_row_proxy(rp):
+    return Record(list(zip(rp.keys(), map(discover, rp.values()))))
+
+
 def dshape_to_table(name, ds, metadata=None):
     """
     Create a SQLAlchemy table from a datashape and a name
