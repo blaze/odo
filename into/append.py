@@ -1,9 +1,14 @@
 from __future__ import absolute_import, division, print_function
 
 from multipledispatch import Dispatcher
+from datashape.dispatch import namespace
 from .convert import convert
 
-append = Dispatcher('append')
+
+if 'append' not in namespace:
+    namespace['append'] = Dispatcher('append')
+append = namespace['append']
+
 
 @append.register(object, object)
 def append_not_found(a, b, **kwargs):

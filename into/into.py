@@ -6,9 +6,14 @@ from .convert import convert
 from .append import append
 from .resource import resource
 from datashape import discover, var
+from datashape.dispatch import namespace
 from datashape.predicates import isdimension
 
-into = Dispatcher('into')
+
+if 'into' not in namespace:
+    namespace['into'] = Dispatcher('into')
+into = namespace['into']
+
 
 @into.register(type, object)
 def into_type(a, b, **kwargs):
