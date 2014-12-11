@@ -17,6 +17,11 @@ into = namespace['into']
 
 @into.register(type, object)
 def into_type(a, b, **kwargs):
+    try:
+        if 'dshape' not in kwargs:
+            kwargs['dshape'] = discover(b)
+    except NotImplementedError:
+        pass
     return convert(a, b, **kwargs)
 
 
@@ -47,16 +52,24 @@ def into_object(a, b, **kwargs):
     into.append.append      - Add things onto existing things
     into.resource.resource  - Specify things with strings
     """
+    try:
+        if 'dshape' not in kwargs:
+            kwargs['dshape'] = discover(b)
+    except NotImplementedError:
+        pass
     return append(a, b, **kwargs)
 
 
 @into.register(str, object)
 def into_string(uri, b, **kwargs):
-    if 'dshape' not in kwargs:
-        ds = discover(b)
-        if isdimension(ds[0]):
-            ds = var * ds.subshape[0]
-        kwargs['dshape'] = ds
+    try:
+        if 'dshape' not in kwargs:
+            ds = discover(b)
+            if isdimension(ds[0]):
+                ds = var * ds.subshape[0]
+            kwargs['dshape'] = ds
+    except NotImplementedError:
+        pass
     a = resource(uri, **kwargs)
     return into(a, b, **kwargs)
 

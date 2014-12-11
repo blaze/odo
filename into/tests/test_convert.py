@@ -98,3 +98,15 @@ def test_numpy_asserts_type_after_dataframe():
     ds = datashape.dshape('1 * {name: string[10, "ascii"], amount: int32}')
     x = convert(np.ndarray, df, dshape=ds)
     assert discover(x) == ds
+
+
+def test_list_to_dataframe_without_datashape():
+    data = [('Alice', 100), ('Bob', 200)]
+    df = convert(pd.DataFrame, data)
+    assert isinstance(df, pd.DataFrame)
+    assert list(df.columns) != ['Alice', 100]
+    assert convert(list, df) == data
+
+
+def test_noop():
+    assert convert(list, [1, 2, 3]) == [1, 2, 3]

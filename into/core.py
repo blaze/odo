@@ -34,13 +34,16 @@ def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types,
     """ Transform source to target type using graph of transformations """
     x = source
     excluded_edges = excluded_edges or set()
-    if 'dshape' not in kwargs:
-        kwargs['dshape'] = discover(x)
+    try:
+        if 'dshape' not in kwargs:
+            kwargs['dshape'] = discover(x)
+    except NotImplementedError:
+        pass
     pth = path(graph, type(source), target, excluded_edges=excluded_edges)
     try:
         for (A, B, f) in pth:
             oldx = x
-            x = f(x, **kwargs)
+            x = f(x, excluded_edges=excluded_edges, **kwargs)
         return x
     except Exception as e:
         if kwargs.get('raise_on_errors'):
