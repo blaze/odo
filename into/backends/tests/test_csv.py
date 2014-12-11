@@ -136,3 +136,16 @@ def test_glob():
         r = resource('accounts*.csv', has_header=True)
         assert convert(list, r) == [('Alice', 100), ('Bob', 200),
                                     ('Alice', 300), ('Bob', 400)]
+
+
+def test_pandas_csv_naive_behavior_results_in_columns():
+    df = pd.DataFrame([[1, 'Alice',   100],
+                       [2, 'Bob',    -200],
+                       [3, 'Charlie', 300],
+                       [4, 'Denis',   400],
+                       [5, 'Edith',  -500]], columns=['id', 'name', 'amount'])
+    with tmpfile('.csv') as fn:
+        into(fn, df)
+
+        with open(fn) as f:
+            assert next(f).strip() == 'id,name,amount'

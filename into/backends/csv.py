@@ -38,9 +38,12 @@ class CSV(object):
     kwargs : other...
         Various choices about dialect
     """
-    def __init__(self, path, has_header=None, encoding='utf-8', **kwargs):
+    def __init__(self, path, has_header='no-input', encoding='utf-8', **kwargs):
         self.path = path
-        self.has_header = has_header
+        if has_header == 'no-input' and not os.path.exists(path):
+            self.has_header = True
+        else:
+            self.has_header = has_header
         self.encoding = encoding
         self.dialect = {d: kwargs[d] for d in dialect_terms if d in kwargs}
 
