@@ -1,5 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
+from multipledispatch import halt_ordering, restart_ordering
+
+halt_ordering() # Turn off multipledispatch ordering
+
 from .convert import convert
 from .append import append
 from .create import create
@@ -36,5 +40,7 @@ try:
 except:
     pass
 
+
+restart_ordering() # Restart multipledispatch ordering and do ordering
 
 __version__ = '0.1.0'
