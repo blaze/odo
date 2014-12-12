@@ -191,3 +191,9 @@ def test_first_csv_establishes_consistent_dshape():
         L = into(list, 'accounts*.csv')
         assert len(L) == 4
         assert all(isinstance(val, (str, unicode)) for name, val in L)
+
+
+def test_discover_csv_with_spaces_in_header():
+    with filetext(' name,  val\nAlice,100\nBob,200', extension='csv') as fn:
+        ds = discover(CSV(fn, has_header=True))
+        assert ds.measure.names == ['name', 'val']

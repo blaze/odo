@@ -162,6 +162,8 @@ def discover_csv(c):
         df = csv_to_DataFrame(c, chunksize=50, has_header=False).get_chunk()
         df = coerce_datetimes(df)
 
+    df.columns = [str(c).strip() for c in df.columns]
+
     return datashape.var * discover(df).subshape[0]
 
 
