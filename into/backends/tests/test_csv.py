@@ -99,6 +99,15 @@ def test_pandas_write():
             assert s.count('name') == 1
 
 
+def test_pandas_writes_header_by_default():
+    with tmpfile('.csv') as fn:
+        ds = datashape.dshape('var * {name: string, amount: int}')
+        data = [('Alice', 1), ('Bob', 2)]
+        csv = CSV(fn)
+        append(csv, data, dshape=ds)
+
+        with open(fn) as f:
+            assert 'name' in f.read()
 
 
 def test_pandas_write_gzip():

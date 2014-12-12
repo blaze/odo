@@ -68,6 +68,8 @@ def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
         has_header = kwargs.pop('has_header', c.has_header)
     else:
         has_header = False
+    if has_header is None:
+        has_header = True
 
     sep = kwargs.get('sep', kwargs.get('delimiter', c.dialect.get('delimiter', ',')))
     encoding=kwargs.get('encoding', c.encoding)
