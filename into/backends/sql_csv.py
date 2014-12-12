@@ -64,7 +64,7 @@ def copy_mysql(dialect, tbl, csv):
     delimiter = csv.dialect.get('delimiter', ',')
     quotechar = csv.dialect.get('quotechar', '"')
     escapechar = csv.dialect.get('escapechar', '\\')
-    lineterminator = csv.dialect.get('lineterminator', '\n\r')
+    lineterminator = csv.dialect.get('lineterminator', r'\n\r')
     skiprows = 1 if csv.has_header else 0
     encoding = csv.encoding or 'utf-8'
 

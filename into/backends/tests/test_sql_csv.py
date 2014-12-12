@@ -52,7 +52,7 @@ def test_into_sqlite():
 
     with tmpfile('.db') as dbpath:
         with tmpfile('.csv') as csvpath:
-            csv = into(csvpath, data, dshape=ds)
+            csv = into(csvpath, data, dshape=ds, has_header=False)
             sql = resource('sqlite:///%s::mytable' % dbpath, dshape=ds)
             append_csv_to_sql_table(sql, csv)
 
