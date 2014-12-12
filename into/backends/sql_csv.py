@@ -39,15 +39,18 @@ def copy_postgres(dialect, tbl, csv):
     na_value = ''
     quotechar = csv.dialect.get('quotechar', '"')
     escapechar = csv.dialect.get('escapechar', '\\')
-    header = csv.has_header
+    header = not not csv.has_header
     encoding = csv.encoding or 'utf-8'
 
     statement = """
         COPY {tblname} FROM '{abspath}'
-        (FORMAT {format_str}, DELIMITER E'{delimiter}',
-        NULL '{na_value}', QUOTE '{quotechar}', ESCAPE '{escapechar}',
-        HEADER {header}, ENCODING '{encoding}';
-        """
+            (FORMAT {format_str},
+             DELIMITER E'{delimiter}',
+             NULL '{na_value}',
+             QUOTE '{quotechar}',
+             ESCAPE '{escapechar}',
+             HEADER {header},
+             ENCODING '{encoding}');"""
 
     return statement.format(**locals())
 

@@ -17,9 +17,13 @@ tbl = resource('sqlite:///:memory:::my_table', dshape=ds)
 def test_postgres_load():
     assert normalize(copy_command('postgresql', tbl, csv)) == normalize(r"""
     COPY my_table from '/var/tmp/myfile.csv'
-    (FORMAT csv, DELIMITER E',',
-    NULL '', QUOTE '"', ESCAPE '\',
-    HEADER True, ENCODING 'utf-8';
+        (FORMAT csv,
+         DELIMITER E',',
+         NULL '',
+         QUOTE '"',
+         ESCAPE '\',
+         HEADER True,
+         ENCODING 'utf-8');
     """)
 
 
