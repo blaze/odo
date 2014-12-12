@@ -134,6 +134,9 @@ def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
                                   compression=compression, nrows=1)
         if [n.strip() for n in found_names] == [n.strip() for n in names]:
             header = 0
+        elif (all(re.match('^\s*\D\w*\s*$', n) for n in found_names) and
+                not all(dt == datashape.string for dt in dshape.measure.types)):
+            header = 0
         else:
             header = None
 

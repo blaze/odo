@@ -206,3 +206,13 @@ def test_discover_csv_with_spaces_in_header():
     with filetext(' name,  val\nAlice,100\nBob,200', extension='csv') as fn:
         ds = discover(CSV(fn, has_header=True))
         assert ds.measure.names == ['name', 'val']
+
+
+def test_header_disagrees_with_dshape():
+    ds = datashape.dshape('var * {name: string, bal: int64}')
+    with filetext('name,val\nAlice,100\nBob,200', extension='csv') as fn:
+        csv = CSV(fn, header=True)
+        assert convert(list, csv) == [('Alice', 100), ('Bob', 200)]
+
+        assert list(convert(pd.DataFrame, csv).columns) == ['name', 'val']
+        assert list(convert(pd.DataFrame, csv, dshape=ds).columns) == ['name', 'bal']
