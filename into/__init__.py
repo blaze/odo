@@ -25,6 +25,10 @@ try:
 except:
     pass
 try:
+     from .backends import pytables
+except:
+    pass
+try:
      from .backends import dynd
 except:
     pass
