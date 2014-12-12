@@ -144,6 +144,11 @@ def iterator_to_DataFrame_chunks(seq, chunksize=1024, **kwargs):
     return chunks(pd.DataFrame)(_)
 
 
+@convert.register(tuple, np.record)
+def numpy_record_to_tuple(rec, **kwargs):
+    return rec.tolist()
+
+
 @convert.register(chunks(np.ndarray), chunks(pd.DataFrame), cost=1.0)
 def chunked_pandas_to_chunked_numpy(c, **kwargs):
     return chunks(np.ndarray)(lambda: (convert(np.ndarray, chunk, **kwargs) for chunk in c))
