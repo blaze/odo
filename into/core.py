@@ -45,7 +45,7 @@ def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types,
             oldx = x
             x = f(x, excluded_edges=excluded_edges, **kwargs)
         return x
-    except Exception as e:
+    except NotImplementedError as e:
         if kwargs.get('raise_on_errors'):
             raise
         print("Failed on %s -> %s. Working around" %

@@ -21,12 +21,15 @@ def test_basic():
 def test_convert_is_robust_to_failures():
     foo = NetworkDispatcher('foo')
 
+    def badfunc(*args, **kwargs):
+        raise NotImplementedError()
+
     class A(object): pass
     class B(object): pass
     class C(object): pass
     discover.register((A, B, C))(lambda x: 'int')
     foo.register(B, A, cost=1.0)(lambda x, **kwargs: 1)
-    foo.register(C, B, cost=1.0)(lambda x, **kwargs: x / 0) # note that this errs
+    foo.register(C, B, cost=1.0)(badfunc)
     foo.register(C, A, cost=10.0)(lambda x, **kwargs: 2)
 
     assert foo(C, A()) == 2
