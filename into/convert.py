@@ -60,7 +60,7 @@ def series_to_array(s, **kwargs):
     return np.array(s)
 
 
-@convert.register(list, np.ndarray, cost=15.0)
+@convert.register(list, np.ndarray, cost=10.0)
 def numpy_to_list(x, **kwargs):
     return x.tolist()
 
