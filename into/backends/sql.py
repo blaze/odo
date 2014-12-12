@@ -236,20 +236,23 @@ def resource_sql(uri, *args, **kwargs):
     kwargs2 = keyfilter(keywords(sa.create_engine).__contains__,
                        kwargs)
     engine = sa.create_engine(uri, **kwargs2)
+    ds = kwargs.get('dshape')
     if args and isinstance(args[0], str):
         table_name, args = args[0], args[1:]
         metadata = sa.MetaData(engine)
         metadata.reflect()
         if table_name not in metadata.tables:
-            if 'dshape' in kwargs:
-                t = dshape_to_table(table_name, kwargs['dshape'], metadata)
+            if ds:
+                t = dshape_to_table(table_name, ds, metadata)
                 t.create()
                 return t
             else:
                 raise ValueError("Table does not exist and no dshape provided")
         return metadata.tables[table_name]
-    else:
-        return engine
+
+    if ds:
+        create_from_datashape(engine, ds)
+    return engine
 
 
 @resource.register('impala://.+')

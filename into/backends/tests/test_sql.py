@@ -32,7 +32,7 @@ def test_append_and_convert_round_trip():
     assert convert(list, t) == data
 
 
-def test_resource():
+def test_resource_on_file():
     with tmpfile('.db') as fn:
         uri = 'sqlite:///' + fn
         sql = resource(uri, 'foo', dshape='var * {x: int, y: int}')
@@ -50,6 +50,18 @@ def test_resource_to_engine():
         r = resource(uri)
         assert isinstance(r, sa.engine.Engine)
         assert r.dialect.name == 'sqlite'
+
+
+def test_resource_to_engine_to_create_tables():
+    with tmpfile('.db') as fn:
+        uri = 'sqlite:///' + fn
+        ds = datashape.dshape('{mytable: var * {name: string, amt: int}}')
+        r = resource(uri, dshape=ds)
+        assert isinstance(r, sa.engine.Engine)
+        assert r.dialect.name == 'sqlite'
+
+        assert discover(r) == ds
+
 
 def test_discovery():
     assert discover(sa.String()) == datashape.string
