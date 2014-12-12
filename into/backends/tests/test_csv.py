@@ -73,6 +73,15 @@ def test_pandas_read_supports_gzip():
         assert list(df.columns) == ['name', 'amount']
 
 
+def test_pandas_read_supports_read_csv_kwargs():
+    with filetext('Alice,1\nBob,2') as fn:
+        ds = datashape.dshape('var * {name: string, amount: int}')
+        csv = CSV(fn)
+        df = csv_to_DataFrame(csv, dshape=ds, usecols=['name'])
+        assert isinstance(df, pd.DataFrame)
+        assert convert(list, df) == [('Alice',), ('Bob',)]
+
+
 def test_pandas_write():
     with tmpfile('.csv') as fn:
         ds = datashape.dshape('var * {name: string, amount: int}')

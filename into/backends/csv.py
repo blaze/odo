@@ -8,13 +8,14 @@ from datashape import discover
 from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
 from collections import Iterator
-from toolz import concat
+from toolz import concat, keyfilter
 import pandas
 import pandas as pd
 import os
 import gzip
 import bz2
 
+from ..utils import keywords
 from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
@@ -102,7 +103,7 @@ def ext(path):
 
 @convert.register(pd.DataFrame, CSV, cost=20.0)
 def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
-    has_header = kwargs.get('has_header', c.has_header)
+    has_header = kwargs.pop('has_header', c.has_header)
     if has_header is False:
         header = None
     elif has_header is True:
@@ -110,7 +111,7 @@ def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
     else:
         header = 'infer'
 
-    sep = kwargs.get('sep', kwargs.get('delimiter', c.dialect.get('delimiter', ',')))
+    sep = kwargs.pop('sep', kwargs.pop('delimiter', c.dialect.get('delimiter', ',')))
     encoding = kwargs.get('encoding', c.encoding)
 
     if dshape:
@@ -122,8 +123,8 @@ def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
     else:
         dtypes = parse_dates = names = None
 
-    compression={'gz': 'gzip',
-                 'bz2': 'bz2'}.get(ext(c.path))
+    compression = kwargs.pop('compression',
+            {'gz': 'gzip', 'bz2': 'bz2'}.get(ext(c.path)))
 
     # See read_csv docs for header for reasoning
     if names:
@@ -133,6 +134,7 @@ def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
         else:
             header = None
 
+    kwargs2 = keyfilter(keywords(pandas.read_csv).__contains__, kwargs)
     return pandas.read_csv(c.path,
                              header=header,
                              sep=sep,
@@ -141,7 +143,8 @@ def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
                              parse_dates=parse_dates,
                              names=names,
                              compression=compression,
-                             chunksize=chunksize)
+                             chunksize=chunksize,
+                             **kwargs2)
 
 
 @convert.register(chunks(pd.DataFrame), CSV, cost=10.0)
