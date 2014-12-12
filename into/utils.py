@@ -2,8 +2,10 @@ from __future__ import absolute_import, division, print_function
 
 from contextlib import contextmanager
 import inspect
+import datetime
 import tempfile
 import os
+import numpy as np
 
 
 def raises(err, lamda):
@@ -109,3 +111,25 @@ def filetexts(d, open=open):
     for filename in d:
         if os.path.exists(filename):
             os.remove(filename)
+
+
+def normalize_to_date(dt):
+    if isinstance(dt, datetime.datetime) and not dt.time():
+        return dt.date()
+    else:
+        return dt
+
+
+def assert_allclose(lhs, rhs):
+    for tb in map(zip, lhs, rhs):
+        for left, right in tb:
+            if isinstance(left, (np.floating, float)):
+                # account for nans
+                assert np.all(np.isclose(left, right, equal_nan=True))
+                continue
+            if isinstance(left, datetime.datetime):
+                left = normalize_to_date(left)
+            if isinstance(right, datetime.datetime):
+                right = normalize_to_date(right)
+            assert left == right
+
