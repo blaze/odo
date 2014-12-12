@@ -130,8 +130,9 @@ def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
 
     # See read_csv docs for header for reasoning
     if names:
-        if pd.read_csv(c.path, encoding=encoding, compression=compression,
-                nrows=1).columns.equals(pd.Index(names)):
+        found_names = pd.read_csv(c.path, encoding=encoding,
+                                  compression=compression, nrows=1)
+        if [n.strip() for n in found_names] == [n.strip() for n in names]:
             header = 0
         else:
             header = None
