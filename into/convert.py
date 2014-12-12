@@ -80,7 +80,7 @@ def ishashable(x):
 
 @convert.register(set, (list, tuple), cost=5.0)
 def iterable_to_set(x, **kwargs):
-    if isinstance(x[0], Iterable) and not ishashable(x):
+    if x and isinstance(x[0], Iterable) and not ishashable(x):
         x = map(tuple, x)
     return set(x)
 
@@ -97,7 +97,9 @@ def iterable_to_tuple(x, **kwargs):
 
 @convert.register(np.ndarray, list, cost=10.0)
 def list_to_numpy(seq, dshape=None, **kwargs):
-    if seq and isinstance(seq[0], list) and not isscalar(dshape):
+    if (seq and isinstance(seq[0], Iterable)
+            and not ishashable(seq[0])
+            and not isscalar(dshape)):
         seq = list(map(tuple, seq))
     dtype = dshape_to_numpy(dshape)
     return np.array(seq, dtype=dtype)
