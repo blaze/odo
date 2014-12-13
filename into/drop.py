@@ -18,19 +18,15 @@ def drop(rsrc):
     Examples
     --------
     >>> # Using SQLite
-    >>> from blaze import SQL, into
+    >>> from into import resource, into
     >>> # create a table called 'tb', in memory
-    >>> sql = SQL('sqlite:///:memory:', 'tb',
-    ...           schema='{id: int64, value: float64, categ: string}')
-    >>> data = [(1, 2.0, 'a'), (2, 3.0, 'b'), (3, 4.0, 'c')]
-    >>> sql.extend(data)
+    >>> from datashape import dshape
+    >>> ds = dshape('var * {name: string, amount: int}')
+    >>> sql = resource('sqlite:///:memory:::tb', dshape=ds)
+    >>> into(sql, [('Alice', 100), ('Bob', 200)])
     >>> into(list, sql)
-    [(1, 2.0, 'a'), (2, 3.0, 'b'), (3, 4.0, 'c')]
-    >>> sql.table.exists(sql.engine)
-    True
+    [('Alice', 100), ('Bob', 200)]
     >>> drop(sql)
-    >>> sql.table.exists(sql.engine)
-    False
     """
     raise NotImplementedError("drop not implemented for type %r" %
                               type(rsrc).__name__)

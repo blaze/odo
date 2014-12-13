@@ -10,26 +10,27 @@ from .create import create
 from .resource import resource
 from .into import into
 from .drop import drop
+from .chunks import chunks, Chunks
 from datashape import discover
 
 try:
-     from .backends.pandas import discover
+     from .backends.pandas import pd
 except:
     pass
 try:
-     from .backends import bcolz
+     from .backends.bcolz import bcolz
 except:
     pass
 try:
-     from .backends import h5py
+     from .backends.h5py import h5py
 except:
     pass
 try:
-     from .backends import pytables
+     from .backends.pytables import tables
 except:
     pass
 try:
-     from .backends import dynd
+     from .backends.dynd import nd
 except:
     pass
 try:
@@ -41,7 +42,7 @@ try:
 except:
     pass
 try:
-     from .backends import csv
+     from .backends.csv import CSV
 except:
     pass
 try:
