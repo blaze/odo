@@ -10,8 +10,6 @@ from into.backends.pytables import PyTables, discover
 
 tb = pytest.importorskip('tables')
 
-now = np.datetime64('now').astype('datetime64[us]')
-
 
 x = np.array([(1, 'Alice', 100),
               (2, 'Bob', -200),
@@ -31,17 +29,12 @@ def tbfile():
         yield filename
 
 
-@pytest.fixture
-def raw_dt_data():
-    raw_dt_data = [[1, 'Alice', 100, now],
-                   [2, 'Bob', -200, now],
-                   [3, 'Charlie', 300, now],
-                   [4, 'Denis', 400, now],
-                   [5, 'Edith', -500, now]]
-
-    for i, d in enumerate(raw_dt_data):
-        d[-1] += np.timedelta64(i, 'D')
-    return list(map(tuple, raw_dt_data))
+now = np.datetime64('now').astype('datetime64[us]')
+raw_dt_data = [(1, 'Alice', 100, now),
+               (2, 'Bob', -200, now),
+               (3, 'Charlie', 300, now),
+               (4, 'Denis', 400, now),
+               (5, 'Edith', -500, now)]
 
 
 dt_data = np.array(raw_dt_data, dtype=np.dtype([('id', 'i8'),
@@ -106,7 +99,8 @@ class TestPyTablesLight(object):
         assert filename == tbfile
         assert shape == (0,)
 
-    def test_table_into_ndarray(self, dt_tb, dt_data):
+    @pytest.mark.xfail(reason="Poor datetime support")
+    def test_table_into_ndarray(self, dt_tb):
         t = PyTables(dt_tb, '/dt')
         res = into(np.ndarray, t)
         try:
@@ -119,7 +113,7 @@ class TestPyTablesLight(object):
         finally:
             t._v_file.close()
 
-    def test_ndarray_into_table(self, dt_tb, dt_data):
+    def test_ndarray_into_table(self, dt_tb):
         dtype = ds.from_numpy(dt_data.shape, dt_data.dtype)
         t = PyTables(dt_tb, '/out', dtype)
         try:
@@ -133,7 +127,8 @@ class TestPyTablesLight(object):
         finally:
             t._v_file.close()
 
-    def test_datetime_discovery(self, dt_tb, dt_data):
+    @pytest.mark.xfail(reason="Poor datetime support")
+    def test_datetime_discovery(self, dt_tb):
         t = PyTables(dt_tb, '/dt')
         lhs, rhs = map(discover, (t, dt_data))
         t._v_file.close()
