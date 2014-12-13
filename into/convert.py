@@ -158,4 +158,13 @@ def chunked_numpy_to_chunked_pandas(c, **kwargs):
     return chunks(pd.DataFrame)(lambda: (convert(pd.DataFrame, chunk, **kwargs) for chunk in c))
 
 
+@convert.register(chunks(np.ndarray), chunks(list), cost=10.0)
+def chunked_list_to_chunked_numpy(c, **kwargs):
+    return chunks(np.ndarray)(lambda: (convert(np.ndarray, chunk, **kwargs) for chunk in c))
+
+@convert.register(chunks(list), chunks(np.ndarray), cost=10.0)
+def chunked_numpy_to_chunked_list(c, **kwargs):
+    return chunks(list)(lambda: (convert(list, chunk, **kwargs) for chunk in c))
+
+
 ooc_types |= set([Iterator, Chunks])
