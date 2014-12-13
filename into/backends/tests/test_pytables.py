@@ -3,10 +3,9 @@ import datashape as ds
 import pytest
 
 
-from blaze import into
-from blaze.utils import tmpfile
-from blaze.compatibility import xfail
-from blaze import PyTables, discover
+from into import into
+from into.utils import tmpfile
+from into.backends.pytables import PyTables, discover
 
 
 tb = pytest.importorskip('tables')
@@ -88,12 +87,6 @@ class TestPyTablesLight(object):
     def test_write_no_dshape(self, tbfile):
         with pytest.raises(ValueError):
             PyTables(path=tbfile, datapath='/write_this')
-
-    @xfail(raises=NotImplementedError,
-           reason='PyTables does not support object columns')
-    def test_write_with_bad_dshape(self, tbfile):
-        dshape = '{id: int, name: string, amount: float32}'
-        PyTables(path=tbfile, datapath='/write_this', dshape=dshape)
 
     def test_write_with_dshape(self, tbfile):
         f = tb.open_file(tbfile, mode='a')
