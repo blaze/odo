@@ -6,6 +6,8 @@ python:
     - "3.3"
 
 install:
+    - pip install .
+    - pip install -r recommended-requirements.txt
     - pip install coverage --use-mirrors
 
 script:
