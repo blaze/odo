@@ -5,6 +5,14 @@ python:
     - "3.2"
     - "3.3"
 
+addons:
+  postgresql: "9.3"
+
+services:
+    - mongodb
+    - postgres
+    - mysql
+
 install:
     - pip install .
     - pip install -r recommended-requirements.txt
