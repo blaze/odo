@@ -225,3 +225,11 @@ def test_raise_errors_quickly_on_into_chunks_dataframe():
         csv = CSV(fn, header=True)
         assert raises(Exception,
                 lambda: CSV_to_chunks_of_dataframes(csv, dshape=ds))
+
+
+def test_unused_datetime_columns():
+    ds = datashape.dshape('var * {val: string, when: datetime}')
+    with filetext("val,when\na,2000-01-01\nb,2000-02-02") as fn:
+        csv = CSV(fn, has_header=True)
+        assert convert(list, csv_to_DataFrame(csv, usecols=['val'],
+            squeeze=True, dshape=ds)) == ['a', 'b']

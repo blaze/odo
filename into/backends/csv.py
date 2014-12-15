@@ -125,6 +125,10 @@ def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
     else:
         dtypes = parse_dates = names = None
 
+    usecols = kwargs.pop('usecols', None)
+    if parse_dates and usecols:
+        parse_dates = [col for col in parse_dates if col in usecols]
+
     compression = kwargs.pop('compression',
             {'gz': 'gzip', 'bz2': 'bz2'}.get(ext(c.path)))
 
@@ -150,13 +154,14 @@ def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
                              names=names,
                              compression=compression,
                              chunksize=chunksize,
+                             usecols=usecols,
                              **kwargs2)
 
 
 @convert.register(chunks(pd.DataFrame), CSV, cost=10.0)
 def CSV_to_chunks_of_dataframes(c, chunksize=2**20, **kwargs):
     # test a little chunk to raise errors if they're likely
-    csv_to_DataFrame(c, nrows=10, **kwargs)
+    csv_to_DataFrame(c, nrows=20, **kwargs)
     return chunks(pd.DataFrame)(
             lambda: iter(csv_to_DataFrame(c, chunksize=chunksize, **kwargs)))
 
