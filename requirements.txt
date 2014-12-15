@@ -1,6 +1,6 @@
 datashape
 numpy
-pandas
+pandas > 0.15
 toolz
 multipledispatch
 networkx

@@ -118,10 +118,11 @@ def test_pandas_write_gzip():
         csv = CSV(fn, has_header=True)
         append(csv, data, dshape=ds)
 
-        with gzip.open(fn) as f:
-            s = f.read()
-            assert 'name' in s
-            assert 'Alice,1' in s
+        f = gzip.open(fn)
+        s = f.read()
+        assert 'name' in s
+        assert 'Alice,1' in s
+        f.close()
 
 
 def test_pandas_loads_in_datetimes_naively():

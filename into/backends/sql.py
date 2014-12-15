@@ -82,18 +82,23 @@ def discover_sqlalchemy_table(t):
     return var * Record(list(sum([discover(c).parameters[0] for c in t.columns], ())))
 
 
-@discover.register(sa.engine.base.Engine, str)
-def discover_sqlalchemy_engine_and_string(engine, tablename):
+@dispatch(sa.engine.base.Engine, str)
+def discover(engine, tablename):
     metadata = sa.MetaData()
     metadata.reflect(engine)
     table = metadata.tables[tablename]
     return discover(table)
 
 
-@discover.register(sa.engine.base.Engine)
-def discover_sqlalchemy_engine(engine):
-    metadata = sa.MetaData()
-    metadata.reflect(engine)
+@dispatch(sa.engine.base.Engine)
+def discover(engine):
+    metadata = sa.MetaData(engine)
+    return discover(metadata)
+
+
+@dispatch(sa.MetaData)
+def discover(metadata):
+    metadata.reflect()
     pairs = []
     for name, table in sorted(metadata.tables.items(), key=first):
         try:

@@ -51,7 +51,8 @@ class CSV(object):
         else:
             self.has_header = has_header
         self.encoding = encoding
-        self.dialect = {d: kwargs[d] for d in dialect_terms if d in kwargs}
+        self.dialect = dict((d, kwargs[d]) for d in dialect_terms
+                                           if d in kwargs)
 
 
 @append.register(CSV, object)
