@@ -38,7 +38,7 @@ def into_object(a, b, **kwargs):
     [1, 2, 3]
 
     >>> # Add things onto existing things
-    >>> _ = into(L, (1, 2, 3))
+    >>> _ = into(L, (4, 5, 6))
     >>> L
     [1, 2, 3, 4, 5, 6]
 
