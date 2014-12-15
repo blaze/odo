@@ -135,6 +135,6 @@ def test_datetimes_persist():
 
 
 def test_numpy_to_list_preserves_ns_datetimes():
-    x = np.array([0], dtype='M8[ns]')
+    x = np.array([(0, 0)], dtype=[('a', 'M8[ns]'), ('b', 'i4')])
 
-    assert convert(list, x) == [datetime.datetime(1970, 1, 1, 0, 0)]
+    assert convert(list, x) == [(datetime.datetime(1970, 1, 1, 0, 0), 0)]
