@@ -62,7 +62,16 @@ def series_to_array(s, **kwargs):
 
 @convert.register(list, np.ndarray, cost=10.0)
 def numpy_to_list(x, **kwargs):
-    return x.tolist()
+    dt = None
+    if x.dtype == 'M8[ns]':
+        dt = 'M8[us]' # lose precision when going to Python datetime
+    if x.dtype.fields and any(x.dtype[n] == 'M8[ns]' for n in x.dtype.names):
+        dt = [(n, 'M8[us]' if x.dtype[n] == 'M8[ns]' else x.dtype[n])
+                for n in x.dtype.names]
+    if dt:
+        return x.astype(dt).tolist()
+    else:
+        return x.tolist()
 
 
 @convert.register(np.ndarray, chunks(np.ndarray), cost=1.0)

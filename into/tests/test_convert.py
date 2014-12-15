@@ -3,6 +3,7 @@ from into.chunks import chunks
 from datashape import discover
 from toolz import first
 from collections import Iterator
+import datetime
 import datashape
 import numpy as np
 import pandas as pd
@@ -120,3 +121,20 @@ def test_generator_is_iterator():
 
 def test_list_of_lists_to_set_creates_tuples():
     assert convert(set, [[1], [2]]) == set([(1,), (2,)])
+
+
+def test_datetimes_persist():
+    typs = [list, tuple, pd.Series, np.ndarray, tuple]
+    L = [datetime.datetime.now()] * 3
+    ds = discover(L)
+
+    x = L
+    for cls in typs:
+        x = convert(cls, x)
+        assert discover(x) == ds
+
+
+def test_numpy_to_list_preserves_ns_datetimes():
+    x = np.array([0], dtype='M8[ns]')
+
+    assert convert(list, x) == [datetime.datetime(1970, 1, 1, 0, 0)]
