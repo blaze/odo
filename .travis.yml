@@ -2,8 +2,8 @@ language: python
 python:
     - "2.6"
     - "2.7"
-    - "3.2"
     - "3.3"
+    - "3.4"
 
 addons:
   postgresql: "9.3"
@@ -14,9 +14,28 @@ services:
     - mysql
 
 install:
-    - pip install .
-    - pip install -r recommended-requirements.txt
-    - pip install coverage --use-mirrors
+  # Install conda
+  - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update conda
+
+  # Install dependencies
+  - conda create -n test-environment python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python
+  - source activate test-environment
+
+  # Install PyMongo
+  - pip install pymongo
+
+  # Install MySQL py2.y/3.x
+  - pip install pymysql
+
+  # Install DataShape
+  - pip install --upgrade git+http://github.com/ContinuumIO/datashape
+
+  # For bcolz
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda install unittest2; fi
 
 script:
     - py.test --doctest-modules into
