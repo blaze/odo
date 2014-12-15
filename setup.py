@@ -11,8 +11,8 @@ setup(name='into',
       author_email='mrocklin@continuum.io',
       license='BSD',
       keywords='into data conversion hdf5 sql blaze',
-      packages=['into'],
-      install_requires=open('requirements.txt').split(),
+      packages=['into', 'into/backends'],
+      install_requires=list(open('requirements.txt').read().strip().split('\n')),
       long_description=(open('README.rst').read() if exists('README.rst')
                         else ''),
       zip_safe=False)
