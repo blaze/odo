@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-from into.backends.csv import CSV, append, convert, resource, csv_to_DataFrame
-from into.utils import tmpfile, filetext, filetexts
+from into.backends.csv import (CSV, append, convert, resource,
+        csv_to_DataFrame, CSV_to_chunks_of_dataframes)
+from into.utils import tmpfile, filetext, filetexts, raises
 from into import into, append, convert, resource, discover
 from into.compatibility import unicode
 from collections import Iterator
@@ -216,3 +217,11 @@ def test_header_disagrees_with_dshape():
 
         assert list(convert(pd.DataFrame, csv).columns) == ['name', 'val']
         assert list(convert(pd.DataFrame, csv, dshape=ds).columns) == ['name', 'bal']
+
+
+def test_raise_errors_quickly_on_into_chunks_dataframe():
+    with filetext('name,val\nAlice,100\nBob,foo', extension='csv') as fn:
+        ds = datashape.dshape('var * {name: string, val: int}')
+        csv = CSV(fn, header=True)
+        assert raises(Exception,
+                lambda: CSV_to_chunks_of_dataframes(csv, dshape=ds))

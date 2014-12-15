@@ -155,6 +155,8 @@ def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
 
 @convert.register(chunks(pd.DataFrame), CSV, cost=10.0)
 def CSV_to_chunks_of_dataframes(c, chunksize=2**20, **kwargs):
+    # test a little chunk to raise errors if they're likely
+    csv_to_DataFrame(c, nrows=10, **kwargs)
     return chunks(pd.DataFrame)(
             lambda: iter(csv_to_DataFrame(c, chunksize=chunksize, **kwargs)))
 
