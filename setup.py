@@ -2,10 +2,9 @@
 
 from os.path import exists
 from setuptools import setup
-import into
 
 setup(name='into',
-      version=into.__version__,
+      version='0.1.0',
       description='Data migration utilities',
       url='http://github.com/ContinuumIO/into/',
       author='Matthew Rocklin',
