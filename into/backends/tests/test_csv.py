@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 from into.backends.csv import (CSV, append, convert, resource,
         csv_to_DataFrame, CSV_to_chunks_of_dataframes)
 from into.utils import tmpfile, filetext, filetexts, raises
-from into import into, append, convert, resource, discover
+from into import into, append, convert, resource, discover, dshape
 from into.compatibility import unicode
 from collections import Iterator
 import os
@@ -154,6 +154,13 @@ def test_discover_csv_files_without_header():
         df = convert(pd.DataFrame, csv)
         assert len(df) == 2
         assert 'Alice' not in list(df.columns)
+
+
+def test_discover_csv_yields_string_on_totally_empty_columns():
+    expected = dshape('var * {a: int64, b: string, c: int64}')
+    with filetext('a,b,c\n1,,3\n4,,6\n7,,9') as fn:
+        csv = CSV(fn, has_header=True)
+        assert discover(csv) == expected
 
 
 def test_glob():

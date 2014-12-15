@@ -170,12 +170,18 @@ def CSV_to_chunks_of_dataframes(c, chunksize=2**20, **kwargs):
 def discover_csv(c):
     df = csv_to_DataFrame(c, chunksize=50).get_chunk()
     df = coerce_datetimes(df)
+
     if (not list(df.columns) == list(range(len(df.columns)))
         and any(re.match('^[-\d_]*$', c) for c in df.columns)):
         df = csv_to_DataFrame(c, chunksize=50, has_header=False).get_chunk()
         df = coerce_datetimes(df)
 
     df.columns = [str(c).strip() for c in df.columns]
+
+    # Replace np.nan with None.  Forces type string rather than flaot
+    for col in df.columns:
+        if df[col].count() == 0:
+            df[col] = [None] * len(df)
 
     return datashape.var * discover(df).subshape[0]
 
