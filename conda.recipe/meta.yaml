@@ -1,0 +1,30 @@
+package:
+  name: into
+  version: "0.1.0"
+
+build:
+    number: {{environ.get('BINSTAR_BUILD', 1)}}
+
+requirements:
+  run:
+    - python
+    - numpy
+    - multipledispatch
+    - sqlalchemy
+    - pandas
+    - h5py
+    - datashape
+    - toolz
+    - bcolz
+
+test:
+  requires:
+    - pytest
+    - coverage
+
+  commands:
+    - python -c "import into; into.test()"
+
+about:
+  home: http://into.pydata.org
+  license: BSD
