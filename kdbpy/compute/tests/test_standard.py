@@ -46,7 +46,8 @@ def test_simple_op(daily):
     result = into(pd.DataFrame, qresult)
     df = into(pd.DataFrame, daily)
     expr, daily = swap_resources_into_scope(qresult, {})
-    expected = convert(pd.DataFrame(columns=expr.fields), compute(expr, df))
+    expected = into(pd.DataFrame, compute(expr, df))
+    assert expected.columns.tolist() == ['price']
     tm.assert_frame_equal(result, expected)
 
 
