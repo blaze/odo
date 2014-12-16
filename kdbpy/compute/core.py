@@ -12,7 +12,7 @@ import pandas as pd
 from toolz.compatibility import zip
 from toolz import map, first, second
 
-from into import resource, convert
+from into import resource, convert, into
 from blaze import compute
 
 from blaze.dispatch import dispatch
@@ -131,7 +131,7 @@ def _desubs(expr, t):
 def datetime_to_atom(d, **kwargs):
     # if we have a date only, do the proper q conversion
     if pd.Timestamp(d) == pd.Timestamp(d.date()):
-        return convert(q.Atom, d.date())
+        return into(q.Atom, d.date())
     return q.Atom(d.strftime('%Y.%m.%dD%H:%M:%S.%f000'))
 
 
@@ -173,11 +173,11 @@ def qify(x):
     assert not isinstance(x, Expr), 'input cannot be a blaze expression'
     if isinstance(x, basestring):
         try:
-            return convert(q.Atom, pd.Timestamp(x))
+            return into(q.Atom, pd.Timestamp(x))
         except ValueError:
             return q.List(q.Symbol(x))
     elif isinstance(x, (datetime.date, datetime.datetime)):
-        return convert(q.Atom, x)
+        return into(q.Atom, x)
     else:
         return x
 
@@ -373,6 +373,11 @@ def compute_down(expr, data, **kwargs):
     result = data.eval(result_expr)
     if isinstance(result, pd.Series):
         result.name = expr._name
+        return result.reset_index(drop=True)
+    elif isinstance(result, pd.DataFrame):
+        # drop our index if all of our index's names are None
+        return result.reset_index(drop=all(name is None
+                                           for name in result.index.names))
     return result
 
 
