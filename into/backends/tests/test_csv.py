@@ -244,3 +244,10 @@ def test_unused_datetime_columns():
         csv = CSV(fn, has_header=True)
         assert convert(list, csv_to_DataFrame(csv, usecols=['val'],
             squeeze=True, dshape=ds)) == ['a', 'b']
+
+
+def test_empty_dataframe():
+    with filetext('name,val', extension='csv') as fn:
+        csv = CSV(fn, has_header=True)
+        df = convert(pd.DataFrame, csv)
+        assert isinstance(df, pd.DataFrame)

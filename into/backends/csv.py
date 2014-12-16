@@ -105,7 +105,17 @@ def ext(path):
 
 
 @convert.register(pd.DataFrame, CSV, cost=20.0)
-def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
+def csv_to_DataFrame(c, dshape=None, chunksize=None, nrows=None, **kwargs):
+    try:
+        return _csv_to_DataFrame(c, dshape=dshape,
+                chunksize=chunksize, nrows=nrows, **kwargs)
+    except StopIteration:
+        if nrows:
+            return _csv_to_DataFrame(c, dshape=dshape, chunksize=chunksize, **kwargs)
+        else:
+            raise
+
+def _csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
     has_header = kwargs.pop('has_header', c.has_header)
     if has_header is False:
         header = None
@@ -135,8 +145,13 @@ def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
 
     # See read_csv docs for header for reasoning
     if names:
-        found_names = pd.read_csv(c.path, encoding=encoding,
-                                  compression=compression, nrows=1)
+        try:
+            found_names = pd.read_csv(c.path, encoding=encoding,
+                                      compression=compression, nrows=1)
+        except StopIteration:
+            found_names = pd.read_csv(c.path, encoding=encoding,
+                                      compression=compression)
+
         if [n.strip() for n in found_names] == [n.strip() for n in names]:
             header = 0
         elif (all(re.match('^\s*\D\w*\s*$', n) for n in found_names) and
@@ -177,7 +192,7 @@ def CSV_to_chunks_of_dataframes(c, chunksize=2**20, **kwargs):
 
 @discover.register(CSV)
 def discover_csv(c):
-    df = csv_to_DataFrame(c, chunksize=50).get_chunk()
+    df = csv_to_DataFrame(c, nrows=50)
     df = coerce_datetimes(df)
 
     if (not list(df.columns) == list(range(len(df.columns)))
