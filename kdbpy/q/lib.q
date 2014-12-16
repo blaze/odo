@@ -24,11 +24,14 @@ is_splayed: {[x]
     $[is_long[p]; 0b; not p]}
 
 index_into: {[x; indices]
-    $[is_partitioned[x];
-        .Q.ind[x; indices];
-        $[is_keyed_table[x];
-            x[key[x][indices]]; // have to slice with the index here
-            x[indices]]]}
+    result: $[is_partitioned[x];
+                .Q.ind[x; indices];
+                $[is_keyed_table[x];
+                    x[key[x][indices]]; // have to slice with the index here
+                    x[indices]]];
+    $[is_keyed_table[x];
+        index_into[key[x]; indices]!result;
+        result]}
 
 
 // q repeats if the N of take is larger than the number of rows, so we
