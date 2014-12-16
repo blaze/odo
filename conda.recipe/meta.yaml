@@ -1,0 +1,51 @@
+package:
+  name: into
+  version: !!str 0.1.2
+
+source:
+  fn: into-0.1.2.tar.gz
+  url: https://pypi.python.org/packages/source/i/into/into-0.1.2.tar.gz
+  md5: a8897ffb45ab2dbe73ab29558529b906
+
+requirements:
+  build:
+    - python
+    - setuptools
+    - datashape
+    - numpy
+    - pandas
+    - toolz
+    - multipledispatch
+    - networkx
+
+  run:
+    - python
+    - datashape
+    - numpy
+    - pandas
+    - toolz
+    - multipledispatch
+    - networkx
+
+test:
+  # Python imports
+  imports:
+    - into
+    - into.backends
+
+  # commands:
+    # You can put test commands to be run here.  Use this to test that the
+    # entry points work.
+
+
+  # You can also put a file called run_test.py in the recipe that will be run
+  # at test time.
+
+  # requires:
+    # Put any additional test requirements here.  For example
+    # - nose
+
+about:
+  home: http://github.com/ContinuumIO/into/
+  license: BSD
+  summary: 'Data migration utilities'
