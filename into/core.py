@@ -57,7 +57,7 @@ def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types,
         return _transform(graph, target, source, excluded_edges=new_exclusions, **kwargs)
 
 
-def path(graph, source, target, excluded_edges=None, ooc_types=None):
+def path(graph, source, target, excluded_edges=None, ooc_types=ooc_types):
     """ Path of functions between two types """
     if not isinstance(source, type):
         source = type(source)
