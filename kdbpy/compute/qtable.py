@@ -4,7 +4,6 @@ from datashape import Record, var, bool_, int8, int16, int32, int64
 from datashape import float32, float64, string, date_, datetime_
 from datashape import TimeDelta, null, DataShape
 from blaze import Symbol, discover
-from blaze.dispatch import dispatch
 from kdbpy.util import PrettyMixin
 from kdbpy import q
 
@@ -118,11 +117,11 @@ class QTable(PrettyMixin):
         return []
 
 
-@dispatch(QTable)
-def discover(t):
+@discover.register(QTable)
+def discover_qtable(t):
     return tables(t.engine)[t.tablename].dshape
 
 
-@dispatch(KQ)
-def discover(kq):
+@discover.register(KQ)
+def discover_kq(kq):
     return DataShape(Record([(k, v.dshape) for k, v in tables(kq).items()]))
