@@ -106,6 +106,8 @@ def iterable_to_tuple(x, **kwargs):
 
 @convert.register(np.ndarray, list, cost=10.0)
 def list_to_numpy(seq, dshape=None, **kwargs):
+    if dshape is None:
+        dshape = datashape.discover(seq)
     if (seq and isinstance(seq[0], Iterable)
             and not ishashable(seq[0])
             and not isscalar(dshape)):
