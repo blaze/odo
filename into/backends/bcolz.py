@@ -59,7 +59,10 @@ def append_carray_with_chunks(a, c, **kwargs):
 @convert.register(chunks(np.ndarray), (ctable, carray), cost=1.2)
 def bcolz_to_numpy_chunks(x, chunksize=2**20, **kwargs):
     def load():
-        for i in range(0, x.shape[0], chunksize):
+        first_n = min(1000, chunksize)
+        first = x[:first_n]
+        yield first
+        for i in range(first_n, x.shape[0], chunksize):
             yield x[i: i + chunksize]
     return chunks(np.ndarray)(load)
 
