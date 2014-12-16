@@ -39,7 +39,9 @@ def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types,
             kwargs['dshape'] = discover(x)
     except NotImplementedError:
         pass
-    pth = path(graph, type(source), target, excluded_edges=excluded_edges)
+    pth = path(graph, type(source), target,
+               excluded_edges=excluded_edges,
+               ooc_types=ooc_types)
     try:
         for (A, B, f) in pth:
             oldx = x
