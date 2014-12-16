@@ -91,21 +91,20 @@ def test_simple_by(t, q, df):
     # q) select name, amount_sum: sum amount from t
     expr = by(t.name, amount=t.amount.sum())
     qresult = compute(expr, q)
-    result = into(pd.DataFrame, qresult).reset_index()
+    result = into(pd.DataFrame, qresult)
 
     # q fills NaN reducers with 0
-    expected = compute(expr, df).fillna(0)
+    expected = compute(expr, df)
     tm.assert_frame_equal(result, expected)
 
-    result = into(pd.DataFrame, compute(expr, q))
-    expected = compute(expr, df).set_index('name', drop=True).fillna(0)
+    result = compute(expr, q)
+    expected = compute(expr, df)
     tm.assert_frame_equal(result, expected)
 
 
 def test_multikey_by(t, q, df):
     expr = by(t[['name', 'on']], amount=t.amount.mean())
-    qresult = compute(expr, q)
-    result = qresult.reset_index()
+    result = compute(expr, q)
     expected = compute(expr, df)
     tm.assert_frame_equal(result, expected)
 
@@ -300,32 +299,26 @@ def test_raw_summary(t, q, df):
     tm.assert_series_equal(result.squeeze(), compute(expr, df))
 
 
-def test_simple_summary(t, q):
+def test_simple_summary(t, q, df):
     expr = by(t.name, s=t.amount.sum())
     result = compute(expr, q)
-    qexpected = 'select s: sum amount by name from t'
-    expected = q.engine.eval(qexpected)
-    tm.assert_frame_equal(result.sort_index(axis=1), expected)
+    expected = compute(expr, df)
+    tm.assert_frame_equal(result, expected)
 
 
-def test_twofunc_summary(t, q):
+def test_twofunc_summary(t, q, df):
     expr = by(t.name, s=t.amount.sum(), mn=t.id.mean())
     result = compute(expr, q)
-    qexpected = 'select s: sum amount, mn: avg id by name from t'
-    expected = q.engine.eval(qexpected)
-    tm.assert_frame_equal(result.sort_index(axis=1),
-                          expected.sort_index(axis=1))
+    expected = compute(expr, df)
+    tm.assert_frame_equal(result, expected)
 
 
-def test_complex_summary(t, q):
+def test_complex_summary(t, q, df):
     expr = by(t.name, s=t.amount.sum(), mn=t.id.mean(),
               mx=t.amount.max() + 1)
     result = compute(expr, q)
-    qexpected = ('select s: sum amount, mn: avg id, mx: (max amount) + 1 '
-                 'by name from t')
-    expected = q.engine.eval(qexpected)
-    tm.assert_frame_equal(result.sort_index(axis=1),
-                          expected.sort_index(axis=1))
+    expected = compute(expr, df)
+    tm.assert_frame_equal(result, expected)
 
 
 def test_distinct(t, q, df):
@@ -364,7 +357,6 @@ def test_by_with_where(t, q, df):
     expr = by(r.name, s=r.amount.sum(), m=r.amount.mean())
     result = compute(expr, q)
     expected = compute(expr, df)
-    expected = expected.set_index('name')
     tm.assert_frame_equal(result, expected)
 
 
@@ -373,7 +365,7 @@ def test_by_name(t, q, df):
     name = 'when_day'
     result = compute(expr, q)
     expected = compute(expr, df).rename(columns={'index': name})
-    tm.assert_frame_equal(result, expected.set_index(name))
+    tm.assert_frame_equal(result, expected)
 
 
 def test_by_with_complex_where(t, q, df):
@@ -381,7 +373,6 @@ def test_by_with_complex_where(t, q, df):
     expr = by(r.name, s=r.amount.sum(), m=r.amount.mean())
     result = compute(expr, q)
     expected = compute(expr, df)
-    expected = expected.set_index('name')
     tm.assert_frame_equal(result, expected)
 
 

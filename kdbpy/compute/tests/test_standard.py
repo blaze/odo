@@ -27,7 +27,8 @@ def test_resource_doesnt_bork(daily):
 def test_field(daily):
     qresult = daily.price
     expr, daily = swap_resources_into_scope(qresult, {})
-    expected = compute(expr, into(pd.DataFrame, first(daily.values())))
+    data = daily[expr._child]
+    expected = compute(expr, into(pd.DataFrame, data))
     result = into(pd.Series, qresult)
     result.name = expected.name
     tm.assert_series_equal(result, expected)
@@ -65,10 +66,10 @@ def test_complex_date_op(daily):
                  cnt=daily.price.count(),
                  size=daily.size.sum(),
                  wprice=(daily.size * daily.price).sum() / daily.price.sum())
-    result = sorted(into(list, into(pd.DataFrame, qresult).reset_index()))
+    result = sorted(into(list, qresult))
     expr, daily = swap_resources_into_scope(qresult, {})
     data = daily[expr._child]
-    expected = sorted(compute(expr, into(list, convert(pd.DataFrame, data))))
+    expected = sorted(compute(expr, into(list, data)))
     assert result == expected
 
 
@@ -80,10 +81,10 @@ def test_complex_nondate_op(daily):
                  size=daily.size.sum(),
                  wprice=(daily.size * daily.price).sum() / daily.price.sum())
     assert repr(qresult)
-    result = sorted(into(list, into(pd.DataFrame, qresult).reset_index()))
+    result = sorted(into(list, qresult))
     expr, daily = swap_resources_into_scope(qresult, {})
-    expected = sorted(compute(expr, into(list, convert(pd.DataFrame,
-                                                       first(daily.values())))))
+    data = daily[expr._child]
+    expected = sorted(compute(expr, into(list, data)))
     assert result == expected
 
 
@@ -94,8 +95,8 @@ def test_is_standard(daily):
 def test_by_mean(daily):
     qresult = by(daily.sym, price=daily.price.mean())
     expr, daily = swap_resources_into_scope(qresult, {})
-    expected = compute(expr, into(pd.DataFrame, first(daily.values())))
-    expected = expected.set_index('sym')
+    data = daily[expr._child]
+    expected = compute(expr, into(pd.DataFrame, data))
     result = into(pd.DataFrame, qresult)
     tm.assert_frame_equal(result, expected)
 

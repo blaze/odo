@@ -76,7 +76,7 @@ def test_simple_by(trade):
     expr, data = separate(qexpr)
     result = compute(qexpr)
     expected = compute(expr, trade.data.eval('select from trade'))
-    tm.assert_frame_equal(result, expected.set_index('sym'))
+    tm.assert_frame_equal(result, expected)
 
 
 def test_selection(trade):
