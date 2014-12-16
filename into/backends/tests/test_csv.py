@@ -1,15 +1,17 @@
 from __future__ import absolute_import, division, print_function
 
-from into.backends.csv import (CSV, append, convert, resource,
-        csv_to_DataFrame, CSV_to_chunks_of_dataframes)
-from into.utils import tmpfile, filetext, filetexts, raises
-from into import into, append, convert, resource, discover, dshape
-from into.compatibility import unicode
-from collections import Iterator
+import sys
 import os
 import pandas as pd
 import gzip
 import datashape
+from collections import Iterator
+
+from into.backends.csv import (CSV, append, convert, resource,
+        csv_to_DataFrame, CSV_to_chunks_of_dataframes)
+from into.utils import tmpfile, filetext, filetexts, raises
+from into import into, append, convert, resource, discover, dshape
+from into.compatibility import unicode, skipif
 
 
 def test_csv():
@@ -111,6 +113,7 @@ def test_pandas_writes_header_by_default():
             assert 'name' in f.read()
 
 
+@skipif(sys.version_info[0] == 3)
 def test_pandas_write_gzip():
     with tmpfile('.csv.gz') as fn:
         ds = datashape.dshape('var * {name: string, amount: int}')

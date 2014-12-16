@@ -10,3 +10,12 @@ else:
     unicode = unicode
     map = itertools.imap
     range = xrange
+
+
+def skipif(cond):
+    def _(func):
+        if cond:
+            return None
+        else:
+            return func
+    return _

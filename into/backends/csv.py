@@ -193,7 +193,7 @@ def resource_csv(uri, **kwargs):
 
 
 from glob import glob
-@resource.register('.+\*.+')
+@resource.register('.+\*.+', priority=12)
 def resource_glob(uri, **kwargs):
     filenames = sorted(glob(uri))
     r = resource(filenames[0], **kwargs)
