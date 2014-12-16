@@ -211,7 +211,8 @@ class KQ(PrettyMixin):
         2    NaN   c  NaN
         """
         csv = bz.CSV(filename, encoding=encoding, *args, **kwargs)
-        columns = csv.columns
+        dshape = bz.discover(csv)
+        columns = dshape.measure.names
         params = dict(table=table,
                       columns='; '.join('`$"%s"' % column for column in
                                         columns),
