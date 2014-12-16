@@ -8,7 +8,7 @@ from datashape import discover
 from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
 from collections import Iterator
-from toolz import concat, keyfilter
+from toolz import concat, keyfilter, assoc
 import pandas
 import pandas as pd
 import os
@@ -161,10 +161,18 @@ def csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
 
 @convert.register(chunks(pd.DataFrame), CSV, cost=10.0)
 def CSV_to_chunks_of_dataframes(c, chunksize=2**20, **kwargs):
-    # test a little chunk to raise errors if they're likely
-    csv_to_DataFrame(c, nrows=20, **kwargs)
-    return chunks(pd.DataFrame)(
-            lambda: iter(csv_to_DataFrame(c, chunksize=chunksize, **kwargs)))
+    # Load a small 1000 line DF to start
+    # This helps with rapid viewing of a large CSV file
+    first = csv_to_DataFrame(c, nrows=1000, **kwargs)
+    if len(first) == 1000:
+        rest = csv_to_DataFrame(c, chunksize=chunksize, skiprows=1000, **kwargs)
+    else:
+        rest = []
+    def _():
+        yield first
+        for df in rest:
+            yield df
+    return chunks(pd.DataFrame)(_)
 
 
 @discover.register(CSV)
