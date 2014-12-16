@@ -53,4 +53,4 @@ except:
 
 restart_ordering() # Restart multipledispatch ordering and do ordering
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
