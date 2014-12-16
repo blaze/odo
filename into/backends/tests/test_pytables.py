@@ -133,3 +133,12 @@ class TestPyTablesLight(object):
         lhs, rhs = map(discover, (t, dt_data))
         t._v_file.close()
         assert lhs == rhs
+
+    def test_node_discover(self, dt_tb):
+        root = PyTables(dt_tb, '/')
+        result = discover(root)
+        expected = ds.dshape("""{dt: 5 * {id: int64,
+                                          name: string[7, "A"],
+                                          amount: float64,
+                                          date: float64}}""")
+        assert result == expected.measure

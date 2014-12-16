@@ -29,7 +29,7 @@ def discover_tables_node(n):
 
 @discover.register(tables.Node)
 def discover_tables_node(n):
-    return discover(n2._v_children)  # subclasses dict
+    return discover(n._v_children)  # subclasses dict
 
 
 @discover.register(tables.File)
