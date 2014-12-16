@@ -2,11 +2,6 @@ package:
   name: into
   version: !!str 0.1.2
 
-source:
-  fn: into-0.1.2.tar.gz
-  url: https://pypi.python.org/packages/source/i/into/into-0.1.2.tar.gz
-  md5: a8897ffb45ab2dbe73ab29558529b906
-
 requirements:
   build:
     - python
