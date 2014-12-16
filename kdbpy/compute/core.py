@@ -12,7 +12,8 @@ import pandas as pd
 from toolz.compatibility import zip
 from toolz import map, first, second
 
-from blaze import resource, compute
+from into import resource, convert
+from blaze import compute
 
 from blaze.dispatch import dispatch
 
@@ -126,16 +127,16 @@ def _desubs(expr, t):
                 yield sube
 
 
-@dispatch(q.Atom, datetime.datetime)
-def into(atom, d, **kwargs):
-    # if we have a date only do the proper q conversion
+@convert.register(q.Atom, (pd.Timestamp, datetime.datetime), cost=0.01)
+def datetime_to_atom(d, **kwargs):
+    # if we have a date only, do the proper q conversion
     if pd.Timestamp(d) == pd.Timestamp(d.date()):
-        return into(atom, d.date())
+        return convert(q.Atom, d.date())
     return q.Atom(d.strftime('%Y.%m.%dD%H:%M:%S.%f000'))
 
 
-@dispatch(q.Atom, datetime.date)
-def into(atom, d, **kwargs):
+@convert.register(q.Atom, datetime.date, cost=0.01)
+def date_to_atom(d, **kwargs):
     return q.Atom(d.strftime('%Y.%m.%d'))
 
 
@@ -172,11 +173,11 @@ def qify(x):
     assert not isinstance(x, Expr), 'input cannot be a blaze expression'
     if isinstance(x, basestring):
         try:
-            return into(q.Atom, pd.Timestamp(x))
+            return convert(q.Atom, pd.Timestamp(x))
         except ValueError:
             return q.List(q.Symbol(x))
     elif isinstance(x, (datetime.date, datetime.datetime)):
-        return into(q.Atom, x)
+        return convert(q.Atom, x)
     else:
         return x
 
@@ -355,7 +356,9 @@ def compute_down(expr, data, **kwargs):
         # Return q.Expr, not data
         result_expr = compute(new_expr, {new_leaf: data_leaf})
 
-    return data.eval(result_expr).squeeze()
+    result = data.eval(result_expr).squeeze()
+    result.name = expr._name
+    return result
 
 
 @dispatch(Expr, QTable)
@@ -385,6 +388,6 @@ def resource_kdb(uri, tablename, engine=None, **kwargs):
     return QTable(tablename=tablename, engine=engine, **kwargs)
 
 
-@dispatch(pd.DataFrame, QTable)
-def into(_, t, **kwargs):
+@convert.register(pd.DataFrame, QTable, cost=1.0)
+def into_dataframe_from_qtable(t, **kwargs):
     return t.eval(t.tablename)

@@ -5,9 +5,10 @@ import pandas as pd
 import pandas.util.testing as tm
 
 from toolz import first
+from into import convert, into
 
 import blaze as bz
-from blaze import Data, by, into, compute
+from blaze import Data, by, compute
 from blaze.expr import Field
 from blaze.compute.core import swap_resources_into_scope
 
@@ -28,7 +29,7 @@ def test_field(daily):
     expr, daily = swap_resources_into_scope(qresult, {})
     expected = compute(expr, into(pd.DataFrame, first(daily.values())))
     result = into(pd.Series, qresult)
-    assert result.name == expected.name
+    result.name = expected.name
     tm.assert_series_equal(result, expected)
 
 
@@ -44,7 +45,7 @@ def test_simple_op(daily):
     result = into(pd.DataFrame, qresult)
     df = into(pd.DataFrame, daily)
     expr, daily = swap_resources_into_scope(qresult, {})
-    expected = into(pd.DataFrame(columns=expr.fields), compute(expr, df))
+    expected = convert(pd.DataFrame(columns=expr.fields), compute(expr, df))
     tm.assert_frame_equal(result, expected)
 
 
@@ -66,8 +67,8 @@ def test_complex_date_op(daily):
                  wprice=(daily.size * daily.price).sum() / daily.price.sum())
     result = sorted(into(list, into(pd.DataFrame, qresult).reset_index()))
     expr, daily = swap_resources_into_scope(qresult, {})
-    expected = sorted(compute(expr, into(list, into(pd.DataFrame,
-                                                    first(daily.values())))))
+    data = daily[expr._child]
+    expected = sorted(compute(expr, into(list, convert(pd.DataFrame, data))))
     assert result == expected
 
 
@@ -81,8 +82,8 @@ def test_complex_nondate_op(daily):
     assert repr(qresult)
     result = sorted(into(list, into(pd.DataFrame, qresult).reset_index()))
     expr, daily = swap_resources_into_scope(qresult, {})
-    expected = sorted(compute(expr, into(list, into(pd.DataFrame,
-                                                    first(daily.values())))))
+    expected = sorted(compute(expr, into(list, convert(pd.DataFrame,
+                                                       first(daily.values())))))
     assert result == expected
 
 
@@ -112,7 +113,8 @@ def test_nrows(daily):
 
 def test_nunique(daily):
     expr, data = swap_resources_into_scope(daily.sym.nunique(), {})
-    assert compute(expr, data) == compute(expr, into(pd.Series, daily.sym))
+    expected = into(pd.Series, daily.sym)
+    assert compute(expr, data) == compute(expr, expected)
 
 
 def test_dateattr_nrows(daily):

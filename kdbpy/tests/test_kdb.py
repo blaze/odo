@@ -12,7 +12,7 @@ import pandas.util.testing as tm
 import numpy as np
 import kdbpy
 
-from blaze import CSV, Data
+from blaze import CSV, Data, discover
 
 from qpython.qwriter import QWriterException
 
@@ -226,7 +226,7 @@ e,2010-10-05"""
         with open(fname, 'wb') as f:
             f.write(csvdata)
 
-        dshape = CSV(fname, header=0).dshape
+        dshape = discover(CSV(fname, header=0))
         kdb.read_csv(fname, table=gensym, dshape=dshape)
 
         expected = pd.read_csv(fname, header=0, parse_dates=['date'])
@@ -245,7 +245,7 @@ e,2010-10-05 00:00:01"""
         with open(fname, 'wb') as f:
             f.write(csvdata)
 
-        dshape = CSV(fname, header=0).dshape
+        dshape = discover(CSV(fname, header=0))
         kdb.read_csv(fname, table=gensym, dshape=dshape)
 
         expected = pd.read_csv(fname, header=0, parse_dates=['date'])
@@ -264,7 +264,7 @@ e,2010-10-05D00:00:01"""
         with open(fname, 'wb') as f:
             f.write(csvdata)
 
-        dshape = CSV(fname, header=0).dshape
+        dshape = discover(CSV(fname, header=0))
         kdb.read_csv(fname, table=gensym, dshape=dshape)
 
         date_parser = lambda x: datetime.datetime.strptime(x,
