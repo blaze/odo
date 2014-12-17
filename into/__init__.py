@@ -6,12 +6,12 @@ halt_ordering() # Turn off multipledispatch ordering
 
 from .convert import convert
 from .append import append
-from .create import create
 from .resource import resource
 from .into import into
 from .drop import drop
 from .chunks import chunks, Chunks
 from datashape import discover, dshape
+from collections import Iterator
 
 try:
      from .backends.pandas import pd
