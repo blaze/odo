@@ -12,7 +12,7 @@ import pandas.util.testing as tm
 import numpy as np
 import kdbpy
 
-from blaze import CSV, Data, discover
+from blaze import CSV, Data, discover, Expr
 
 from qpython.qwriter import QWriterException
 
@@ -323,7 +323,7 @@ e,2010-10-05 00:00:01,5,5.0,`e"""  # note the whitespace here
 
 def test_data_getter(kdb):
     data = kdb['t']
-    assert isinstance(data, Data)
+    assert isinstance(data, Expr)
     assert repr(data)
     assert isinstance(kdb['n'], np.integer)
 
@@ -340,7 +340,7 @@ def test_setitem(kdb):
 
 def test_setitem_table(kdb):
     kdb['mydf'] = pd.DataFrame({'a': [1, 2, 3], 'b': [3.0, 4.0, 5.0]})
-    assert isinstance(kdb['mydf'], Data)
+    assert isinstance(kdb['mydf'], Expr)
 
 
 def test_can_load_twice(kdbpar):
