@@ -3,10 +3,11 @@ from __future__ import absolute_import, division, print_function
 import pymongo
 from contextlib import contextmanager
 import datashape
-from into import discover, convert, append, resource, discover
+from into import discover, convert, append, resource, dshape
 from into.backends.mongo import *
 from toolz import pluck
 from copy import deepcopy
+from bson.objectid import ObjectId
 
 
 conn = pymongo.MongoClient()
@@ -31,7 +32,7 @@ bank = ({'name': 'Alice', 'amount': 100},
         {'name': 'Bob', 'amount': 300})
 
 
-dshape = datashape.dshape('var * {name: string, amount: int}')
+ds = dshape('var * {name: string, amount: int}')
 
 
 def test_discover():
@@ -41,9 +42,9 @@ def test_discover():
 
 def test_append_convert():
     with coll([]) as c:
-        append(c, bank, dshape=dshape)
+        append(c, bank, dshape=ds)
 
-        assert convert(list, c, dshape=dshape) == list(pluck(['name', 'amount'], bank))
+        assert convert(list, c, dshape=ds) == list(pluck(['name', 'amount'], bank))
 
 
 def test_resource():
@@ -52,3 +53,12 @@ def test_resource():
     assert coll.database.name == 'db'
     assert coll.database.connection.host == 'localhost'
     assert coll.database.connection.port == 27017
+
+
+def test_multiple_object_ids():
+    data = [{'x': 1, 'y': 2, 'other': ObjectId('1' * 24)},
+            {'x': 3, 'y': 4, 'other': ObjectId('2' * 24)}]
+    with coll(data) as c:
+        assert discover(c) == dshape('2 * {x: int64, y: int64}')
+
+        assert convert(list, c) == [(1, 2), (3, 4)]
