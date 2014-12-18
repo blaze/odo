@@ -2,7 +2,7 @@ import pytest
 
 import pandas.util.testing as tm
 
-from blaze import Data, compute, by
+from blaze import Data, compute, by, discover, symbol
 from blaze.compute.core import swap_resources_into_scope
 
 from qpython.qcollection import QException
@@ -80,7 +80,8 @@ def test_simple_by(trade):
     qexpr = by(trade.sym, w=trade.price.mean())
     expr, data = separate(qexpr)
     result = compute(qexpr)
-    expected = compute(expr, kq.eval('select from trade'))
+    s = symbol('s', discover(kq))
+    expected = compute(expr, {expr._child._child: {'trade': kq.eval('select from trade')}})
     tm.assert_frame_equal(result, expected)
 
 
@@ -89,8 +90,7 @@ def test_selection(trade):
     qexpr = trade[trade.sym == 'AAPL']
     expr, data = separate(qexpr)
     result = compute(qexpr)
-    expected = compute(expr,
-                       kq.eval('select from trade where sym = `AAPL'))
+    expected = compute(expr, {expr._child._child: {'trade': kq.eval('select from trade where sym = `AAPL')}})
     tm.assert_frame_equal(result, expected)
 
 

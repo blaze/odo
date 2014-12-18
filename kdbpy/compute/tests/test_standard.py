@@ -27,8 +27,8 @@ def test_resource_doesnt_bork(daily):
 def test_field(daily):
     qresult = daily.price
     expr, daily = swap_resources_into_scope(qresult, {})
-    data = daily[expr._child]
-    expected = compute(expr, into(pd.DataFrame, data))
+    data = daily[expr._child._child]
+    expected = compute(expr, {expr._child._child: {'daily': into(pd.DataFrame, data['daily'])}})
     result = into(pd.Series, qresult)
     result.name = expected.name
     tm.assert_series_equal(result, expected)
@@ -46,7 +46,9 @@ def test_simple_op(daily):
     result = into(pd.DataFrame, qresult)
     df = into(pd.DataFrame, daily)
     expr, daily = swap_resources_into_scope(qresult, {})
-    expected = into(pd.DataFrame, compute(expr, df))
+    scope = {expr.lhs._child._child: {'daily': df}}
+    dfresult = compute(expr, scope)
+    expected = into(pd.DataFrame, dfresult)
     assert expected.columns.tolist() == ['price']
     tm.assert_frame_equal(result, expected)
 
@@ -69,8 +71,8 @@ def test_complex_date_op(daily):
                  wprice=(daily.size * daily.price).sum() / daily.price.sum())
     result = sorted(into(list, qresult))
     expr, daily = swap_resources_into_scope(qresult, {})
-    data = daily[expr._child]
-    expected = sorted(compute(expr, into(list, data)))
+    data = daily[expr._child._child]
+    expected = sorted(compute(expr, {expr._child._child: {'daily': into(list, data['daily'])}}))
     assert result == expected
 
 
@@ -84,8 +86,8 @@ def test_complex_nondate_op(daily):
     assert repr(qresult)
     result = sorted(into(list, qresult))
     expr, daily = swap_resources_into_scope(qresult, {})
-    data = daily[expr._child]
-    expected = sorted(compute(expr, into(list, data)))
+    data = daily[expr._child._child]
+    expected = sorted(compute(expr, {expr._child._child: {'daily': into(list, data['daily'])}}))
     assert result == expected
 
 
@@ -96,8 +98,8 @@ def test_is_standard(daily):
 def test_by_mean(daily):
     qresult = by(daily.sym, price=daily.price.mean())
     expr, daily = swap_resources_into_scope(qresult, {})
-    data = daily[expr._child]
-    expected = compute(expr, into(pd.DataFrame, data))
+    data = daily[expr._child._child]
+    expected = compute(expr, {expr._child._child: {'daily': into(pd.DataFrame, data['daily'])}})
     result = into(pd.DataFrame, qresult)
     tm.assert_frame_equal(result, expected)
 
@@ -116,7 +118,8 @@ def test_nrows(daily):
 def test_nunique(daily):
     expr, data = swap_resources_into_scope(daily.sym.nunique(), {})
     expected = into(pd.Series, daily.sym)
-    assert compute(expr, data) == compute(expr, expected)
+    child = expr._child._child._child
+    assert compute(expr, data[child]) == compute(expr, {child: {'daily': expected}})
 
 
 def test_dateattr_nrows(daily):
