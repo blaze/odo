@@ -3,7 +3,7 @@ from kdbpy import KQ
 from datashape import Record, var, bool_, int8, int16, int32, int64
 from datashape import float32, float64, string, date_, datetime_
 from datashape import TimeDelta, null, DataShape
-from blaze import Symbol, discover
+from blaze import Symbol, discover, Expr, compute
 from kdbpy.util import PrettyMixin
 from kdbpy import q
 
@@ -59,6 +59,8 @@ def tables(kdb):
 
 
 def qp(t):
+    if isinstance(t, Expr):
+        t = compute(t)
     t = getattr(t, 'data', t)
     return t.engine.eval('.Q.qp[%s]' % t.tablename).item()
 

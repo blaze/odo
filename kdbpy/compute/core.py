@@ -383,14 +383,17 @@ def compute_down(expr, data, **kwargs):
 
 @dispatch(Field, KQ)
 def compute_up(expr, data, **kwargs):
-    return data[expr._name].data
+    return QTable(tablename=expr._name, engine=data)
 
 
 @resource.register('kdb://.+', priority=13)
-def resource_kdb(uri, tablename, engine=None, **kwargs):
+def resource_kdb(uri, tablename=None, engine=None, **kwargs):
     if engine is None:
         engine = KQ(parse_connection_string(uri), start=True)
-    return QTable(tablename=tablename, engine=engine, **kwargs)
+    if tablename is None:
+        return engine
+    else:
+        return QTable(tablename=tablename, engine=engine, **kwargs)
 
 
 @convert.register(pd.DataFrame, QTable, cost=1.0)
