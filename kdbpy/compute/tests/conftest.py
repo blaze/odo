@@ -11,6 +11,11 @@ def t():
 
 
 @pytest.fixture
+def date_t():
+    return bz.symbol('date_t', 'var * {d: date, ts: datetime}')
+
+
+@pytest.fixture
 def rt():
     return bz.symbol('rt', 'var * {name: string, tax: float64, street: string}')
 
@@ -21,21 +26,31 @@ def st():
                      'alias: string}')
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def q(rstring, kdb):
     return QTable(tablename='t', engine=kdb)
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
+def timespan_table(kdb):
+    return QTable(tablename='ts', engine=kdb)
+
+
+@pytest.fixture(scope='module')
+def date_q(kdb):
+    return QTable(tablename='date_t', engine=kdb)
+
+
+@pytest.fixture(scope='module')
 def rq(kdb):
     return QTable(tablename='rt', engine=kdb)
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def sq(rstring, kdb):
     return QTable(tablename='st', engine=kdb)
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def ktq(rstring, kdb):
     return QTable(tablename='kt', engine=kdb)

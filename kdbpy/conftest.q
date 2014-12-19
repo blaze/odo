@@ -1,5 +1,7 @@
 n: 100
 m: 200
+ts: ([] ts: 00:00:00.000000000 + 1 + til 5; amount: til 5)
+date_t: ([] d: 2014.01.01 + til 5; ts: 2014.01.01D00:00:00.000000000 + til 5)
 dates: ([] account: n ? `bofa`citi`capone; date: n ? (2010.01.01 + til 4))
 prices: ([] account: m ? `bofa`citi`capone; amount: m ? 100000.0)
 k: 6
