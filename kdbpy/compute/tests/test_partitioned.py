@@ -10,6 +10,7 @@ from blaze.compute.core import swap_resources_into_scope
 from qpython.qcollection import QException
 
 from kdbpy.compute.qtable import is_partitioned
+from kdbpy.tests import assert_series_equal
 
 
 @pytest.fixture(scope='module')
@@ -53,8 +54,8 @@ def test_field(trade, kdbpar):
     qexpr = trade.price
     expr, data = separate(qexpr)
     result = compute(qexpr)
-    expected = kdbpar.eval('exec price from select price from trade')
-    tm.assert_series_equal(result, expected)
+    expected = kdbpar.eval('select price from trade').squeeze()
+    assert_series_equal(result, expected)
 
 
 @pytest.mark.xfail(raises=QException)
@@ -62,7 +63,7 @@ def test_field_head(trade, kdbpar):
     result = compute(trade.price.head(5))
     query = 'exec price from select price from .Q.ind[trade; til 5]'
     expected = kdbpar.eval(query)
-    tm.assert_series_equal(result, expected)
+    assert_series_equal(result, expected, check_exact=True)
 
 
 @pytest.mark.xfail(raises=QException,
@@ -71,7 +72,7 @@ def test_simple_arithmetic(trade):
     qexpr = trade.price + 1 * 2
     result = compute(qexpr)
     expected = trade.eval('exec price from select ((price + 1) * 2) from trade')
-    tm.assert_series_equal(result, expected)
+    assert_series_equal(result, expected)
 
 
 def test_simple_by(trade, kdbpar):
@@ -91,9 +92,10 @@ def test_selection(trade, kdbpar):
 
 
 @pytest.mark.xfail(raises=QException, reason='not yet implemented')
-def test_nunique(trade):
-    expr, data = swap_resources_into_scope(trade.sym.nunique(), {})
-    assert compute(expr, data) == compute(expr, into(pd.Series, trade.sym))
+def test_nunique(trade, kdbpar):
+    expr = trade.sym.nunique()
+    assert compute(expr) == kdbpar.eval('count distinct exec sym from '
+                                        'select sym from trade')
 
 
 def test_partitioned_nrows_on_virtual_column(quote):
