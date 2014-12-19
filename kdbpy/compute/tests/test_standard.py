@@ -1,11 +1,11 @@
 from __future__ import print_function
+
 import pytest
 
 import pandas as pd
 import pandas.util.testing as tm
 
-from toolz import first
-from into import convert, into
+from into import into
 
 import blaze as bz
 from blaze import Data, by, compute
