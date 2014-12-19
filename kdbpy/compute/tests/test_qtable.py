@@ -51,4 +51,10 @@ def test_discover_kq(kq, ktq, rq, sq, q):
   st: var * {name: string, jobcode: int64, tree: string, alias: string},
   t: var * {name: string, id: int64, amount: float64, when: datetime, on: date}
 }""")
-    assert result == expected
+    assert_db_subset(expected, result)
+
+
+def assert_db_subset(subset, db):
+    inside = set(zip(subset.measure.names, subset.measure.types))
+    dbset = set(zip(db.measure.names, db.measure.types))
+    assert inside < dbset

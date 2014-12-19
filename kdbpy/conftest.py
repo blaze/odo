@@ -47,6 +47,11 @@ def df(kdb):
 
 
 @pytest.fixture
+def date_df(kdb):
+    return kdb.eval('date_t')
+
+
+@pytest.fixture
 def rdf(kdb):
     return kdb.eval('rt')
 
