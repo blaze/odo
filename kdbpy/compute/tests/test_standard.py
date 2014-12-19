@@ -10,9 +10,12 @@ from into import into
 import blaze as bz
 from blaze import Data, by, compute
 from blaze.expr import Field
-from blaze.compute.core import swap_resources_into_scope
 
 from kdbpy.compute.qtable import is_standard
+
+
+def wavg(x, y):
+    return (x * y).sum() / x.sum()
 
 
 @pytest.fixture(scope='module')
@@ -24,13 +27,11 @@ def test_resource_doesnt_bork(daily):
     assert repr(daily)
 
 
-def test_field(daily):
-    qresult = daily.price
-    expr, daily = swap_resources_into_scope(qresult, {})
-    data = daily[expr._child._child]
-    expected = compute(expr, {expr._child._child: {'daily': into(pd.DataFrame, data['daily'])}})
-    result = into(pd.Series, qresult)
-    result.name = expected.name
+def test_field(daily, kdbpar):
+    expr = daily.price
+    expected = kdbpar.eval('select price from daily').squeeze()
+    result = compute(expr)
+    assert result.name == expected.name
     tm.assert_series_equal(result, expected)
 
 
@@ -41,66 +42,60 @@ def test_field_name(daily):
     assert names[0] == 'price'
 
 
-def test_simple_op(daily):
-    qresult = daily.price + 1
-    result = into(pd.DataFrame, qresult)
-    df = into(pd.DataFrame, daily)
-    expr, daily = swap_resources_into_scope(qresult, {})
-    scope = {expr.lhs._child._child: {'daily': df}}
-    dfresult = compute(expr, scope)
-    expected = into(pd.DataFrame, dfresult)
-    assert expected.columns.tolist() == ['price']
-    tm.assert_frame_equal(result, expected)
+def test_simple_op(daily, kdbpar):
+    expr = daily.price + 1
+    result = compute(expr)
+    expected = kdbpar.eval('select price + 1 from daily').squeeze()
+    tm.assert_series_equal(result, expected)
 
 
-def test_complex_date_op_repr(daily, kdb):
-    sym = bz.Symbol('daily', daily.dshape)
+def test_complex_date_op_repr(daily, kdbpar):
+    sym = bz.symbol('daily', daily.dshape)
     result = by(sym.date.month,
                 cnt=sym.nrows,
                 size=sym.size.sum(),
-                wprice=(sym.price * sym.size).sum() / sym.price.count())
+                wprice=wavg(sym.size, sym.price))
     assert repr(result)
 
 
-def test_complex_date_op(daily):
+def test_complex_date_op(daily, kdbpar):
     # q) select cnt: count price, size: sum size, wprice: size wavg price
     #       by date from daily
-    qresult = by(daily.date,
-                 cnt=daily.price.count(),
-                 size=daily.size.sum(),
-                 wprice=(daily.size * daily.price).sum() / daily.price.sum())
-    result = sorted(into(list, qresult))
-    expr, daily = swap_resources_into_scope(qresult, {})
-    data = daily[expr._child._child]
-    expected = sorted(compute(expr, {expr._child._child: {'daily': into(list, data['daily'])}}))
-    assert result == expected
+    expr = by(daily.date,
+              cnt=daily.price.count(),
+              size=daily.size.sum(),
+              wprice=wavg(daily.size, daily.price))
+    assert repr(expr)
+    result = compute(expr)
+    query = ('select cnt: count price, size: sum size, wprice: size wavg price '
+             '  by date from daily')
+    expected = kdbpar.eval(query).reset_index()
+    tm.assert_frame_equal(result, expected)
 
 
-def test_complex_nondate_op(daily):
+def test_complex_nondate_op(daily, kdbpar):
     # q) select cnt: count price, size: sum size, wprice: size wavg price
     #       by sym from daily
-    qresult = by(daily.sym,
-                 cnt=daily.price.count(),
-                 size=daily.size.sum(),
-                 wprice=(daily.size * daily.price).sum() / daily.price.sum())
-    assert repr(qresult)
-    result = sorted(into(list, qresult))
-    expr, daily = swap_resources_into_scope(qresult, {})
-    data = daily[expr._child._child]
-    expected = sorted(compute(expr, {expr._child._child: {'daily': into(list, data['daily'])}}))
-    assert result == expected
+    expr = by(daily.sym,
+              cnt=daily.price.count(),
+              size=daily.size.sum(),
+              wprice=wavg(daily.size, daily.price))
+    assert repr(expr)
+    result = compute(expr)
+    query = ('select cnt: count price, size: sum size, wprice: size wavg price'
+             ' by sym from daily')
+    expected = kdbpar.eval(query).reset_index()
+    tm.assert_frame_equal(result, expected)
 
 
 def test_is_standard(daily):
     assert is_standard(daily)
 
 
-def test_by_mean(daily):
-    qresult = by(daily.sym, price=daily.price.mean())
-    expr, daily = swap_resources_into_scope(qresult, {})
-    data = daily[expr._child._child]
-    expected = compute(expr, {expr._child._child: {'daily': into(pd.DataFrame, data['daily'])}})
-    result = into(pd.DataFrame, qresult)
+def test_by_mean(daily, kdbpar):
+    expr = by(daily.sym, price=daily.price.mean())
+    expected = kdbpar.eval('select avg price by sym from daily').reset_index()
+    result = compute(expr)
     tm.assert_frame_equal(result, expected)
 
 
@@ -115,11 +110,11 @@ def test_nrows(daily):
     assert compute(daily.nrows) == compute(daily.date.nrows)
 
 
-def test_nunique(daily):
-    expr, data = swap_resources_into_scope(daily.sym.nunique(), {})
-    expected = into(pd.Series, daily.sym)
-    child = expr._child._child._child
-    assert compute(expr, data[child]) == compute(expr, {child: {'daily': expected}})
+def test_nunique(daily, kdbpar):
+    expr = daily.sym.nunique()
+    result = compute(expr)
+    expected = kdbpar.eval('count distinct exec sym from daily')
+    assert result == expected
 
 
 def test_dateattr_nrows(daily):
