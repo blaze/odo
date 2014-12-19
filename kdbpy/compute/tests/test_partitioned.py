@@ -2,9 +2,7 @@ import pytest
 
 import pandas.util.testing as tm
 
-import pandas as pd
 from blaze import Data, compute, by
-from into import into
 from blaze.compute.core import swap_resources_into_scope
 
 from qpython.qcollection import QException
@@ -58,6 +56,27 @@ def test_field(trade, kdbpar):
     assert_series_equal(result, expected)
 
 
+def test_simple_by(trade, kdbpar):
+    qexpr = by(trade.sym, w=trade.price.mean())
+    expr, data = separate(qexpr)
+    result = compute(qexpr)
+    query = 'select w: avg price by sym from trade'
+    expected = kdbpar.eval(query).reset_index()
+    tm.assert_frame_equal(result, expected)
+
+
+def test_selection(trade, kdbpar):
+    qexpr = trade[trade.sym == 'AAPL']
+    expr, data = separate(qexpr)
+    result = compute(qexpr)
+    expected = kdbpar.eval('select from trade where sym = `AAPL')
+    tm.assert_frame_equal(result, expected)
+
+
+def test_partitioned_nrows_on_virtual_column(quote):
+    assert compute(quote.nrows) == compute(quote.date.nrows)
+
+
 @pytest.mark.xfail(raises=QException)
 def test_field_head(trade, kdbpar):
     result = compute(trade.price.head(5))
@@ -75,28 +94,8 @@ def test_simple_arithmetic(trade):
     assert_series_equal(result, expected)
 
 
-def test_simple_by(trade, kdbpar):
-    qexpr = by(trade.sym, w=trade.price.mean())
-    expr, data = separate(qexpr)
-    result = compute(qexpr)
-    expected = kdbpar.eval('select w: avg price by sym from trade').reset_index()
-    tm.assert_frame_equal(result, expected)
-
-
-def test_selection(trade, kdbpar):
-    qexpr = trade[trade.sym == 'AAPL']
-    expr, data = separate(qexpr)
-    result = compute(qexpr)
-    expected = kdbpar.eval('select from trade where sym = `AAPL')
-    tm.assert_frame_equal(result, expected)
-
-
 @pytest.mark.xfail(raises=QException, reason='not yet implemented')
 def test_nunique(trade, kdbpar):
     expr = trade.sym.nunique()
     assert compute(expr) == kdbpar.eval('count distinct exec sym from '
                                         'select sym from trade')
-
-
-def test_partitioned_nrows_on_virtual_column(quote):
-    assert compute(quote.nrows) == compute(quote.date.nrows)
