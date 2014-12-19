@@ -14,13 +14,22 @@ from blaze.expr import Field
 from kdbpy.compute.qtable import is_standard
 
 
+def wsum(x, y):
+    return (x * y).sum()
+
+
 def wavg(x, y):
-    return (x * y).sum() / x.sum()
+    return wsum(x, y) / x.sum()
 
 
 @pytest.fixture(scope='module')
 def std(kdbpar):
     return Data(kdbpar)
+
+
+@pytest.fixture(scope='module')
+def db(kdb):
+    return Data(kdb)
 
 
 def test_resource_doesnt_bork(std):
@@ -120,3 +129,12 @@ def test_nunique(std):
 
 def test_dateattr_nrows(std):
     assert compute(std.daily.nrows) == compute(std.daily.date.day.nrows)
+
+
+@pytest.mark.xfail(raises=AttributeError,
+                   reason="'Field' object has no attribute 'name'")
+def test_foreign_key(db):
+    expr = db.market.ex_id.name
+    result = compute(expr)
+    expected = std.data.eval('select ex_id.name from market').squeeze()
+    assert_series_equal(result, expected)
