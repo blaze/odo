@@ -177,7 +177,7 @@ def test_different_column_join(rt, st, rq, sq, rdf, sdf):
 def test_sort(t, q, df):
     expr = t.sort('name')
     result = compute(expr, q)
-    expected = compute(expr, df).reset_index(drop=True)
+    expected = df.sort('name', kind='mergesort').reset_index(drop=True)
     tm.assert_frame_equal(result, expected)
 
 
