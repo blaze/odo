@@ -2,7 +2,9 @@ import pytest
 
 import pandas.util.testing as tm
 
-from blaze import Data, compute, by, discover, symbol
+import pandas as pd
+from blaze import Data, compute, by
+from into import into
 from blaze.compute.core import swap_resources_into_scope
 
 from qpython.qcollection import QException
@@ -28,20 +30,18 @@ def test_is_partitioned(trade):
     assert is_partitioned(trade)
 
 
-def test_projection(trade):
-    kq = trade._resources().values()[0]
+def test_projection(trade, kdbpar):
     qexpr = trade[['price', 'sym']]
     result = compute(qexpr)
-    expected = kq.eval('select price, sym from trade')
+    expected = kdbpar.eval('select price, sym from trade')
     tm.assert_frame_equal(result, expected)
 
 
-def test_head(trade):
-    kq = trade._resources().values()[0]
+def test_head(trade, kdbpar):
     qexpr = trade.head()
     expr, data = separate(qexpr)
     result = compute(expr, data)
-    expected = kq.eval('.Q.ind[trade; til 10]').squeeze()
+    expected = kdbpar.eval('.Q.ind[trade; til 10]')
     tm.assert_frame_equal(result, expected)
 
 
@@ -49,20 +49,19 @@ def test_repr(trade):
     assert repr(trade)
 
 
-def test_field(trade):
-    kq = trade._resources().values()[0]
+def test_field(trade, kdbpar):
     qexpr = trade.price
     expr, data = separate(qexpr)
     result = compute(qexpr)
-    expected = kq.eval('select price from trade').squeeze()
+    expected = kdbpar.eval('exec price from select price from trade')
     tm.assert_series_equal(result, expected)
 
 
 @pytest.mark.xfail(raises=QException)
-def test_field_head(trade):
-    kq = trade._resources().values()[0]
+def test_field_head(trade, kdbpar):
     result = compute(trade.price.head(5))
-    expected = kq.eval('select price from .Q.ind[trade; til 5]').squeeze()
+    query = 'exec price from select price from .Q.ind[trade; til 5]'
+    expected = kdbpar.eval(query)
     tm.assert_series_equal(result, expected)
 
 
@@ -71,26 +70,23 @@ def test_field_head(trade):
 def test_simple_arithmetic(trade):
     qexpr = trade.price + 1 * 2
     result = compute(qexpr)
-    expected = trade.eval('select ((price + 1) * 2) from trade')
+    expected = trade.eval('exec price from select ((price + 1) * 2) from trade')
     tm.assert_series_equal(result, expected)
 
 
-def test_simple_by(trade):
-    kq = trade._resources().values()[0]
+def test_simple_by(trade, kdbpar):
     qexpr = by(trade.sym, w=trade.price.mean())
     expr, data = separate(qexpr)
     result = compute(qexpr)
-    s = symbol('s', discover(kq))
-    expected = compute(expr, {expr._child._child: {'trade': kq.eval('select from trade')}})
+    expected = kdbpar.eval('select w: avg price by sym from trade').reset_index()
     tm.assert_frame_equal(result, expected)
 
 
-def test_selection(trade):
-    kq = trade._resources().values()[0]
+def test_selection(trade, kdbpar):
     qexpr = trade[trade.sym == 'AAPL']
     expr, data = separate(qexpr)
     result = compute(qexpr)
-    expected = compute(expr, {expr._child._child: {'trade': kq.eval('select from trade where sym = `AAPL')}})
+    expected = kdbpar.eval('select from trade where sym = `AAPL')
     tm.assert_frame_equal(result, expected)
 
 
