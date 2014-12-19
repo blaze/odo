@@ -13,50 +13,51 @@ import blaze as bz
 from blaze import compute, into, by, discover, dshape, summary, Data, symbol
 from kdbpy import QTable
 from kdbpy.compute.qtable import qtypes
+from kdbpy.tests import assert_series_equal
 
 
 def test_projection(t, q, df):
     expr = t[['id', 'amount']]
     expected = compute(expr, df)
-    qresult = compute(expr, q)
-    result = into(pd.DataFrame, qresult)
+    result = compute(expr, q)
     tm.assert_frame_equal(result, expected)
 
 
 def test_single_projection(t, q, df):
     expr = t[['id']]
-    result = into(pd.DataFrame, compute(expr, q))
-    tm.assert_frame_equal(result, compute(expr, df))
+    result = compute(expr, q)
+    expected = compute(expr, df)
+    tm.assert_frame_equal(result, expected)
 
 
 def test_selection(t, q, df):
     expr = t[t.id == 1]
-    result = into(pd.DataFrame, compute(expr, q))
+    result = compute(expr, q)
     expected = compute(expr, df).reset_index(drop=True)
     tm.assert_frame_equal(result, expected)
 
 
 def test_broadcast(t, q, df):
     expr = t.id + 1
-    result = into(pd.Series, compute(expr, q))
+    result = compute(expr, q)
     expected = compute(expr, df)
-    tm.assert_series_equal(result, expected)
+    assert_series_equal(result, expected)
 
 
 def test_complex_broadcast(t, q, df):
     expr = t.id + 1 - 2 * t.id ** 2 + t.amount > t.id - 3
-    result = into(pd.Series, compute(expr, q))
+    result = compute(expr, q)
     expected = compute(expr, df)
-    tm.assert_series_equal(result, expected)
+
+    # pandas doesn't preserve the name here
+    assert_series_equal(result, expected, check_name=False)
 
 
 def test_complex_selection(t, q, df):
     expr = t[t.id + 1 - 2 * t.id ** 2 + t.amount > t.id - 3]
 
-    # q doesn't know anything pandas indexes
-    result = into(pd.DataFrame, compute(expr, q))
-
-    # but blaze preserves them
+    result = compute(expr, q)
+    # blaze preserves indexes so we reset them
     expected = compute(expr, df).reset_index(drop=True)
     tm.assert_frame_equal(result, expected)
 
@@ -64,34 +65,29 @@ def test_complex_selection(t, q, df):
 def test_complex_selection_projection(t, q, df):
     expr = t[t.id ** 2 + t.amount > t.id - 3][['id', 'amount']]
 
-    # q doesn't know anything pandas indexes
-    result = into(pd.DataFrame, compute(expr, q))
-
-    # but blaze preserves them
+    result = compute(expr, q)
     expected = compute(expr, df).reset_index(drop=True)
     tm.assert_frame_equal(result, expected)
 
 
 def test_unary_op(t, q, df):
     expr = -t.amount
-    result = into(pd.Series, compute(expr, q))
+    result = compute(expr, q)
     expected = compute(expr, df)
-    tm.assert_series_equal(result, expected)
+    assert_series_equal(result, expected)
 
 
 def test_string_compare(t, q, df):
     expr = t.name == 'Alice'
-    qresult = compute(expr, q)
-    result = into(pd.Series, qresult)
+    result = compute(expr, q)
     expected = compute(expr, df)
-    tm.assert_series_equal(result, expected)
+    assert_series_equal(result, expected)
 
 
 def test_simple_by(t, q, df):
     # q) select name, amount_sum: sum amount from t
     expr = by(t.name, amount=t.amount.sum())
-    qresult = compute(expr, q)
-    result = into(pd.DataFrame, qresult)
+    result = compute(expr, q)
 
     # q fills NaN reducers with 0
     expected = compute(expr, df)
@@ -127,54 +123,30 @@ def test_join_then_by(kdb):
 def test_field(t, q, df):
     expr = t.name
     result = compute(expr, q)
-    tm.assert_series_equal(pd.Series(result), compute(expr, df))
+    assert_series_equal(result, compute(expr, df))
 
 
-def test_sum(t, q, df):
-    expr = t.amount.sum()
-    result = compute(expr, q)
-    assert result == compute(expr, df)
-
-
-def test_count(t, q, df):
-    expr = t.amount.count()
-    result = compute(expr, q)
-    assert result == len(df)
-
-
-def test_mean(t, q, df):
-    expr = t.amount.mean()
+@pytest.mark.parametrize('reduction', ['sum', 'count', 'mean', 'max', 'min',
+                                       'nelements'])
+def test_reductions(t, q, df, reduction):
+    expr = getattr(t.amount, reduction)()
     result = compute(expr, q)
     expected = compute(expr, df)
     assert result == expected
 
 
-def test_std(t, q, df):
-    expr = t.amount.std(unbiased=True)
+def test_nrows(t, q, df):
+    qresult = compute(t.nrows, q)
+    expected = len(df)
+    assert qresult == expected
+
+
+@pytest.mark.parametrize('reduction', ['std', 'var'])
+def test_variability(t, q, df, reduction):
+    expr = getattr(t.amount, reduction)(unbiased=True)
     result = compute(expr, q)
     expected = compute(expr, df)
     np.testing.assert_allclose(result, expected)
-
-
-def test_var(t, q, df):
-    expr = t.amount.var(unbiased=True)
-    result = compute(expr, q)
-    expected = compute(expr, df)
-    np.testing.assert_allclose(result, expected)
-
-
-def test_max(t, q, df):
-    expr = t.id.max()
-    result = compute(expr, q)
-    expected = compute(expr, df)
-    assert result == expected
-
-
-def test_min(t, q, df):
-    expr = t.id.min()
-    result = compute(expr, q)
-    expected = compute(expr, df)
-    assert result == expected
 
 
 def test_simple_join(rt, st, rq, sq, rdf, sdf):
@@ -205,16 +177,17 @@ def test_different_column_join(rt, st, rq, sq, rdf, sdf):
 def test_sort(t, q, df):
     expr = t.sort('name')
     result = compute(expr, q)
-
-    # q doesn't keep index order
-    expected = df.sort('name', kind='mergesort').reset_index(drop=True)
+    expected = compute(expr, df).reset_index(drop=True)
     tm.assert_frame_equal(result, expected)
 
 
-def test_nrows(t, q, df):
-    qresult = compute(t.nrows, q)
-    expected = len(df)
-    assert qresult == expected
+@pytest.mark.xfail(raises=AssertionError,
+                   reason='multicolumn sort not implemented')
+def test_multicolumn_sort(t, q, df):
+    expr = t.sort(['name', 'amount'])
+    result = compute(expr, q)
+    expected = compute(expr, df)
+    tm.assert_frame_equal(result, expected)
 
 
 @pytest.mark.xfail(raises=ValueError, reason='axis == 1 not supported on record'
@@ -377,34 +350,25 @@ def test_by_with_complex_where(t, q, df):
 
 
 @pytest.mark.parametrize('d, ts',
-                         [('2014-01-02', pd.Timestamp('2014-01-02 00:00:00.000000001')),
-                          (pd.Timestamp('2014-01-02'), '2014-01-02 00:00:00.000000001')])
-def test_datelike_compare(kdb, d, ts):
-    name = 'date_t'
-    t = bz.Symbol(name, 'var * {d: date, ts: datetime}')
-    kdb.eval('%s: ([] d: 2014.01.01 + til 10; '
-             'ts: 2014.01.01D00:00:00.000000000 + til 10)' % name)
-    df = kdb.eval(name)
-    q = QTable(tablename=name, engine=kdb)
-
+                         [('2014-01-02',
+                           pd.Timestamp('2014-01-02 00:00:00.000000001')),
+                          (pd.Timestamp('2014-01-02'),
+                           '2014-01-02 00:00:00.000000001')])
+def test_datelike_compare(date_t, date_q, date_df, d, ts):
     def compare(lhs, rhs):
-        expr = t[lhs == rhs]
-        result = compute(expr, q)
-        expected = compute(expr, df).reset_index(drop=True)
+        expr = date_t[lhs == rhs]
+        result = compute(expr, date_q)
+        expected = compute(expr, date_df).reset_index(drop=True)
         tm.assert_frame_equal(result, expected)
 
-    compare(t.d, d)
-    compare(d, t.d)
-    compare(t.ts, ts)
-    compare(ts, t.ts)
+    compare(date_t.d, d)
+    compare(d, date_t.d)
+    compare(date_t.ts, ts)
+    compare(ts, date_t.ts)
 
 
-def test_table_with_timespan(kdb):
-    name = 'ts'
-    kdb.eval('%s: ([] ts: 00:00:00.000000000 + 1 + til 10; amount: til 10)' %
-             name)
-    qt = QTable(tablename=name, engine=kdb)
-    result = discover(qt)
+def test_timespan_discover(timespan_table):
+    result = discover(timespan_table)
     expected = dshape('var * {ts: timedelta[unit="ns"], amount: int64}')
     assert expected == result
 
