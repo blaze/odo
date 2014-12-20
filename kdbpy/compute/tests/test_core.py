@@ -16,6 +16,11 @@ from kdbpy.compute.qtable import qtypes
 from kdbpy.tests import assert_series_equal
 
 
+@pytest.fixture(scope='module')
+def db(kdb):
+    return bz.Data(kdb)
+
+
 def test_projection(t, q, df):
     expr = t[['id', 'amount']]
     expected = compute(expr, df)
@@ -105,18 +110,16 @@ def test_multikey_by(t, q, df):
     tm.assert_frame_equal(result, expected)
 
 
-@pytest.mark.xfail(raises=AttributeError, reason='Cannot nest joins in '
-                   'groupbys yet')
-def test_join_then_by(kdb):
-    dates_data = kdb['dates'].data
-    dates = symbol('dates', discover(dates_data))
-    prices_data = kdb['prices'].data
-    prices = symbol('prices', discover(prices_data))
-    joined = bz.join(dates, prices, on_left='account', on_right='account')
+@pytest.mark.xfail(raises=AttributeError,
+                   reason='Cannot nest joins in groupbys yet')
+def test_join_then_by(db):
+    joined = bz.join(db.dates, db.prices, on_left='account', on_right='account')
     expr = by(joined.date, amt_mean=joined.amount.mean())
-    result = compute(expr, {dates: dates_data, prices: prices_data})
-    expected = compute(expr, {dates: kdb.eval('dates'),
-                              prices: kdb.eval('prices')})
+
+    query = ('select amt_mean: avg amount by date from '
+             'ej[`account; dates; prices]')
+    expected = db.data.eval(query)
+    result = compute(expr)
     tm.assert_frame_equal(result, expected)
 
 
@@ -133,6 +136,13 @@ def test_reductions(t, q, df, reduction):
     result = compute(expr, q)
     expected = compute(expr, df)
     assert result == expected
+
+
+@pytest.mark.xfail(raises=ValueError,
+                   reason='axis=1 does not make sense for q right now')
+def test_reduction_axis_argument_fails(t, q, df):
+    expr = t.amount.mean(axis=1)
+    compute(expr, q)
 
 
 def test_nrows(t, q, df):
@@ -160,7 +170,7 @@ def test_simple_join(rt, st, rq, sq, rdf, sdf):
                    reason='Only inner join implemented for QTable')
 def test_outer_join(rt, st, rq, sq, rdf, sdf):
     expr = bz.join(rt, st, how='outer')
-    result = into(pd.DataFrame, compute(expr, {st: sq, rt: rq}))
+    result = compute(expr, {st: sq, rt: rq})
     expected = compute(expr, {st: sdf.reset_index(), rt: rdf.reset_index()})
     tm.assert_frame_equal(result, expected)
 
@@ -169,7 +179,7 @@ def test_outer_join(rt, st, rq, sq, rdf, sdf):
                    reason='Cannot specify different columns')
 def test_different_column_join(rt, st, rq, sq, rdf, sdf):
     expr = bz.join(rt, st, on_left='name', on_right='alias')
-    result = into(pd.DataFrame, compute(expr, {st: sq, rt: rq}))
+    result = compute(expr, {st: sq, rt: rq})
     expected = compute(expr, {st: sdf.reset_index(), rt: rdf.reset_index()})
     tm.assert_frame_equal(result, expected)
 
@@ -181,12 +191,10 @@ def test_sort(t, q, df):
     tm.assert_frame_equal(result, expected)
 
 
-@pytest.mark.xfail(raises=AssertionError,
-                   reason='multicolumn sort not implemented')
 def test_multicolumn_sort(t, q, df):
     expr = t.sort(['name', 'amount'])
     result = compute(expr, q)
-    expected = compute(expr, df)
+    expected = compute(expr, df).reset_index(drop=True)
     tm.assert_frame_equal(result, expected)
 
 
