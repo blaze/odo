@@ -12,111 +12,134 @@ from blaze import Data, by, compute
 from blaze.expr import Field
 
 from kdbpy.compute.qtable import is_standard
-
-
-def wavg(x, y):
-    return (x * y).sum() / x.sum()
+from kdbpy.compute.functions import wmean
+from kdbpy.tests import assert_series_equal
 
 
 @pytest.fixture(scope='module')
-def std(kdbpar):
+def par(kdbpar):
     return Data(kdbpar)
 
 
-def test_resource_doesnt_bork(std):
-    assert repr(std.daily)
+@pytest.fixture(scope='module')
+def db(kdb):
+    return Data(kdb)
 
 
-def test_field(std):
-    expr = std.daily.price
-    expected = std.data.eval('select price from daily').squeeze()
+def test_resource_doesnt_bork(par):
+    assert repr(par.daily)
+
+
+def test_field(par):
+    expr = par.daily.price
+    expected = par.data.eval('select price from daily').squeeze()
     result = compute(expr)
     assert result.name == expected.name
     tm.assert_series_equal(result, expected)
 
 
-def test_field_name(std):
-    result = std.daily.price
+def test_field_name(par):
+    result = par.daily.price
     names = repr(result).split('\n')[0].strip().split()
     assert len(names) == 1
     assert names[0] == 'price'
 
 
-def test_simple_op(std):
-    expr = std.daily.price + 1
+def test_simple_op(par):
+    expr = par.daily.price + 1
     result = compute(expr)
-    expected = std.data.eval('select price + 1 from daily').squeeze()
+    expected = par.data.eval('select price + 1 from daily').squeeze()
     tm.assert_series_equal(result, expected)
 
 
-def test_complex_date_op_repr(std):
-    sym = bz.symbol('daily', std.daily.dshape)
+def test_complex_date_op_repr(par):
+    sym = bz.symbol('daily', par.daily.dshape)
     result = by(sym.date.month,
                 cnt=sym.nrows,
                 size=sym.size.sum(),
-                wprice=wavg(sym.size, sym.price))
+                wprice=wmean(sym.price, weights=sym.size))
     assert repr(result)
 
 
-def test_complex_date_op(std):
+def test_complex_date_op(par):
     # q) select cnt: count price, size: sum size, wprice: size wavg price
     #       by date from daily
-    expr = by(std.daily.date,
-              cnt=std.daily.price.count(),
-              size=std.daily.size.sum(),
-              wprice=wavg(std.daily.size, std.daily.price))
+    expr = by(par.daily.date,
+              cnt=par.daily.price.count(),
+              size=par.daily.size.sum(),
+              wprice=wmean(par.daily.price, weights=par.daily.size))
     assert repr(expr)
     result = compute(expr)
     query = ('select cnt: count price, size: sum size, wprice: size wavg price '
              '  by date from daily')
-    expected = std.data.eval(query).reset_index()
+    expected = par.data.eval(query).reset_index()
     tm.assert_frame_equal(result, expected)
 
 
-def test_complex_nondate_op(std):
+def test_complex_nondate_op(par):
     # q) select cnt: count price, size: sum size, wprice: size wavg price
     #       by sym from daily
-    expr = by(std.daily.sym,
-              cnt=std.daily.price.count(),
-              size=std.daily.size.sum(),
-              wprice=wavg(std.daily.size, std.daily.price))
+    daily = par.daily
+    expr = by(daily.sym,
+              cnt=daily.price.count(),
+              size=daily.size.sum(),
+              wprice=wmean(daily.price, weights=daily.size))
     assert repr(expr)
     result = compute(expr)
     query = ('select cnt: count price, size: sum size, wprice: size wavg price'
              ' by sym from daily')
-    expected = std.data.eval(query).reset_index()
+    expected = par.data.eval(query).reset_index()
     tm.assert_frame_equal(result, expected)
 
 
-def test_is_standard(std):
-    assert is_standard(std.daily)
+def test_is_standard(par):
+    assert is_standard(par.daily)
 
 
-def test_by_mean(std):
-    expr = by(std.daily.sym, price=std.daily.price.mean())
-    expected = std.data.eval('select avg price by sym from daily').reset_index()
+def test_by_mean(par):
+    expr = by(par.daily.sym, price=par.daily.price.mean())
+    expected = par.data.eval('select avg price by sym from daily').reset_index()
     result = compute(expr)
     tm.assert_frame_equal(result, expected)
 
 
-def test_sum_after_subset(std):
-    r = std.daily[(std.daily.date == std.daily.date[-1]) &
-                  (std.daily.sym == 'IBM')]
+def test_sum_after_subset(par):
+    r = par.daily[(par.daily.date == par.daily.date[-1]) &
+                  (par.daily.sym == 'IBM')]
     result = compute(r.price.sum())
     expected = into(pd.Series, r.price).sum()
     assert result == expected
 
 
-def test_nrows(std):
-    assert compute(std.daily.nrows) == compute(std.daily.date.nrows)
+def test_nrows(par):
+    assert compute(par.daily.nrows) == compute(par.daily.date.nrows)
 
 
-def test_nunique(std):
-    expr = std.daily.sym.nunique()
+def test_nunique(par):
+    expr = par.daily.sym.nunique()
     result = compute(expr)
-    expected = std.data.eval('count distinct exec sym from daily')
+    expected = par.data.eval('count distinct exec sym from daily')
     assert result == expected
 
 
-def test_dateattr_nrows(std):
-    assert compute(std.daily.nrows) == compute(std.daily.date.day.nrows)
+def test_dateattr_nrows(par):
+    assert compute(par.daily.nrows) == compute(par.daily.date.day.nrows)
+
+
+@pytest.mark.xfail(raises=AttributeError,
+                   reason="'Field' object has no attribute 'name'")
+def test_foreign_key(db):
+    expr = db.market.ex_id.name
+    result = compute(expr)
+    expected = db.data.eval('select ex_id.name from market').squeeze()
+    assert_series_equal(result, expected)
+
+
+@pytest.mark.xfail(raises=NotImplementedError,
+                   reason='bad type for grouper in by expression')
+def test_by_grouper_type_fails(par):
+    expr = by(par.daily.sym[::2], avg_price=par.daily.price.mean())
+    query = 'select avg_price: avg price by sym from daily where (i mod 2) = 0'
+    expected = par.data.eval(query).reset_index()
+    result = compute(expr)
+    tm.assert_frame_equal(result, expected)

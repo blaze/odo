@@ -234,7 +234,9 @@ def slice1(obj, index):
 
 def sort(x, key, ascending):
     sort_func = Atom('xasc' if ascending else 'xdesc')
-    return List(sort_func, symlist(key), x)
+    if isinstance(key, basestring):
+        key = [key]
+    return List(sort_func, List(symlist(*key)), x)
 
 
 def isdict(x):

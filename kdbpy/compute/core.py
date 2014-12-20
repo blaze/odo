@@ -387,15 +387,7 @@ def compute_up(expr, data, **kwargs):
 
 
 @resource.register('kdb://.+', priority=13)
-def resource_kdb(uri, tablename=None, engine=None, **kwargs):
+def resource_kdb(uri, engine=None, **kwargs):
     if engine is None:
         engine = KQ(parse_connection_string(uri), start=True)
-    if tablename is None:
-        return engine
-    else:
-        return QTable(tablename=tablename, engine=engine, **kwargs)
-
-
-@convert.register(pd.DataFrame, QTable, cost=1.0)
-def into_dataframe_from_qtable(t, **kwargs):
-    return t.eval(t.tablename)
+    return engine

@@ -19,3 +19,7 @@ rt: ([name: `Bob`Alice`Joe`John] tax: -3.1 2.0 0n 4.2;
                                  street: `maple`apple`pine`grove)
 st: ([name: `Bob`Alice`Joe] jobcode: 9 10 11; tree: `maple`apple`pine; alias: `Joe`Betty`Moe)
 kt: ([house: `a`b`c; id: 1 2 3] amount: 3.0 4.0 5.0)
+
+exchange: ([m_id: til 3] name: `DJIA`NYSE`NDX)
+market: ([] ex_id: `exchange$(); volume: `long$())
+`market insert (10 ? til 3; 10 ? 1000); // don't show output when loading
