@@ -1,8 +1,8 @@
 def wsum(x, weights):
-    """Sum of `y` weighted by `x`."""
+    """Sum of `x` weighted by `weights`."""
     return (weights * x).sum()
 
 
 def wmean(x, weights):
-    """Mean of `y` weighted by `x`"""
+    """Mean of `x` weighted by `weights`"""
     return wsum(x, weights) / weights.sum()
