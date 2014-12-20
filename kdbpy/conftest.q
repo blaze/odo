@@ -22,4 +22,4 @@ kt: ([house: `a`b`c; id: 1 2 3] amount: 3.0 4.0 5.0)
 
 exchange: ([m_id: til 3] name: `DJIA`NYSE`NDX)
 market: ([] ex_id: `exchange$(); volume: `long$())
-`market insert (10 ? til 3; 10 ? 1000)
+`market insert (10 ? til 3; 10 ? 1000); // don't show output when loading
