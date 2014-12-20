@@ -98,20 +98,20 @@ class KQ(PrettyMixin):
                             else default_credentials)
         self.q = Q(credentials=self.credentials, path=path)
         self.kdb = KDB(credentials=self.credentials)
+        self.verbose = verbose
+        self._loaded = set()
         if start:
             self.start(start=start)
-        self._loaded = set()
-        self.verbose = verbose
+            self.load_libs()
 
-    def load_libs(self, libpath=None, libs=None):
-        if libpath is None:
-            libpath = os.path.join(os.path.dirname(kdbpy.__file__), 'q')
-
-        if libs is None:
-            libs = 'lib.q',
-
+    def load_libs(self,
+                  libpath=os.path.join(os.path.dirname(kdbpy.__file__), 'q'),
+                  libs=('lib.q',)):
         for lib in libs:
-            self.read_kdb(normpath(os.path.join(libpath, lib)))
+            path = os.path.join(libpath, lib)
+            if not os.path.exists(path):
+                raise OSError('Non-existent file %r' % path)
+            self.read_kdb(normpath(path))
 
     def _repr_pretty_(self, p, cycle):
         assert not cycle, 'cycles not allowed'
