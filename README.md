@@ -46,7 +46,6 @@ conda install <name-of-dependency>
 ### Required Dependencies
 
 * [Python 2.7.8](http://www.python.org): The Python programming language
-* [`future`](http://python-future.org): Python 2-3 compatibility
 * [`blaze`](https://github.com/ContinuumIO/blaze): Composable
   abstractions for data
 * [`q`](http://github.com/ContinuumIO/conda-q): The `q` interpreter
