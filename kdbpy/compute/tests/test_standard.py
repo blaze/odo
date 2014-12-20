@@ -13,6 +13,7 @@ from blaze.expr import Field
 
 from kdbpy.compute.qtable import is_standard
 from kdbpy.compute.functions import wmean
+from kdbpy.tests import assert_series_equal
 
 
 @pytest.fixture(scope='module')
@@ -132,3 +133,13 @@ def test_foreign_key(db):
     result = compute(expr)
     expected = db.data.eval('select ex_id.name from market').squeeze()
     assert_series_equal(result, expected)
+
+
+@pytest.mark.xfail(raises=NotImplementedError,
+                   reason='bad type for grouper in by expression')
+def test_by_grouper_type_fails(par):
+    expr = by(par.daily.sym[::2], avg_price=par.daily.price.mean())
+    query = 'select avg_price: avg price by sym from daily where (i mod 2) = 0'
+    expected = par.data.eval(query).reset_index()
+    result = compute(expr)
+    tm.assert_frame_equal(result, expected)
