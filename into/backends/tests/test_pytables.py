@@ -2,13 +2,11 @@ import numpy as np
 import datashape as ds
 import pytest
 
-
 from into import into
 from into.utils import tmpfile
-from into.backends.pytables import PyTables, discover
-
 
 tb = pytest.importorskip('tables')
+from into.backends.pytables import PyTables, discover
 
 
 x = np.array([(1, 'Alice', 100),

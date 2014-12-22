@@ -1,5 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
+import pytest
+pytest.importorskip('sqlalchemy')
+
 import sqlalchemy as sa
 from datashape import discover, dshape
 import datashape
