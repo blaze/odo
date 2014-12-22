@@ -236,7 +236,7 @@ def append_anything_to_sql_Table(t, o, **kwargs):
     return append(t, convert(Iterator, o, **kwargs), **kwargs)
 
 
-@resource.register('(sqlite|postgresql|mysql|mysql\+pymysql)://.+')
+@resource.register('(.*sql.*|oracle)(\+\w*)?://.+')
 def resource_sql(uri, *args, **kwargs):
     kwargs2 = keyfilter(keywords(sa.create_engine).__contains__,
                        kwargs)
