@@ -8,6 +8,7 @@ from datashape.predicates import isdimension
 from datashape.dispatch import dispatch
 from toolz import take, partition_all, concat, pluck
 import copy
+from bson.objectid import ObjectId
 import re
 from ..convert import convert, ooc_types
 from ..append import append
@@ -17,8 +18,10 @@ from ..resource import resource
 @discover.register(Collection)
 def discover_pymongo_collection(coll, n=50):
     items = list(take(n, coll.find()))
+    oid_cols = [k for k, v in items[0].items() if isinstance(v, ObjectId)]
     for item in items:
-        del item['_id']
+        for col in oid_cols:
+            del item[col]
 
     ds = discover(items)
 
