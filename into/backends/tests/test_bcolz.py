@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from into.backends.bcolz import (create, append, convert, ctable, carray,
-        resource, discover)
+        resource, discover, drop)
 from into.chunks import chunks
 from into import into, append, convert, resource, discover
 import numpy as np
@@ -88,3 +88,11 @@ def test_resource_existing_carray():
         assert eq(r2[:], y)
 
 
+def test_drop():
+    with tmpfile('.bcolz') as fn:
+        os.remove(fn)
+        r = resource(fn, dshape='var * {name: string[5, "ascii"], balance: int32}')
+
+        assert os.path.exists(fn)
+        drop(fn)
+        assert not os.path.exists(fn)

@@ -7,11 +7,13 @@ import numpy as np
 from toolz import keyfilter
 import datashape
 from datashape import discover
+import shutil
 from ..append import append
 from ..convert import convert, ooc_types
 from ..create import create
 from ..resource import resource
 from ..chunks import chunks, Chunks
+from ..drop import drop
 
 keywords = ['rootdir']
 
@@ -84,6 +86,11 @@ def resource_bcolz(uri, dshape=None, **kwargs):
             return ctable(x, rootdir=uri, **keyfilter(keywords.__contains__, kwargs))
         else:
             return carray(x, rootdir=uri, **keyfilter(keywords.__contains__, kwargs))
+
+
+@drop.register((carray, ctable))
+def drop_bcolz(b, **kwargs):
+    shutil.rmtree(b.rootdir)
 
 
 ooc_types |= set((carray, ctable))
