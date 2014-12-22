@@ -30,7 +30,7 @@ def numpy_append_to_bcolz(a, b, **kwargs):
 
 @append.register((ctable, carray), object)
 def numpy_append_to_bcolz(a, b, **kwargs):
-    return append(a, convert(np.ndarray, b, **kwargs), **kwargs)
+    return append(a, convert(chunks(np.ndarray), b, **kwargs), **kwargs)
 
 
 @convert.register(ctable, np.ndarray, cost=2.0)
