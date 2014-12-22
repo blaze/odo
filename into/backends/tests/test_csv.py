@@ -5,6 +5,7 @@ import os
 import pandas as pd
 import gzip
 import datashape
+from datashape import Option, string
 from collections import Iterator
 
 from into.backends.csv import (CSV, append, convert, resource,
@@ -161,7 +162,7 @@ def test_discover_csv_files_without_header():
 
 
 def test_discover_csv_yields_string_on_totally_empty_columns():
-    expected = dshape('var * {a: int64, b: string, c: int64}')
+    expected = dshape('var * {a: int64, b: ?string, c: int64}')
     with filetext('a,b,c\n1,,3\n4,,6\n7,,9') as fn:
         csv = CSV(fn, has_header=True)
         assert discover(csv) == expected
@@ -251,3 +252,9 @@ def test_empty_dataframe():
         csv = CSV(fn, has_header=True)
         df = convert(pd.DataFrame, csv)
         assert isinstance(df, pd.DataFrame)
+
+
+def test_csv_missing_values():
+    with filetext('name,val\nAlice,100\nNA,200', extension='csv') as fn:
+        csv = CSV(fn)
+        assert discover(csv).measure.dict['name'] == Option(string)

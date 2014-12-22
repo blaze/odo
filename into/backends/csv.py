@@ -4,7 +4,7 @@ import csv
 
 import re
 import datashape
-from datashape import discover
+from datashape import discover, Record, Option
 from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
 from collections import Iterator
@@ -207,7 +207,13 @@ def discover_csv(c):
         if df[col].count() == 0:
             df[col] = [None] * len(df)
 
-    return datashape.var * discover(df).subshape[0]
+    measure = discover(df).measure
+
+    # Use Series.notnull to determine Option-ness
+    measure2 = Record([[name, Option(typ) if (~df[name].notnull()).any() else typ]
+                      for name, typ in zip(measure.names, measure.types)])
+
+    return datashape.var * measure2
 
 
 @resource.register('.+\.(csv|tsv|ssv|data|dat)(\.gz|\.bz)?')
