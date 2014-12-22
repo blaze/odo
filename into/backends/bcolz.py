@@ -76,7 +76,7 @@ def resource_bcolz(uri, dshape=None, **kwargs):
     else:
         if not dshape:
             raise ValueError("Must specify either existing bcolz directory or"
-                    "valid datashape")
+                    " valid datashape")
         dshape = datashape.dshape(dshape)
 
         dt = datashape.to_numpy_dtype(dshape)

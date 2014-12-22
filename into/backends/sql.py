@@ -14,6 +14,7 @@ from ..utils import keywords
 from ..convert import convert, ooc_types
 from ..append import append
 from ..resource import resource
+from ..chunks import Chunks
 
 # http://docs.sqlalchemy.org/en/latest/core/types.html
 
@@ -229,6 +230,12 @@ def append_iterator_to_table(t, rows, **kwargs):
             conn.execute(t.insert(), chunk)
 
     return t
+
+
+@append.register(sa.Table, Chunks)
+def append_anything_to_sql_Table(t, c, **kwargs):
+    for item in c:
+        append(t, item, **kwargs)
 
 
 @append.register(sa.Table, object)
