@@ -1,5 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
+import pytest
+pytest.importorskip('h5py')
+
 from into.backends.h5py import append, create, resource, discover, convert
 from contextlib import contextmanager
 from into.utils import tmpfile

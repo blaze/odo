@@ -1,3 +1,6 @@
+import pytest
+pytest.importorskip('sqlalchemy')
+
 from into.backends.sql_csv import *
 from into import resource, into
 import datashape

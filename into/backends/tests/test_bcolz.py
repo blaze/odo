@@ -1,5 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
+import pytest
+pytest.importorskip('bcolz')
+
 from into.backends.bcolz import (create, append, convert, ctable, carray,
         resource, discover)
 from into.chunks import chunks
@@ -86,5 +89,3 @@ def test_resource_existing_carray():
 
         r2 = resource(fn)
         assert eq(r2[:], y)
-
-
