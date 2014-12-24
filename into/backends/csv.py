@@ -191,8 +191,8 @@ def CSV_to_chunks_of_dataframes(c, chunksize=2**20, **kwargs):
 
 
 @discover.register(CSV)
-def discover_csv(c):
-    df = csv_to_DataFrame(c, nrows=50)
+def discover_csv(c, nrows=1000, **kwargs):
+    df = csv_to_DataFrame(c, nrows=nrows, **kwargs)
     df = coerce_datetimes(df)
 
     if (not list(df.columns) == list(range(len(df.columns)))
