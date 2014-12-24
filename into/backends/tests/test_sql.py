@@ -167,3 +167,10 @@ def test_into_table_iterator():
     append(t2, data2)
 
     assert convert(list, t2) == data
+
+
+def test_resource_on_dialects():
+    assert (resource.dispatch('mysql://foo') is
+            resource.dispatch('mysql+pymysql://foo'))
+    assert (resource.dispatch('never-before-seen-sql://foo') is
+            resource.dispatch('mysql://foo'))

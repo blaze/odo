@@ -6,7 +6,6 @@ halt_ordering() # Turn off multipledispatch ordering
 
 from .convert import convert
 from .append import append
-from .create import create
 from .resource import resource
 from .into import into
 from .drop import drop
