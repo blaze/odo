@@ -94,7 +94,7 @@ def test_resource():
     with tmpfile('.hdf5') as fn:
         os.remove(fn)
         ds = datashape.dshape('{x: int32, y: 3 * int32}')
-        r = resource(fn, dshape=ds)
+        r = resource('h5py://' + fn, dshape=ds)
 
         assert isinstance(r, h5py.File)
         assert discover(r) == ds
@@ -107,7 +107,7 @@ def test_resource_with_datapath():
     with tmpfile('.hdf5') as fn:
         os.remove(fn)
         ds = datashape.dshape('3 * 4 * int32')
-        r = resource(fn + '::/data', dshape=ds)
+        r = resource('h5py://' + fn + '::/data', dshape=ds)
 
         assert isinstance(r, h5py.Dataset)
         assert discover(r) == ds
@@ -119,14 +119,14 @@ def test_resource_with_variable_length():
     with tmpfile('.hdf5') as fn:
         os.remove(fn)
         ds = datashape.dshape('var * 4 * int32')
-        r = resource(fn + '::/data', dshape=ds)
+        r = resource('h5py://' + fn + '::/data', dshape=ds)
 
         assert r.shape == (0, 4)
 
 
 def test_copy_with_into():
     with tmpfile('.hdf5') as fn:
-        dset = into(fn + '::/data', [1, 2, 3])
+        dset = into('h5py://' + fn + '::/data', [1, 2, 3])
         assert dset.shape == (3,)
         assert eq(dset[:], [1, 2, 3])
 
@@ -135,6 +135,6 @@ def test_varlen_dtypes():
     y = np.array([('Alice', 100), ('Bob', 200)],
                 dtype=[('name', 'O'), ('amount', 'i4')])
     with tmpfile('.hdf5') as fn:
-        dset = into(fn + '::/data', y)
+        dset = into('h5py://' + fn + '::/data', y)
 
         assert into(list, dset) == into(list, dset)

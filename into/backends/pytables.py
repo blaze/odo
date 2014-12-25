@@ -1,10 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
+import re
 from datashape import discover
 from datashape.dispatch import dispatch
 from ..append import append
 from ..convert import convert, ooc_types
-from ..resource import resource
+from ..resource import resource, resource_matches
 from ..chunks import chunks, Chunks
 from ..utils import tmpfile
 
@@ -116,8 +117,19 @@ def PyTables(path, datapath, dshape=None, **kwargs):
     array([(100.3, b'mars'), (100.42, b'jupyter')],
           dtype=[('volume', '<f8'), ('planet', 'S10')])
     """
-    def possibly_create_table(filename, dtype):
+    def possibly_create_table(filename, dtype, validate=True):
         f = tables.open_file(filename, mode='a')
+
+        # validate that we have a PyTables file
+        if validate:
+            try:
+                if f.format_version == 'unknown':
+                    raise AttributeError
+            except AttributeError:
+                f.close()
+                raise NotImplementedError
+
+        # validate the group
         try:
             if datapath not in f:
                 if dtype is None:
@@ -141,14 +153,15 @@ def PyTables(path, datapath, dshape=None, **kwargs):
         possibly_create_table(path, dtype)
     else:
         with tmpfile('.h5') as filename:
-            possibly_create_table(filename, dtype)
+            possibly_create_table(filename, dtype, validate=False)
             shutil.copyfile(filename, path)
     return tables.open_file(path, mode='a').get_node(datapath)
 
 
-@resource.register('.+\.h5')
-def resource_pytables(path, datapath, **kwargs):
-    return PyTables(path, datapath, **kwargs)
+@resource.register('^(pytables://)?.+\.(h5|hdf5)')
+def resource_pytables(path, *args, **kwargs):
+    path = resource_matches(path, 'pytables')
+    return PyTables(path, *args, **kwargs)
 
 
 @dispatch((tables.Table, tables.Array))

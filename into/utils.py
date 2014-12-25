@@ -35,9 +35,9 @@ def expand_tuples(L):
         return [(item,) + t for t in rest for item in L[0]]
 
 @contextmanager
-def tmpfile(extension=''):
+def tmpfile(extension='',prefix=''):
     extension = '.' + extension.lstrip('.')
-    handle, filename = tempfile.mkstemp(extension)
+    handle, filename = tempfile.mkstemp(suffix=extension,prefix=prefix)
 
     yield filename
 
@@ -132,4 +132,3 @@ def assert_allclose(lhs, rhs):
             if isinstance(right, datetime.datetime):
                 right = normalize_to_date(right)
             assert left == right
-

@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import re
 import datashape
 from datashape import (DataShape, Record, Mono, dshape, to_numpy,
         to_numpy_dtype, discover)
@@ -12,7 +13,7 @@ from toolz import assoc, keyfilter
 from ..append import append
 from ..convert import convert, ooc_types
 from ..create import create
-from ..resource import resource
+from ..resource import resource, resource_matches
 from ..chunks import chunks, Chunks
 from ..compatibility import unicode
 
@@ -117,8 +118,9 @@ def h5py_to_numpy_chunks(dset, chunksize=2**20, **kwargs):
     return chunks(np.ndarray)(load)
 
 
-@resource.register('.+\.hdf5')
-def resource_hdf5(uri, datapath=None, dshape=None, **kwargs):
+@resource.register('^(h5py://)?.+\.(h5|hdf5)')
+def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
+    uri = resource_matches(uri, 'h5py')
     f = h5py.File(uri)
     olddatapath = datapath
     if dshape is not None:

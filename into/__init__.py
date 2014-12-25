@@ -30,6 +30,10 @@ try:
 except:
     pass
 try:
+     from .backends.hdfstore import tables
+except:
+    pass
+try:
      from .backends.dynd import nd
 except:
     pass

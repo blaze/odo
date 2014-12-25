@@ -1,11 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
+import re
 import datashape
 from datashape import discover
 from datashape.dispatch import dispatch
 from ..append import append
 from ..convert import convert, ooc_types
-from ..resource import resource
+from ..resource import resource, resource_matches
 from ..chunks import chunks, Chunks
 from ..utils import tmpfile
 from ..numpy_dtype import dshape_to_pandas
@@ -144,9 +145,11 @@ def hdfstore_to_dataframe_chunks(t, chunksize=1e7, **kwargs):
         return t.parent.select(t.group._v_name, chunksize=chunksize, **kwargs)
     return chunks(pd.DataFrame)(load)
 
-@resource.register('.+\.h5')
-def resource_hdfstore(path, datapath, **kwargs):
-    return HDFStore(path, datapath, **kwargs)
+# prioritize over native pytables
+@resource.register('^(hdfstore://)?.+\.(h5|hdf5)',priority=12)
+def resource_hdfstore(path, *args, **kwargs):
+    path = resource_matches(path, 'hdfstore')
+    return HDFStore(path, *args, **kwargs)
 
 def HDFStore(path, datapath, dshape=None, **kwargs):
     """Create or open a ``hdf.HDFStore`` object.
@@ -179,7 +182,8 @@ def HDFStore(path, datapath, dshape=None, **kwargs):
                               dtype=[('volume', '<f8'), ('planet', 'S10')]))
     """
 
-    if not os.path.exists(path):
+    def create_as_empty(store,datapath=datapath,dshape=dshape):
+        """ create and return an EmptyAppendableFrameTable """
 
         # dshape is ony required if the path does not exists
         if not dshape:
@@ -191,9 +195,6 @@ def HDFStore(path, datapath, dshape=None, **kwargs):
             dshape = dshape.subshape[0]
         dtype = dshape_to_pandas(dshape)[0]
 
-        # create and open a new store
-        store = hdf.HDFStore(path, **kwargs)
-
         # create a new node
         if datapath.startswith('/'):
             datapath = datapath[1:]
@@ -204,7 +205,31 @@ def HDFStore(path, datapath, dshape=None, **kwargs):
         s.set_object_info()
         return s
 
-    return hdf.HDFStore(path, **kwargs).get_storer(datapath)
+    if not os.path.exists(path):
+        store = hdf.HDFStore(path, **kwargs)
+        return create_as_empty(store=store)
+
+    # inspect the store to make sure that we only handle HDFStores
+    # otherwise defer to other resources
+    store = hdf.HDFStore(path, **kwargs)
+
+    try:
+        store._path
+    except AttributeError:
+        store.close()
+        raise NotImplementedError
+
+    group = store.get_node(datapath)
+    if group is None:
+        return create_as_empty(store=store)
+
+    # further validation on the actual node
+    try:
+        group._v_attrs.pandas_type
+    except AttributeError:
+        raise NotImplementedError
+
+    return store.get_storer(datapath)
 
 @dispatch(hdf.Table)
 def drop(t):
