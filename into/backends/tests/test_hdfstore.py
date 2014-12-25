@@ -41,6 +41,13 @@ def hdf_file2(data2):
         data2.to_hdf(filename,'dt',format='table',data_columns=True)
         yield filename
 
+@pytest.yield_fixture
+def hdf_file3():
+    data3 = DataFrame(np.random.randn(10,10),columns=[ 'c%02d' % i for i in range(10) ])
+    with tmpfile('.h5') as filename:
+        data3.to_hdf(filename,'dt',format='table',data_columns=True)
+        yield filename
+
 @contextmanager
 def ensure_clean_store(*args, **kwargs):
     try:
@@ -73,6 +80,49 @@ class TestHDFStore(object):
         with ensure_clean_store(hdf_file2, '/dt') as t:
             res = into(DataFrame, t)
             assert_frame_equal(res, read_hdf(hdf_file2,'dt'))
+
+    def test_table_into_dataframe_columns(self, hdf_file2):
+
+        with ensure_clean_store(hdf_file2, '/dt') as t:
+            res = into(DataFrame, t, columns=['id','amount'])
+            expected = read_hdf(hdf_file2,'dt',columns=['id','amount'])
+            assert_frame_equal(res, expected)
+
+    def test_table_into_dataframe_columns_large_ncols(self, hdf_file3):
+        # efficient selection of columns
+
+        with ensure_clean_store(hdf_file3, '/dt') as t:
+
+            for n in range(1,10):
+                cols = [ 'c%02d' % i for i in range(n) ]
+                res = into(DataFrame, t, columns=cols)
+                expected = read_hdf(hdf_file3,'dt',columns=cols)
+                assert_frame_equal(res, expected)
+
+    def test_table_into_dataframe_where_no_columns(self, hdf_file2):
+
+        with ensure_clean_store(hdf_file2, '/dt') as t:
+            res = into(DataFrame, t, where='amount>=300')
+            expected = read_hdf(hdf_file2,'dt',where='amount>=300')
+            assert_frame_equal(res, expected)
+
+    def test_table_into_dataframe_where_and_columns(self, hdf_file2):
+
+        with ensure_clean_store(hdf_file2, '/dt') as t:
+            res = into(DataFrame, t, where='amount>=300', columns=['id','amount'])
+            expected = read_hdf(hdf_file2,'dt', where='amount>=300', columns=['id','amount'])
+            assert_frame_equal(res, expected)
+
+    def test_table_into_chunks_dataframe(self, hdf_file3):
+
+        with ensure_clean_store(hdf_file3, '/dt') as t:
+
+            expected = read_hdf(hdf_file3,'dt')
+            for cs in [1,5,10,100]:
+                res = into(chunks(DataFrame), t, chunksize=cs)
+                res = concat(res.data(),axis=0)
+
+                assert_frame_equal(res, expected)
 
     def test_dataframe_into_table(self, hdf_file2, new_file):
 

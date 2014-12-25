@@ -92,9 +92,46 @@ def append_chunks_to_hdfstore(t, data, **kwargs):
 
     return t
 
+def _use_sub_columns_selection(t, columns):
+    # should we use an efficient sub-selection method
+    if columns is None:
+        return False
+
+    n = t.ncols
+    l = len(columns)
+
+    return (l <= n/2) & (l <= 4)
+
+def _select_columns(t, key, **kwargs):
+    # return a single column
+
+    return t.read_column(key, **kwargs)
+
+
 @convert.register(pd.DataFrame, hdf.AppendableFrameTable, cost=3.0)
-def hdfstore_to_dataframe(t, **kwargs):
-    return t.parent.select(t.group._v_name,**kwargs)
+def hdfstore_to_dataframe(t, where=None, columns=None, **kwargs):
+
+    if where is None and columns is not None:
+
+        # just select the columns
+        # where is not currently support here
+        if _use_sub_columns_selection(t, columns):
+            return pd.concat([ _select_columns(t, c, **kwargs) for c in columns ],
+                             keys=columns,
+                             axis=1)
+
+    return t.parent.select(t.group._v_name, where=where, columns=columns, **kwargs)
+
+@convert.register(chunks(pd.DataFrame), hdf.AppendableFrameTable, cost=5.0)
+def hdfstore_to_dataframe_chunks(t, chunksize=1e7, **kwargs):
+    """
+    retrieve by chunks!
+    use the embedded iterator
+
+    """
+    def load():
+        return t.parent.select(t.group._v_name, chunksize=chunksize, **kwargs)
+    return chunks(pd.DataFrame)(load)
 
 @resource.register('.+\.h5')
 def resource_hdfstore(path, datapath, **kwargs):
