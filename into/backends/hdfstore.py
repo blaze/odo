@@ -33,49 +33,60 @@ def ensure_indexing(t):
     t.table.autoindex=True
     t.table.reindex_dirty()
 
-def _is_empty(t):
-    """ are we representing an empty table """
-    return t.nrows == 1 and t.read().isnull().all().all()
-
-def _replace_empty(t, data):
+class EmptyAppendableFrameTable(hdf.AppendableFrameTable):
     """
-    we have an existing table stored that represents an empty table
-    if its there, replace it. return the new node
+    represents an empty table, not yet actually created
+
+    the current impl of HDFStore does not allow the actual
+    creation of an empty table, so we use this holder until
+    an append
+
     """
+    @property
+    def nrows(self):
+        return 0
 
-    assert _is_empty(t)
-
-    # indexing happens after the appending here
-    name = t.group._v_name
-    store = t.parent
-    store.remove(name)
-    store.append(name, data, format='table', data_columns=True)
-
-    # we changed the node (even though it has the same name)
-    # so make t point to it
-    t.group = store.get_node(name)
-
-    return t
+    @property
+    def shape(self):
+        return (0,)
 
 @discover.register(hdf.Table)
 def discover_tables_node(n):
     return datashape.from_numpy((n.shape,), n.dtype)
 
+@append.register(EmptyAppendableFrameTable, pd.DataFrame)
+def append_frame_to_hdfstore(t, data, **kwargs):
+    """
+    append a single frame to a currently empty store
+    this creates and returns the new table object
+    """
+    name = t.group._v_name
+    t.parent.append(name, data, format='table', data_columns=True)
+    return t.parent.get_storer(name)
+
 @append.register(hdf.AppendableFrameTable, pd.DataFrame)
 def append_frame_to_hdfstore(t, data, **kwargs):
     """ append a single frame to a store """
 
-    # see if we have our temp table stored, if so, remove it first
-    if _is_empty(t):
-        t = _replace_empty(t, data)
+    name = t.group._v_name
+    t.parent.append(name, data)
+    return t.parent.get_storer(name)
 
-    # we have an existing table
-    else:
+@append.register(EmptyAppendableFrameTable, chunks(pd.DataFrame))
+def append_chunks_to_hdfstore(t, data, **kwargs):
+    """
+    append chunks to a store
 
-        # append
-        t.parent.append(t.group._v_name, data)
+    we have an existing empty table
+    """
+    data = list(data)
+    d, data = data[0], data[1:]
 
-    return t
+    # empty table
+    t = append_frame_to_hdfstore(t, d, **kwargs)
+
+    # the rest
+    return append_chunks_to_hdfstore(t, chunks(pd.DataFrame)(data), **kwargs)
 
 @append.register(hdf.AppendableFrameTable, chunks(pd.DataFrame))
 def append_chunks_to_hdfstore(t, data, **kwargs):
@@ -180,10 +191,18 @@ def HDFStore(path, datapath, dshape=None, **kwargs):
             dshape = dshape.subshape[0]
         dtype = dshape_to_pandas(dshape)[0]
 
-        # create a temp table with a single row
-        df = pd.DataFrame(dict([ (name,pd.Series(index=[0],dtype=dt)) for name,dt in dtype.items() ]))
-        with hdf.HDFStore(path, **kwargs) as store:
-            store.append(datapath,df,data_columns=True)
+        # create and open a new store
+        store = hdf.HDFStore(path, **kwargs)
+
+        # create a new node
+        if datapath.startswith('/'):
+            datapath = datapath[1:]
+        group = store._handle.create_group('/',datapath,createparents=True)
+
+        # create our stand-in table
+        s = EmptyAppendableFrameTable(store, group)
+        s.set_object_info()
+        return s
 
     return hdf.HDFStore(path, **kwargs).get_storer(datapath)
 

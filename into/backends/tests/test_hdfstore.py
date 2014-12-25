@@ -73,7 +73,7 @@ class TestHDFStore(object):
         with ensure_clean_store(path=new_file, datapath='/write_this', dshape=dshape) as t:
             shape = t.shape
             assert t.parent.filename == new_file
-            assert shape == (1,)
+            assert shape == (0,)
 
     def test_table_into_dataframe(self, hdf_file2):
 
@@ -130,7 +130,7 @@ class TestHDFStore(object):
         dshape = discover(expected)
 
         with ensure_clean_store(path=new_file, datapath='/write_this', dshape=dshape) as t:
-            into(t, expected)
+            t = into(t, expected)
 
             res = read_hdf(new_file,'write_this')
             assert_frame_equal(res, expected)
@@ -143,12 +143,12 @@ class TestHDFStore(object):
         with ensure_clean_store(path=new_file, datapath='/write_this', dshape=dshape) as t:
 
             # clean store
-            assert t.nrows == 1
-            into(t, expected)
+            assert t.nrows == 0
+            t = into(t, expected)
             assert t.nrows == dshape.shape[0].val
 
             # append to the existing
-            into(t, expected)
+            t = into(t, expected)
             assert t.nrows == 2*dshape.shape[0].val
 
             res = read_hdf(new_file,'write_this')
