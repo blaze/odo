@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
-from into.backends.bcolz import (create, append, convert, ctable, carray,
-        resource, discover, drop)
+from into.backends.bcolz import (append, convert, ctable, carray, resource,
+                                 discover, drop)
 from into.chunks import chunks
-from into import into, append, convert, resource, discover
+from into import append, convert, resource, discover
 import numpy as np
 from into.utils import tmpfile
 import os
