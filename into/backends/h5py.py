@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-import re
 import datashape
 from datashape import (DataShape, Record, Mono, dshape, to_numpy,
         to_numpy_dtype, discover)
@@ -120,17 +119,19 @@ def h5py_to_numpy_chunks(dset, chunksize=2**20, **kwargs):
 
 @resource.register('^(h5py://)?.+\.(h5|hdf5)')
 def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
+
     uri = resource_matches(uri, 'h5py')
-    f = h5py.File(uri)
+
+    ds = datashape.dshape(dshape)
     olddatapath = datapath
-    if dshape is not None:
-        ds = datashape.dshape(dshape)
-        if datapath:
-            while ds and datapath:
-                datapath, name = datapath.rsplit('/', 1)
-                ds = Record([[name, ds]])
-            ds = datashape.dshape(ds)
-        f = create(h5py.File, path=uri, dshape=ds, **kwargs)
+    if datapath:
+        while ds and datapath:
+            datapath, name = datapath.rsplit('/', 1)
+            ds = Record([[name, ds]])
+        ds = datashape.dshape(ds)
+
+    f = create(h5py.File, path=uri, dshape=ds, **kwargs)
+
     if olddatapath:
         return f[olddatapath]
     else:

@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-import re
 from datashape import discover
 from datashape.dispatch import dispatch
 from ..append import append
@@ -118,18 +117,19 @@ def PyTables(path, datapath, dshape=None, **kwargs):
           dtype=[('volume', '<f8'), ('planet', 'S10')])
     """
     def possibly_create_table(filename, dtype, validate=True):
-        f = tables.open_file(filename, mode='a')
-
         # validate that we have a PyTables file
-        if validate:
+        if validate and os.path.exists(filename):
             try:
+                f = tables.open_file(filename, mode='a')
                 if f.format_version == 'unknown':
                     raise AttributeError
             except AttributeError:
-                f.close()
                 raise NotImplementedError
+            finally:
+                f.close()
 
         # validate the group
+        f = tables.open_file(filename, mode='a')
         try:
             if datapath not in f:
                 if dtype is None:

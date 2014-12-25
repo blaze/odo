@@ -1,0 +1,7 @@
+# tests fixtures
+
+@pytest.fixture
+def test_df():
+    return DataFrame({ 'id' : range(5),
+                       'name' : ['Alice','Bob','Charlie','Denis','Edith'],
+                       'amount' : [100,-200,300,400,-500] })

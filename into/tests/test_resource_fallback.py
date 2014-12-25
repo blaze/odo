@@ -1,13 +1,39 @@
+"""
 
+test the use of uri's in resource that need a hierarchical dismbiguation
+based on priority and the raising of NotImplementedError by matches
+that do not wish to be a resource for that particular uri
+
+IOW. a higher-priority uri matches (e.g. .h5), but the data is
+actually PyTables, so HDFStore 'passes' on the processing. PyTables
+is next in the chain so it will then process.
+
+Note that a uri can be more fully-disambiguated via a head element
+The default is hdfstore (this only matters for writing), reading
+is unambiguous.
+
+e.g.
+
+....../file.h5 -> hdfstore
+hdfstore://....../file.hdf5|h5 -> hdfstore
+pytables://....../file.hdf5|h5 -> pytables
+h5py://........../file.hdf5|h5 -> h5py
+
+"""
+
+
+import os
 import numpy as np
 import pytest
 import itertools
+from contextlib import contextmanager
 
+from datashape import discover
 from into.resource import resource
 from into.utils import tmpfile
 
-import tables as tb
 import h5py
+import tables as tb
 from pandas.io import pytables as hdfstore
 
 from pandas import DataFrame
@@ -21,9 +47,33 @@ arr = np.array([(1, 'Alice', 100),
                 (4, 'Denis', 400),
                 (5, 'Edith', -500)],
                dtype=[('id', '<i8'), ('name', 'S7'), ('amount', '<i8')])
-dshape = '{id: int, name: string[7, "ascii"], amount: float32}'
+dshape = discover(arr)
 
 ext_list = ['.h5','.hdf5']
+
+@contextmanager
+def ensure_resource_clean(*args, **kwargs):
+    result = resource(*args, **kwargs)
+    yield result
+
+    # hdfstore
+    try:
+        result.parent.close()
+    except AttributeError:
+        pass
+
+    # pytables
+    try:
+        result._v_file.close()
+    except AttributeError:
+        pass
+
+    # h5py
+    try:
+        result.close()
+    except AttributeError:
+        pass
+
 
 def combos(prefixes):
     """ return all combinations of the ext and the prefixes list """
@@ -70,7 +120,7 @@ def h5py_file(request):
 
     ext, prefix = request.param
     with tmpfile(ext) as filename:
-        f = h5py.File(filename)
+        f = h5py.File(filename,mode='w')
         f.create_dataset('/data', data=arr, chunks=True,
                          maxshape=(None,) + arr.shape[1:])
         f.close()
@@ -82,57 +132,56 @@ def h5py_filename(request, tmpdir):
     ext, prefix = request.param
     yield prefix + str(tmpdir / 'foobar' + ext)
 
-def test_hdfstore_read(hdfstore_file):
-
-    result = resource(hdfstore_file,'/data')
-    assert isinstance(result, hdfstore.AppendableFrameTable)
-
-    result = resource(hdfstore_file + '::/data')
-    assert isinstance(result, hdfstore.AppendableFrameTable)
-
 def test_hdfstore_write(hdfstore_filename):
 
     # this is also the default writer
-    result = resource(hdfstore_filename,'/data',dshape=dshape)
-    assert isinstance(result, hdfstore.AppendableFrameTable)
+    with ensure_resource_clean(hdfstore_filename,'/data',dshape=dshape) as result:
+        assert isinstance(result, hdfstore.AppendableFrameTable)
 
 def test_hdfstore_write2(hdfstore_filename):
 
     # this is also the default writer
-    result = resource(hdfstore_filename + '::/data',dshape=dshape)
-    assert isinstance(result, hdfstore.AppendableFrameTable)
+    with ensure_resource_clean(hdfstore_filename + '::/data',dshape=dshape) as result:
+        assert isinstance(result, hdfstore.AppendableFrameTable)
 
-def test_pytables_read(pytables_file):
+def test_hdfstore_read(hdfstore_file):
 
-    result = resource(pytables_file,'/data')
-    assert isinstance(result, tb.Table)
+    with ensure_resource_clean(hdfstore_file,'/data') as result:
+        assert isinstance(result, hdfstore.AppendableFrameTable)
 
-    result = resource(pytables_file + '::/data')
-    assert isinstance(result, tb.Table)
+    with ensure_resource_clean(hdfstore_file + '::/data') as result:
+        assert isinstance(result, hdfstore.AppendableFrameTable)
 
-def test_pytables_write(pytables_filename):
+#def test_h5py_write(h5py_filename):
 
-    result = resource(pytables_filename,'/data',dshape=dshape)
-    assert isinstance(result, tb.Table)
+#    with ensure_resource_clean(h5py_filename,'/data',dshape=dshape) as result:
+#        assert isinstance(result, h5py.Dataset)
 
-def test_pytables_write2(pytables_filename):
+#def test_h5py_write2(h5py_filename):
 
-    result = resource(pytables_filename + '::/data',dshape=dshape)
-    assert isinstance(result, tb.Table)
+#    with ensure_resource_clean(h5py_filename + '::/data',dshape=dshape) as result:
+#        assert isinstance(result, h5py.Dataset)
 
 def test_h5py_read(h5py_file):
 
-    import pdb; pdb.set_trace()
     #### this requires a datashape to read????? ####
-    result = resource(h5py_file,'/data',dshape=dshape)
-    assert isinstance(result, h5py.Dataset)
+    with ensure_resource_clean(h5py_file,'/data',dshape=dshape) as result:
+        assert isinstance(result, h5py.Dataset)
 
-def test_h5py_write(h5py_filename):
+def test_pytables_write(pytables_filename):
 
-    result = resource(h5py_filename,'/data',dshape=dshape)
-    assert isinstance(result, h5py.Dataset)
+    with ensure_resource_clean(pytables_filename,'/data',dshape=dshape) as result:
+        assert isinstance(result, tb.Table)
 
-def test_h5py_write2(h5py_filename):
+def test_pytables_write2(pytables_filename):
 
-    result = resource(h5py_filename + '::/data',dshape=dshape)
-    assert isinstance(result, h5py.Dataset)
+    with ensure_resource_clean(pytables_filename + '::/data',dshape=dshape) as result:
+        assert isinstance(result, tb.Table)
+
+def test_pytables_read(pytables_file):
+
+    with ensure_resource_clean(pytables_file,'/data') as result:
+        assert isinstance(result, tb.Table)
+
+    with ensure_resource_clean(pytables_file + '::/data') as result:
+        assert isinstance(result, tb.Table)

@@ -1,0 +1,14 @@
+from into import *
+import pandas
+from pandas import DataFrame
+df = pandas.util.testing.makeMixedDataFrame()
+
+uri = 'foo.h5::data'
+
+print into(uri,df)
+print into(uri,df)
+print into(DataFrame, uri)
+
+print into(DataFrame, uri, where='A>3')
+
+print drop('foo.h5')
