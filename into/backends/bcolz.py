@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-import bcolz
 import os
 from bcolz import ctable, carray
 import numpy as np
@@ -10,12 +9,11 @@ from datashape import discover
 import shutil
 from ..append import append
 from ..convert import convert, ooc_types
-from ..create import create
 from ..resource import resource
-from ..chunks import chunks, Chunks
 from ..drop import drop
+from ..chunks import chunks
 
-keywords = ['rootdir']
+keywords = ['cparams', 'dflt', 'expectedlen', 'chunklen', 'rootdir']
 
 
 @discover.register((ctable, carray))
@@ -76,7 +74,7 @@ def resource_bcolz(uri, dshape=None, **kwargs):
     else:
         if not dshape:
             raise ValueError("Must specify either existing bcolz directory or"
-                    " valid datashape")
+                             " valid datashape")
         dshape = datashape.dshape(dshape)
 
         dt = datashape.to_numpy_dtype(dshape)
