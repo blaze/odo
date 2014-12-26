@@ -158,10 +158,8 @@ def test_hdfstore_read2(hdfstore_file):
     with ensure_resource_clean(hdfstore_file + '::/data') as result:
         assert isinstance(result, hdfstore.AppendableFrameTable)
 
-#### These work when run separately from PyTables
-#### these only work under certain HDF5 versions
-#### their is apparently a conflict with PyTables at the atexit handers
-#### when they are run all together
+# These seems to cause segfaults if run in concert with the PyTables tests in the same process
+# you can actually use them; something about the atexit overlap
 
 #@pytest.mark.skipif(not IS_PY3, reason="hp5y fail under < 3")
 #def test_h5py_write(h5py_filename):
