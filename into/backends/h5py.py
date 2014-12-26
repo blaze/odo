@@ -122,13 +122,14 @@ def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
 
     uri = resource_matches(uri, 'h5py')
 
-    ds = datashape.dshape(dshape)
-    olddatapath = datapath
-    if datapath:
-        while ds and datapath:
-            datapath, name = datapath.rsplit('/', 1)
-            ds = Record([[name, ds]])
-        ds = datashape.dshape(ds)
+    if dshape is not None:
+        ds = datashape.dshape(dshape)
+        olddatapath = datapath
+        if datapath:
+            while ds and datapath:
+                datapath, name = datapath.rsplit('/', 1)
+                ds = Record([[name, ds]])
+            ds = datashape.dshape(ds)
 
     f = create(h5py.File, path=uri, dshape=ds, **kwargs)
 

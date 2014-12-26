@@ -177,7 +177,6 @@ def test_hdfstore_read2(hdfstore_file):
 
 #def test_h5py_read(h5py_file):
 
-    #### this requires a datashape to read????? ####
 #    with ensure_resource_clean(h5py_file,'/data',dshape=dshape) as result:
 #        assert isinstance(result, h5py.Dataset)
 
