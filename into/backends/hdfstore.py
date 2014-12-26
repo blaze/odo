@@ -119,6 +119,13 @@ def _select_columns(t, key, **kwargs):
     return t.read_column(key, **kwargs)
 
 
+@convert.register(EmptyAppendableFrameTable, hdf.AppendableFrameTable)
+def hdfstore_to_empty_hdfstore(t, **kwargs):
+
+    import pdb; pdb.set_trace()
+    res = hdfstore_to_dataframe(t, **kwargs)
+    return append_frame_to_hdfstore(t, res)
+
 @convert.register(pd.DataFrame, hdf.AppendableFrameTable, cost=3.0)
 def hdfstore_to_dataframe(t, where=None, columns=None, **kwargs):
 

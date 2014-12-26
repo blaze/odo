@@ -17,28 +17,16 @@ from pandas.util.testing import assert_frame_equal
 def new_file(tmpdir):
     return str(tmpdir / 'foo.h5')
 
-@pytest.fixture
-def data():
-    return DataFrame({ 'id' : range(5),
-                       'name' : ['Alice','Bob','Charlie','Denis','Edith'],
-                       'amount' : [100,-200,300,400,-500] })
-
 @pytest.yield_fixture
-def hdf_file(data):
+def hdf_file(df):
     with tmpfile('.h5') as filename:
-        data.to_hdf(filename,'title',mode='w',format='table',data_columns=True)
+        df.to_hdf(filename,'title',mode='w',format='table',data_columns=True)
         yield filename
 
-@pytest.fixture
-def data2(data):
-    data2 = data.copy()
-    data2['date'] = date_range('20130101 09:00:00',freq='s',periods=len(data))
-    return data2
-
 @pytest.yield_fixture
-def hdf_file2(data2):
+def hdf_file2(df2):
     with tmpfile('.h5') as filename:
-        data2.to_hdf(filename,'dt',mode='w',format='table',data_columns=True)
+        df2.to_hdf(filename,'dt',mode='w',format='table',data_columns=True)
         yield filename
 
 @pytest.yield_fixture
@@ -168,3 +156,31 @@ class TestHDFStore(object):
 
             res = read_hdf(new_file,'write_this')
             assert_frame_equal(res, totality)
+
+    def test_into_hdf5(self, df2, tmpdir):
+
+        # test multi-intos for HDF5 types
+        import pdb; pdb.set_trace()
+        target1 = str(tmpdir / 'foo.h5')
+        target2 = str(tmpdir / 'foo2.h5')
+
+        into(target1, df2, datapath='/data')
+        into(target2, target1, datapath='/data')
+
+        result = into(DataFrame, target2, datapath='/data')
+
+        # append again
+        result = into(target2, target1, datapath='/data')
+
+
+    def test_into_hdf52(self, df2, tmpdir):
+
+        # test multi-intos for HDF5 types
+        import pdb; pdb.set_trace()
+        target1 = str(tmpdir / 'foo.h5')
+        target2 = str(tmpdir / 'foo2.h5')
+
+        into(target1 + '::/data', df2)
+        into(target2 + '::/data2', target1 + '::/data')
+
+        result = into(DataFrame, target2 + '::/data2')
