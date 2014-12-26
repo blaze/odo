@@ -104,7 +104,8 @@ def append_h5py(dset, x, **kwargs):
 def h5py_to_numpy(dset, force=False, **kwargs):
     if dset.size > 1e9:
         raise MemoryError("File size is large: %0.2f GB.\n"
-        "Convert with flag force=True to force loading" % d.size / 1e9)
+                          "Convert with flag force=True to force loading" %
+                          dset.size / 1e9)
     else:
         return dset[:]
 
@@ -117,23 +118,27 @@ def h5py_to_numpy_chunks(dset, chunksize=2**20, **kwargs):
     return chunks(np.ndarray)(load)
 
 
-@resource.register('^(h5py://)?.+\.(h5|hdf5)',priority=10.0)
+@resource.register('^(h5py://)?.+\.(h5|hdf5)', priority=10.0)
 def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
 
     uri = resource_matches(uri, 'h5py')
 
+    olddatapath = datapath
+
     if dshape is not None:
         ds = datashape.dshape(dshape)
-        olddatapath = datapath
-        if datapath:
+        if datapath is not None:
             while ds and datapath:
                 datapath, name = datapath.rsplit('/', 1)
                 ds = Record([[name, ds]])
             ds = datashape.dshape(ds)
+        f = create(h5py.File, path=uri, dshape=ds, **kwargs)
+    else:
+        f = h5py.File(uri)
+        ds = discover(f)
 
-    f = create(h5py.File, path=uri, dshape=ds, **kwargs)
+    if olddatapath is not None:
 
-    if olddatapath:
         return f[olddatapath]
     else:
         return f
