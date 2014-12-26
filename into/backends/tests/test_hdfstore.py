@@ -26,7 +26,7 @@ def data():
 @pytest.yield_fixture
 def hdf_file(data):
     with tmpfile('.h5') as filename:
-        data.to_hdf(filename,'title',format='table',data_columns=True)
+        data.to_hdf(filename,'title',mode='w',format='table',data_columns=True)
         yield filename
 
 @pytest.fixture
@@ -38,14 +38,14 @@ def data2(data):
 @pytest.yield_fixture
 def hdf_file2(data2):
     with tmpfile('.h5') as filename:
-        data2.to_hdf(filename,'dt',format='table',data_columns=True)
+        data2.to_hdf(filename,'dt',mode='w',format='table',data_columns=True)
         yield filename
 
 @pytest.yield_fixture
 def hdf_file3():
     data3 = DataFrame(np.random.randn(10,10),columns=[ 'c%02d' % i for i in range(10) ])
     with tmpfile('.h5') as filename:
-        data3.to_hdf(filename,'dt',format='table',data_columns=True)
+        data3.to_hdf(filename,'dt',mode='w',format='table',data_columns=True)
         yield filename
 
 @contextmanager

@@ -22,6 +22,7 @@ h5py://........../file.hdf5|h5 -> h5py
 """
 
 
+import sys
 import os
 import numpy as np
 import pytest
@@ -89,7 +90,7 @@ def hdfstore_file(request):
 
     ext, prefix = request.param
     with tmpfile(ext) as filename:
-        df.to_hdf(filename,'data',format='table',data_columns=True)
+        df.to_hdf(filename,'data',mode='w',format='table',data_columns=True)
         yield prefix + filename
 
 @pytest.yield_fixture(params=combos(['','hdfstore://']))
@@ -103,6 +104,7 @@ def pytables_file(request):
 
     ext, prefix = request.param
     with tmpfile(ext) as filename:
+        os.remove(filename)
         f = tb.open_file(filename, mode='w')
         d = f.create_table('/', 'data',  arr)
         d.close()
@@ -120,6 +122,7 @@ def h5py_file(request):
 
     ext, prefix = request.param
     with tmpfile(ext) as filename:
+        os.remove(filename)
         f = h5py.File(filename,mode='w')
         f.create_dataset('/data', data=arr, chunks=True,
                          maxshape=(None,) + arr.shape[1:])
@@ -149,24 +152,30 @@ def test_hdfstore_read(hdfstore_file):
     with ensure_resource_clean(hdfstore_file,'/data') as result:
         assert isinstance(result, hdfstore.AppendableFrameTable)
 
+def test_hdfstore_read2(hdfstore_file):
+
     with ensure_resource_clean(hdfstore_file + '::/data') as result:
         assert isinstance(result, hdfstore.AppendableFrameTable)
 
-#def test_h5py_write(h5py_filename):
+#### these work under py3+
+#### but cause a seg-fault in py2 (only occurs if pytables and h5py are read/written in the same
+#### process, something about the atexit handler. I believe newer versions of h5py fix this
+if sys.version_info[0] >= 3:
+    def test_h5py_write(h5py_filename):
 
-#    with ensure_resource_clean(h5py_filename,'/data',dshape=dshape) as result:
-#        assert isinstance(result, h5py.Dataset)
+        with ensure_resource_clean(h5py_filename,'/data',dshape=dshape) as result:
+            assert isinstance(result, h5py.Dataset)
 
-#def test_h5py_write2(h5py_filename):
+    def test_h5py_write2(h5py_filename):
 
-#    with ensure_resource_clean(h5py_filename + '::/data',dshape=dshape) as result:
-#        assert isinstance(result, h5py.Dataset)
+        with ensure_resource_clean(h5py_filename + '::/data',dshape=dshape) as result:
+            assert isinstance(result, h5py.Dataset)
 
-def test_h5py_read(h5py_file):
+    def test_h5py_read(h5py_file):
 
-    #### this requires a datashape to read????? ####
-    with ensure_resource_clean(h5py_file,'/data',dshape=dshape) as result:
-        assert isinstance(result, h5py.Dataset)
+        #### this requires a datashape to read????? ####
+        with ensure_resource_clean(h5py_file,'/data',dshape=dshape) as result:
+            assert isinstance(result, h5py.Dataset)
 
 def test_pytables_write(pytables_filename):
 
@@ -180,8 +189,10 @@ def test_pytables_write2(pytables_filename):
 
 def test_pytables_read(pytables_file):
 
-    with ensure_resource_clean(pytables_file,'/data') as result:
+    with ensure_resource_clean(pytables_file, '/data') as result:
         assert isinstance(result, tb.Table)
+
+def test_pytables_read2(pytables_file):
 
     with ensure_resource_clean(pytables_file + '::/data') as result:
         assert isinstance(result, tb.Table)
