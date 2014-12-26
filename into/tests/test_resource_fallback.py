@@ -159,7 +159,7 @@ def test_hdfstore_read2(hdfstore_file):
         assert isinstance(result, hdfstore.AppendableFrameTable)
 
 # These seems to cause segfaults if run in concert with the PyTables tests in the same process
-# you can actually use them; something about the atexit overlap
+# http://stackoverflow.com/questions/7450881/python-segmentation-fault-when-closing-quitting
 
 #@pytest.mark.skipif(not IS_PY3, reason="hp5y fail under < 3")
 #def test_h5py_write(h5py_filename):
@@ -173,10 +173,11 @@ def test_hdfstore_read2(hdfstore_file):
 #    with ensure_resource_clean(h5py_filename + '::/data',dshape=dshape) as result:
 #        assert isinstance(result, h5py.Dataset)
 
-#def test_h5py_read(h5py_file):
+@pytest.mark.skipif(not IS_PY3, reason="hp5y fail under < 3")
+def test_h5py_read(h5py_file):
 
-#    with ensure_resource_clean(h5py_file,'/data',dshape=dshape) as result:
-#        assert isinstance(result, h5py.Dataset)
+    with ensure_resource_clean(h5py_file,'/data',dshape=dshape) as result:
+        assert isinstance(result, h5py.Dataset)
 
 def test_pytables_write(pytables_filename):
 
