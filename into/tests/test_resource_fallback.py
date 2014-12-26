@@ -173,8 +173,8 @@ def test_hdfstore_read2(hdfstore_file):
 #    with ensure_resource_clean(h5py_filename + '::/data',dshape=dshape) as result:
 #        assert isinstance(result, h5py.Dataset)
 
-@pytest.mark.skipif(not IS_PY3, reason="hp5y fail under < 3")
-def test_h5py_read(h5py_file):
+#@pytest.mark.skipif(not IS_PY3, reason="hp5y fail under < 3")
+#def test_h5py_read(h5py_file):
 
     with ensure_resource_clean(h5py_file,'/data',dshape=dshape) as result:
         assert isinstance(result, h5py.Dataset)
