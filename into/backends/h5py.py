@@ -117,7 +117,7 @@ def h5py_to_numpy_chunks(dset, chunksize=2**20, **kwargs):
     return chunks(np.ndarray)(load)
 
 
-@resource.register('^(h5py://)?.+\.(h5|hdf5)')
+@resource.register('^(h5py://)?.+\.(h5|hdf5)',priority=10.0)
 def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
 
     uri = resource_matches(uri, 'h5py')
