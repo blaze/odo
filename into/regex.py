@@ -68,3 +68,6 @@ class RegexDispatcher(object):
                 return f(s, *args, **kwargs)
             except NotImplementedError:
                 continue
+
+        # can't find anything
+        raise NotImplementedError

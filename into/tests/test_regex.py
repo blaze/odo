@@ -17,9 +17,9 @@ def test_regex_dispatcher():
         return s
 
     assert set(foo.funcs.values()) == set([a, b, c])
-    assert foo.dispatch('123') == a
-    assert foo.dispatch('hello') == b
-    assert foo.dispatch('0123') == c
+    assert foo.dispatch('123') == [a]
+    assert foo.dispatch('hello') == [b]
+    assert foo.dispatch('0123') == [c,a]
 
 
     assert foo('123') == 123
