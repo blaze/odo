@@ -10,6 +10,7 @@ from ..chunks import chunks, Chunks
 from ..utils import tmpfile
 from ..numpy_dtype import dshape_to_pandas
 
+from collections import Iterator
 from contextlib import contextmanager
 import os
 import numpy as np
@@ -170,14 +171,13 @@ def hdfstore_to_dataframe(t, where=None, columns=None, **kwargs):
 
 @convert.register(chunks(pd.DataFrame), hdf.AppendableFrameTable, cost=5.0)
 def hdfstore_to_dataframe_chunks(t, chunksize=1e7, **kwargs):
-    """
-    retrieve by chunks!
-    use the embedded iterator
+    """ retrieve by chunks with the the embedded iterator """
+    return chunks(pd.DataFrame)(hdfstore_to_dataframe_iterator(t, chunksize=chunksize, **kwargs))
 
-    """
-    def load():
-        return t.parent.select(t.group._v_name, chunksize=chunksize, **kwargs)
-    return chunks(pd.DataFrame)(load)
+@convert.register(Iterator, hdf.AppendableFrameTable, cost=5.0)
+def hdfstore_to_dataframe_iterator(t, chunksize=1e7, **kwargs):
+    """ return the embedded iterator """
+    return t.parent.select(t.group._v_name, chunksize=chunksize, **kwargs)
 
 # prioritize over native pytables
 @resource.register('^(hdfstore://)?.+\.(h5|hdf5)',priority=12)

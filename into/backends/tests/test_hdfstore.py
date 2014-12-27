@@ -1,5 +1,6 @@
 
 from contextlib import contextmanager
+from collections import Iterator
 import numpy as np
 import pytest
 import os
@@ -139,7 +140,7 @@ def test_table_into_chunks_dataframe(hdf_file3):
         expected = read_hdf(hdf_file3, 'dt')
         for cs in [1, 5, 10]:
             res = into(chunks(DataFrame), t, chunksize=cs)
-            res = concat(list(res.data()), axis=0)
+            res = concat(list(iter(res.data)), axis=0)
 
             assert_frame_equal(res, expected)
 
@@ -190,6 +191,17 @@ def test_dataframe_into_table_append_chunks(hdf_file2, new_file):
 
         res = read_hdf(new_file, 'write_this')
         assert_frame_equal(res, totality)
+
+def test_into_iterator(hdf_file2):
+
+    # this 'works', but you end up with an iterator on a closed file
+    result = into(Iterator, hdf_file2 + '::dt')
+
+    # the resource must remain open
+    r = resource(hdf_file2 + '::dt')
+    result = into(Iterator, r)
+    assert_frame_equal(concat(list(iter(result))), read_hdf(hdf_file2,'dt'))
+    cleanup(r)
 
 def test_into_hdf5(df2, tmpdir):
 
