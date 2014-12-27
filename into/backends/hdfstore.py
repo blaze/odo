@@ -59,6 +59,16 @@ def discover_tables_node(t):
 def discover_tables_node(f):
     return discover(dict(f.items()))
 
+@append.register(hdf.HDFStore, hdf.HDFStore)
+def append_object_to_hdfstore(s, data, **kwargs):
+    """ this is essentially a gigantic append """
+    raise NotImplementedError("cannot append one store to another, pls specify datapaths")
+
+@append.register(hdf.HDFStore, object)
+def append_object_to_hdfstore(s, data, **kwargs):
+    """ generic """
+    return append_frame_to_hdfstore(s, convert(pd.DataFrame, data, **kwargs), **kwargs)
+
 @append.register(hdf.HDFStore, pd.DataFrame)
 def append_frame_to_hdfstore(s, data, datapath=None, **kwargs):
     """ append a single frame to a store, must have a datapath """
@@ -72,7 +82,7 @@ def append_frame_to_hdfstore(s, data, datapath=None, **kwargs):
     return s.get_storer(datapath)
 
 @append.register(EmptyAppendableFrameTable, pd.DataFrame)
-def append_frame_to_hdfstore(t, data, **kwargs):
+def append_frame_to_empty_hdftable(t, data, **kwargs):
     """
     append a single frame to a currently empty store
     this creates and returns the new table object
@@ -81,8 +91,13 @@ def append_frame_to_hdfstore(t, data, **kwargs):
     t.parent.append(name, data, format='table', data_columns=True)
     return t.parent.get_storer(name)
 
+@append.register(EmptyAppendableFrameTable, object)
+def append_object_to_empty_hdftable(t, data, **kwargs):
+    """ generic """
+    return append_frame_to_empty_hdftable(t, convert(pd.DataFrame, data, **kwargs), **kwargs)
+
 @append.register(EmptyAppendableFrameTable, hdf.AppendableFrameTable)
-def append_hdfstore_to_empty(t, data, **kwargs):
+def append_hdftable_to_empty(t, data, **kwargs):
     """
     append a store to a currently empty store
     this creates and returns the new table object
@@ -91,25 +106,30 @@ def append_hdfstore_to_empty(t, data, **kwargs):
     if (t.parent.filename == data.parent.filename) and (t.group == data.group):
         return data
 
-    return append_frame_to_hdfstore(t, convert(pd.DataFrame, data, **kwargs))
+    return append_frame_to_hdftable(t, convert(pd.DataFrame, data, **kwargs))
 
-@append.register(hdf.AppendableFrameTable, hdf.AppendableFrameTable)
-def append_hdfstore_to_hdfstore(t, data, **kwargs):
-    """
-    append a store to another store
-    """
-    return append_frame_to_hdfstore(t, convert(pd.DataFrame, data, **kwargs))
+@append.register(hdf.AppendableFrameTable, object)
+def append_object_to_hdftable(t, data, **kwargs):
+    """ generic """
+    return append_frame_to_hdftable(t, convert(pd.DataFrame, data, **kwargs), **kwargs)
 
 @append.register(hdf.AppendableFrameTable, pd.DataFrame)
-def append_frame_to_hdfstore(t, data, **kwargs):
+def append_frame_to_hdftable(t, data, **kwargs):
     """ append a single frame to a store """
 
     name = t.group._v_name
     t.parent.append(name, data)
     return t.parent.get_storer(name)
 
+@append.register(hdf.AppendableFrameTable, hdf.AppendableFrameTable)
+def append_hdftable_to_hdftable(t, data, **kwargs):
+    """
+    append a store to another store
+    """
+    return append_frame_to_hdftable(t, convert(pd.DataFrame, data, **kwargs))
+
 @append.register(EmptyAppendableFrameTable, chunks(pd.DataFrame))
-def append_chunks_to_hdfstore(t, data, **kwargs):
+def append_chunks_to_hdftable(t, data, **kwargs):
     """
     append chunks to a store
 
@@ -119,13 +139,13 @@ def append_chunks_to_hdfstore(t, data, **kwargs):
     d, data = data[0], data[1:]
 
     # empty table
-    t = append_frame_to_hdfstore(t, d, **kwargs)
+    t = append_frame_to_hdftable(t, d, **kwargs)
 
     # the rest
-    return append_chunks_to_hdfstore(t, chunks(pd.DataFrame)(data), **kwargs)
+    return append_chunks_to_hdftable(t, chunks(pd.DataFrame)(data), **kwargs)
 
 @append.register(hdf.AppendableFrameTable, chunks(pd.DataFrame))
-def append_chunks_to_hdfstore(t, data, **kwargs):
+def append_chunks_to_hdftable(t, data, **kwargs):
     """
     append chunks to a store
 
@@ -135,7 +155,7 @@ def append_chunks_to_hdfstore(t, data, **kwargs):
     with ensure_indexing(t):
 
         for chunk in data:
-            t = append_frame_to_hdfstore(t, chunk, **kwargs)
+            t = append_frame_to_hdftable(t, chunk, **kwargs)
 
     return t
 
@@ -228,7 +248,11 @@ def HDFStore(path, datapath=None, dshape=None, **kwargs):
             dshape = datashape.dshape(dshape)
         if dshape[0] == datashape.var:
             dshape = dshape.subshape[0]
-        dtype = dshape_to_pandas(dshape)[0]
+        try:
+            dtype = dshape_to_pandas(dshape)[0]
+        except AttributeError:
+            store.close()
+            raise ValueError("need to pass a proper datashape to HDFStore")
 
         # no datapath, then return the store
         if datapath is None:

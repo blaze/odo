@@ -271,9 +271,13 @@ def test_into_other(tmpdir):
 
     data = [('Alice', 1), ('Bob', 2), ('Charlie', 3)]
 
-    import pdb; pdb.set_trace()
-    result = into(uri, data)
-    result = into(list, uri)
+    # cannot be constructed w/o a user specified datashape
+    with pytest.raises(ValueError):
+        into(uri, data)
+
+    into(uri, data, dshape=dshape("3 * {id: string, amount: int64}"))
+    result = into(DataFrame, uri)
+    assert_frame_equal(result, DataFrame(data,columns=['id','amount']))
 
 def test_drop(hdf_multi_nodes_file):
 
