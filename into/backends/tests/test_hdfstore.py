@@ -114,7 +114,7 @@ class TestHDFStore(object):
         with ensure_clean_store(hdf_file3, '/dt') as t:
 
             expected = read_hdf(hdf_file3, 'dt')
-            for cs in [1, 10]:
+            for cs in [1, 5, 10]:
                 res = into(chunks(DataFrame), t, chunksize=cs)
                 res = concat(res.data(), axis=0)
 
