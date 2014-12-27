@@ -66,33 +66,46 @@ def into_string(uri, b, **kwargs):
     try:
         if 'dshape' not in kwargs:
             ds = discover(b)
-            if isdimension(ds[0]):
-                ds = var * ds.subshape[0]
+
+            # protect against an odd datashape interrogation
+            try:
+                if isdimension(ds[0]):
+                    ds = var * ds.subshape[0]
+            except KeyError:
+                pass
             kwargs['dshape'] = ds
     except NotImplementedError:
         pass
 
+    result = None
+    a = None
     try:
         a = resource(uri, **kwargs)
-        return into(a, b, **kwargs)
+        result = into(a, b, **kwargs)
     finally:
-        try:
-            cleanup(a)
-        except NotImplementedError:
-            pass
+        if a is not None:
+            try:
+                cleanup(a)
+                result = uri
+            except NotImplementedError:
+                pass
+    return result
 
 @into.register((type, str), str)
 def into_string_string(a, b, **kwargs):
 
+    result = None
+    r = None
     try:
         r = resource(b, **kwargs)
-        return into(a, r, **kwargs)
+        result = into(a, r, **kwargs)
     finally:
-        try:
-            cleanup(r)
-        except NotImplementedError:
-            pass
-
+        if r is not None:
+            try:
+                cleanup(r)
+            except NotImplementedError:
+                pass
+    return result
 
 @into.register(object)
 def into_curried(o, **kwargs1):

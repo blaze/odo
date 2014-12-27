@@ -50,9 +50,25 @@ class EmptyAppendableFrameTable(hdf.AppendableFrameTable):
     def shape(self):
         return (0,)
 
-@discover.register(hdf.Table)
-def discover_tables_node(n):
-    return datashape.from_numpy((n.shape,), n.dtype)
+@discover.register(hdf.AppendableFrameTable)
+def discover_tables_node(t):
+    return datashape.from_numpy((t.shape,), t.dtype)
+
+@discover.register(hdf.HDFStore)
+def discover_tables_node(f):
+    return discover(dict(f.items()))
+
+@append.register(hdf.HDFStore, pd.DataFrame)
+def append_frame_to_hdfstore(s, data, datapath=None, **kwargs):
+    """ append a single frame to a store, must have a datapath """
+
+    # we possible attached to the store from the original uri
+    datapath = datapath or getattr(s,'datapath',None)
+    if datapath is None:
+        raise ValueError("must specify a datapath in order to append to a hdfstore")
+
+    s.append(datapath, data, data_columns=True)
+    return s.get_storer(datapath)
 
 @append.register(EmptyAppendableFrameTable, pd.DataFrame)
 def append_frame_to_hdfstore(t, data, **kwargs):
@@ -169,7 +185,7 @@ def resource_hdfstore(path, *args, **kwargs):
     path = resource_matches(path, 'hdfstore')
     return HDFStore(path, *args, **kwargs)
 
-def HDFStore(path, datapath, dshape=None, **kwargs):
+def HDFStore(path, datapath=None, dshape=None, **kwargs):
     """Create or open a ``hdf.HDFStore`` object.
 
     Parameters
@@ -214,6 +230,10 @@ def HDFStore(path, datapath, dshape=None, **kwargs):
             dshape = dshape.subshape[0]
         dtype = dshape_to_pandas(dshape)[0]
 
+        # no datapath, then return the store
+        if datapath is None:
+            return store
+
         # create a new node
         if datapath.startswith('/'):
             datapath = datapath[1:]
@@ -240,7 +260,8 @@ def HDFStore(path, datapath, dshape=None, **kwargs):
 
     group = store.get_node(datapath)
     if group is None:
-        return create_as_empty(store=store)
+        store.datapath = datapath
+        return store
 
     # further validation on the actual node
     try:
@@ -251,9 +272,22 @@ def HDFStore(path, datapath, dshape=None, **kwargs):
 
     return store.get_storer(datapath)
 
-@dispatch(hdf.Table)
+@dispatch(hdf.HDFStore)
 def drop(t):
-    t.remove()
+    cleanup(t)
+    os.remove(t.filename)
+
+@dispatch(hdf.AppendableFrameTable)
+def drop(t):
+    t.parent.remove(t.pathname)
+    cleanup(t)
+
+@dispatch(hdf.HDFStore)
+def cleanup(t):
+    try:
+        t.close()
+    except:
+        pass
 
 @dispatch(hdf.AppendableFrameTable)
 def cleanup(t):

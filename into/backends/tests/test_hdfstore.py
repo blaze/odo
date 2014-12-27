@@ -2,13 +2,15 @@
 from contextlib import contextmanager
 import numpy as np
 import pytest
-
-from into import into, convert, resource, cleanup
-from into.utils import tmpfile
+import os
 
 tb = pytest.importorskip('tables')
+
+from datashape import dshape
+from into import into, convert, resource, cleanup, chunks, drop
+from into.utils import tmpfile
+
 from into.backends.hdfstore import HDFStore, discover
-from into import chunks
 from pandas import DataFrame, date_range, read_hdf, concat
 from pandas.util.testing import assert_frame_equal
 
@@ -29,8 +31,6 @@ def hdf_file2(df2):
         df2.to_hdf(filename,'dt',mode='w',format='table',data_columns=True)
         yield filename
 
-
-@pytest.yield_fixture(scope='module')
 def hdf_file3():
     data3 = DataFrame(np.random.randn(10, 10), columns=['c%02d' % i
                                                         for i in range(10)])
@@ -39,6 +39,14 @@ def hdf_file3():
                      data_columns=True)
         yield filename
 
+@pytest.yield_fixture()
+def hdf_multi_nodes_file(df, df2):
+    with tmpfile('.h5') as filename:
+        df.to_hdf(filename, 'df', mode='w', format='table',
+                  data_columns=True)
+        df2.to_hdf(filename, 'df2', format='table',
+                   data_columns=True)
+        yield filename
 
 @contextmanager
 def ensure_clean_store(*args, **kwargs):
@@ -47,6 +55,23 @@ def ensure_clean_store(*args, **kwargs):
         yield t
     finally:
         cleanup(t)
+
+def test_file_discover(hdf_multi_nodes_file):
+
+    r = resource(hdf_multi_nodes_file)
+    result = discover(r)
+    expected = dshape("{ '/df'  : { table : 5 * { index : int64, amount : int64, id : int64, name : string[7, 'A'] } }, \
+                         '/df2' : { table : 5 * { index : int64, amount : int64, id : int64, name : string[7, 'A'], date : int64 } } }")
+    assert str(result) == str(expected)
+    cleanup(r)
+
+def test_node_discover(hdf_multi_nodes_file):
+
+    r = resource(hdf_multi_nodes_file)
+    result = discover(r.get_storer('df'))
+    expected = dshape("5 * {index: int64, amount: int64, id: int64, name: string[7, 'A']}")
+    assert str(result) == str(expected)
+    cleanup(r)
 
 def test_read(hdf_file):
     with ensure_clean_store(path=hdf_file, datapath='/title') as t:
@@ -171,11 +196,20 @@ def test_into_hdf5(df2, tmpdir):
     target1 = str(tmpdir / 'foo.h5')
     target2 = str(tmpdir / 'foo2.h5')
 
+    # need to specify a datapath / uri here
+    with pytest.raises(ValueError):
+        into(target1, df2)
+
     into(target1, df2, datapath='/data')
     result = read_hdf(target1, 'data')
     assert_frame_equal(df2, result)
 
-    into(target2, target1, datapath='/data')
+    r1 = resource(target1, datapath='/data')
+    r2 = resource(target2, datapath='/data', dshape=discover(r1))
+    into(r2, r1)
+    cleanup(r2)
+    cleanup(r1)
+
     result = read_hdf(target2, 'data')
     assert_frame_equal(df2, result)
 
@@ -186,3 +220,67 @@ def test_into_hdf5(df2, tmpdir):
     into(target2, target1, datapath='/data')
     result = read_hdf(target2, 'data')
     assert_frame_equal(concat([df2,df2]), result)
+
+def test_into_hdf52(df2, tmpdir):
+
+    # test multi-intos for HDF5 types
+    target1 = str(tmpdir / 'foo.h5')
+    target2 = str(tmpdir / 'foo2.h5')
+
+    # need to specify a datapath / uri here
+    with pytest.raises(ValueError):
+        into(target1, df2)
+
+    into(target1 + '::df2', df2)
+    result = read_hdf(target1, 'df2')
+    assert_frame_equal(df2, result)
+
+    into(target2 + '::df2', target1 + '::df2')
+    result = read_hdf(target2, 'df2')
+    assert_frame_equal(df2, result)
+
+    result = into(DataFrame, target2 + '::df2')
+    assert_frame_equal(df2, result)
+
+    # store->store is invalid
+    with pytest.raises(NotImplementedError):
+        into(target2, target1)
+
+    # append again
+    into(target2 + '::df2', target1 + '::df2')
+    result = read_hdf(target2, 'df2')
+    assert_frame_equal(concat([df2,df2]), result)
+
+def test_drop(hdf_multi_nodes_file):
+
+    assert os.path.exists(hdf_multi_nodes_file)
+    r = resource(hdf_multi_nodes_file)
+    drop(r)
+
+    assert not os.path.exists(hdf_multi_nodes_file)
+
+def test_drop_table(hdf_multi_nodes_file):
+
+    r = resource(hdf_multi_nodes_file + '::df')
+    drop(r)
+    r = resource(hdf_multi_nodes_file)
+    assert 'df' not in r
+    cleanup(r)
+
+def test_str(df2, tmpdir):
+
+    target = str(tmpdir / 'foo.h5')
+    uri = target + '::df'
+
+    # need a datapath
+    with pytest.raises(ValueError):
+        into(target,df2)
+
+    result = into(uri,df2)
+    assert str(result) == uri
+
+    result = into(uri,uri)
+    assert str(result) == uri
+
+    result = into(DataFrame,uri)
+    assert_frame_equal(result, concat([df2,df2]))
