@@ -1,21 +1,21 @@
 from __future__ import absolute_import, division, print_function
 
-import csv
-
 import re
-import datashape
-from datashape import discover, Record, Option
-from datashape.predicates import isrecord
-from datashape.dispatch import dispatch
-from collections import Iterator
-from toolz import concat, keyfilter, assoc
-import pandas
-import pandas as pd
+import sys
 import os
 import gzip
 import bz2
 import codecs
-from contextlib import contextmanager
+from contextlib import contextmanager, closing
+from glob import glob
+
+import datashape
+from datashape import discover, Record, Option
+from datashape.predicates import isrecord
+from datashape.dispatch import dispatch
+from toolz import concat, keyfilter
+import pandas
+import pandas as pd
 
 from ..utils import keywords
 from ..append import append
@@ -24,6 +24,9 @@ from ..resource import resource
 from ..chunks import chunks
 from ..numpy_dtype import dshape_to_pandas
 from .pandas import coerce_datetimes
+
+
+PY = sys.version_info[:2]
 
 
 BOMS = {
@@ -37,6 +40,7 @@ BOMS = {
 
 dialect_terms = '''delimiter doublequote escapechar lineterminator quotechar
 quoting skipinitialspace strict'''.split()
+
 
 class CSV(object):
     """ Proxy for a CSV file
@@ -53,7 +57,7 @@ class CSV(object):
     kwargs : other...
         Various choices about dialect
     """
-    def __init__(self, path, has_header='no-input', encoding='utf-8', **kwargs):
+    def __init__(self, path, has_header='no-input', encoding=None, **kwargs):
         self.path = path
         if has_header == 'no-input':
             if not os.path.exists(path):
@@ -67,13 +71,58 @@ class CSV(object):
                                            if d in kwargs)
 
 
+@contextmanager
+def gzip_open(*args, **kwargs):
+    with closing(gzip.open(*args, **kwargs)) as f:
+        yield f
+
+
+@contextmanager
+def bz2_open(*args, **kwargs):
+    with closing(bz2.BZ2File(*args, **kwargs)) as f:
+        yield f
+
+
+compressed_open = {'gz': gzip_open, 'bz2': bz2_open, 'gzip': gzip_open}
+
+
+def get_bom_index(filename, bom):
+    if not os.path.exists(filename):
+        return -1
+    with open(filename, mode='rb') as f:
+        if bom is not None:
+            return f.read(32).find(bom)
+        return -1
+
+
+@contextmanager
+def csvopen(filename, encoding=None, compression=None, mode='rb'):
+    if compression is not None and encoding is not None:
+        raise ValueError('Cannot pass both encoding and compression arguments')
+    if compression is not None and compression in compressed_open:
+        with compressed_open[compression](filename, mode=mode) as f:
+            yield f
+    else:
+        bom = BOMS.get(encoding)
+        index = get_bom_index(filename, bom=bom)
+        skipbytes = 0 if index == -1 else index + len(bom)
+
+        with codecs.open(filename, mode=mode, encoding=encoding) as f:
+            if skipbytes:
+                f.seek(skipbytes)
+            yield f
+
+
+def ext(path):
+    _, e = os.path.splitext(path)
+    return e.lstrip('.')
+
+
 @append.register(CSV, object)
 def append_object_to_csv(c, seq, **kwargs):
     append(c, convert(chunks(pd.DataFrame), seq, **kwargs), **kwargs)
     return c
 
-
-compressed_open = {'gz': gzip.open, 'bz2': bz2.BZ2File}
 
 @append.register(CSV, pd.DataFrame)
 def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
@@ -84,23 +133,13 @@ def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
     if has_header is None:
         has_header = True
 
-    sep = kwargs.get('sep', kwargs.get('delimiter', c.dialect.get('delimiter', ',')))
-    encoding=kwargs.get('encoding', c.encoding)
+    sep = kwargs.get('sep', kwargs.get('delimiter',
+                                       c.dialect.get('delimiter', ',')))
+    encoding = kwargs.get('encoding', c.encoding)
 
-    if ext(c.path) in compressed_open:
-        f = compressed_open[ext(c.path)](c.path, mode='a')
-    else:
-        f = c.path
-
-    df.to_csv(f, mode='a',
-                    header=has_header,
-                    index=False,
-                    sep=sep,
-                    encoding=encoding)
-    if hasattr(f, 'flush'):
-        f.flush()
-        f.close()
-
+    with csvopen(c.path, mode='ab' if PY[0] == 2 else 'a', encoding=encoding,
+                 compression=ext(c.path)) as f:
+        df.to_csv(f, header=has_header, index=False, sep=sep)
     return c
 
 
@@ -109,11 +148,6 @@ def append_iterator_to_csv(c, cs, **kwargs):
     for chunk in cs:
         append(c, chunk, **kwargs)
     return c
-
-
-def ext(path):
-    _, e = os.path.splitext(path)
-    return e.lstrip('.')
 
 
 @convert.register(pd.DataFrame, CSV, cost=20.0)
@@ -126,21 +160,6 @@ def csv_to_DataFrame(c, dshape=None, chunksize=None, nrows=None, **kwargs):
             return _csv_to_DataFrame(c, dshape=dshape, chunksize=chunksize,
                                      **kwargs)
         raise
-
-
-@contextmanager
-def open_for_reading(filename, encoding=None):
-    bom = BOMS.get(encoding, '')
-
-    with open(filename, 'rb') as f:
-        index = f.read(32).find(bom)
-
-    skipbytes = 0 if index == -1 else index + len(bom)
-
-    with codecs.open(filename, mode='rb', encoding=encoding) as f:
-        if skipbytes:
-            f.seek(skipbytes)
-        yield f
 
 
 def _csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
@@ -175,11 +194,13 @@ def _csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
     # See read_csv docs for header for reasoning
     if names:
         try:
-            with open_for_reading(c.path, encoding=encoding) as f:
-                found_names = pd.read_csv(f, compression=compression, nrows=1)
+            with csvopen(c.path, encoding=encoding,
+                                  compression=compression) as f:
+                found_names = pd.read_csv(f, nrows=1)
         except StopIteration:
-            with open_for_reading(c.path, encoding=encoding) as f:
-                found_names = pd.read_csv(f, compression=compression)
+            with csvopen(c.path, encoding=encoding,
+                                  compression=compression) as f:
+                found_names = pd.read_csv(f)
 
         if [n.strip() for n in found_names] == [n.strip() for n in names]:
             header = 0
@@ -195,24 +216,26 @@ def _csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
     return reader(c.path,
                   header=header,
                   encoding=encoding,
+                  compression=compression,
                   sep=sep,
                   dtype=dtypes,
                   parse_dates=parse_dates,
                   names=names,
-                  compression=compression,
                   chunksize=chunksize,
                   usecols=usecols,
                   **kwargs2)
 
 
-def yield_reader(filename, *args, **kwargs):
-    with open_for_reading(filename, encoding=kwargs.pop('encoding', None)) as f:
+def yield_reader(filename, encoding=None, compression=None, *args, **kwargs):
+    with csvopen(filename, encoding=encoding,
+                          compression=compression) as f:
         for chunk in pandas.read_csv(f, *args, **kwargs):
             yield chunk
 
 
-def dense_reader(filename, *args, **kwargs):
-    with open_for_reading(filename, encoding=kwargs.pop('encoding', None)) as f:
+def dense_reader(filename, encoding=None, compression=None, *args, **kwargs):
+    with csvopen(filename, encoding=encoding,
+                          compression=compression) as f:
         return pd.read_csv(f, *args, **kwargs)
 
 
@@ -263,7 +286,6 @@ def resource_csv(uri, **kwargs):
     return CSV(uri, **kwargs)
 
 
-from glob import glob
 @resource.register('.+\*.+', priority=12)
 def resource_glob(uri, **kwargs):
     filenames = sorted(glob(uri))
