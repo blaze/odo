@@ -5,7 +5,14 @@ import pytest
 from into import CSV, cleanup, resource, append, into
 from into.utils import raises
 
-def test_notimplemented(tmpdir):
+def test_not_impemented():
+
+    # these are by definition not implemented
+    for obj in ['foo',None,object]:
+        with pytest.raises(NotImplementedError):
+            cleanup(obj)
+
+def test_csv_notimplemented(tmpdir):
 
     f1 = str(tmpdir / 'foo.csv')
     csv = CSV(f1, has_header=False)
@@ -13,7 +20,8 @@ def test_notimplemented(tmpdir):
     append(csv, data)
 
     r = resource(f1)
-    assert raises(NotImplementedError, lambda : cleanup(r))
+    with pytest.raises(NotImplementedError):
+        cleanup(r)
 
 def test_csv(tmpdir):
     # smoke test, cleanup is not implemented
@@ -25,4 +33,5 @@ def test_csv(tmpdir):
     data = [('Alice', 100), ('Bob', 200)]
     append(csv, data)
 
-    into(f2,f1)
+    result = into(f2,f1)
+    assert isinstance(result, CSV)

@@ -24,11 +24,13 @@ def cleanup(rsrc):
 
     Examples
     --------
-    >>> # Using hdfstore
+    >>> from pandas import DataFrame
+    >>> df = DataFrame({'A' : [1,2], 'B' : ['foo','bar']})
+    >>> r = resource('foo.h5',dshape=discover(df))
+    >>> cleanup(r)
     """
     raise NotImplementedError("cleanup not implemented for type %r" %
                               type(rsrc).__name__)
-
 
 @dispatch((str, unicode))
 def cleanup(uri, **kwargs):
