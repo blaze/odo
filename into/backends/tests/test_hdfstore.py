@@ -3,7 +3,7 @@ from contextlib import contextmanager
 import numpy as np
 import pytest
 
-from into import into
+from into import into, convert
 from into.utils import tmpfile
 
 tb = pytest.importorskip('tables')
@@ -116,7 +116,7 @@ class TestHDFStore(object):
             expected = read_hdf(hdf_file3, 'dt')
             for cs in [1, 5, 10]:
                 res = into(chunks(DataFrame), t, chunksize=cs)
-                res = concat(res.data(), axis=0)
+                res = concat(list(res.data()), axis=0)
 
                 assert_frame_equal(res, expected)
 
@@ -171,27 +171,21 @@ class TestHDFStore(object):
     def test_into_hdf5(self, df2, tmpdir):
 
         # test multi-intos for HDF5 types
-        import pdb; pdb.set_trace()
         target1 = str(tmpdir / 'foo.h5')
         target2 = str(tmpdir / 'foo2.h5')
 
         into(target1, df2, datapath='/data')
+        result = read_hdf(target1, 'data')
+        assert_frame_equal(df2, result)
+
         into(target2, target1, datapath='/data')
+        result = read_hdf(target2, 'data')
+        assert_frame_equal(df2, result)
 
         result = into(DataFrame, target2, datapath='/data')
+        assert_frame_equal(df2, result)
 
         # append again
-        result = into(target2, target1, datapath='/data')
-
-
-    def test_into_hdf52(self, df2, tmpdir):
-
-        # test multi-intos for HDF5 types
-        import pdb; pdb.set_trace()
-        target1 = str(tmpdir / 'foo.h5')
-        target2 = str(tmpdir / 'foo2.h5')
-
-        into(target1 + '::/data', df2)
-        into(target2 + '::/data2', target1 + '::/data')
-
-        result = into(DataFrame, target2 + '::/data2')
+        into(target2, target1, datapath='/data')
+        result = read_hdf(target2, 'data')
+        assert_frame_equal(concat([df2,df2]), result)

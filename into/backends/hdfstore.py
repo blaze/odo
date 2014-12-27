@@ -64,6 +64,25 @@ def append_frame_to_hdfstore(t, data, **kwargs):
     t.parent.append(name, data, format='table', data_columns=True)
     return t.parent.get_storer(name)
 
+@append.register(EmptyAppendableFrameTable, hdf.AppendableFrameTable)
+def append_hdfstore_to_empty(t, data, **kwargs):
+    """
+    append a store to a currently empty store
+    this creates and returns the new table object
+    """
+    # if we are the same store, then its a no-op
+    if (t.parent.filename == data.parent.filename) and (t.group == data.group):
+        return data
+
+    return append_frame_to_hdfstore(t, convert(pd.DataFrame, data, **kwargs))
+
+@append.register(hdf.AppendableFrameTable, hdf.AppendableFrameTable)
+def append_hdfstore_to_hdfstore(t, data, **kwargs):
+    """
+    append a store to another store
+    """
+    return append_frame_to_hdfstore(t, convert(pd.DataFrame, data, **kwargs))
+
 @append.register(hdf.AppendableFrameTable, pd.DataFrame)
 def append_frame_to_hdfstore(t, data, **kwargs):
     """ append a single frame to a store """
@@ -118,13 +137,6 @@ def _select_columns(t, key, **kwargs):
 
     return t.read_column(key, **kwargs)
 
-
-@convert.register(EmptyAppendableFrameTable, hdf.AppendableFrameTable)
-def hdfstore_to_empty_hdfstore(t, **kwargs):
-
-    import pdb; pdb.set_trace()
-    res = hdfstore_to_dataframe(t, **kwargs)
-    return append_frame_to_hdfstore(t, res)
 
 @convert.register(pd.DataFrame, hdf.AppendableFrameTable, cost=3.0)
 def hdfstore_to_dataframe(t, where=None, columns=None, **kwargs):
