@@ -15,26 +15,24 @@ import os
 
 
 @contextmanager
-def file(x):
-    with tmpfile('.hdf5') as fn:
-        f = h5py.File(fn)
-        data = f.create_dataset('/data', data=x, chunks=True,
-                                maxshape=(None,) + x.shape[1:])
+def ensure_clean_store(data, ext=None):
+
+    if ext is None:
+        ext = '.hdf5'
+
+    with tmpfile(ext) as filename:
+        f = h5py.File(filename)
+        data = f.create_dataset('/data', data=data, chunks=True,
+                                maxshape=(None,) + data.shape[1:])
 
         try:
-            yield fn, f, data
+            yield f
         finally:
             cleanup(f)
 
-
-x = np.ones((2, 3), dtype='i4')
-
-
-def test_discover():
-    with file(x) as (fn, f, dset):
-        assert str(discover(dset)) == str(discover(x))
-        assert str(discover(f)) == str(discover({'data': x}))
-
+@pytest.fixture(scope='module')
+def data():
+    return np.ones((2, 3), dtype='i4')
 
 def eq(a, b):
     c = a == b
@@ -42,29 +40,33 @@ def eq(a, b):
         c = c.all()
     return c
 
+def test_discover(data):
+    with ensure_clean_store(data) as f:
+        assert str(discover(data)) == str(discover(f['data']))
+        assert str(discover(f)) == str(discover({'data': data}))
 
-def test_append():
-    with file(x) as (fn, f, dset):
-        append(dset, x)
-        assert eq(dset[:], np.concatenate([x, x]))
-
-
-def test_numpy():
-    with file(x) as (fn, f, dset):
-        assert eq(convert(np.ndarray, dset), x)
-
-
-def test_chunks():
-    with file(x) as (fn, f, dset):
-        c = convert(chunks(np.ndarray), dset)
-        assert eq(convert(np.ndarray, c), x)
+def test_append(data):
+    with ensure_clean_store(data) as f:
+        append(f['data'], data)
+        assert eq(f['data'][:], np.concatenate([data, data]))
 
 
-def test_append_chunks():
-    with file(x) as (fn, f, dset):
-        append(dset, chunks(np.ndarray)([x, x]))
+def test_numpy(data):
+    with ensure_clean_store(data) as f:
+        assert eq(convert(np.ndarray, f['data']), data)
 
-        assert len(dset) == len(x) * 3
+
+def test_chunks(data):
+    with ensure_clean_store(data) as f:
+        c = convert(chunks(np.ndarray), f['data'])
+        assert eq(convert(np.ndarray, c), data)
+
+
+def test_append_chunks(data):
+    with ensure_clean_store(data) as f:
+        append(f['data'], chunks(np.ndarray)([data, data]))
+
+        assert len(f['data']) == len(data) * 3
 
 
 def test_create():
@@ -74,7 +76,7 @@ def test_create():
         assert isinstance(f, h5py.File)
         assert f.filename == fn
         assert discover(f) == ds
-
+        f.close()
 
 def test_create_partially_present_dataset():
     with tmpfile('.hdf5') as fn:
@@ -88,7 +90,8 @@ def test_create_partially_present_dataset():
         assert f.filename == f2.filename
         assert list(f.keys()) == list(f2.keys())
         assert f['y'].dtype == 'i4'
-
+        f.close()
+        f2.close()
 
 def test_resource():
     with tmpfile('.hdf5') as fn:
@@ -98,10 +101,7 @@ def test_resource():
 
         assert isinstance(r, h5py.File)
         assert discover(r) == ds
-
-        r2 = resource(fn + '::/x')
-        assert isinstance(r2, h5py.Dataset)
-
+        cleanup(r)
 
 def test_resource_with_datapath():
     with tmpfile('.hdf5') as fn:
@@ -113,7 +113,7 @@ def test_resource_with_datapath():
         assert discover(r) == ds
         assert r.file.filename == fn
         assert r.file['/data'] == r
-
+        cleanup(r)
 
 def test_resource_with_variable_length():
     with tmpfile('.hdf5') as fn:
@@ -122,19 +122,24 @@ def test_resource_with_variable_length():
         r = resource('h5py://' + fn + '::/data', dshape=ds)
 
         assert r.shape == (0, 4)
-
+        cleanup(r)
 
 def test_copy_with_into():
     with tmpfile('.hdf5') as fn:
-        dset = into('h5py://' + fn + '::/data', [1, 2, 3])
+        uri = 'h5py://' + fn + '::/data'
+        into(uri, [1, 2, 3])
+
+        dset = resource(uri)
         assert dset.shape == (3,)
         assert eq(dset[:], [1, 2, 3])
-
+        cleanup(dset)
 
 def test_varlen_dtypes():
     y = np.array([('Alice', 100), ('Bob', 200)],
                 dtype=[('name', 'O'), ('amount', 'i4')])
     with tmpfile('.hdf5') as fn:
-        dset = into('h5py://' + fn + '::/data', y)
-
+        uri = 'h5py://' + fn + '::/data'
+        into(uri, y)
+        dset = resource(uri)
         assert into(list, dset) == into(list, dset)
+        cleanup(dset)

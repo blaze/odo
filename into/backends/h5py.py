@@ -160,5 +160,11 @@ def cleanup(f):
     except:
         pass
 
+@dispatch(h5py.Dataset)
+def cleanup(dset):
+    try:
+        dset.file.close()
+    except:
+        pass
 
 ooc_types.add(h5py.Dataset)
