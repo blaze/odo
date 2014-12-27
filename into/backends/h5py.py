@@ -157,14 +157,14 @@ def drop(h):
 def cleanup(f):
     try:
         f.close()
-    except:
+    except AttributeError:
         pass
 
 @dispatch(h5py.Dataset)
 def cleanup(dset):
     try:
         dset.file.close()
-    except:
+    except AttributeError:
         pass
 
 ooc_types.add(h5py.Dataset)

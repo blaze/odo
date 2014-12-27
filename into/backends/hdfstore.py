@@ -286,14 +286,14 @@ def drop(t):
 def cleanup(t):
     try:
         t.close()
-    except:
+    except AttributeError:
         pass
 
 @dispatch(hdf.AppendableFrameTable)
 def cleanup(t):
     try:
         t.parent.close()
-    except:
+    except AttributeError:
         pass
 
 ooc_types |= set([hdf.Table])

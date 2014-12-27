@@ -176,14 +176,14 @@ def drop(f):
 def cleanup(f):
     try:
         f.close()
-    except:
+    except AttributeError:
         pass
 
 @dispatch((tables.Table, tables.Group))
 def cleanup(f):
     try:
         f._v_file.close()
-    except:
+    except AttributeError:
         pass
 
 ooc_types |= set((tables.Table, tables.Array))
