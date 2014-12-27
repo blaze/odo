@@ -31,6 +31,7 @@ def hdf_file2(df2):
         df2.to_hdf(filename,'dt',mode='w',format='table',data_columns=True)
         yield filename
 
+@pytest.yield_fixture
 def hdf_file3():
     data3 = DataFrame(np.random.randn(10, 10), columns=['c%02d' % i
                                                         for i in range(10)])

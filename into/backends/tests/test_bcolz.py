@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import pytest
 pytest.importorskip('bcolz')
 
-from into.backends.bcolz import (create, append, convert, ctable, carray,
+from into.backends.bcolz import (append, convert, ctable, carray,
                                  resource, discover, drop)
 
 from into.chunks import chunks
