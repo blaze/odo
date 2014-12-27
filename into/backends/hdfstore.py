@@ -255,4 +255,11 @@ def HDFStore(path, datapath, dshape=None, **kwargs):
 def drop(t):
     t.remove()
 
+@dispatch(hdf.AppendableFrameTable)
+def cleanup(t):
+    try:
+        t.parent.close()
+    except:
+        pass
+
 ooc_types |= set([hdf.Table])

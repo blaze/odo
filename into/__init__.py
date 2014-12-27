@@ -9,6 +9,7 @@ from .append import append
 from .resource import resource
 from .into import into
 from .drop import drop
+from .cleanup import cleanup
 from .chunks import chunks, Chunks
 from datashape import discover, dshape
 from collections import Iterator

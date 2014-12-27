@@ -5,6 +5,7 @@ from multipledispatch import Dispatcher
 from .convert import convert
 from .append import append
 from .resource import resource
+from .cleanup import cleanup
 from datashape import discover, var
 from datashape.dispatch import namespace
 from datashape.predicates import isdimension
@@ -70,14 +71,27 @@ def into_string(uri, b, **kwargs):
             kwargs['dshape'] = ds
     except NotImplementedError:
         pass
-    a = resource(uri, **kwargs)
-    return into(a, b, **kwargs)
 
+    try:
+        a = resource(uri, **kwargs)
+        return into(a, b, **kwargs)
+    finally:
+        try:
+            cleanup(a)
+        except NotImplementedError:
+            pass
 
 @into.register((type, str), str)
 def into_string_string(a, b, **kwargs):
-    r = resource(b, **kwargs)
-    return into(a, r, **kwargs)
+
+    try:
+        r = resource(b, **kwargs)
+        return into(a, r, **kwargs)
+    finally:
+        try:
+            cleanup(r)
+        except NotImplementedError:
+            pass
 
 
 @into.register(object)
