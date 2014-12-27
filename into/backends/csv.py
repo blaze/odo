@@ -14,6 +14,8 @@ import pandas as pd
 import os
 import gzip
 import bz2
+import codecs
+from contextlib import contextmanager
 
 from ..utils import keywords
 from ..append import append
@@ -22,6 +24,16 @@ from ..resource import resource
 from ..chunks import chunks
 from ..numpy_dtype import dshape_to_pandas
 from .pandas import coerce_datetimes
+
+
+BOMS = {
+    'UTF-8': codecs.BOM_UTF8,
+    'UTF-16LE': codecs.BOM_UTF16_LE,
+    'UTF-16BE': codecs.BOM_UTF16_BE,
+    'UTF-32LE': codecs.BOM_UTF32_LE,
+    'UTF-32BE': codecs.BOM_UTF32_BE,
+}
+
 
 dialect_terms = '''delimiter doublequote escapechar lineterminator quotechar
 quoting skipinitialspace strict'''.split()
@@ -107,13 +119,29 @@ def ext(path):
 @convert.register(pd.DataFrame, CSV, cost=20.0)
 def csv_to_DataFrame(c, dshape=None, chunksize=None, nrows=None, **kwargs):
     try:
-        return _csv_to_DataFrame(c, dshape=dshape,
-                chunksize=chunksize, nrows=nrows, **kwargs)
+        return _csv_to_DataFrame(c, dshape=dshape, chunksize=chunksize,
+                                 nrows=nrows, **kwargs)
     except StopIteration:
         if nrows:
-            return _csv_to_DataFrame(c, dshape=dshape, chunksize=chunksize, **kwargs)
-        else:
-            raise
+            return _csv_to_DataFrame(c, dshape=dshape, chunksize=chunksize,
+                                     **kwargs)
+        raise
+
+
+@contextmanager
+def open_for_reading(filename, encoding=None):
+    bom = BOMS.get(encoding, '')
+
+    with open(filename, 'rb') as f:
+        index = f.read(32).find(bom)
+
+    skipbytes = 0 if index == -1 else index + len(bom)
+
+    with codecs.open(filename, mode='rb', encoding=encoding) as f:
+        if skipbytes:
+            f.seek(skipbytes)
+        yield f
+
 
 def _csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
     has_header = kwargs.pop('has_header', c.has_header)
@@ -124,7 +152,8 @@ def _csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
     else:
         header = 'infer'
 
-    sep = kwargs.pop('sep', kwargs.pop('delimiter', c.dialect.get('delimiter', ',')))
+    sep = kwargs.pop('sep', kwargs.pop('delimiter',
+                                       c.dialect.get('delimiter', ',')))
     encoding = kwargs.get('encoding', c.encoding)
 
     if dshape:
@@ -141,16 +170,16 @@ def _csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
         parse_dates = [col for col in parse_dates if col in usecols]
 
     compression = kwargs.pop('compression',
-            {'gz': 'gzip', 'bz2': 'bz2'}.get(ext(c.path)))
+                             {'gz': 'gzip', 'bz2': 'bz2'}.get(ext(c.path)))
 
     # See read_csv docs for header for reasoning
     if names:
         try:
-            found_names = pd.read_csv(c.path, encoding=encoding,
-                                      compression=compression, nrows=1)
+            with open_for_reading(c.path, encoding=encoding) as f:
+                found_names = pd.read_csv(f, compression=compression, nrows=1)
         except StopIteration:
-            found_names = pd.read_csv(c.path, encoding=encoding,
-                                      compression=compression)
+            with open_for_reading(c.path, encoding=encoding) as f:
+                found_names = pd.read_csv(f, compression=compression)
 
         if [n.strip() for n in found_names] == [n.strip() for n in names]:
             header = 0
@@ -161,17 +190,30 @@ def _csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
             header = None
 
     kwargs2 = keyfilter(keywords(pandas.read_csv).__contains__, kwargs)
-    return pandas.read_csv(c.path,
-                             header=header,
-                             sep=sep,
-                             encoding=encoding,
-                             dtype=dtypes,
-                             parse_dates=parse_dates,
-                             names=names,
-                             compression=compression,
-                             chunksize=chunksize,
-                             usecols=usecols,
-                             **kwargs2)
+    reader = dense_reader if chunksize is None else yield_reader
+
+    return reader(c.path,
+                  header=header,
+                  encoding=encoding,
+                  sep=sep,
+                  dtype=dtypes,
+                  parse_dates=parse_dates,
+                  names=names,
+                  compression=compression,
+                  chunksize=chunksize,
+                  usecols=usecols,
+                  **kwargs2)
+
+
+def yield_reader(filename, *args, **kwargs):
+    with open_for_reading(filename, encoding=kwargs.pop('encoding', None)) as f:
+        for chunk in pandas.read_csv(f, *args, **kwargs):
+            yield chunk
+
+
+def dense_reader(filename, *args, **kwargs):
+    with open_for_reading(filename, encoding=kwargs.pop('encoding', None)) as f:
+        return pd.read_csv(f, *args, **kwargs)
 
 
 @convert.register(chunks(pd.DataFrame), CSV, cost=10.0)
@@ -197,7 +239,7 @@ def discover_csv(c, nrows=1000, **kwargs):
 
     if (not list(df.columns) == list(range(len(df.columns)))
         and any(re.match('^[-\d_]*$', c) for c in df.columns)):
-        df = csv_to_DataFrame(c, chunksize=50, has_header=False).get_chunk()
+        df = next(csv_to_DataFrame(c, chunksize=50, has_header=False))
         df = coerce_datetimes(df)
 
     df.columns = [str(c).strip() for c in df.columns]
