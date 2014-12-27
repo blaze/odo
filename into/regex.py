@@ -57,10 +57,13 @@ class RegexDispatcher(object):
         return _
 
     def dispatch(self, s):
-        # retun a reverse sorted list by priority
         funcs = [func for r, func in self.funcs.items() if re.match(r, s)]
-        return sorted(funcs, key=self.priorities.get, reverse=True)
+        return self.dispatch_iter(funcs)
 
+    def dispatch_iter(self, funcs):
+        # return a list of the functions reverse sorted by priority
+        # that match the pattern
+        return sorted(funcs, key=self.priorities.get, reverse=True)
 
     def __call__(self, s, *args, **kwargs):
         for f in self.dispatch(s):
