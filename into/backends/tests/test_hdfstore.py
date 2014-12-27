@@ -3,7 +3,7 @@ from contextlib import contextmanager
 import numpy as np
 import pytest
 
-from into import into, convert
+from into import into, convert, resource
 from into.utils import tmpfile
 
 tb = pytest.importorskip('tables')
@@ -170,22 +170,38 @@ class TestHDFStore(object):
 
     def test_into_hdf5(self, df2, tmpdir):
 
+        #### FIXME ####
+        # when we have resource cleanup for strings, then can
+        # fix this up
+
         # test multi-intos for HDF5 types
         target1 = str(tmpdir / 'foo.h5')
         target2 = str(tmpdir / 'foo2.h5')
 
-        into(target1, df2, datapath='/data')
+        t1 = resource(target1,datapath='/data',dshape=discover(df2))
+        into(t1, df2)
+        t1.parent.close()
         result = read_hdf(target1, 'data')
         assert_frame_equal(df2, result)
 
-        into(target2, target1, datapath='/data')
+        t1 = resource(target1,datapath='/data')
+        t2 = resource(target2,datapath='/data',dshape=discover(t1))
+        into(t2, t1)
+        t1.parent.close()
+        t2.parent.close()
         result = read_hdf(target2, 'data')
         assert_frame_equal(df2, result)
 
-        result = into(DataFrame, target2, datapath='/data')
+        t2 = resource(target2,datapath='/data')
+        result = into(DataFrame, t2)
+        t2.parent.close()
         assert_frame_equal(df2, result)
 
         # append again
-        into(target2, target1, datapath='/data')
+        t1 = resource(target1,datapath='/data')
+        t2 = resource(target2,datapath='/data')
+        into(t2, t1)
+        t1.parent.close()
+        t2.parent.close()
         result = read_hdf(target2, 'data')
         assert_frame_equal(concat([df2,df2]), result)
