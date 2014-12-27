@@ -163,16 +163,27 @@ def resource_pytables(path, *args, **kwargs):
     path = resource_matches(path, 'pytables')
     return PyTables(path, *args, **kwargs)
 
-
 @dispatch((tables.Table, tables.Array))
 def drop(t):
     t.remove()
 
-
 @dispatch(tables.File)
 def drop(f):
-    f.close()
+    cleanup(f)
     os.remove(f.filename)
 
+@dispatch(tables.File)
+def cleanup(f):
+    try:
+        f.close()
+    except:
+        pass
+
+@dispatch((tables.Table, tables.Group))
+def cleanup(f):
+    try:
+        f._v_file.close()
+    except:
+        pass
 
 ooc_types |= set((tables.Table, tables.Array))

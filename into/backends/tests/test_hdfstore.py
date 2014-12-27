@@ -3,7 +3,7 @@ from contextlib import contextmanager
 import numpy as np
 import pytest
 
-from into import into, convert, resource
+from into import into, convert, resource, cleanup
 from into.utils import tmpfile
 
 tb = pytest.importorskip('tables')
@@ -46,7 +46,7 @@ def ensure_clean_store(*args, **kwargs):
         t = HDFStore(*args, **kwargs)
         yield t
     finally:
-        t.parent.close()
+        cleanup(t)
 
 
 class TestHDFStore(object):

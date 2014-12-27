@@ -7,7 +7,7 @@ from into.backends.h5py import append, create, resource, discover, convert
 from contextlib import contextmanager
 from into.utils import tmpfile
 from into.chunks import chunks
-from into import into, append, convert, resource, discover
+from into import into, append, convert, resource, discover, cleanup
 import datashape
 import h5py
 import numpy as np
@@ -24,7 +24,7 @@ def file(x):
         try:
             yield fn, f, data
         finally:
-            f.close()
+            cleanup(f)
 
 
 x = np.ones((2, 3), dtype='i4')

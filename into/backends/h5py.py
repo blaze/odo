@@ -148,10 +148,17 @@ def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
 def drop(h):
     del h.file[h.name]
 
-
 @dispatch(h5py.File)
 def drop(h):
+    cleanup(h)
     os.remove(h.filename)
+
+@dispatch(h5py.File)
+def cleanup(f):
+    try:
+        f.close()
+    except:
+        pass
 
 
 ooc_types.add(h5py.Dataset)

@@ -1,8 +1,9 @@
 import numpy as np
 import datashape as ds
 import pytest
+from contextlib import contextmanager
 
-from into import into
+from into import into, cleanup
 from into.utils import tmpfile
 
 tb = pytest.importorskip('tables')
@@ -17,14 +18,33 @@ x = np.array([(1, 'Alice', 100),
              dtype=[('id', '<i8'), ('name', 'S7'), ('amount', '<i8')])
 
 
+@contextmanager
+def ensure_clean_file(ext=None,mode='w'):
+    """ create and close a store """
+    if ext is None:
+        ext = '.h5'
+    with tmpfile(ext) as filename:
+        try:
+            f = tb.open_file(filename, mode=mode)
+            yield f
+        finally:
+            cleanup(f)
+
+@contextmanager
+def ensure_clean_store(*args, **kwargs):
+    """ create and close a store """
+    try:
+        t = PyTables(*args, **kwargs)
+        yield t
+    finally:
+        cleanup(t)
+
 @pytest.yield_fixture
 def tbfile():
-    with tmpfile('.h5') as filename:
-        f = tb.open_file(filename, mode='w')
+    with ensure_clean_file() as f:
         d = f.create_table('/', 'title',  x)
         d.close()
-        f.close()
-        yield filename
+        yield f.filename
 
 
 now = np.datetime64('now').astype('datetime64[us]')
@@ -59,27 +79,27 @@ def dt_tb():
     dtype = np.dtype(non_date_types + [('date', 'f8')])
     rec = rec.astype(dtype)
     rec['date'] /= 1e6
-    with tmpfile('.h5') as filename:
-        f = tb.open_file(filename, mode='w')
+
+    with ensure_clean_file() as f:
         d = f.create_table('/', 'dt', description=Desc)
         d.append(rec)
         d.close()
-        f.close()
-        yield filename
+        yield f.filename
 
 
 class TestPyTablesLight(object):
     def test_read(self, tbfile):
-        t = PyTables(path=tbfile, datapath='/title')
-        shape = t.shape
-        t._v_file.close()
-        assert shape == (5,)
+
+        with ensure_clean_store(path=tbfile, datapath='/title') as t:
+            shape = t.shape
+            assert shape == (5,)
 
     def test_write_no_dshape(self, tbfile):
         with pytest.raises(ValueError):
             PyTables(path=tbfile, datapath='/write_this')
 
     def test_write_with_dshape(self, tbfile):
+
         f = tb.open_file(tbfile, mode='a')
         try:
             assert '/write_this' not in f
@@ -89,32 +109,26 @@ class TestPyTablesLight(object):
 
         # create our table
         dshape = '{id: int, name: string[7, "ascii"], amount: float32}'
-        t = PyTables(path=tbfile, datapath='/write_this', dshape=dshape)
-        shape = t.shape
-        filename = t._v_file.filename
-        t._v_file.close()
-
-        assert filename == tbfile
-        assert shape == (0,)
+        with ensure_clean_store(path=tbfile, datapath='/write_this', dshape=dshape) as t:
+            shape = t.shape
+            assert shape == (0,)
+            filename = t._v_file.filename
+            assert filename == tbfile
 
     @pytest.mark.xfail(reason="Poor datetime support")
     def test_table_into_ndarray(self, dt_tb):
-        t = PyTables(dt_tb, '/dt')
-        res = into(np.ndarray, t)
-        try:
+        with ensure_clean_store(dt_tb, '/dt') as t:
+            res = into(np.ndarray, t)
             for k in res.dtype.fields:
                 lhs, rhs = res[k], dt_data[k]
                 if (issubclass(np.datetime64, lhs.dtype.type) and
                     issubclass(np.datetime64, rhs.dtype.type)):
                     lhs, rhs = lhs.astype('M8[us]'), rhs.astype('M8[us]')
                 assert np.array_equal(lhs, rhs)
-        finally:
-            t._v_file.close()
 
     def test_ndarray_into_table(self, dt_tb):
         dtype = ds.from_numpy(dt_data.shape, dt_data.dtype)
-        t = PyTables(dt_tb, '/out', dtype)
-        try:
+        with ensure_clean_store(dt_tb, '/out', dtype) as t:
             res = into(np.ndarray, into(t, dt_data, filename=dt_tb, datapath='/out'))
             for k in res.dtype.fields:
                 lhs, rhs = res[k], dt_data[k]
@@ -122,22 +136,19 @@ class TestPyTablesLight(object):
                     issubclass(np.datetime64, rhs.dtype.type)):
                     lhs, rhs = lhs.astype('M8[us]'), rhs.astype('M8[us]')
                 assert np.array_equal(lhs, rhs)
-        finally:
-            t._v_file.close()
 
     @pytest.mark.xfail(reason="Poor datetime support")
     def test_datetime_discovery(self, dt_tb):
-        t = PyTables(dt_tb, '/dt')
-        lhs, rhs = map(discover, (t, dt_data))
-        t._v_file.close()
-        assert lhs == rhs
+        with ensure_clean_store(dt_tb, '/dt') as t:
+            lhs, rhs = map(discover, (t, dt_data))
+            assert lhs == rhs
 
     def test_node_discover(self, dt_tb):
-        root = PyTables(dt_tb, '/')
-        result = discover(root)
-        expected = ds.dshape("""{dt: 5 * {id: int64,
-                                          name: string[7, "A"],
-                                          amount: float64,
-                                          date: float64}}""")
-        assert result == expected.measure
-        root._v_file.close()
+        with ensure_clean_store(dt_tb, '/') as root:
+            result = discover(root)
+            expected = ds.dshape("""{ dt: 5 * {id: int64,
+                                name: string[7, "A"],
+                                amount: float64,
+                                date: float64}}""")
+
+            assert result == expected.measure
