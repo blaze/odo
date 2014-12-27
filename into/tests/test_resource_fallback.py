@@ -30,6 +30,7 @@ import itertools
 from contextlib import contextmanager
 
 from datashape import discover
+from into.cleanup import cleanup
 from into.resource import resource
 from into.utils import tmpfile
 
@@ -40,68 +41,44 @@ from pandas.io import pytables as hdfstore
 from pandas import DataFrame
 IS_PY3 = sys.version_info[0] >= 3
 
-df = DataFrame({ 'id' : range(5),
-                 'name' : ['Alice','Bob','Charlie','Denis','Edith'],
-                 'amount' : [100,-200,300,400,-500] })
-arr = np.array([(1, 'Alice', 100),
-                (2, 'Bob', -200),
-                (3, 'Charlie', 300),
-                (4, 'Denis', 400),
-                (5, 'Edith', -500)],
-               dtype=[('id', '<i8'), ('name', 'S7'), ('amount', '<i8')])
-dshape = discover(arr)
-
-ext_list = ['.h5','.hdf5']
-
 @contextmanager
 def ensure_resource_clean(*args, **kwargs):
     result = resource(*args, **kwargs)
     yield result
+    cleanup(result)
 
-    # hdfstore
-    try:
-        result.parent.close()
-    except AttributeError:
-        pass
+def generate_uri_combos(prefixes):
+    """
+    return all combinations of the ext and the prefixes list
 
-    # pytables
-    try:
-        result._v_file.close()
-    except AttributeError:
-        pass
+    return a dict suitable for use in a pytest fixture
 
-    # h5py
-    try:
-        result.close()
-    except AttributeError:
-        pass
-
-
-def combos(prefixes):
-    """ return all combinations of the ext and the prefixes list """
-    list1 = ext_list
+    """
+    list1 = ['.h5','.hdf5']
     list2 = prefixes
     l = []
     for x in itertools.permutations(list1,len(list2)):
         l.extend(list(zip(x,list2)))
-    return l
 
-@pytest.yield_fixture(params=combos(['','hdfstore://']))
-def hdfstore_file(request):
+    return { 'params' : l, 'ids' : l }
+
+
+@pytest.yield_fixture(**generate_uri_combos(['','hdfstore://']))
+def hdfstore_file(request, df):
 
     ext, prefix = request.param
     with tmpfile(ext) as filename:
         df.to_hdf(filename,'data',mode='w',format='table',data_columns=True)
         yield prefix + filename
 
-@pytest.yield_fixture(params=combos(['','hdfstore://']))
+@pytest.yield_fixture(**generate_uri_combos(['','hdfstore://']))
 def hdfstore_filename(request, tmpdir):
 
     ext, prefix = request.param
     yield prefix + str(tmpdir / 'foobar' + ext)
 
-@pytest.yield_fixture(params=combos(['','pytables://']))
-def pytables_file(request):
+@pytest.yield_fixture(**generate_uri_combos(['','pytables://']))
+def pytables_file(request, arr):
 
     ext, prefix = request.param
     with tmpfile(ext) as filename:
@@ -112,14 +89,14 @@ def pytables_file(request):
         f.close()
         yield prefix + filename
 
-@pytest.yield_fixture(params=combos(['pytables://']))
+@pytest.yield_fixture(**generate_uri_combos(['pytables://']))
 def pytables_filename(request, tmpdir):
 
     ext, prefix = request.param
     yield prefix + str(tmpdir / 'foobar' + ext)
 
-@pytest.yield_fixture(params=combos(['','h5py://']))
-def h5py_file(request):
+@pytest.yield_fixture(**generate_uri_combos(['','h5py://']))
+def h5py_file(request, arr):
 
     ext, prefix = request.param
     with tmpfile(ext) as filename:
@@ -130,22 +107,22 @@ def h5py_file(request):
         f.close()
         yield prefix + filename
 
-@pytest.yield_fixture(params=combos(['h5py://']))
+@pytest.yield_fixture(**generate_uri_combos(['h5py://']))
 def h5py_filename(request, tmpdir):
 
     ext, prefix = request.param
     yield prefix + str(tmpdir / 'foobar' + ext)
 
-def test_hdfstore_write(hdfstore_filename):
+def test_hdfstore_write(hdfstore_filename, arr_dshape):
 
     # this is also the default writer
-    with ensure_resource_clean(hdfstore_filename,'/data',dshape=dshape) as result:
+    with ensure_resource_clean(hdfstore_filename,'/data',dshape=arr_dshape) as result:
         assert isinstance(result, hdfstore.AppendableFrameTable)
 
-def test_hdfstore_write2(hdfstore_filename):
+def test_hdfstore_write2(hdfstore_filename, arr_dshape):
 
     # this is also the default writer
-    with ensure_resource_clean(hdfstore_filename + '::/data',dshape=dshape) as result:
+    with ensure_resource_clean(hdfstore_filename + '::/data',dshape=arr_dshape) as result:
         assert isinstance(result, hdfstore.AppendableFrameTable)
 
 def test_hdfstore_read(hdfstore_file):
@@ -162,31 +139,31 @@ def test_hdfstore_read2(hdfstore_file):
 # http://stackoverflow.com/questions/7450881/python-segmentation-fault-when-closing-quitting
 
 #@pytest.mark.skipif(not IS_PY3, reason="hp5y fail under < 3")
-#def test_h5py_write(h5py_filename):
+#def test_h5py_write(h5py_filename, arr_dshape):
 
-#    with ensure_resource_clean(h5py_filename,'/data',dshape=dshape) as result:
+#    with ensure_resource_clean(h5py_filename,'/data',dshape=arr_dshape) as result:
 #        assert isinstance(result, h5py.Dataset)
 
 #@pytest.mark.skipif(not IS_PY3, reason="hp5y fail under < 3")
-#def test_h5py_write2(h5py_filename):
+#def test_h5py_write2(h5py_filename, arr_dshape):
 
-#    with ensure_resource_clean(h5py_filename + '::/data',dshape=dshape) as result:
+#    with ensure_resource_clean(h5py_filename + '::/data',dshape=arr_dshape) as result:
 #        assert isinstance(result, h5py.Dataset)
 
 #@pytest.mark.skipif(not IS_PY3, reason="hp5y fail under < 3")
-#def test_h5py_read(h5py_file):
+#def test_h5py_read(h5py_file, arr_dshape):
 
-#    with ensure_resource_clean(h5py_file,'/data',dshape=dshape) as result:
+#    with ensure_resource_clean(h5py_file,'/data',dshape=arr_dshape) as result:
 #        assert isinstance(result, h5py.Dataset)
 
-def test_pytables_write(pytables_filename):
+def test_pytables_write(pytables_filename, arr_dshape):
 
-    with ensure_resource_clean(pytables_filename,'/data',dshape=dshape) as result:
+    with ensure_resource_clean(pytables_filename,'/data',dshape=arr_dshape) as result:
         assert isinstance(result, tb.Table)
 
-def test_pytables_write2(pytables_filename):
+def test_pytables_write2(pytables_filename, arr_dshape):
 
-    with ensure_resource_clean(pytables_filename + '::/data',dshape=dshape) as result:
+    with ensure_resource_clean(pytables_filename + '::/data',dshape=arr_dshape) as result:
         assert isinstance(result, tb.Table)
 
 def test_pytables_read(pytables_file):

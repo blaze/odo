@@ -3,6 +3,7 @@
 import pytest
 import numpy as np
 from pandas import DataFrame, date_range
+from into import discover
 
 @pytest.fixture(scope='module')
 def df():
@@ -23,6 +24,10 @@ def arr():
                      (4, 'Denis', 400),
                      (5, 'Edith', -500)],
                     dtype=[('id', '<i8'), ('name', 'S7'), ('amount', '<i8')])
+
+@pytest.fixture(scope='module')
+def arr_dshape(arr):
+    return discover(arr)
 
 @pytest.fixture(scope='module')
 def arr2():
