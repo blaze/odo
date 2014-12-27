@@ -2,14 +2,18 @@ from __future__ import absolute_import, division, print_function
 
 import sys
 import os
-import pandas as pd
 import gzip
+
+import pandas as pd
+import pandas.util.testing as tm
+
+import numpy as np
 import datashape
 from datashape import Option, string
 from collections import Iterator
 
-from into.backends.csv import (CSV, append, convert, resource,
-        csv_to_DataFrame, CSV_to_chunks_of_dataframes)
+from into.backends.csv import (CSV, append, convert, resource, csv_to_DataFrame,
+                               CSV_to_chunks_of_dataframes, BOMS)
 from into.utils import tmpfile, filetext, filetexts, raises
 from into import into, append, convert, resource, discover, dshape
 from into.compatibility import unicode, skipif
@@ -258,3 +262,14 @@ def test_csv_missing_values():
     with filetext('name,val\nAlice,100\nNA,200', extension='csv') as fn:
         csv = CSV(fn)
         assert discover(csv).measure.dict['name'] == Option(string)
+
+
+def test_boms():
+    expected = pd.DataFrame([['Alice', 100],
+                             [np.nan, 200]], columns=['name', 'val'])
+    for encoding, bom in BOMS.items():
+        text = bom + u'name,val\nAlice,100\nNA,200'.encode(encoding)
+        with filetext(text, extension='csv', mode='wb') as fn:
+            csv = CSV(fn, encoding=encoding)
+            result = into(pd.DataFrame, csv)
+        tm.assert_frame_equal(result, expected)
