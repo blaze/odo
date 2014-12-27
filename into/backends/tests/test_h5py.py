@@ -8,11 +8,11 @@ from contextlib import contextmanager
 from into.utils import tmpfile
 from into.chunks import chunks
 from into import into, append, convert, resource, discover, cleanup
+from into.conftest import eq
 import datashape
 import h5py
 import numpy as np
 import os
-
 
 @contextmanager
 def ensure_clean_store(data, ext=None):
@@ -30,43 +30,38 @@ def ensure_clean_store(data, ext=None):
         finally:
             cleanup(f)
 
-@pytest.fixture(scope='module')
-def data():
-    return np.ones((2, 3), dtype='i4')
-
 def eq(a, b):
     c = a == b
     if isinstance(c, np.ndarray):
         c = c.all()
     return c
 
-def test_discover(data):
-    with ensure_clean_store(data) as f:
-        assert str(discover(data)) == str(discover(f['data']))
-        assert str(discover(f)) == str(discover({'data': data}))
+def test_discover(arr2):
+    with ensure_clean_store(arr2) as f:
+        assert str(discover(arr2)) == str(discover(f['data']))
+        assert str(discover(f)) == str(discover({'data': arr2}))
 
-def test_append(data):
-    with ensure_clean_store(data) as f:
-        append(f['data'], data)
-        assert eq(f['data'][:], np.concatenate([data, data]))
-
-
-def test_numpy(data):
-    with ensure_clean_store(data) as f:
-        assert eq(convert(np.ndarray, f['data']), data)
+def test_append(arr2):
+    with ensure_clean_store(arr2) as f:
+        append(f['data'], arr2)
+        assert eq(f['data'][:], np.concatenate([arr2 ,arr2]))
 
 
-def test_chunks(data):
-    with ensure_clean_store(data) as f:
+def test_numpy(arr2):
+    with ensure_clean_store(arr2) as f:
+        assert eq(convert(np.ndarray, f['data']), arr2)
+
+
+def test_chunks(arr2):
+    with ensure_clean_store(arr2) as f:
         c = convert(chunks(np.ndarray), f['data'])
-        assert eq(convert(np.ndarray, c), data)
+        assert eq(convert(np.ndarray, c), arr2)
 
 
-def test_append_chunks(data):
-    with ensure_clean_store(data) as f:
-        append(f['data'], chunks(np.ndarray)([data, data]))
-
-        assert len(f['data']) == len(data) * 3
+def test_append_chunks(arr2):
+    with ensure_clean_store(arr2) as f:
+        append(f['data'], chunks(np.ndarray)([arr2, arr2]))
+        assert len(f['data']) == len(arr2) * 3
 
 
 def test_create():
