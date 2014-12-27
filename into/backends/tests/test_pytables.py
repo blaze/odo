@@ -10,10 +10,8 @@ tb = pytest.importorskip('tables')
 from into.backends.pytables import PyTables, discover
 
 @contextmanager
-def ensure_clean_file(ext=None,mode='w'):
+def ensure_clean_file(ext='.h5',mode='w'):
     """ create and close a store """
-    if ext is None:
-        ext = '.h5'
     with tmpfile(ext) as filename:
         try:
             f = tb.open_file(filename, mode=mode)

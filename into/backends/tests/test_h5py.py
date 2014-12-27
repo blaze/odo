@@ -15,10 +15,7 @@ import numpy as np
 import os
 
 @contextmanager
-def ensure_clean_store(data, ext=None):
-
-    if ext is None:
-        ext = '.hdf5'
+def ensure_clean_store(data, ext='.hdf5'):
 
     with tmpfile(ext) as filename:
         f = h5py.File(filename)

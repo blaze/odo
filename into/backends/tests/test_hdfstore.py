@@ -264,6 +264,17 @@ def test_into_hdf52(df2, tmpdir):
     result = read_hdf(target2, 'df2')
     assert_frame_equal(concat([df2,df2]), result)
 
+def test_into_other(tmpdir):
+
+    target1 = str(tmpdir / 'foo.h5')
+    uri = target1 + '::/data'
+
+    data = [('Alice', 1), ('Bob', 2), ('Charlie', 3)]
+
+    import pdb; pdb.set_trace()
+    result = into(uri, data)
+    result = into(list, uri)
+
 def test_drop(hdf_multi_nodes_file):
 
     assert os.path.exists(hdf_multi_nodes_file)
