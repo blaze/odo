@@ -73,12 +73,6 @@ def append_object_to_hdfstore(s, data, **kwargs):
 
 
 @append.register(hdf.HDFStore, object)
-def append_object_to_hdfstore(s, data, **kwargs):
-    """ generic """
-    return append_frame_to_hdfstore(s, convert(pd.DataFrame, data, **kwargs), **kwargs)
-
-
-@append.register(hdf.HDFStore, pd.DataFrame)
 def append_frame_to_hdfstore(s, data, datapath=None, **kwargs):
     """ append a single frame to a store, must have a datapath """
 
@@ -88,95 +82,41 @@ def append_frame_to_hdfstore(s, data, datapath=None, **kwargs):
         raise ValueError(
             "must specify a datapath in order to append to a hdfstore")
 
+    data = convert(pd.DataFrame, data, **kwargs)
     s.append(datapath, data, data_columns=True)
     return s.get_storer(datapath)
 
 
-@append.register(EmptyAppendableFrameTable, pd.DataFrame)
-def append_frame_to_empty_hdftable(t, data, **kwargs):
-    """
-    append a single frame to a currently empty store
-    this creates and returns the new table object
-    """
+@append.register((EmptyAppendableFrameTable, hdf.AppendableFrameTable), object)
+def append_frame_to_hdftable(t, data, **kwargs):
+    """ append a single frame to a store """
+
+    data = convert(pd.DataFrame, data, **kwargs)
     name = t.group._v_name
     t.parent.append(name, data, format='table', data_columns=True)
     return t.parent.get_storer(name)
 
 
-@append.register(EmptyAppendableFrameTable, object)
-def append_object_to_empty_hdftable(t, data, **kwargs):
-    """ generic """
-    return append_frame_to_empty_hdftable(t, convert(pd.DataFrame, data, **kwargs), **kwargs)
-
-
-@append.register(EmptyAppendableFrameTable, hdf.AppendableFrameTable)
-def append_hdftable_to_empty(t, data, **kwargs):
-    """
-    append a store to a currently empty store
-    this creates and returns the new table object
-    """
-    # if we are the same store, then its a no-op
-    if (t.parent.filename == data.parent.filename) and (t.group == data.group):
-        return data
-
-    return append_frame_to_hdftable(t, convert(pd.DataFrame, data, **kwargs))
-
-
-@append.register(hdf.AppendableFrameTable, object)
-def append_object_to_hdftable(t, data, **kwargs):
-    """ generic """
-    return append_frame_to_hdftable(t, convert(pd.DataFrame, data, **kwargs), **kwargs)
-
-
-@append.register(hdf.AppendableFrameTable, pd.DataFrame)
-def append_frame_to_hdftable(t, data, **kwargs):
-    """ append a single frame to a store """
-
-    name = t.group._v_name
-    t.parent.append(name, data)
-    return t.parent.get_storer(name)
-
-
-@append.register(hdf.AppendableFrameTable, hdf.AppendableFrameTable)
-def append_hdftable_to_hdftable(t, data, **kwargs):
-    """
-    append a store to another store
-    """
-    return append_frame_to_hdftable(t, convert(pd.DataFrame, data, **kwargs))
-
-
-@append.register(EmptyAppendableFrameTable, chunks(pd.DataFrame))
+@append.register((EmptyAppendableFrameTable, hdf.AppendableFrameTable), chunks(pd.DataFrame))
 def append_chunks_to_hdftable(t, data, **kwargs):
     """
     append chunks to a store
 
     we have an existing empty table
     """
-    data = list(data)
-    d, data = data[0], data[1:]
+    l = len(data)
+    data = iter(data)
 
-    # empty table
-    t = append_frame_to_hdftable(t, d, **kwargs)
+    # the head element
+    t = append_frame_to_hdftable(t, next(data), **kwargs)
 
     # the rest
-    return append_chunks_to_hdftable(t, chunks(pd.DataFrame)(data), **kwargs)
-
-
-@append.register(hdf.AppendableFrameTable, chunks(pd.DataFrame))
-def append_chunks_to_hdftable(t, data, **kwargs):
-    """
-    append chunks to a store
-
-    turn off indexing during this operation
-    """
-
-    with ensure_indexing(t):
-
-        for chunk in data:
-            t = append_frame_to_hdftable(t, chunk, **kwargs)
+    if l > 1:
+        with ensure_indexing(t):
+            for d in data:
+                append_frame_to_hdftable(t, d, **kwargs)
 
     return t
-
 
 def _use_sub_columns_selection(t, columns):
     # should we use an efficient sub-selection method

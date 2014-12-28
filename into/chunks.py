@@ -35,6 +35,9 @@ class Chunks(object):
         else:
             return iter(self.data)
 
+    def __len__(self):
+        return len(self.data)
+
 
 def chunks(cls):
     """ Parametrized Chunks Class """
