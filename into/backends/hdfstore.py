@@ -245,7 +245,7 @@ def HDFStore(path, datapath=None, dshape=None, **kwargs):
         store._path
     except AttributeError:
         store.close()
-        raise NotImplementedError
+        raise NotImplementedError("not a hdfstore type")
 
     group = store.get_node(datapath)
     if group is None:
@@ -257,7 +257,7 @@ def HDFStore(path, datapath=None, dshape=None, **kwargs):
         group._v_attrs.pandas_type
     except AttributeError:
         store.close()
-        raise NotImplementedError
+        raise NotImplementedError("not a hdfstore type")
 
     return store.get_storer(datapath)
 

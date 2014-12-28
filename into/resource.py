@@ -32,6 +32,6 @@ def resource_matches(path, name):
     m = re.search(pat,path)
     if m:
         if not path.startswith(name):
-            raise NotImplementedError
+            raise NotImplementedError("cannot handle this resource match")
         path = re.sub(pat,'',path)
     return path

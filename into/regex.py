@@ -73,4 +73,4 @@ class RegexDispatcher(object):
                 continue
 
         # can't find anything
-        raise NotImplementedError
+        raise NotImplementedError("unable to match any regexes for dispatching")
