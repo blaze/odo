@@ -289,4 +289,4 @@ def cleanup(t):
     except AttributeError:
         pass
 
-ooc_types |= set([hdf.Table])
+ooc_types |= set([hdf.AppendableFrameTable])
