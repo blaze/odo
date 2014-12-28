@@ -80,10 +80,17 @@ def resource_bcolz(uri, dshape=None, **kwargs):
         dt = datashape.to_numpy_dtype(dshape)
         x = np.empty(shape=(0,), dtype=dt)
 
+        kwargs = keyfilter(keywords.__contains__, kwargs)
+        expectedlen = kwargs.pop('expectedlen',
+                                 int(dshape[0])
+                                 if dshape is not None and
+                                 isinstance(dshape[0], datashape.Fixed)
+                                 else None)
+
         if datashape.predicates.isrecord(dshape.measure):
-            return ctable(x, rootdir=uri, **keyfilter(keywords.__contains__, kwargs))
+            return ctable(x, rootdir=uri, expectedlen=expectedlen, **kwargs)
         else:
-            return carray(x, rootdir=uri, **keyfilter(keywords.__contains__, kwargs))
+            return carray(x, rootdir=uri, expectedlen=expectedlen, **kwargs)
 
 
 @drop.register((carray, ctable))
