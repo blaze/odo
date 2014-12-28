@@ -23,6 +23,7 @@ x = np.array([1, 2])
 def test_discover():
     assert discover(a) == discover(a[:])
 
+
 def test_convert():
     assert isinstance(convert(carray, np.ones([1, 2, 3])), carray)
     b = carray([1, 2, 3])
@@ -53,10 +54,39 @@ def test_append_other():
 def test_resource_ctable():
     with tmpfile('.bcolz') as fn:
         os.remove(fn)
-        r = resource(fn, dshape='var * {name: string[5, "ascii"], balance: int32}')
+        r = resource(fn,
+                     dshape='var * {name: string[5, "ascii"], balance: int32}')
 
         assert isinstance(r, ctable)
         assert r.dtype == [('name', 'S5'), ('balance', 'i4')]
+
+
+def get_expectedlen(x):
+    shape, cparams, dtype, _, expectedlen, _, chunklen = x.read_meta()
+    return expectedlen
+
+
+def test_resource_ctable_overrides_expectedlen():
+    with tmpfile('.bcolz') as fn:
+        os.remove(fn)
+        r = resource(fn,
+                     dshape='100 * {name: string[5, "ascii"], balance: int32}',
+                     expectedlen=200)
+
+        assert isinstance(r, ctable)
+        assert r.dtype == [('name', 'S5'), ('balance', 'i4')]
+        assert all(get_expectedlen(r[c]) == 200 for c in r.names)
+
+
+def test_resource_ctable_correctly_infers_length():
+    with tmpfile('.bcolz') as fn:
+        os.remove(fn)
+        r = resource(fn,
+                     dshape='100 * {name: string[5, "ascii"], balance: int32}')
+
+        assert isinstance(r, ctable)
+        assert r.dtype == [('name', 'S5'), ('balance', 'i4')]
+        assert all(get_expectedlen(r[c]) == 100 for c in r.names)
 
 
 def test_resource_carray():
@@ -66,6 +96,26 @@ def test_resource_carray():
 
         assert isinstance(r, carray)
         assert r.dtype == 'i4'
+
+
+def test_resource_carray_overrides_expectedlen():
+    with tmpfile('.bcolz') as fn:
+        os.remove(fn)
+        r = resource(fn, dshape='100 * int32', expectedlen=200)
+
+        assert isinstance(r, carray)
+        assert r.dtype == 'i4'
+        assert get_expectedlen(r) == 200
+
+
+def test_resource_ctable_correctly_infers_length():
+    with tmpfile('.bcolz') as fn:
+        os.remove(fn)
+        r = resource(fn, dshape='100 * int32')
+
+        assert isinstance(r, carray)
+        assert r.dtype == 'i4'
+        assert get_expectedlen(r) == 100
 
 
 y = np.array([('Alice', 100), ('Bob', 200)],
