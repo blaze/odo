@@ -20,17 +20,21 @@ from pandas.util.testing import assert_frame_equal
 def new_file(tmpdir):
     return str(tmpdir / 'foo.h5')
 
+
 @pytest.yield_fixture
 def hdf_file(df):
     with tmpfile('.h5') as filename:
-        df.to_hdf(filename,'title',mode='w',format='table',data_columns=True)
+        df.to_hdf(
+            filename, 'title', mode='w', format='table', data_columns=True)
         yield filename
+
 
 @pytest.yield_fixture
 def hdf_file2(df2):
     with tmpfile('.h5') as filename:
-        df2.to_hdf(filename,'dt',mode='w',format='table',data_columns=True)
+        df2.to_hdf(filename, 'dt', mode='w', format='table', data_columns=True)
         yield filename
+
 
 @pytest.yield_fixture
 def hdf_file3():
@@ -41,6 +45,7 @@ def hdf_file3():
                      data_columns=True)
         yield filename
 
+
 @pytest.yield_fixture()
 def hdf_multi_nodes_file(df, df2):
     with tmpfile('.h5') as filename:
@@ -50,6 +55,7 @@ def hdf_multi_nodes_file(df, df2):
                    data_columns=True)
         yield filename
 
+
 @contextmanager
 def ensure_clean_store(*args, **kwargs):
     try:
@@ -57,6 +63,7 @@ def ensure_clean_store(*args, **kwargs):
         yield t
     finally:
         cleanup(t)
+
 
 def test_file_discover(hdf_multi_nodes_file):
 
@@ -67,22 +74,27 @@ def test_file_discover(hdf_multi_nodes_file):
     assert str(result) == str(expected)
     cleanup(r)
 
+
 def test_node_discover(hdf_multi_nodes_file):
 
     r = resource(hdf_multi_nodes_file)
     result = discover(r.get_storer('df'))
-    expected = dshape("5 * {index: int64, amount: int64, id: int64, name: string[7, 'A']}")
+    expected = dshape(
+        "5 * {index: int64, amount: int64, id: int64, name: string[7, 'A']}")
     assert str(result) == str(expected)
     cleanup(r)
+
 
 def test_read(hdf_file):
     with ensure_clean_store(path=hdf_file, datapath='/title') as t:
         shape = t.shape
         assert shape == (5,)
 
+
 def test_write_no_dshape(new_file):
     with pytest.raises(ValueError):
         HDFStore(path=new_file, datapath='/write_this')
+
 
 def test_write_with_dshape(new_file):
 
@@ -93,11 +105,13 @@ def test_write_with_dshape(new_file):
         assert t.parent.filename == new_file
         assert shape == (0,)
 
+
 def test_table_into_dataframe(hdf_file2):
 
     with ensure_clean_store(hdf_file2, '/dt') as t:
         res = into(DataFrame, t)
         assert_frame_equal(res, read_hdf(hdf_file2, 'dt'))
+
 
 def test_table_into_dataframe_columns(hdf_file2):
 
@@ -105,6 +119,7 @@ def test_table_into_dataframe_columns(hdf_file2):
         res = into(DataFrame, t, columns=['id', 'amount'])
         expected = read_hdf(hdf_file2, 'dt', columns=['id', 'amount'])
         assert_frame_equal(res, expected)
+
 
 def test_table_into_dataframe_columns_large_ncols(hdf_file3):
     # efficient selection of columns
@@ -117,12 +132,14 @@ def test_table_into_dataframe_columns_large_ncols(hdf_file3):
             expected = read_hdf(hdf_file3, 'dt', columns=cols)
             assert_frame_equal(res, expected)
 
+
 def test_table_into_dataframe_where_no_columns(hdf_file2):
 
     with ensure_clean_store(hdf_file2, '/dt') as t:
-            res = into(DataFrame, t, where='amount>=300')
-            expected = read_hdf(hdf_file2, 'dt', where='amount>=300')
-            assert_frame_equal(res, expected)
+        res = into(DataFrame, t, where='amount>=300')
+        expected = read_hdf(hdf_file2, 'dt', where='amount>=300')
+        assert_frame_equal(res, expected)
+
 
 def test_table_into_dataframe_where_and_columns(hdf_file2):
 
@@ -132,6 +149,7 @@ def test_table_into_dataframe_where_and_columns(hdf_file2):
         expected = read_hdf(hdf_file2, 'dt', where='amount>=300',
                             columns=['id', 'amount'])
         assert_frame_equal(res, expected)
+
 
 def test_table_into_chunks_dataframe(hdf_file3):
 
@@ -144,17 +162,19 @@ def test_table_into_chunks_dataframe(hdf_file3):
 
             assert_frame_equal(res, expected)
 
+
 def test_dataframe_into_table(hdf_file2, new_file):
 
     expected = read_hdf(hdf_file2, 'dt')
     dshape = discover(expected)
 
     with ensure_clean_store(path=new_file, datapath='/write_this',
-                                dshape=dshape) as t:
+                            dshape=dshape) as t:
         t = into(t, expected)
 
         res = read_hdf(new_file, 'write_this')
         assert_frame_equal(res, expected)
+
 
 def test_dataframe_into_table_append(hdf_file2, new_file):
 
@@ -179,6 +199,7 @@ def test_dataframe_into_table_append(hdf_file2, new_file):
         # make sure that we are still indexed
         assert t.table.autoindex
 
+
 def test_dataframe_into_table_append_chunks(hdf_file2, new_file):
 
     df = read_hdf(hdf_file2, 'dt')
@@ -192,6 +213,7 @@ def test_dataframe_into_table_append_chunks(hdf_file2, new_file):
         res = read_hdf(new_file, 'write_this')
         assert_frame_equal(res, totality)
 
+
 def test_into_iterator(hdf_file2):
 
     # this 'works', but you end up with an iterator on a closed file
@@ -200,8 +222,9 @@ def test_into_iterator(hdf_file2):
     # the resource must remain open
     r = resource(hdf_file2 + '::dt')
     result = into(Iterator, r)
-    assert_frame_equal(concat(list(iter(result))), read_hdf(hdf_file2,'dt'))
+    assert_frame_equal(concat(list(iter(result))), read_hdf(hdf_file2, 'dt'))
     cleanup(r)
+
 
 def test_into_hdf5(df2, tmpdir):
 
@@ -232,7 +255,8 @@ def test_into_hdf5(df2, tmpdir):
     # append again
     into(target2, target1, datapath='/data')
     result = read_hdf(target2, 'data')
-    assert_frame_equal(concat([df2,df2]), result)
+    assert_frame_equal(concat([df2, df2]), result)
+
 
 def test_into_hdf52(df2, tmpdir):
 
@@ -262,7 +286,8 @@ def test_into_hdf52(df2, tmpdir):
     # append again
     into(target2 + '::df2', target1 + '::df2')
     result = read_hdf(target2, 'df2')
-    assert_frame_equal(concat([df2,df2]), result)
+    assert_frame_equal(concat([df2, df2]), result)
+
 
 def test_into_other(tmpdir):
 
@@ -277,7 +302,8 @@ def test_into_other(tmpdir):
 
     into(uri, data, dshape=dshape("3 * {id: string, amount: int64}"))
     result = into(DataFrame, uri)
-    assert_frame_equal(result, DataFrame(data,columns=['id','amount']))
+    assert_frame_equal(result, DataFrame(data, columns=['id', 'amount']))
+
 
 def test_drop(hdf_multi_nodes_file):
 
@@ -287,6 +313,7 @@ def test_drop(hdf_multi_nodes_file):
 
     assert not os.path.exists(hdf_multi_nodes_file)
 
+
 def test_drop_table(hdf_multi_nodes_file):
 
     r = resource(hdf_multi_nodes_file + '::df')
@@ -295,6 +322,7 @@ def test_drop_table(hdf_multi_nodes_file):
     assert 'df' not in r
     cleanup(r)
 
+
 def test_str(df2, tmpdir):
 
     target = str(tmpdir / 'foo.h5')
@@ -302,13 +330,13 @@ def test_str(df2, tmpdir):
 
     # need a datapath
     with pytest.raises(ValueError):
-        into(target,df2)
+        into(target, df2)
 
-    result = into(uri,df2)
+    result = into(uri, df2)
     assert str(result) == uri
 
-    result = into(uri,uri)
+    result = into(uri, uri)
     assert str(result) == uri
 
-    result = into(DataFrame,uri)
-    assert_frame_equal(result, concat([df2,df2]))
+    result = into(DataFrame, uri)
+    assert_frame_equal(result, concat([df2, df2]))

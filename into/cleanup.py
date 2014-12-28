@@ -32,6 +32,7 @@ def cleanup(rsrc):
     raise NotImplementedError("cleanup not implemented for type %r" %
                               type(rsrc).__name__)
 
+
 @dispatch((str, unicode))
 def cleanup(uri, **kwargs):
     data = resource(uri, **kwargs)

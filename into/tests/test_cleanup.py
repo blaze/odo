@@ -5,12 +5,14 @@ import pytest
 from into import CSV, cleanup, resource, append, into
 from into.utils import raises
 
+
 def test_not_impemented():
 
     # these are by definition not implemented
-    for obj in ['foo',None,object]:
+    for obj in ['foo', None, object]:
         with pytest.raises(NotImplementedError):
             cleanup(obj)
+
 
 def test_csv_notimplemented(tmpdir):
 
@@ -23,6 +25,7 @@ def test_csv_notimplemented(tmpdir):
     with pytest.raises(NotImplementedError):
         cleanup(r)
 
+
 def test_csv(tmpdir):
     # smoke test, cleanup is not implemented
 
@@ -33,5 +36,5 @@ def test_csv(tmpdir):
     data = [('Alice', 100), ('Bob', 200)]
     append(csv, data)
 
-    result = into(f2,f1)
+    result = into(f2, f1)
     assert isinstance(result, CSV)
