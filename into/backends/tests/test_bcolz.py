@@ -98,6 +98,15 @@ def test_resource_carray():
         assert r.dtype == 'i4'
 
 
+def test_resource_existing_carray():
+    with tmpfile('.bcolz') as fn:
+        os.remove(fn)
+        r = resource(fn, dshape='var * int32')
+        into(r, [1, 2, 3])
+        newr = resource(fn)
+        assert isinstance(newr, carray)
+
+
 def test_resource_carray_overrides_expectedlen():
     with tmpfile('.bcolz') as fn:
         os.remove(fn)
