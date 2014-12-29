@@ -70,7 +70,10 @@ def bcolz_to_numpy_chunks(x, chunksize=2**20, **kwargs):
 @resource.register('.*\.bcolz/?')
 def resource_bcolz(uri, dshape=None, **kwargs):
     if os.path.exists(uri):
-        return ctable(rootdir=uri)
+        try:
+            return ctable(rootdir=uri)
+        except IOError:  # __rootdirs__ doesn't exist because we aren't a ctable
+            return carray(rootdir=uri)
     else:
         if not dshape:
             raise ValueError("Must specify either existing bcolz directory or"

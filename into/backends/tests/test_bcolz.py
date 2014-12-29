@@ -98,6 +98,16 @@ def test_resource_carray():
         assert r.dtype == 'i4'
 
 
+def test_resource_existing_carray():
+    with tmpfile('.bcolz') as fn:
+        os.remove(fn)
+        r = resource(fn, dshape='var * int32')
+        append(r, [1, 2, 3])
+        r.flush()
+        newr = resource(fn)
+        assert isinstance(newr, carray)
+
+
 def test_resource_carray_overrides_expectedlen():
     with tmpfile('.bcolz') as fn:
         os.remove(fn)
@@ -127,7 +137,7 @@ def test_convert_numpy_to_ctable():
     assert eq(b[:], y)
 
 
-def test_resource_existing_carray():
+def test_resource_existing_ctable():
     with tmpfile('.bcolz') as fn:
         os.remove(fn)
         r = resource(fn, dshape=discover(y))
