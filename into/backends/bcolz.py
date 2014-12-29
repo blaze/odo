@@ -72,7 +72,7 @@ def resource_bcolz(uri, dshape=None, **kwargs):
     if os.path.exists(uri):
         try:
             return ctable(rootdir=uri)
-        except IOError:  # we aren't a ctable, so try carray
+        except IOError:  # __rootdirs__ doesn't exist because we aren't a ctable
             return carray(rootdir=uri)
     else:
         if not dshape:
