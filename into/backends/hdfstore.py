@@ -9,6 +9,7 @@ from ..resource import resource, resource_matches
 from ..chunks import chunks, Chunks
 from ..utils import tmpfile
 from ..numpy_dtype import dshape_to_pandas
+from into.backends.hdf import HDFFile, HDFTable
 
 from collections import Iterator
 from contextlib import contextmanager
@@ -17,9 +18,6 @@ import numpy as np
 import tables
 import pandas as pd
 from pandas.io import pytables as hdf
-
-__all__ = ['HDFStore']
-
 
 @contextmanager
 def ensure_indexing(t):
@@ -34,7 +32,6 @@ def ensure_indexing(t):
     # reindex
     t.table.autoindex = True
     t.table.reindex_dirty()
-
 
 class EmptyAppendableFrameTable(hdf.AppendableFrameTable):
 
@@ -75,12 +72,6 @@ def append_object_to_hdfstore(s, data, **kwargs):
 @append.register(hdf.HDFStore, object)
 def append_frame_to_hdfstore(s, data, datapath=None, **kwargs):
     """ append a single frame to a store, must have a datapath """
-
-    # we possible attached to the store from the original uri
-    datapath = datapath or getattr(s, 'datapath', None)
-    if datapath is None:
-        raise ValueError(
-            "must specify a datapath in order to append to a hdfstore")
 
     data = convert(pd.DataFrame, data, **kwargs)
     s.append(datapath, data, data_columns=True)
@@ -184,7 +175,7 @@ def HDFStore(path, datapath=None, dshape=None, **kwargs):
 
     Returns
     -------
-    t : hdf.Table
+    t : HDFFile or HDFTable if datapath is provided
 
     Examples
     --------
@@ -221,17 +212,9 @@ def HDFStore(path, datapath=None, dshape=None, **kwargs):
 
         # no datapath, then return the store
         if datapath is None:
-            return store
+            return HDFFile(store)
 
-        # create a new node
-        if datapath.startswith('/'):
-            datapath = datapath[1:]
-        group = store._handle.create_group('/', datapath, createparents=True)
-
-        # create our stand-in table
-        s = EmptyAppendableFrameTable(store, group)
-        s.set_object_info()
-        return s
+        return HDFTable(HDFFile(store), datapath)
 
     if not os.path.exists(path):
         store = hdf.HDFStore(path, **kwargs)
@@ -249,8 +232,7 @@ def HDFStore(path, datapath=None, dshape=None, **kwargs):
 
     group = store.get_node(datapath)
     if group is None:
-        store.datapath = datapath
-        return store
+        return HDFFile(store,datapath=datapath)
 
     # further validation on the actual node
     try:
@@ -259,7 +241,7 @@ def HDFStore(path, datapath=None, dshape=None, **kwargs):
         store.close()
         raise NotImplementedError("not a hdfstore type")
 
-    return store.get_storer(datapath)
+    return HDFTable(HDFFile(store), datapath)
 
 
 @dispatch(hdf.HDFStore)
@@ -274,19 +256,48 @@ def drop(t):
     cleanup(t)
 
 
+# hdf resource impl
+@dispatch(hdf.HDFStore)
+def pathname(f):
+    return f.filename
+
+@dispatch(hdf.HDFStore)
+def get_table(f, datapath=None):
+
+    assert datapath is not None
+
+    node = f.get_node(datapath)
+    if node is None:
+
+        # create a new node
+        if datapath.startswith('/'):
+            datapath = datapath[1:]
+        f._handle.create_group('/', datapath, createparents=True)
+        node = f.get_node(datapath)
+
+    if getattr(node,'table',None) is None:
+
+        # create our stand-in table
+        s = EmptyAppendableFrameTable(f, node)
+        s.set_object_info()
+
+        return s
+
+    return f.get_storer(datapath)
+
+@dispatch(hdf.HDFStore)
+def open_handle(f):
+    f.open()
+    return f
+
 @dispatch(hdf.HDFStore)
 def cleanup(t):
-    try:
-        t.close()
-    except AttributeError:
-        pass
+    t.close()
 
 
 @dispatch(hdf.AppendableFrameTable)
 def cleanup(t):
-    try:
-        t.parent.close()
-    except AttributeError:
-        pass
+    t.parent.close()
+
 
 ooc_types |= set([hdf.AppendableFrameTable])

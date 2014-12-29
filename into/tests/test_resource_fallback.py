@@ -37,6 +37,7 @@ from into.utils import tmpfile
 import h5py
 import tables as tb
 from pandas.io import pytables as hdfstore
+from into.backends.hdf import HDFFile, HDFTable
 
 from pandas import DataFrame
 IS_PY3 = sys.version_info[0] >= 3
@@ -125,26 +126,26 @@ def h5py_filename(request, tmpdir):
 def test_hdfstore_write(hdfstore_filename, arr_dshape):
 
     # this is also the default writer
-    with ensure_resource_clean(hdfstore_filename, '/data', dshape=arr_dshape) as result:
+    with resource(hdfstore_filename, '/data', dshape=arr_dshape) as result:
         assert isinstance(result, hdfstore.AppendableFrameTable)
 
 
 def test_hdfstore_write2(hdfstore_filename, arr_dshape):
 
     # this is also the default writer
-    with ensure_resource_clean(hdfstore_filename + '::/data', dshape=arr_dshape) as result:
+    with resource(hdfstore_filename + '::/data', dshape=arr_dshape) as result:
         assert isinstance(result, hdfstore.AppendableFrameTable)
 
 
 def test_hdfstore_read(hdfstore_file):
 
-    with ensure_resource_clean(hdfstore_file, '/data') as result:
+    with resource(hdfstore_file, '/data') as result:
         assert isinstance(result, hdfstore.AppendableFrameTable)
 
 
 def test_hdfstore_read2(hdfstore_file):
 
-    with ensure_resource_clean(hdfstore_file + '::/data') as result:
+    with resource(hdfstore_file + '::/data') as result:
         assert isinstance(result, hdfstore.AppendableFrameTable)
 
 # These seems to cause segfaults if run in concert with the PyTables tests in the same process
