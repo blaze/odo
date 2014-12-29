@@ -102,7 +102,8 @@ def test_resource_existing_carray():
     with tmpfile('.bcolz') as fn:
         os.remove(fn)
         r = resource(fn, dshape='var * int32')
-        into(r, [1, 2, 3])
+        append(r, [1, 2, 3])
+        r.flush()
         newr = resource(fn)
         assert isinstance(newr, carray)
 
@@ -136,7 +137,7 @@ def test_convert_numpy_to_ctable():
     assert eq(b[:], y)
 
 
-def test_resource_existing_carray():
+def test_resource_existing_ctable():
     with tmpfile('.bcolz') as fn:
         os.remove(fn)
         r = resource(fn, dshape=discover(y))
