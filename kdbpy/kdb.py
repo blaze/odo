@@ -8,6 +8,7 @@ import platform
 import getpass
 import subprocess
 import pprint
+import random
 
 from itertools import chain
 
@@ -21,12 +22,14 @@ from toolz.compatibility import range
 
 import blaze as bz
 import kdbpy
-from kdbpy.util import normpath, hostname, PrettyMixin
+from kdbpy.util import normpath, hostname, PrettyMixin, CredsMixin
+
+class PortInUse(ValueError): pass
+class PortIsFixed(ValueError): pass
 
 
 # chosen randomly from IANA unassigned port numbers
-DEFAULT_PORT_NUMBER = 47823
-
+DEFAULT_PORT_RANGE = (47823,47923)
 
 class Credentials(PrettyMixin):
     """Lightweight credentials container.
@@ -36,20 +39,51 @@ class Credentials(PrettyMixin):
     host : str, optional
         Defaults to ``'localhost'``
     port : int
-        Defaults to %d
+        Defaults to a port in range %s
     username : str
         Defaults to ``getpass.getuser()``
     password str or None
         Defaults to None
-    """ % DEFAULT_PORT_NUMBER
-    __slots__ = 'host', 'port', 'username', 'password'
+    """ % str(DEFAULT_PORT_RANGE)
+    __slots__ = 'host', 'port', 'username', 'password', 'is_fixed_port'
 
     def __init__(self, host=None, port=None, username=None, password=None):
         super(Credentials, self).__init__()
         self.host = host if host is not None else hostname
-        self.port = port if port is not None else DEFAULT_PORT_NUMBER
+        self.port = port
         self.username = username if username is not None else getpass.getuser()
         self.password = password if password is not None else ''
+
+        self.is_fixed_port = port is not None
+
+        # create assignable ports
+        if not self.is_fixed_port:
+            self.ports = self.get_ports()
+            self.port = next(self.get_port())
+
+    def get_ports(self):
+        ports = list(range(*DEFAULT_PORT_RANGE))
+        random.shuffle(ports)
+        return iter(ports)
+
+    def get_port(self):
+        """
+        set the port to random port in the port assigned range
+        If we are a fixed port, this will raise PortIsFixed
+        """
+        if self.is_fixed_port:
+            raise PortIsFixed
+
+        self.port = next(self.ports)
+        yield self.port
+
+    def __copy__(self):
+        """ copy-constructor, duplicate the iterator """
+        new_self = type(self)()
+        new_self.__dict__.update(self.__dict__)
+        if hasattr(new_self,'ports'):
+            new_self.ports = iter(list(self.ports))
+        return new_self
 
     def __hash__(self):
         return hash(tuple(getattr(self, slot) for slot in self.__slots__))
@@ -73,11 +107,8 @@ class Credentials(PrettyMixin):
                     p.breakable()
 
 
-default_credentials = Credentials()
-
-
 # launch client & server
-class KQ(PrettyMixin):
+class KQ(PrettyMixin, CredsMixin):
     """ manage the kdb & q process """
 
     def __init__(self, credentials=None, start=False, path=None, verbose=False):
@@ -93,12 +124,14 @@ class KQ(PrettyMixin):
         -------
         a KDB and Q object, with a started q engine
         """
-        self.credentials = (credentials
-                            if credentials is not None
-                            else default_credentials)
-        self.q = Q(credentials=self.credentials, path=path)
-        self.kdb = KDB(credentials=self.credentials)
+
         self.verbose = verbose
+
+        if credentials is None:
+            credentials = Credentials()
+        self.credentials = credentials
+        self.q = Q(credentials=credentials, path=path)
+        self.kdb = KDB(credentials=credentials)
         self._loaded = set()
         if start:
             self.start(start=start)
@@ -133,7 +166,8 @@ class KQ(PrettyMixin):
     #    pass
     def __enter__(self):
         # don't restart if already started
-        self.start(start=True)
+        if not self.is_started:
+            self.start(start=True)
         return self
 
     def __exit__(self, *args):
@@ -145,8 +179,34 @@ class KQ(PrettyMixin):
         return self.q.is_started and self.kdb.is_started
 
     def start(self, start='restart'):
-        """ start all """
-        self.q.start(start=start)
+        """
+        starting may involve a port collision with an existing process
+
+        if we have a collision, then get the next port and update the credentials
+        and try to start again
+
+        """
+
+        while(True):
+
+            try:
+
+                self.q.start(start=start)
+                break
+
+            except PortInUse:
+
+                if self.is_fixed_port:
+                    raise PortIsFixed("port {port} is in use".format(port=self.port))
+
+                # in use, so get a new port
+                next(self.credentials.get_port())
+                continue
+
+            except StopIteration:
+                # no port left
+                raise ValueError("exhausted all designated ports")
+
         self.kdb.start()
         return self
 
@@ -304,42 +364,27 @@ class KQ(PrettyMixin):
         assert isinstance(key, basestring), 'key must be a string'
         if key in set(self.tables.name):
             template = 'kdb://{0.username}@{0.host}:{0.port}::{key}'
-            return bz.Data(template.format(self.credentials, key=key))
+            return bz.Data(template.format(self.credentials, key=key),
+                           engine=self)
         return self.get(key)
 
     def __setitem__(self, key, value):
         self.set(key, value)
 
 
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args,
-                                                                 **kwargs)
-        inst = cls._instances[cls]
-        creds = list(filter(lambda x: isinstance(x, Credentials),
-                            chain(args, kwargs.values())))
-        try:
-            creds = creds[0]
-        except IndexError:
-            creds = None  # passed no args
-        if creds is not None and inst.credentials != creds:
-            raise ValueError('Different credentials: %s than existing process: '
-                             '%s' % (creds, inst.credentials))
-        return inst
-
-
-class Q(PrettyMixin):
+class Q(PrettyMixin, CredsMixin):
     """ manage the q exec process """
-    __metaclass__ = Singleton
     __slots__ = 'credentials', 'path', 'process'
+    processes = {}
 
     def __init__(self, credentials, path=None):
         self.credentials = credentials
         self.path = self.get_executable(path)
-        self.process = None
+
+    @property
+    def process(self):
+        """ return my process handle """
+        return self.processes.get(self.credentials)
 
     def _repr_pretty_(self, p, cycle):
         """return a string representation of the connection"""
@@ -403,18 +448,15 @@ class Q(PrettyMixin):
                     else:
                         for conn in conns:  # probably a single element list
                             _, port = conn.laddr
-                            if port == self.credentials.port:
+                            if port == self.port:
                                 return proc
 
     @property
     def is_started(self):
         """
         check if the q process is actually running
-
-        if it IS running, then set the process variable
         """
 
-        self.process = self.find_running_process()
         return self.process is not None
 
     def start(self, start=True):
@@ -423,10 +465,15 @@ class Q(PrettyMixin):
 
         Parameters
         ----------
-        start : boolean, default False
+        start : boolean or string, default False
            if True and process is running, return
            if 'restart' and process is running, restart it
-           if False raise ValueError if the process is running
+           if False raise PortInUse if the process is running
+
+        Raises
+        ------
+        PortInUse : if the credentials port is already taken
+           and we are not that process
 
         Returns
         -------
@@ -441,24 +488,27 @@ class Q(PrettyMixin):
 
         # restart the process if needed
         elif start == 'restart':
-            pass
 
-        # raise if the process is actually running
-        # we don't want to have duplicate processes
-        else:
-            if self.is_started:
-                raise ValueError("q process already running!")
+            self.stop()
 
-        self.stop()
+        # if we find a running process that matches our port
+        # then raise. We cannot connect to an existing process
+        proc = self.process or self.find_running_process()
+        if proc is not None:
+            raise PortInUse("cannot create a Q process for attaching " \
+                            "to the port {port}".format(port=self.port))
 
         # launch the subprocess, redirecting stdout/err to devnull
         # alternatively we can redirect to a PIPE and use .communicate()
         # that can potentially block though
         with open(os.devnull, 'w') as wnull, open(os.devnull, 'r') as rnull:
-            self.process = psutil.Popen([self.path, '-p',
-                                         str(self.credentials.port)],
-                                        stdin=rnull, stdout=wnull,
-                                        stderr=subprocess.STDOUT)
+
+            #print("\nstarting -> {port}".format(port=self.port))
+            self.processes[self.credentials] = psutil.Popen([self.path, '-p',
+                                                             str(self.port)],
+                                                            stdin=rnull, stdout=wnull,
+                                                            stderr=subprocess.STDOUT)
+
 
         # register our exit function
         atexit.register(self.stop)
@@ -467,14 +517,33 @@ class Q(PrettyMixin):
     def stop(self):
         """ terminate the q_process, returning boolean if it existed previously
         """
-        self.process = self.find_running_process()
-        if self.process is not None:
+        process = self.process or self.find_running_process()
+        if process is not None:
+
+            #print("stopping -> {port}".format(port=self.port))
+            def killp(proc):
+                try:
+                    proc.terminate()
+                    #print("terminating -> {pid}".format(pid=proc.pid))
+                except psutil.NoSuchProcess:
+                    pass
+
+            # need to make sure that we kill any process children as well
             try:
-                self.process.terminate()
-            except psutil.NoSuchProcess:  # we've already been killed
+                for proc in process.children():
+                    killp(proc)
+            except psutil.NoSuchProcess:
                 pass
-            del self.process
-            self.process = None
+
+            killp(process)
+
+            # if we are actually killing a running processes
+            # then this might not be in our processes map
+            try:
+                del self.processes[self.credentials]
+            except KeyError:
+                pass
+
             return True
         return False
 

@@ -365,7 +365,7 @@ def test_timespan_discover(timespan_table):
 def test_empty_table(rstring, kdb):
     name = 'no_rows'
     kdb.eval('%s: ([oid: ()] a: (); b: ())' % name)
-    d = Data('%s::%s' % (rstring, name))
+    d = Data('%s::%s' % (rstring, name), engine=kdb)
     expected = dshape(var * Record([('oid', null), ('a', null), ('b', null)]))
     assert discover(d) == expected
 
@@ -379,7 +379,7 @@ def test_empty_all_types(rstring, kdb):
                                              for name, t in zip(names, types)))
 
     kdb.eval(query)
-    d = Data('%s::%s' % (rstring, name))
+    d = Data('%s::%s' % (rstring, name), engine=kdb)
     s = '{name}: {type}'
     expected = ', '.join(s.format(name=name, type=qtypes[t])
                          for name, t in zip(names, types))

@@ -2,6 +2,7 @@ from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
 
+import copy
 import os
 import datetime
 import sys
@@ -17,7 +18,7 @@ from blaze import CSV, Data, discover, Expr
 from qpython.qwriter import QWriterException
 
 from kdbpy import kdb as k
-from kdbpy.kdb import which
+from kdbpy.kdb import which, Credentials, PortInUse, PortIsFixed
 from kdbpy.exampleutils import example_data
 
 try:
@@ -25,13 +26,33 @@ try:
 except ImportError:  # pragma: no cover
     from io import StringIO
 
+@pytest.yield_fixture(scope='module')
+def qproc(creds):
+    q = k.Q(creds).start()
+    yield q
+    q.stop()
 
-def test_super_basic():
-    with k.KQ() as kq:
-        assert kq.eval('2 + 2') == 4
+@pytest.yield_fixture(scope='module')
+def qproc2(creds2):
+    q = k.Q(creds2).start()
+    yield q
+    q.stop()
+
+
+def check_processes(starting):
+    """
+    check that we only have the fixtures in the processes table
+    and didn't create / destroy any
+
+    """
+
+    tm.assert_almost_equal(starting, k.Q.processes.keys())
 
 
 def test_basic():
+
+    starting = k.Q.processes.keys()
+
     kq = k.KQ()
     assert not kq.is_started
 
@@ -41,19 +62,98 @@ def test_basic():
     kq.stop()
     assert not kq.is_started
 
+    check_processes(starting)
+
     kq.start(start='restart')
     assert kq.is_started
 
-    # real restart
     kq.start(start='restart')
     assert kq.is_started
-
     kq.stop()
 
-    # context
+    check_processes(starting)
+
+def test_basic_inuse():
+
+    starting = k.Q.processes.keys()
+
+    kq = k.KQ(start=True)
+    assert kq.is_started
+
+    kq2 = k.KQ(start=True)
+    assert kq.is_started
+    assert kq2.is_started
+
+    assert kq.port != kq2.port
+    assert kq.q.pid != kq2.q.pid
+
+    kq.stop()
+    kq2.stop()
+
+    check_processes(starting)
+
+def test_basic_inuse2():
+
+    starting = k.Q.processes.keys()
+
+    # create the same process chain for these three
+    # they will get assigned the next ports
+    creds = Credentials()
+    creds2 = copy.copy(creds)
+    creds3 = copy.copy(creds)
+
+    ports = list(creds.get_ports())
+    creds.ports = iter(ports)
+    creds.port = ports[0]
+    creds2.ports = iter(ports)
+    creds2.port = ports[0]
+    creds3.ports = iter(ports)
+    creds3.port = ports[0]
+
+    kq = k.KQ(creds).start(start=False)
+    assert kq.port == ports[0]
+
+    kq2 = k.KQ(creds2).start(start=False)
+    assert kq2.port == ports[1]
+
+    kq3 = k.KQ(creds3).start(start=False)
+    assert kq3.port == ports[2]
+
+    kq.stop()
+    kq2.stop()
+    kq3.stop()
+    check_processes(starting)
+
+def test_basic_fixed():
+
+    starting = k.Q.processes.keys()
+
+    creds = Credentials(port=47001)
+    kq = k.KQ(creds,start=True)
+
+    # force a PortIsFixed exception
+    creds2 = Credentials(port=47001)
+    with pytest.raises(PortIsFixed):
+        k.KQ(creds2).start(start=False)
+
+    kq.stop()
+    check_processes(starting)
+
+def test_context():
+    # test the context manager
+
+    starting = k.Q.processes.keys()
+
     with k.KQ() as kq:
+        assert kq.eval('2 + 2') == 4
+
+    with k.KQ(start=True) as kq:
         assert kq.is_started
 
+    with k.KQ(Credentials(port=47500),start=True) as kq:
+        assert kq.is_started
+
+    check_processes(starting)
 
 def test_kq_repr():
     with k.KQ() as kq:
@@ -69,33 +169,48 @@ def test_credentials():
     assert cred.port == 1000
 
 
-def test_q_process(creds):
-    q = k.Q(creds).start()
+def test_q_process():
+
+    starting = k.Q.processes.keys()
+
+    creds = Credentials(port=47000)
+    q = k.Q(creds).start(start=True)
 
     assert q is not None
     assert q.pid
     assert q.process is not None
 
-    # other instance
+    # this is a no-op because start=True
     q2 = k.Q(creds).start()
-    assert q is q2
+    assert q2.pid == q.pid
 
-    # invalid instance
-    c = k.Credentials(host='foo', port=1000)
-    with pytest.raises(ValueError):
-        k.Q(c)
+    # a fixed port, but in use
+    creds2 = Credentials(port=creds.port)
+    with pytest.raises(PortInUse):
+        k.Q(creds2).start(start=False)
 
-    # restart
-    prev = q.pid
+    q.stop()
+
+    check_processes(starting)
+
+@pytest.mark.xfail(raises=PortInUse,
+                   reason='fails with fixed port at times')
+def test_fixed_port_restart():
+
+    starting = k.Q.processes.keys()
+
+    creds = Credentials(port=47000)
     q = k.Q(creds).start(start=True)
-    assert q.pid == prev
 
-    q2 = k.Q().start(start='restart')
-    assert q2.pid != prev
+    # fixed port restart
+    prev = q.pid
+    q3 = k.Q(creds).start(start='restart')
+    assert q3.pid != prev
 
-    with pytest.raises(ValueError):
-        k.Q(creds).start(start=False)
+    q.stop()
+    q3.stop()
 
+    check_processes(starting)
 
 def test_q_process_detached(qproc):
     # check our q process attributes
@@ -103,13 +218,8 @@ def test_q_process_detached(qproc):
     assert qproc.pid
     assert qproc.process is not None
 
-
-@pytest.yield_fixture(scope='session')
-def qproc(creds):
-    q = k.Q(creds).start()
-    yield q
-    q.stop()
-
+def test_q_multi_process(qproc, qproc2):
+    assert qproc.pid != qproc2.pid
 
 def test_construction(qproc, creds):
     # the qproc fixture must be here because it must start before KDB
