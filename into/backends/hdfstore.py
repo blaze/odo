@@ -3,12 +3,12 @@ from __future__ import absolute_import, division, print_function
 import datashape
 from datashape import discover
 from datashape.dispatch import dispatch
-from ..append import append
-from ..convert import convert, ooc_types
-from ..resource import resource, resource_matches
-from ..chunks import chunks, Chunks
-from ..utils import tmpfile
-from ..numpy_dtype import dshape_to_pandas
+from into import append
+from into.convert import convert, ooc_types
+from into.resource import resource, resource_matches
+from into.chunks import chunks, Chunks
+from into.utils import tmpfile
+from into.numpy_dtype import dshape_to_pandas
 from into.backends.hdf import HDFFile, HDFTable
 
 from collections import Iterator
@@ -266,7 +266,12 @@ def pathname(f):
 
 
 @dispatch(hdf.HDFStore)
-def get_table(f, datapath=None):
+def dialect(f):
+    return 'HDFStore'
+
+
+@dispatch(hdf.HDFStore)
+def get_table(f, datapath):
 
     assert datapath is not None
 
@@ -274,9 +279,7 @@ def get_table(f, datapath=None):
     if node is None:
 
         # create a new node
-        if datapath.startswith('/'):
-            datapath = datapath[1:]
-        f._handle.create_group('/', datapath, createparents=True)
+        f._handle.create_group('/', datapath.lstrip('/'), createparents=True)
         node = f.get_node(datapath)
 
     if getattr(node, 'table', None) is None:

@@ -43,13 +43,6 @@ from pandas import DataFrame
 IS_PY3 = sys.version_info[0] >= 3
 
 
-@contextmanager
-def ensure_resource_clean(*args, **kwargs):
-    result = resource(*args, **kwargs)
-    yield result
-    cleanup(result)
-
-
 def generate_uri_combos(prefixes):
     """
     return all combinations of the ext and the prefixes list
@@ -154,41 +147,41 @@ def test_hdfstore_read2(hdfstore_file):
 #@pytest.mark.skipif(not IS_PY3, reason="hp5y fail under < 3")
 #def test_h5py_write(h5py_filename, arr_dshape):
 
-#    with ensure_resource_clean(h5py_filename,'/data',dshape=arr_dshape) as result:
+#    with resource(h5py_filename,'/data',dshape=arr_dshape) as result:
 #        assert isinstance(result, h5py.Dataset)
 
 #@pytest.mark.skipif(not IS_PY3, reason="hp5y fail under < 3")
 #def test_h5py_write2(h5py_filename, arr_dshape):
 
-#    with ensure_resource_clean(h5py_filename + '::/data',dshape=arr_dshape) as result:
+#    with resource(h5py_filename + '::/data',dshape=arr_dshape) as result:
 #        assert isinstance(result, h5py.Dataset)
 
 #@pytest.mark.skipif(not IS_PY3, reason="hp5y fail under < 3")
 #def test_h5py_read(h5py_file, arr_dshape):
 
-#    with ensure_resource_clean(h5py_file,'/data',dshape=arr_dshape) as result:
+#    with resource(h5py_file,'/data',dshape=arr_dshape) as result:
 #        assert isinstance(result, h5py.Dataset)
 
 
 def test_pytables_write(pytables_filename, arr_dshape):
 
-    with ensure_resource_clean(pytables_filename, '/data', dshape=arr_dshape) as result:
+    with resource(pytables_filename, '/data', dshape=arr_dshape) as result:
         assert isinstance(result, tb.Table)
 
 
 def test_pytables_write2(pytables_filename, arr_dshape):
 
-    with ensure_resource_clean(pytables_filename + '::/data', dshape=arr_dshape) as result:
+    with resource(pytables_filename + '::/data', dshape=arr_dshape) as result:
         assert isinstance(result, tb.Table)
 
 
 def test_pytables_read(pytables_file):
 
-    with ensure_resource_clean(pytables_file, '/data') as result:
+    with resource(pytables_file, '/data') as result:
         assert isinstance(result, tb.Table)
 
 
 def test_pytables_read2(pytables_file):
 
-    with ensure_resource_clean(pytables_file + '::/data') as result:
+    with resource(pytables_file + '::/data') as result:
         assert isinstance(result, tb.Table)

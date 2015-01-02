@@ -33,7 +33,13 @@ def pathname(f):
 
 
 @dispatch(object)
-def get_table(f):
+def dialect(f):
+    """ return my dialect """
+    raise NotImplementedError()
+
+
+@dispatch(object)
+def get_table(f, datapath):
     """ return a table from a passed string """
     raise NotImplementedError()
 
@@ -84,7 +90,7 @@ class HDFFile(object):
 
     @property
     def dialect(self):
-        return self.rsrc.__class__.__name__
+        return dialect(self.rsrc)
 
     def __str__(self):
         return "{klass} [{dialect}]: [path->{path}, datapath->{datapath}]".format(klass=self.__class__.__name__,
@@ -95,7 +101,11 @@ class HDFFile(object):
 
     def __contains__(self, key):
         """ node checking """
-        return key in discover(self).names
+        return full_node_path(key) in self.keys()
+
+    def keys(self):
+        """ return the keys of myself """
+        return [full_node_path(n) for n in discover(self).names]
 
     def get_table(self, datapath=None):
         """
@@ -112,7 +122,8 @@ class HDFFile(object):
         return HDFTable(self, datapath)
 
     def open_handle(self):
-        return open_handle(self.rsrc)
+        self.rsrc = open_handle(self.rsrc)
+        return self.rsrc
 
     def cleanup(self):
         cleanup(self.rsrc)
@@ -236,5 +247,10 @@ def cleanup(f):
 @dispatch(HDFTable)
 def cleanup(t):
     cleanup(t.parent)
+
+
+def full_node_path(n):
+    """ return a full node path, IOW, a leading '/' """
+    return '/' + n.lstrip('/')
 
 ooc_types |= set([HDFTable])

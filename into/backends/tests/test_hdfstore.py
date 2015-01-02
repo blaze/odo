@@ -325,9 +325,9 @@ def test_contains(hdf_multi_nodes_file):
     r = resource(hdf_multi_nodes_file)
     assert '/df2' in r
     assert '/df' in r
-    assert 'df' not in r
     assert '/foo' not in r
 
+    assert set(r.keys()) == set(['/df','/df2'])
 
 def test_into_return(df2, tmpdir):
 
