@@ -152,19 +152,19 @@ def test_hdfstore_read2(hdfstore_file):
 # http://stackoverflow.com/questions/7450881/python-segmentation-fault-when-closing-quitting
 
 #@pytest.mark.skipif(not IS_PY3, reason="hp5y fail under < 3")
-# def test_h5py_write(h5py_filename, arr_dshape):
+#def test_h5py_write(h5py_filename, arr_dshape):
 
 #    with ensure_resource_clean(h5py_filename,'/data',dshape=arr_dshape) as result:
 #        assert isinstance(result, h5py.Dataset)
 
 #@pytest.mark.skipif(not IS_PY3, reason="hp5y fail under < 3")
-# def test_h5py_write2(h5py_filename, arr_dshape):
+#def test_h5py_write2(h5py_filename, arr_dshape):
 
 #    with ensure_resource_clean(h5py_filename + '::/data',dshape=arr_dshape) as result:
 #        assert isinstance(result, h5py.Dataset)
 
 #@pytest.mark.skipif(not IS_PY3, reason="hp5y fail under < 3")
-# def test_h5py_read(h5py_file, arr_dshape):
+#def test_h5py_read(h5py_file, arr_dshape):
 
 #    with ensure_resource_clean(h5py_file,'/data',dshape=arr_dshape) as result:
 #        assert isinstance(result, h5py.Dataset)

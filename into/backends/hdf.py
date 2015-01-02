@@ -21,30 +21,37 @@ from into.convert import ooc_types
 from into.chunks import chunks
 import pandas as pd
 
-__all__ = ['HDFFile','HDFTable']
+__all__ = ['HDFFile', 'HDFTable']
 
 # provide some registration hooks for our implementations
+
+
 @dispatch(object)
 def pathname(f):
     """ return my pathname """
     raise NotImplementedError()
+
 
 @dispatch(object)
 def get_table(f):
     """ return a table from a passed string """
     raise NotImplementedError()
 
+
 @dispatch(object)
 def open_handle(f):
     """ return an open handle """
     raise NotImplementedError()
+
 
 @dispatch(object)
 def cleanup(f):
     """ cleanup """
     raise NotImplementedError()
 
+
 class HDFFile(object):
+
     """ An interface to generic hdf objects
 
     Parameters
@@ -90,7 +97,6 @@ class HDFFile(object):
         """ node checking """
         return key in discover(self).names
 
-
     def get_table(self, datapath=None):
         """
         return the specified table
@@ -119,7 +125,9 @@ class HDFFile(object):
         """ make sure our resource is closed """
         self.cleanup()
 
+
 class HDFTable(object):
+
     """
     an abstract table representation in an HDFile
 
@@ -163,10 +171,12 @@ def discover_file(f):
     with f as handle:
         return discover(f.rsrc)
 
+
 @discover.register(HDFTable)
 def discover_table(t):
     with t as ot:
         return discover(ot)
+
 
 @append.register(HDFFile, object)
 def append_object_to_store(s, data, datapath=None, **kwargs):
@@ -184,6 +194,7 @@ def append_object_to_store(s, data, datapath=None, **kwargs):
         append(handle, data, datapath=datapath, **kwargs)
     return t
 
+
 @append.register(HDFTable, object)
 def append_object_to_table(t, data, **kwargs):
     """ append a single object to a table """
@@ -192,29 +203,35 @@ def append_object_to_table(t, data, **kwargs):
         append(handle, data, **kwargs)
     return t
 
+
 @convert.register(pd.DataFrame, HDFTable, cost=3.0)
 def hdftable_to_frame(t, **kwargs):
     with t as handle:
         return convert(pd.DataFrame, handle, **kwargs)
+
 
 @convert.register(chunks(pd.DataFrame), HDFTable, cost=3.0)
 def hdftable_to_chunks(t, **kwargs):
     with t as handle:
         return convert(chunks(pd.DataFrame), handle, **kwargs)
 
+
 @dispatch(HDFFile)
 def drop(f):
     cleanup(f)
     drop(f.rsrc)
+
 
 @dispatch(HDFTable)
 def drop(t):
     with t as handle:
         drop(handle)
 
+
 @dispatch(HDFFile)
 def cleanup(f):
     cleanup(f.rsrc)
+
 
 @dispatch(HDFTable)
 def cleanup(t):

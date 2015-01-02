@@ -19,6 +19,7 @@ import tables
 import pandas as pd
 from pandas.io import pytables as hdf
 
+
 @contextmanager
 def ensure_indexing(t):
     """ turn off indexing for the scope of the operation """
@@ -32,6 +33,7 @@ def ensure_indexing(t):
     # reindex
     t.table.autoindex = True
     t.table.reindex_dirty()
+
 
 class EmptyAppendableFrameTable(hdf.AppendableFrameTable):
 
@@ -108,6 +110,7 @@ def append_chunks_to_hdftable(t, data, **kwargs):
                 append_frame_to_hdftable(t, d, **kwargs)
 
     return t
+
 
 def _use_sub_columns_selection(t, columns):
     # should we use an efficient sub-selection method
@@ -232,7 +235,7 @@ def HDFStore(path, datapath=None, dshape=None, **kwargs):
 
     group = store.get_node(datapath)
     if group is None:
-        return HDFFile(store,datapath=datapath)
+        return HDFFile(store, datapath=datapath)
 
     # further validation on the actual node
     try:
@@ -261,6 +264,7 @@ def drop(t):
 def pathname(f):
     return f.filename
 
+
 @dispatch(hdf.HDFStore)
 def get_table(f, datapath=None):
 
@@ -275,7 +279,7 @@ def get_table(f, datapath=None):
         f._handle.create_group('/', datapath, createparents=True)
         node = f.get_node(datapath)
 
-    if getattr(node,'table',None) is None:
+    if getattr(node, 'table', None) is None:
 
         # create our stand-in table
         s = EmptyAppendableFrameTable(f, node)
@@ -285,10 +289,12 @@ def get_table(f, datapath=None):
 
     return f.get_storer(datapath)
 
+
 @dispatch(hdf.HDFStore)
 def open_handle(f):
     f.open()
     return f
+
 
 @dispatch(hdf.HDFStore)
 def cleanup(t):

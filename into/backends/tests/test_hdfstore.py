@@ -15,6 +15,7 @@ from into.backends.hdfstore import HDFStore, discover
 from pandas import DataFrame, date_range, read_hdf, concat
 from pandas.util.testing import assert_frame_equal
 
+
 @pytest.fixture
 def new_file(tmpdir):
     return str(tmpdir / 'foo.h5')
@@ -67,6 +68,7 @@ def test_file_discover(hdf_multi_nodes_file):
                          '/df2' : { table : 5 * { index : int64, amount : int64, id : int64, name : string[7, 'A'], date : int64 } } }")
     assert str(result) == str(expected)
 
+
 def test_node_discover(hdf_multi_nodes_file):
 
     r = resource(hdf_multi_nodes_file)
@@ -74,6 +76,7 @@ def test_node_discover(hdf_multi_nodes_file):
     expected = dshape(
         "5 * {index: int64, amount: int64, id: int64, name: string[7, 'A']}")
     assert str(result) == str(expected)
+
 
 def test_read(hdf_file):
 
@@ -219,7 +222,9 @@ def test_into_iterator(hdf_file2):
     # the resource must remain open
     with resource(hdf_file2 + '::dt') as r:
         result = into(Iterator, r)
-        assert_frame_equal(concat(list(iter(result))), read_hdf(hdf_file2, 'dt'))
+        assert_frame_equal(
+            concat(list(iter(result))), read_hdf(hdf_file2, 'dt'))
+
 
 def test_into_hdf5(df2, tmpdir):
 
@@ -313,6 +318,7 @@ def test_drop_table(hdf_multi_nodes_file):
     drop(r)
     r = resource(hdf_multi_nodes_file)
     assert '/df' not in r
+
 
 def test_contains(hdf_multi_nodes_file):
 
