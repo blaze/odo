@@ -18,10 +18,10 @@ before_script:
   - python -V
 
 script:
-  - conda build conda.recipe
+  - conda build conda.recipe --quiet
 
 build_targets: conda
 
 notifications:
   email:
-    recipients: ['phillip.cloud@continuum.io']
+    recipients: ['phillip.cloud@continuum.io','jeff.reback@continuum.io']
