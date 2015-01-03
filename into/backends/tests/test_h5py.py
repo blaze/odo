@@ -85,7 +85,7 @@ def test_append_chunks(h5py_resource, arr2):
 def test_create(new_file):
 
     ds = datashape.dshape('{x: int32, y: {z: 3 * int32}}')
-    f = create(h5py.File, dshape='{x: int32, y: {z: 3 * int32}}', path=new_file)
+    f = create(h5py.File, pathname=new_file, dshape='{x: int32, y: {z: 3 * int32}}')
     assert isinstance(f, h5py.File)
     assert f.filename == new_file
     assert discover(f) == ds
@@ -93,10 +93,10 @@ def test_create(new_file):
 def test_create_partially_present_dataset(new_file):
 
     ds1 = datashape.dshape('{x: int32}')
-    f = create(h5py.File, dshape=ds1, path=new_file)
+    f = create(h5py.File, pathname=new_file, dshape=ds1)
 
     ds2 = datashape.dshape('{x: int32, y: 5 * int32}')
-    f2 = create(h5py.File, dshape=ds2, path=new_file)
+    f2 = create(h5py.File, pathname=new_file, dshape=ds2)
 
     assert f.filename == f2.filename
     assert list(f.keys()) == list(f2.keys())

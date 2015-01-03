@@ -4,7 +4,10 @@ import datashape
 from datashape import discover
 from datashape.dispatch import dispatch
 from into import append
+from into.create import create
+from into.cleanup import cleanup
 from into.convert import convert, ooc_types
+from into.drop import drop
 from into.resource import resource, resource_matches
 from into.chunks import chunks, Chunks
 from into.utils import tmpfile
@@ -63,6 +66,67 @@ def discover_tables_node(t):
 def discover_tables_node(f):
     return discover(dict(f.items()))
 
+
+
+@drop.register(hdf.HDFStore)
+def drop_store(t):
+    cleanup(t)
+    os.remove(t.filename)
+
+
+@drop.register(hdf.AppendableFrameTable)
+def drop_table(t):
+    t.parent.remove(t.pathname)
+    cleanup(t)
+
+
+# hdf resource impl
+@dispatch(hdf.HDFStore)
+def pathname(f):
+    return f.filename
+
+
+@dispatch(hdf.HDFStore)
+def dialect(f):
+    return 'HDFStore'
+
+
+@dispatch(hdf.HDFStore)
+def get_table(f, datapath):
+
+    assert datapath is not None
+
+    node = f.get_node(datapath)
+    if node is None:
+
+        # create a new node
+        f._handle.create_group('/', datapath.lstrip('/'), createparents=True)
+        node = f.get_node(datapath)
+
+    if getattr(node, 'table', None) is None:
+
+        # create our stand-in table
+        s = EmptyAppendableFrameTable(f, node)
+        s.set_object_info()
+
+        return s
+
+    return f.get_storer(datapath)
+
+
+@create.register(hdf.HDFStore, object)
+def create_store(f, pathname):
+    f.open()
+    return f
+
+@cleanup.register(hdf.HDFStore)
+def cleanup_store(t):
+    t.close()
+
+
+@cleanup.register(hdf.AppendableFrameTable)
+def cleanup_table(t):
+    t.parent.close()
 
 @append.register(hdf.HDFStore, hdf.HDFStore)
 def append_object_to_hdfstore(s, data, **kwargs):
@@ -245,67 +309,6 @@ def HDFStore(path, datapath=None, dshape=None, **kwargs):
         raise NotImplementedError("not a hdfstore type")
 
     return HDFTable(HDFFile(store), datapath)
-
-
-@dispatch(hdf.HDFStore)
-def drop(t):
-    cleanup(t)
-    os.remove(t.filename)
-
-
-@dispatch(hdf.AppendableFrameTable)
-def drop(t):
-    t.parent.remove(t.pathname)
-    cleanup(t)
-
-
-# hdf resource impl
-@dispatch(hdf.HDFStore)
-def pathname(f):
-    return f.filename
-
-
-@dispatch(hdf.HDFStore)
-def dialect(f):
-    return 'HDFStore'
-
-
-@dispatch(hdf.HDFStore)
-def get_table(f, datapath):
-
-    assert datapath is not None
-
-    node = f.get_node(datapath)
-    if node is None:
-
-        # create a new node
-        f._handle.create_group('/', datapath.lstrip('/'), createparents=True)
-        node = f.get_node(datapath)
-
-    if getattr(node, 'table', None) is None:
-
-        # create our stand-in table
-        s = EmptyAppendableFrameTable(f, node)
-        s.set_object_info()
-
-        return s
-
-    return f.get_storer(datapath)
-
-
-@dispatch(hdf.HDFStore, object)
-def open_handle(f, pathname):
-    f.open()
-    return f
-
-@dispatch(hdf.HDFStore)
-def cleanup(t):
-    t.close()
-
-
-@dispatch(hdf.AppendableFrameTable)
-def cleanup(t):
-    t.parent.close()
 
 
 ooc_types |= set([hdf.AppendableFrameTable])

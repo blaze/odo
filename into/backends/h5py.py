@@ -13,6 +13,8 @@ from collections import Iterator
 from ..append import append
 from ..convert import convert, ooc_types
 from ..create import create
+from ..drop import drop
+from ..cleanup import cleanup
 from ..resource import resource, resource_matches
 from ..chunks import chunks, Chunks
 from ..compatibility import unicode
@@ -59,6 +61,7 @@ def dataset_from_dshape(file, datapath, ds, **kwargs):
 
 
 def create_from_datashape(group, ds, name=None, **kwargs):
+    ds = dshape(ds)
     assert isrecord(ds)
     if isinstance(ds, DataShape) and len(ds) == 1:
         ds = ds[0]
@@ -72,13 +75,71 @@ def create_from_datashape(group, ds, name=None, **kwargs):
                                 ds=sub_ds, **kwargs)
 
 
-@create.register(h5py.File)
-def create_h5py_file(cls, path=None, dshape=None, **kwargs):
-    f = h5py.File(path)
+@create.register(h5py.File, object)
+def create(f, pathname, dshape=None, **kwargs):
+    try:
+        f.close()
+    except:
+        pass
+
+    f = h5py.File(pathname)
     if dshape is not None:
         create_from_datashape(f, dshape, **kwargs)
     return f
 
+@resource.register('^(h5py://)?.+\.(h5|hdf5)', priority=10.0)
+def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
+
+    uri = resource_matches(uri, 'h5py')
+
+    olddatapath = datapath
+
+    if dshape is not None:
+        ds = datashape.dshape(dshape)
+        if datapath is not None:
+            while ds and datapath:
+                datapath, name = datapath.rsplit('/', 1)
+                ds = Record([[name, ds]])
+            ds = datashape.dshape(ds)
+        f = create(h5py.File, pathname=uri, dshape=ds, **kwargs)
+    else:
+        f = h5py.File(uri)
+        ds = discover(f)
+
+    if olddatapath is not None:
+        return HDFTable(HDFFile(f), olddatapath)
+
+    return HDFFile(f)
+
+@drop.register((h5py.Group, h5py.Dataset))
+def drop_group(h):
+    del h.file[h.name]
+
+@drop.register(h5py.File)
+def drop_file(h):
+    cleanup(h)
+    os.remove(h.filename)
+
+@dispatch(h5py.File)
+def pathname(f):
+    return f.filename
+
+@dispatch(h5py.File)
+def dialect(f):
+    return 'h5py'
+
+@dispatch(h5py.File)
+def get_table(f, datapath):
+    assert datapath is not None
+    return f[datapath]
+
+@cleanup.register(h5py.File)
+def cleanup_file(f):
+    f.close()
+
+@cleanup.register(h5py.Dataset)
+def cleanup_dataset(dset):
+    dset.file.close()
 
 @append.register(h5py.Dataset, np.ndarray)
 def append_h5py(dset, x, **kwargs):
@@ -123,69 +184,5 @@ def h5py_to_numpy_iterator(t, chunksize=1e7, **kwargs):
     chunksize = int(chunksize)
     for i in range(0, t.shape[0], chunksize):
         yield t[i: i + chunksize]
-
-@resource.register('^(h5py://)?.+\.(h5|hdf5)', priority=10.0)
-def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
-
-    uri = resource_matches(uri, 'h5py')
-
-    olddatapath = datapath
-
-    if dshape is not None:
-        ds = datashape.dshape(dshape)
-        if datapath is not None:
-            while ds and datapath:
-                datapath, name = datapath.rsplit('/', 1)
-                ds = Record([[name, ds]])
-            ds = datashape.dshape(ds)
-        f = create(h5py.File, path=uri, dshape=ds, **kwargs)
-    else:
-        f = h5py.File(uri)
-        ds = discover(f)
-
-    if olddatapath is not None:
-        return HDFTable(HDFFile(f), olddatapath)
-
-    return HDFFile(f)
-
-
-@dispatch((h5py.Group, h5py.Dataset))
-def drop(h):
-    del h.file[h.name]
-
-@dispatch(h5py.File)
-def drop(h):
-    cleanup(h)
-    os.remove(h.filename)
-
-# hdf resource impl
-@dispatch(h5py.File)
-def pathname(f):
-    return f.filename
-
-@dispatch(h5py.File)
-def dialect(f):
-    return 'h5py'
-
-@dispatch(h5py.File)
-def get_table(f, datapath):
-    assert datapath is not None
-    return f[datapath]
-
-@dispatch(h5py.File, object)
-def open_handle(f, pathname):
-    try:
-        f.close()
-    except:
-        pass
-    return h5py.File(pathname)
-
-@dispatch(h5py.File)
-def cleanup(f):
-    f.close()
-
-@dispatch(h5py.Dataset)
-def cleanup(dset):
-    dset.file.close()
 
 ooc_types.add(h5py.Dataset)

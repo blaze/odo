@@ -12,6 +12,9 @@ from datashape import discover
 from datashape.dispatch import dispatch
 from into import append
 from into.convert import convert, ooc_types
+from into.drop import drop
+from into.create import create
+from into.cleanup import cleanup
 from into.resource import resource, resource_matches
 from into.chunks import chunks, Chunks
 from into.utils import tmpfile
@@ -32,6 +35,55 @@ def discover_tables_node(n):
 def discover_tables_node(f):
     return discover(f.getNode('/'))
 
+
+
+@resource.register('^(pytables://)?.+\.(h5|hdf5)', priority=11.0)
+def resource_pytables(path, *args, **kwargs):
+    path = resource_matches(path, 'pytables')
+    return PyTables(path, *args, **kwargs)
+
+
+@drop.register((tables.Table, tables.Array))
+def drop_table(t):
+    t.remove()
+
+
+@drop.register(tables.File)
+def drop_file(f):
+    cleanup(f)
+    os.remove(f.filename)
+
+@dispatch(tables.File)
+def pathname(f):
+    return f.filename
+
+
+@dispatch(tables.File)
+def dialect(f):
+    return 'PyTables'
+
+
+@dispatch(tables.File)
+def get_table(f, datapath):
+
+    assert datapath is not None
+    return f.get_node(full_node_path(datapath))
+
+
+@create.register(tables.File, object)
+def create_file(f, pathname):
+    f.close()
+    return tables.open_file(pathname, mode='a')
+
+
+@cleanup.register(tables.File)
+def cleanup_file(f):
+    f.close()
+
+
+@cleanup.register((tables.Table, tables.Group))
+def cleanup_group(f):
+    f._v_file.close()
 
 @append.register((tables.Array, tables.Table), object)
 def numpy_to_pytables(t, x, **kwargs):
@@ -174,55 +226,5 @@ def PyTables(path, datapath=None, dshape=None, **kwargs):
         raise NotImplementedError
 
     return create_table_or_file(f, datapath, dshape)
-
-
-@resource.register('^(pytables://)?.+\.(h5|hdf5)', priority=11.0)
-def resource_pytables(path, *args, **kwargs):
-    path = resource_matches(path, 'pytables')
-    return PyTables(path, *args, **kwargs)
-
-
-@dispatch((tables.Table, tables.Array))
-def drop(t):
-    t.remove()
-
-
-@dispatch(tables.File)
-def drop(f):
-    cleanup(f)
-    os.remove(f.filename)
-
-# hdf resource impl
-@dispatch(tables.File)
-def pathname(f):
-    return f.filename
-
-
-@dispatch(tables.File)
-def dialect(f):
-    return 'PyTables'
-
-
-@dispatch(tables.File)
-def get_table(f, datapath):
-
-    assert datapath is not None
-    return f.get_node(full_node_path(datapath))
-
-
-@dispatch(tables.File, object)
-def open_handle(f, pathname):
-    f.close()
-    return tables.open_file(pathname, mode='a')
-
-
-@dispatch(tables.File)
-def cleanup(f):
-    f.close()
-
-
-@dispatch((tables.Table, tables.Group))
-def cleanup(f):
-    f._v_file.close()
 
 ooc_types |= set((tables.Table, tables.Array))

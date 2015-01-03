@@ -18,6 +18,9 @@ from contextlib import contextmanager
 import numpy as np
 from datashape.dispatch import dispatch
 from into import append, discover, convert, resource
+from into.drop import drop
+from into.create import create
+from into.cleanup import cleanup
 from into.convert import ooc_types
 from into.chunks import chunks
 import pandas as pd
@@ -25,7 +28,6 @@ import pandas as pd
 __all__ = ['HDFFile', 'HDFTable']
 
 # provide some registration hooks for our implementations
-
 
 @dispatch(object)
 def pathname(f):
@@ -42,18 +44,6 @@ def dialect(f):
 @dispatch(object, object)
 def get_table(f, datapath):
     """ return a table from a passed string """
-    raise NotImplementedError()
-
-
-@dispatch(object, object)
-def open_handle(f, pathname):
-    """ return an open handle """
-    raise NotImplementedError()
-
-
-@dispatch(object)
-def cleanup(f):
-    """ cleanup """
     raise NotImplementedError()
 
 
@@ -121,8 +111,8 @@ class HDFFile(object):
 
         return HDFTable(self, datapath)
 
-    def open_handle(self):
-        self.rsrc = open_handle(self.rsrc, self.pathname)
+    def create(self):
+        self.rsrc = create(self.rsrc, self.pathname)
         return self.rsrc
 
     def cleanup(self):
@@ -130,7 +120,7 @@ class HDFFile(object):
 
     def __enter__(self):
         """ make sure our resource is open """
-        return self.open_handle()
+        return self.create()
 
     def __exit__(self, *args):
         """ make sure our resource is closed """
@@ -173,7 +163,7 @@ class HDFTable(object):
 
     def __enter__(self):
         """ return the actual node in a open/close context manager """
-        handle = self.parent.open_handle()
+        handle = self.parent.create()
         return get_table(handle, datapath=self.datapath)
 
     def __exit__(self, *args):
@@ -244,25 +234,25 @@ def hdftable_to_ndarray_chunks(t, **kwargs):
         return convert(chunks(np.ndarray), handle, **kwargs)
 
 
-@dispatch(HDFFile)
-def drop(f):
+@drop.register(HDFFile)
+def drop_hdffile(f):
     cleanup(f)
     drop(f.rsrc)
 
 
-@dispatch(HDFTable)
-def drop(t):
+@drop.register(HDFTable)
+def drop_hdftable(t):
     with t as handle:
         drop(handle)
 
 
-@dispatch(HDFFile)
-def cleanup(f):
+@cleanup.register(HDFFile)
+def cleanup_hdffile(f):
     cleanup(f.rsrc)
 
 
-@dispatch(HDFTable)
-def cleanup(t):
+@cleanup.register(HDFTable)
+def cleanup_hdftable(t):
     cleanup(t.parent)
 
 
