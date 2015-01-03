@@ -293,11 +293,10 @@ def get_table(f, datapath):
     return f.get_storer(datapath)
 
 
-@dispatch(hdf.HDFStore)
-def open_handle(f):
+@dispatch(hdf.HDFStore, object)
+def open_handle(f, pathname):
     f.open()
     return f
-
 
 @dispatch(hdf.HDFStore)
 def cleanup(t):

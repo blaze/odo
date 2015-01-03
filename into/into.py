@@ -77,30 +77,14 @@ def into_string(uri, b, **kwargs):
     except NotImplementedError:
         pass
 
-    a = None
-    try:
-        a = resource(uri, **kwargs)
-        return into(a, b, **kwargs)
-    finally:
-        if a is not None:
-            try:
-                cleanup(a)
-            except NotImplementedError:
-                pass
+    a = resource(uri, **kwargs)
+    return into(a, b, **kwargs)
 
 @into.register((type, str), str)
 def into_string_string(a, b, **kwargs):
 
-    r = None
-    try:
-        r = resource(b, **kwargs)
-        return into(a, r, **kwargs)
-    finally:
-        if r is not None:
-            try:
-                cleanup(r)
-            except NotImplementedError:
-                pass
+    r = resource(b, **kwargs)
+    return into(a, r, **kwargs)
 
 @into.register(object)
 def into_curried(o, **kwargs1):

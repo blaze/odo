@@ -8,6 +8,7 @@ from datashape.dispatch import dispatch
 import h5py
 import numpy as np
 from toolz import assoc, keyfilter
+from collections import Iterator
 
 from ..append import append
 from ..convert import convert, ooc_types
@@ -15,6 +16,7 @@ from ..create import create
 from ..resource import resource, resource_matches
 from ..chunks import chunks, Chunks
 from ..compatibility import unicode
+from into.backends.hdf import HDFFile, HDFTable
 
 h5py_attributes = ['chunks', 'compression', 'compression_opts', 'dtype',
                    'fillvalue', 'fletcher32', 'maxshape', 'shape']
@@ -74,7 +76,7 @@ def create_from_datashape(group, ds, name=None, **kwargs):
 def create_h5py_file(cls, path=None, dshape=None, **kwargs):
     f = h5py.File(path)
     create_from_datashape(f, dshape, **kwargs)
-    return f
+    return HDFFile(f)
 
 
 @append.register(h5py.Dataset, np.ndarray)
@@ -111,12 +113,15 @@ def h5py_to_numpy(dset, force=False, **kwargs):
 
 
 @convert.register(chunks(np.ndarray), h5py.Dataset, cost=3.0)
-def h5py_to_numpy_chunks(dset, chunksize=2**20, **kwargs):
-    def load():
-        for i in range(0, dset.shape[0], chunksize):
-            yield dset[i: i + chunksize]
-    return chunks(np.ndarray)(load)
+def h5py_to_numpy_chunks(t, chunksize=2 ** 20, **kwargs):
+    return chunks(np.ndarray)(h5py_to_numpy_iterator(t, chunksize=chunksize, **kwargs))
 
+@convert.register(Iterator, h5py.Dataset, cost=5.0)
+def h5py_to_numpy_iterator(t, chunksize=1e7, **kwargs):
+    """ return the embedded iterator """
+    chunksize = int(chunksize)
+    for i in range(0, t.shape[0], chunksize):
+        yield t[i: i + chunksize]
 
 @resource.register('^(h5py://)?.+\.(h5|hdf5)', priority=10.0)
 def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
@@ -138,10 +143,9 @@ def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
         ds = discover(f)
 
     if olddatapath is not None:
+        return HDFTable(HDFFile(f), olddatapath)
 
-        return f[olddatapath]
-    else:
-        return f
+    return HDFFile(f)
 
 
 @dispatch((h5py.Group, h5py.Dataset))
@@ -153,18 +157,34 @@ def drop(h):
     cleanup(h)
     os.remove(h.filename)
 
+# hdf resource impl
 @dispatch(h5py.File)
-def cleanup(f):
+def pathname(f):
+    return f.filename
+
+@dispatch(h5py.File)
+def dialect(f):
+    return 'h5py'
+
+@dispatch(h5py.File)
+def get_table(f, datapath):
+    assert datapath is not None
+    return f[datapath]
+
+@dispatch(h5py.File, object)
+def open_handle(f, pathname):
     try:
         f.close()
-    except AttributeError:
+    except:
         pass
+    return h5py.File(pathname)
+
+@dispatch(h5py.File)
+def cleanup(f):
+    f.close()
 
 @dispatch(h5py.Dataset)
 def cleanup(dset):
-    try:
-        dset.file.close()
-    except AttributeError:
-        pass
+    dset.file.close()
 
 ooc_types.add(h5py.Dataset)

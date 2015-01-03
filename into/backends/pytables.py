@@ -59,7 +59,8 @@ def pytables_to_numpy_chunks(t, chunksize=2 ** 20, **kwargs):
 @convert.register(Iterator, tables.Table, cost=5.0)
 def pytables_to_numpy_iterator(t, chunksize=1e7, **kwargs):
     """ return the embedded iterator """
-    for i in range(0, t.shape[0], int(chunksize)):
+    chunksize = int(chunksize)
+    for i in range(0, t.shape[0], chunksize):
         yield t[i: i + chunksize]
 
 def dtype_to_pytables(dtype):
@@ -192,8 +193,6 @@ def drop(f):
     os.remove(f.filename)
 
 # hdf resource impl
-
-
 @dispatch(tables.File)
 def pathname(f):
     return f.filename
@@ -211,10 +210,10 @@ def get_table(f, datapath):
     return f.get_node(full_node_path(datapath))
 
 
-@dispatch(tables.File)
-def open_handle(f):
+@dispatch(tables.File, object)
+def open_handle(f, pathname):
     f.close()
-    return tables.open_file(f.filename, mode='a')
+    return tables.open_file(pathname, mode='a')
 
 
 @dispatch(tables.File)

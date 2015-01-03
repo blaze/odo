@@ -3,29 +3,33 @@ from __future__ import absolute_import, division, print_function
 import pytest
 pytest.importorskip('h5py')
 
+import datashape
+import h5py
+import numpy as np
+import os
+from collections import Iterator
+
 from into.backends.h5py import append, create, resource, discover, convert
 from contextlib import contextmanager
 from into.utils import tmpfile
 from into.chunks import chunks
 from into import into, append, convert, resource, discover, cleanup
 from into.conftest import eq
-import datashape
-import h5py
-import numpy as np
-import os
+from into.backends.hdf import HDFFile, HDFTable
 
-@contextmanager
-def ensure_clean_store(data, ext='.hdf5'):
+@pytest.fixture
+def new_file(tmpdir):
+    return str(tmpdir / 'foo.h5')
 
-    with tmpfile(ext) as filename:
+@pytest.yield_fixture
+def h5py_file(arr2):
+
+    with tmpfile('.hdf5') as filename:
         f = h5py.File(filename)
-        data = f.create_dataset('/data', data=data, chunks=True,
-                                maxshape=(None,) + data.shape[1:])
-
-        try:
-            yield f
-        finally:
-            cleanup(f)
+        f.create_dataset('/data', data=arr2, chunks=True,
+                         maxshape=(None,) + arr2.shape[1:])
+        f.close()
+        yield filename
 
 def eq(a, b):
     c = a == b
@@ -33,44 +37,62 @@ def eq(a, b):
         c = c.all()
     return c
 
-def test_discover(arr2):
-    with ensure_clean_store(arr2) as f:
-        assert str(discover(arr2)) == str(discover(f['data']))
-        assert str(discover(f)) == str(discover({'data': arr2}))
+@pytest.fixture
+def h5py_resource(h5py_file):
+    uri = 'h5py://' + h5py_file
+    return resource(uri)
 
-def test_append(arr2):
-    with ensure_clean_store(arr2) as f:
-        append(f['data'], arr2)
-        assert eq(f['data'][:], np.concatenate([arr2 ,arr2]))
+def test_discover(h5py_resource, arr2):
 
+    f = h5py_resource
+    assert str(discover(arr2)) == str(discover(f['data']))
+    assert str(discover(f)) == str(discover({'data': arr2}))
 
-def test_numpy(arr2):
-    with ensure_clean_store(arr2) as f:
-        assert eq(convert(np.ndarray, f['data']), arr2)
+def test_append(h5py_resource, arr2):
 
-
-def test_chunks(arr2):
-    with ensure_clean_store(arr2) as f:
-        c = convert(chunks(np.ndarray), f['data'])
-        assert eq(convert(np.ndarray, c), arr2)
+    f = h5py_resource
+    result = append(f['data'], arr2)
+    assert eq(result[:], np.concatenate([arr2 ,arr2]))
 
 
-def test_append_chunks(arr2):
-    with ensure_clean_store(arr2) as f:
-        append(f['data'], chunks(np.ndarray)([arr2, arr2]))
-        assert len(f['data']) == len(arr2) * 3
+def test_numpy(h5py_resource, arr2):
+    f = h5py_resource
+    assert eq(convert(np.ndarray, f['data']), arr2)
 
 
-def test_create():
-    with tmpfile('.hdf5') as fn:
-        ds = datashape.dshape('{x: int32, y: {z: 3 * int32}}')
-        f = create(h5py.File, dshape='{x: int32, y: {z: 3 * int32}}', path=fn)
-        assert isinstance(f, h5py.File)
-        assert f.filename == fn
-        assert discover(f) == ds
-        f.close()
+def test_chunks(h5py_file, arr2):
+
+    uri = 'h5py://' + h5py_file + '::/data'
+    expected = into(np.ndarray, uri)
+
+    # this 'works', but you end up with an iterator on a closed file
+    result = into(Iterator, uri)
+
+    # the resource must remain open
+    with resource(uri) as r:
+        result = into(Iterator, r)
+        assert np.array_equal(
+            np.concatenate(list(iter(result))), expected)
+
+
+def test_append_chunks(h5py_resource, arr2):
+
+    f = h5py_resource
+    append(f['data'], chunks(np.ndarray)([arr2, arr2]))
+    assert len(f['data'][:]) == len(arr2) * 3
+
+
+def test_create(new_file):
+
+    ds = datashape.dshape('{x: int32, y: {z: 3 * int32}}')
+    f = create(h5py.File, dshape='{x: int32, y: {z: 3 * int32}}', path=new_file)
+    assert isinstance(f, HDFFile)
+    assert f.pathnamee == fn
+    assert discover(f) == ds
 
 def test_create_partially_present_dataset():
+
+    import pdb; pdb.set_trace()
     with tmpfile('.hdf5') as fn:
         os.remove(fn)
         ds1 = datashape.dshape('{x: int32}')

@@ -15,6 +15,7 @@ driver is a dialect.
 from __future__ import absolute_import, division, print_function
 from contextlib import contextmanager
 
+import numpy as np
 from datashape.dispatch import dispatch
 from into import append, discover, convert, resource
 from into.convert import ooc_types
@@ -38,14 +39,14 @@ def dialect(f):
     raise NotImplementedError()
 
 
-@dispatch(object)
+@dispatch(object, object)
 def get_table(f, datapath):
     """ return a table from a passed string """
     raise NotImplementedError()
 
 
-@dispatch(object)
-def open_handle(f):
+@dispatch(object, object)
+def open_handle(f, pathname):
     """ return an open handle """
     raise NotImplementedError()
 
@@ -82,11 +83,8 @@ class HDFFile(object):
         self.kwargs = kwargs
 
         # make sure our resoure is clean
+        self.pathname = pathname(self.rsrc)
         cleanup(self.rsrc)
-
-        # set the pathname
-        with self as handle:
-            self.pathname = pathname(handle)
 
     @property
     def dialect(self):
@@ -122,7 +120,7 @@ class HDFFile(object):
         return HDFTable(self, datapath)
 
     def open_handle(self):
-        self.rsrc = open_handle(self.rsrc)
+        self.rsrc = open_handle(self.rsrc, self.pathname)
         return self.rsrc
 
     def cleanup(self):
@@ -135,6 +133,10 @@ class HDFFile(object):
     def __exit__(self, *args):
         """ make sure our resource is closed """
         self.cleanup()
+
+    def __getitem__(self, key):
+        """ provide a getitem type selector """
+        return self.get_table(key)
 
 
 class HDFTable(object):
@@ -176,6 +178,10 @@ class HDFTable(object):
         """ make sure our resource is closed """
         self.parent.cleanup()
 
+    def __getitem__(self, key):
+        """ provide a getitem type selector """
+        with self as ot:
+            return ot[key]
 
 @discover.register(HDFFile)
 def discover_file(f):
@@ -220,11 +226,20 @@ def hdftable_to_frame(t, **kwargs):
     with t as handle:
         return convert(pd.DataFrame, handle, **kwargs)
 
+@convert.register(np.ndarray, HDFTable, cost=3.0)
+def hdftable_to_ndarray(t, **kwargs):
+    with t as handle:
+        return convert(np.ndarray, handle, **kwargs)
 
 @convert.register(chunks(pd.DataFrame), HDFTable, cost=3.0)
-def hdftable_to_chunks(t, **kwargs):
+def hdftable_to_frame_chunks(t, **kwargs):
     with t as handle:
         return convert(chunks(pd.DataFrame), handle, **kwargs)
+
+@convert.register(chunks(np.ndarray), HDFTable, cost=3.0)
+def hdftable_to_ndarray_chunks(t, **kwargs):
+    with t as handle:
+        return convert(chunks(np.ndarray), handle, **kwargs)
 
 
 @dispatch(HDFFile)
