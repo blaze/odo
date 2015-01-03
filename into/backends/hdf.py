@@ -87,6 +87,13 @@ class HDFFile(object):
                                                                                   datapath=self.datapath)
     __repr__ = __str__
 
+
+    @property
+    def shape(self):
+        """ return my datashape """
+        with self as ot:
+            return discover(ot)
+
     def __contains__(self, key):
         """ node checking """
         return full_node_path(key) in self.keys()
@@ -143,15 +150,22 @@ class HDFTable(object):
 
     """
 
-    def __init__(self, parent, datapath):
+    def __init__(self, parent, datapath, **kwargs):
         self.parent = parent
         self.datapath = datapath
+        self.kwargs = kwargs
 
     def __str__(self):
         return "{klass} [{dialect}]: [{datapath}]".format(klass=self.__class__.__name__,
                                                           dialect=self.dialect,
                                                           datapath=self.datapath)
     __repr__ = __str__
+
+    @property
+    def shape(self):
+        """ return my datashape """
+        with self as ot:
+            return discover(ot)
 
     @property
     def dialect(self):
@@ -164,7 +178,7 @@ class HDFTable(object):
     def __enter__(self):
         """ return the actual node in a open/close context manager """
         handle = self.parent.create()
-        return get_table(handle, datapath=self.datapath)
+        return get_table(handle, datapath=self.datapath, **self.kwargs)
 
     def __exit__(self, *args):
         """ make sure our resource is closed """

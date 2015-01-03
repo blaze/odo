@@ -49,18 +49,16 @@ class EmptyAppendableFrameTable(hdf.AppendableFrameTable):
 
     """
     @property
-    def nrows(self):
-        return 0
-
-    @property
     def shape(self):
         return (0,)
 
 
-@discover.register(hdf.AppendableFrameTable)
+@discover.register((EmptyAppendableFrameTable, hdf.AppendableFrameTable))
 def discover_tables_node(t):
-    return datashape.from_numpy((t.shape,), t.dtype)
+    if hasattr(t, 'dshape'):
+        return t.dshape
 
+    return datashape.from_numpy((t.shape,), t.dtype)
 
 @discover.register(hdf.HDFStore)
 def discover_tables_node(f):
@@ -92,7 +90,7 @@ def dialect(f):
 
 
 @dispatch(hdf.HDFStore)
-def get_table(f, datapath):
+def get_table(f, datapath, dshape=None, **kwargs):
 
     assert datapath is not None
 
@@ -105,9 +103,11 @@ def get_table(f, datapath):
 
     if getattr(node, 'table', None) is None:
 
-        # create our stand-in table
+        # create our stand-in table (with 0 dshape)
         s = EmptyAppendableFrameTable(f, node)
         s.set_object_info()
+        if dshape is not None:
+            s.dshape = datashape.dshape('0 * ' + str(dshape.measure))
 
         return s
 
@@ -281,7 +281,7 @@ def HDFStore(path, datapath=None, dshape=None, **kwargs):
         if datapath is None:
             return HDFFile(store)
 
-        return HDFTable(HDFFile(store), datapath)
+        return HDFTable(HDFFile(store), datapath, dshape=dshape)
 
     if not os.path.exists(path):
         store = hdf.HDFStore(path, **kwargs)

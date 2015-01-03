@@ -118,33 +118,29 @@ def test_resource_with_datapath(new_file):
     assert isinstance(r, HDFTable)
     assert discover(r) == ds
     assert r.pathname == new_file
-    assert r.parent.rsrc == r
 
-def test_resource_with_variable_length():
-    with tmpfile('.hdf5') as fn:
-        os.remove(fn)
-        ds = datashape.dshape('var * 4 * int32')
-        r = resource('h5py://' + fn + '::/data', dshape=ds)
+def test_resource_with_variable_length(new_file):
 
-        assert r.shape == (0, 4)
-        cleanup(r)
+    ds = datashape.dshape('var * 4 * int32')
+    r = resource('h5py://' + new_file + '::/data', dshape=ds)
 
-def test_copy_with_into():
-    with tmpfile('.hdf5') as fn:
-        uri = 'h5py://' + fn + '::/data'
-        into(uri, [1, 2, 3])
+    assert r.shape.shape == (0, 4)
 
-        dset = resource(uri)
-        assert dset.shape == (3,)
-        assert eq(dset[:], [1, 2, 3])
-        cleanup(dset)
+def test_copy_with_into(new_file):
 
-def test_varlen_dtypes():
+    uri = 'h5py://' + new_file + '::/data'
+    into(uri, [1, 2, 3])
+
+    dset = resource(uri)
+    assert dset.shape.shape == (3,)
+    assert eq(dset[:], [1, 2, 3])
+
+def test_varlen_dtypes(new_file):
+
     y = np.array([('Alice', 100), ('Bob', 200)],
                 dtype=[('name', 'O'), ('amount', 'i4')])
-    with tmpfile('.hdf5') as fn:
-        uri = 'h5py://' + fn + '::/data'
-        into(uri, y)
-        dset = resource(uri)
-        assert into(list, dset) == into(list, dset)
-        cleanup(dset)
+
+    uri = 'h5py://' + new_file + '::/data'
+    into(uri, y)
+    dset = resource(uri)
+    assert into(list, dset) == into(list, dset)

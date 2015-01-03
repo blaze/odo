@@ -180,16 +180,13 @@ def test_dataframe_into_table_append(hdf_file2, new_file):
                  dshape=dshape)
 
     # clean store
-    with t as ot:
-        assert ot.nrows == 0
+    assert t.shape[0].val == 0
     t = into(t, expected)
-    with t as ot:
-        assert ot.nrows == dshape.shape[0].val
+    assert t.shape[0] == dshape.shape[0].val
 
     # append to the existing
     t = into(t, expected)
-    with t as ot:
-        assert ot.nrows == 2 * dshape.shape[0].val
+    assert t.shape[0] == 2 * dshape.shape[0].val
 
     res = read_hdf(new_file, 'write_this')
     assert_frame_equal(res, concat([expected, expected]))

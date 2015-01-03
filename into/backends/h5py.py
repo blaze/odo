@@ -129,7 +129,7 @@ def dialect(f):
     return 'h5py'
 
 @dispatch(h5py.File)
-def get_table(f, datapath):
+def get_table(f, datapath, **kwargs):
     assert datapath is not None
     return f[datapath]
 

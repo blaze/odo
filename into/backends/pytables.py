@@ -64,7 +64,7 @@ def dialect(f):
 
 
 @dispatch(tables.File)
-def get_table(f, datapath):
+def get_table(f, datapath, **kwargs):
 
     assert datapath is not None
     return f.get_node(full_node_path(datapath))
