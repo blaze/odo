@@ -103,7 +103,9 @@ class HDFFile(object):
 
     def keys(self):
         """ return the keys of myself """
-        return [full_node_path(n) for n in discover(self).names]
+        ds = discover(self)
+        ds = getattr(ds,'names',ds.measure.names)
+        return [full_node_path(n) for n in ds ]
 
     def get_table(self, datapath=None):
         """

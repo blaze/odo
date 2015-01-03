@@ -75,8 +75,9 @@ def create_from_datashape(group, ds, name=None, **kwargs):
 @create.register(h5py.File)
 def create_h5py_file(cls, path=None, dshape=None, **kwargs):
     f = h5py.File(path)
-    create_from_datashape(f, dshape, **kwargs)
-    return HDFFile(f)
+    if dshape is not None:
+        create_from_datashape(f, dshape, **kwargs)
+    return f
 
 
 @append.register(h5py.Dataset, np.ndarray)
