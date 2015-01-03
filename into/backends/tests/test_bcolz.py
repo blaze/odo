@@ -128,6 +128,16 @@ def test_resource_ctable_correctly_infers_length():
         assert get_expectedlen(r) == 100
 
 
+def test_resource_nd_carray():
+    with tmpfile('.bcolz') as fn:
+        os.remove(fn)
+        r = resource(fn, dshape='10 * 10 * 10 * int32')
+
+        assert isinstance(r, carray)
+        assert r.dtype == 'i4'
+        assert r.shape[1:] == (10, 10)
+
+
 y = np.array([('Alice', 100), ('Bob', 200)],
             dtype=[('name', 'S7'), ('amount', 'i4')])
 
