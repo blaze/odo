@@ -35,10 +35,6 @@ class Chunks(object):
         else:
             return iter(self.data)
 
-    def __len__(self):
-        return len(self.data)
-
-
 def chunks(cls):
     """ Parametrized Chunks Class """
     return type('Chunks_' + cls_name(cls).replace('.', '_'), (Chunks,), {'container': cls})

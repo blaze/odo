@@ -48,11 +48,6 @@ def drop_table(t):
     t.remove()
 
 
-@drop.register(tables.File)
-def drop_file(f):
-    cleanup(f)
-    os.remove(f.filename)
-
 @dispatch(tables.File)
 def pathname(f):
     return f.filename
@@ -87,15 +82,14 @@ def cleanup_group(f):
 
 @append.register((tables.Array, tables.Table), object)
 def numpy_to_pytables(t, x, **kwargs):
-    x = convert(np.ndarray, x, **kwargs)
-    t.append(x)
-    return x
+    converted = convert(chunks(np.ndarray), x, **kwargs)
+    return append_chunks_to_pytables(t, converted, **kwargs)
 
 
 @append.register((tables.Array, tables.Table), chunks(np.ndarray))
-def append_chunks_to_pytables(t, x, **kwargs):
-    for item in x:
-        numpy_to_pytables(t,  item, **kwargs)
+def append_chunks_to_pytables(t, data, **kwargs):
+    for chunk in data:
+        t.append(chunk)
     return t
 
 
@@ -111,6 +105,9 @@ def pytables_to_numpy_chunks(t, chunksize=2 ** 20, **kwargs):
 @convert.register(Iterator, tables.Table, cost=5.0)
 def pytables_to_numpy_iterator(t, chunksize=1e7, **kwargs):
     """ return the embedded iterator """
+
+    # make sure the iterator stays open for this
+    # entire operation
     chunksize = int(chunksize)
     for i in range(0, t.shape[0], chunksize):
         yield t[i: i + chunksize]
@@ -178,7 +175,7 @@ def PyTables(path, datapath=None, dshape=None, **kwargs):
             if not dshape:
                 f.close()
                 raise ValueError(
-                    "cannot create a HDFStore without a datashape")
+                    "cannot create a PyTables without a datashape")
 
             if isinstance(dshape, str):
                 dshape = datashape.dshape(dshape)

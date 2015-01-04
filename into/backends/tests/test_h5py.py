@@ -13,7 +13,7 @@ from into.backends.h5py import append, create, resource, discover, convert
 from contextlib import contextmanager
 from into.utils import tmpfile
 from into.chunks import chunks
-from into import into, append, convert, resource, discover, cleanup
+from into import into, append, convert, resource, discover, cleanup, drop
 from into.conftest import eq
 from into.backends.hdf import HDFFile, HDFTable
 
@@ -27,6 +27,18 @@ def h5py_file(arr2):
     with tmpfile('.hdf5') as filename:
         f = h5py.File(filename)
         f.create_dataset('/data', data=arr2, chunks=True,
+                         maxshape=(None,) + arr2.shape[1:])
+        f.close()
+        yield filename
+
+@pytest.yield_fixture
+def h5py_multi_nodes_file(arr2):
+
+    with tmpfile('.hdf5') as filename:
+        f = h5py.File(filename)
+        f.create_dataset('/data', data=arr2, chunks=True,
+                         maxshape=(None,) + arr2.shape[1:])
+        f.create_dataset('/data2', data=arr2, chunks=True,
                          maxshape=(None,) + arr2.shape[1:])
         f.close()
         yield filename
@@ -144,3 +156,49 @@ def test_varlen_dtypes(new_file):
     into(uri, y)
     dset = resource(uri)
     assert into(list, dset) == into(list, dset)
+
+def test_drop(h5py_multi_nodes_file):
+
+    assert os.path.exists(h5py_multi_nodes_file)
+    r = resource('h5py://' + h5py_multi_nodes_file)
+    drop(r)
+
+    assert not os.path.exists(h5py_multi_nodes_file)
+
+
+def test_drop_table(h5py_multi_nodes_file):
+
+    r = resource('h5py://' + h5py_multi_nodes_file + '::/data')
+    drop(r)
+    r = resource('h5py://' + h5py_multi_nodes_file)
+    assert '/data' not in r
+
+
+def test_contains(h5py_multi_nodes_file):
+
+    r = resource('h5py://' + h5py_multi_nodes_file)
+    assert '/data2' in r
+    assert '/data' in r
+    assert 'data' in r
+    assert '/foo' not in r
+
+    assert set(r.keys()) == set(['/data', '/data2'])
+
+
+def test_into_return(arr2, tmpdir):
+
+    target = str(tmpdir / 'foo.h5')
+    uri = 'h5py://' + target + '::/data'
+
+    # need a datapath
+    with pytest.raises(ValueError):
+        into(target, arr2)
+
+    result = into(uri, arr2)
+    assert result.dialect == 'h5py'
+
+    result = into(uri, uri)
+    assert result.dialect == 'h5py'
+
+    result = into(np.ndarray, uri)
+    np.array_equal(result, np.concatenate([arr2, arr2]))

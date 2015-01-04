@@ -9,6 +9,7 @@ import h5py
 import numpy as np
 from toolz import assoc, keyfilter
 from collections import Iterator
+import os
 
 from ..append import append
 from ..convert import convert, ooc_types
@@ -57,10 +58,18 @@ def dataset_from_dshape(file, datapath, ds, **kwargs):
         kwargs['maxshape'] = kwargs.get('maxshape', (None,) + shape[1:])
 
     kwargs2 = keyfilter(h5py_attributes.__contains__, kwargs)
-    return file.require_dataset(datapath, shape=shape, dtype=dtype, **kwargs2)
+    try:
+        return file.require_dataset(datapath, shape=shape, dtype=dtype, **kwargs2)
+    except TypeError as e:
+        # we have a shape mismatch
+        # all dims must match except ndim=0 (the appending dim)
+        existing_shape = file[datapath].shape
+        if not (shape[1:] == existing_shape[1:]):
+            raise
 
 
 def create_from_datashape(group, ds, name=None, **kwargs):
+
     ds = dshape(ds)
     assert isrecord(ds)
     if isinstance(ds, DataShape) and len(ds) == 1:
@@ -115,11 +124,6 @@ def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
 def drop_group(h):
     del h.file[h.name]
 
-@drop.register(h5py.File)
-def drop_file(h):
-    cleanup(h)
-    os.remove(h.filename)
-
 @dispatch(h5py.File)
 def pathname(f):
     return f.filename
@@ -135,7 +139,10 @@ def get_table(f, datapath, **kwargs):
 
 @cleanup.register(h5py.File)
 def cleanup_file(f):
-    f.close()
+    try:
+        f.close()
+    except:
+        pass
 
 @cleanup.register(h5py.Dataset)
 def cleanup_dataset(dset):
@@ -143,6 +150,7 @@ def cleanup_dataset(dset):
 
 @append.register(h5py.Dataset, np.ndarray)
 def append_h5py(dset, x, **kwargs):
+
     if not sum(x.shape):
         return dset
     shape = list(dset.shape)
@@ -153,15 +161,18 @@ def append_h5py(dset, x, **kwargs):
 
 
 @append.register(h5py.Dataset, chunks(np.ndarray))
-def append_h5py(dset, c, **kwargs):
+def append_h5py_dset_chunks(dset, c, **kwargs):
+
     for chunk in c:
-        append(dset, chunk)
+        append_h5py(dset, chunk)
     return dset
 
 
 @append.register(h5py.Dataset, object)
-def append_h5py(dset, x, **kwargs):
-    return append(dset, convert(chunks(np.ndarray), x, **kwargs), **kwargs)
+def append_h5py_dset(dset, x, **kwargs):
+
+    converted = convert(chunks(np.ndarray), x, **kwargs)
+    return append_h5py_dset_chunks(dset, converted, **kwargs)
 
 
 @convert.register(np.ndarray, h5py.Dataset, cost=3.0)
@@ -181,6 +192,7 @@ def h5py_to_numpy_chunks(t, chunksize=2 ** 20, **kwargs):
 @convert.register(Iterator, h5py.Dataset, cost=5.0)
 def h5py_to_numpy_iterator(t, chunksize=1e7, **kwargs):
     """ return the embedded iterator """
+
     chunksize = int(chunksize)
     for i in range(0, t.shape[0], chunksize):
         yield t[i: i + chunksize]

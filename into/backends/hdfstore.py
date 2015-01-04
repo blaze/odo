@@ -66,12 +66,6 @@ def discover_tables_node(f):
 
 
 
-@drop.register(hdf.HDFStore)
-def drop_store(t):
-    cleanup(t)
-    os.remove(t.filename)
-
-
 @drop.register(hdf.AppendableFrameTable)
 def drop_table(t):
     t.parent.remove(t.pathname)
@@ -135,24 +129,24 @@ def append_object_to_hdfstore(s, data, **kwargs):
         "cannot append one store to another, pls specify datapaths")
 
 
-@append.register(hdf.HDFStore, object)
-def append_frame_to_hdfstore(s, data, datapath=None, **kwargs):
-    """ append a single frame to a store, must have a datapath """
+@append.register((EmptyAppendableFrameTable, hdf.AppendableFrameTable), pd.DataFrame)
+def append_frame_to_hdftable(s, data, datapath=None, **kwargs):
+    """ append a single frame to a table, must have a datapath """
 
-    data = convert(pd.DataFrame, data, **kwargs)
-    s.append(datapath, data, data_columns=True)
-    return s.get_storer(datapath)
+    p = s.parent
+    if datapath is None:
+        datapath = s.group._v_name
+
+    p.append(datapath, data, data_columns=True)
+    return p.get_storer(datapath)
 
 
 @append.register((EmptyAppendableFrameTable, hdf.AppendableFrameTable), object)
-def append_frame_to_hdftable(t, data, **kwargs):
+def append_object_to_hdftable(t, data, **kwargs):
     """ append a single frame to a store """
 
-    data = convert(pd.DataFrame, data, **kwargs)
-    name = t.group._v_name
-    t.parent.append(name, data, format='table', data_columns=True)
-    return t.parent.get_storer(name)
-
+    converted = convert(chunks(pd.DataFrame), data, **kwargs)
+    return append_chunks_to_hdftable(t, converted, **kwargs)
 
 @append.register((EmptyAppendableFrameTable, hdf.AppendableFrameTable), chunks(pd.DataFrame))
 def append_chunks_to_hdftable(t, data, **kwargs):
@@ -161,17 +155,15 @@ def append_chunks_to_hdftable(t, data, **kwargs):
 
     we have an existing empty table
     """
-    l = len(data)
     data = iter(data)
 
     # the head element
     t = append_frame_to_hdftable(t, next(data), **kwargs)
 
     # the rest
-    if l > 1:
-        with ensure_indexing(t):
-            for d in data:
-                append_frame_to_hdftable(t, d, **kwargs)
+    with ensure_indexing(t):
+        for d in data:
+            append_frame_to_hdftable(t, d, **kwargs)
 
     return t
 

@@ -15,6 +15,7 @@ driver is a dialect.
 from __future__ import absolute_import, division, print_function
 from contextlib import contextmanager
 
+import os
 import numpy as np
 from datashape.dispatch import dispatch
 from into import append, discover, convert, resource
@@ -81,10 +82,9 @@ class HDFFile(object):
         return dialect(self.rsrc)
 
     def __str__(self):
-        return "{klass} [{dialect}]: [path->{path}, datapath->{datapath}]".format(klass=self.__class__.__name__,
-                                                                                  dialect=self.dialect,
-                                                                                  path=self.pathname,
-                                                                                  datapath=self.datapath)
+        return "{klass} [{dialect}]: [path->{path}]".format(klass=self.__class__.__name__,
+                                                            dialect=self.dialect,
+                                                            path=self.pathname)
     __repr__ = __str__
 
 
@@ -156,9 +156,10 @@ class HDFTable(object):
         self.kwargs = kwargs
 
     def __str__(self):
-        return "{klass} [{dialect}]: [{datapath}]".format(klass=self.__class__.__name__,
-                                                          dialect=self.dialect,
-                                                          datapath=self.datapath)
+        return "{klass} [{dialect}]: [path->{path}, datapath->{datapath}]".format(klass=self.__class__.__name__,
+                                                                                  dialect=self.dialect,
+                                                                                  path=self.pathname,
+                                                                                  datapath=self.datapath)
     __repr__ = __str__
 
     @property
@@ -221,11 +222,23 @@ def append_object_to_store(s, data, datapath=None, **kwargs):
 @append.register(HDFTable, object)
 def append_object_to_table(t, data, **kwargs):
     """ append a single object to a table """
-
     with t as handle:
         append(handle, data, **kwargs)
     return t
 
+@append.register(HDFTable, HDFTable)
+def append_object_to_table(t, data, **kwargs):
+    """
+    append a table to another table
+    we are special casing this because of the need to keep open
+    the conversion iterator here at this level (if needed)
+
+    """
+
+    with t as t_handle:
+        with data as d_handle:
+            append(t_handle, d_handle, **kwargs)
+    return t
 
 @convert.register(pd.DataFrame, HDFTable, cost=3.0)
 def hdftable_to_frame(t, **kwargs):
@@ -251,7 +264,7 @@ def hdftable_to_ndarray_chunks(t, **kwargs):
 @drop.register(HDFFile)
 def drop_hdffile(f):
     cleanup(f)
-    drop(f.rsrc)
+    os.remove(f.pathname)
 
 
 @drop.register(HDFTable)

@@ -115,6 +115,7 @@ def test_table_into_ndarray(dt_table, dt_arr):
             assert np.array_equal(lhs, rhs)
 
 
+@pytest.mark.xfail(reason="Poor datetime support")
 def test_ndarray_into_table(dt_table, dt_arr):
 
     dtype = ds.from_numpy(dt_arr.shape, dt_arr.dtype)
