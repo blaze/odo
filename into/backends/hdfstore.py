@@ -60,10 +60,10 @@ def discover_tables_node(t):
 
     return datashape.from_numpy((t.shape,), t.dtype)
 
+
 @discover.register(hdf.HDFStore)
 def discover_tables_node(f):
     return discover(dict(f.items()))
-
 
 
 @drop.register(hdf.AppendableFrameTable)
@@ -113,6 +113,7 @@ def create_store(f, pathname):
     f.open()
     return f
 
+
 @cleanup.register(hdf.HDFStore)
 def cleanup_store(t):
     t.close()
@@ -121,6 +122,7 @@ def cleanup_store(t):
 @cleanup.register(hdf.AppendableFrameTable)
 def cleanup_table(t):
     t.parent.close()
+
 
 @append.register(hdf.HDFStore, hdf.HDFStore)
 def append_object_to_hdfstore(s, data, **kwargs):
@@ -147,6 +149,7 @@ def append_object_to_hdftable(t, data, **kwargs):
 
     converted = convert(chunks(pd.DataFrame), data, **kwargs)
     return append_chunks_to_hdftable(t, converted, **kwargs)
+
 
 @append.register((EmptyAppendableFrameTable, hdf.AppendableFrameTable), chunks(pd.DataFrame))
 def append_chunks_to_hdftable(t, data, **kwargs):

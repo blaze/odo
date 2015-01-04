@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import datashape
 from datashape import (DataShape, Record, Mono, dshape, to_numpy,
-        to_numpy_dtype, discover)
+                       to_numpy_dtype, discover)
 from datashape.predicates import isrecord, iscollection
 from datashape.dispatch import dispatch
 import h5py
@@ -96,6 +96,7 @@ def create(f, pathname, dshape=None, **kwargs):
         create_from_datashape(f, dshape, **kwargs)
     return f
 
+
 @resource.register('^(h5py://)?.+\.(h5|hdf5)', priority=10.0)
 def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
 
@@ -120,22 +121,27 @@ def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
 
     return HDFFile(f)
 
+
 @drop.register((h5py.Group, h5py.Dataset))
 def drop_group(h):
     del h.file[h.name]
+
 
 @dispatch(h5py.File)
 def pathname(f):
     return f.filename
 
+
 @dispatch(h5py.File)
 def dialect(f):
     return 'h5py'
+
 
 @dispatch(h5py.File)
 def get_table(f, datapath, **kwargs):
     assert datapath is not None
     return f[datapath]
+
 
 @cleanup.register(h5py.File)
 def cleanup_file(f):
@@ -144,9 +150,11 @@ def cleanup_file(f):
     except:
         pass
 
+
 @cleanup.register(h5py.Dataset)
 def cleanup_dataset(dset):
     dset.file.close()
+
 
 @append.register(h5py.Dataset, np.ndarray)
 def append_h5py(dset, x, **kwargs):
@@ -188,6 +196,7 @@ def h5py_to_numpy(dset, force=False, **kwargs):
 @convert.register(chunks(np.ndarray), h5py.Dataset, cost=3.0)
 def h5py_to_numpy_chunks(t, chunksize=2 ** 20, **kwargs):
     return chunks(np.ndarray)(h5py_to_numpy_iterator(t, chunksize=chunksize, **kwargs))
+
 
 @convert.register(Iterator, h5py.Dataset, cost=5.0)
 def h5py_to_numpy_iterator(t, chunksize=1e7, **kwargs):

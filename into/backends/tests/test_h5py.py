@@ -17,9 +17,11 @@ from into import into, append, convert, resource, discover, cleanup, drop
 from into.conftest import eq
 from into.backends.hdf import HDFFile, HDFTable
 
+
 @pytest.fixture
 def new_file(tmpdir):
     return str(tmpdir / 'foo.h5')
+
 
 @pytest.yield_fixture
 def h5py_file(arr2):
@@ -30,6 +32,7 @@ def h5py_file(arr2):
                          maxshape=(None,) + arr2.shape[1:])
         f.close()
         yield filename
+
 
 @pytest.yield_fixture
 def h5py_multi_nodes_file(arr2):
@@ -43,16 +46,19 @@ def h5py_multi_nodes_file(arr2):
         f.close()
         yield filename
 
+
 def eq(a, b):
     c = a == b
     if isinstance(c, np.ndarray):
         c = c.all()
     return c
 
+
 @pytest.fixture
 def h5py_resource(h5py_file):
     uri = 'h5py://' + h5py_file
     return resource(uri)
+
 
 def test_discover(h5py_resource, arr2):
 
@@ -60,11 +66,12 @@ def test_discover(h5py_resource, arr2):
     assert str(discover(arr2)) == str(discover(f['data']))
     assert str(discover(f)) == str(discover({'data': arr2}))
 
+
 def test_append(h5py_resource, arr2):
 
     f = h5py_resource
     result = append(f['data'], arr2)
-    assert eq(result[:], np.concatenate([arr2 ,arr2]))
+    assert eq(result[:], np.concatenate([arr2, arr2]))
 
 
 def test_numpy(h5py_resource, arr2):
@@ -97,10 +104,12 @@ def test_append_chunks(h5py_resource, arr2):
 def test_create(new_file):
 
     ds = datashape.dshape('{x: int32, y: {z: 3 * int32}}')
-    f = create(h5py.File, pathname=new_file, dshape='{x: int32, y: {z: 3 * int32}}')
+    f = create(
+        h5py.File, pathname=new_file, dshape='{x: int32, y: {z: 3 * int32}}')
     assert isinstance(f, h5py.File)
     assert f.filename == new_file
     assert discover(f) == ds
+
 
 def test_create_partially_present_dataset(new_file):
 
@@ -114,6 +123,7 @@ def test_create_partially_present_dataset(new_file):
     assert list(f.keys()) == list(f2.keys())
     assert f['y'].dtype == 'i4'
 
+
 def test_resource(new_file):
 
     ds = datashape.dshape('{x: int32, y: 3 * int32}')
@@ -121,6 +131,7 @@ def test_resource(new_file):
 
     assert isinstance(r, HDFFile)
     assert discover(r) == ds
+
 
 def test_resource_with_datapath(new_file):
 
@@ -131,12 +142,14 @@ def test_resource_with_datapath(new_file):
     assert discover(r) == ds
     assert r.pathname == new_file
 
+
 def test_resource_with_variable_length(new_file):
 
     ds = datashape.dshape('var * 4 * int32')
     r = resource('h5py://' + new_file + '::/data', dshape=ds)
 
     assert r.shape.shape == (0, 4)
+
 
 def test_copy_with_into(new_file):
 
@@ -147,15 +160,17 @@ def test_copy_with_into(new_file):
     assert dset.shape.shape == (3,)
     assert eq(dset[:], [1, 2, 3])
 
+
 def test_varlen_dtypes(new_file):
 
     y = np.array([('Alice', 100), ('Bob', 200)],
-                dtype=[('name', 'O'), ('amount', 'i4')])
+                 dtype=[('name', 'O'), ('amount', 'i4')])
 
     uri = 'h5py://' + new_file + '::/data'
     into(uri, y)
     dset = resource(uri)
     assert into(list, dset) == into(list, dset)
+
 
 def test_drop(h5py_multi_nodes_file):
 

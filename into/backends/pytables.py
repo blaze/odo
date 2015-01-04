@@ -36,7 +36,6 @@ def discover_tables_node(f):
     return discover(f.getNode('/'))
 
 
-
 @resource.register('^(pytables://)?.+\.(h5|hdf5)', priority=11.0)
 def resource_pytables(path, *args, **kwargs):
     path = resource_matches(path, 'pytables')
@@ -80,6 +79,7 @@ def cleanup_file(f):
 def cleanup_group(f):
     f._v_file.close()
 
+
 @append.register((tables.Array, tables.Table), object)
 def numpy_to_pytables(t, x, **kwargs):
     converted = convert(chunks(np.ndarray), x, **kwargs)
@@ -102,6 +102,7 @@ def pytables_to_numpy(t, **kwargs):
 def pytables_to_numpy_chunks(t, chunksize=2 ** 20, **kwargs):
     return chunks(np.ndarray)(pytables_to_numpy_iterator(t, chunksize=chunksize, **kwargs))
 
+
 @convert.register(Iterator, tables.Table, cost=5.0)
 def pytables_to_numpy_iterator(t, chunksize=1e7, **kwargs):
     """ return the embedded iterator """
@@ -111,6 +112,7 @@ def pytables_to_numpy_iterator(t, chunksize=1e7, **kwargs):
     chunksize = int(chunksize)
     for i in range(0, t.shape[0], chunksize):
         yield t[i: i + chunksize]
+
 
 def dtype_to_pytables(dtype):
     """ Convert NumPy dtype to PyTable descriptor
