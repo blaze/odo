@@ -216,11 +216,9 @@ def PyTables(path, datapath=None, dshape=None, **kwargs):
     f = tables.open_file(path, mode='a')
 
     # validate that we have a PyTables file
-    try:
-        f.format_version
-    except AttributeError:
+    if not f._isPTFile:
         f.close()
-        raise NotImplementedError
+        raise NotImplementedError("not a pytables type")
 
     return create_table_or_file(f, datapath, dshape)
 

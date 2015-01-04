@@ -119,69 +119,68 @@ def h5py_filename(request, tmpdir):
 def test_hdfstore_write(hdfstore_filename, arr_dshape):
 
     # this is also the default writer
-    with resource(hdfstore_filename, '/data', dshape=arr_dshape) as result:
-        assert isinstance(result, hdfstore.AppendableFrameTable)
-
+    result = resource(hdfstore_filename, '/data', dshape=arr_dshape)
+    assert result.dialect == 'HDFStore'
+    assert isinstance(result, HDFTable)
 
 def test_hdfstore_write2(hdfstore_filename, arr_dshape):
 
     # this is also the default writer
-    with resource(hdfstore_filename + '::/data', dshape=arr_dshape) as result:
-        assert isinstance(result, hdfstore.AppendableFrameTable)
-
+    result = resource(hdfstore_filename + '::/data', dshape=arr_dshape)
+    assert result.dialect == 'HDFStore'
+    assert isinstance(result, HDFTable)
 
 def test_hdfstore_read(hdfstore_file):
 
-    with resource(hdfstore_file, '/data') as result:
-        assert isinstance(result, hdfstore.AppendableFrameTable)
-
+    result = resource(hdfstore_file, '/data')
+    assert result.dialect == 'HDFStore'
+    assert isinstance(result, HDFTable)
 
 def test_hdfstore_read2(hdfstore_file):
 
-    with resource(hdfstore_file + '::/data') as result:
-        assert isinstance(result, hdfstore.AppendableFrameTable)
+    result = resource(hdfstore_file + '::/data')
+    assert result.dialect == 'HDFStore'
+    assert isinstance(result, HDFTable)
 
-# These seems to cause segfaults if run in concert with the PyTables tests in the same process
-# http://stackoverflow.com/questions/7450881/python-segmentation-fault-when-closing-quitting
-
-#@pytest.mark.skipif(not IS_PY3, reason="hp5y fail under < 3")
 #def test_h5py_write(h5py_filename, arr_dshape):
 
-#    with resource(h5py_filename,'/data',dshape=arr_dshape) as result:
-#        assert isinstance(result, h5py.Dataset)
+#    result = resource(h5py_filename, '/data', dshape=arr_dshape)
+#    assert result.dialect == 'h5py'
+#    assert isinstance(result, HDFTable)
 
-#@pytest.mark.skipif(not IS_PY3, reason="hp5y fail under < 3")
 #def test_h5py_write2(h5py_filename, arr_dshape):
 
-#    with resource(h5py_filename + '::/data',dshape=arr_dshape) as result:
-#        assert isinstance(result, h5py.Dataset)
+#    result = resource(h5py_filename + '::/data', dshape=arr_dshape)
+#    assert result.dialect == 'h5py'
+#    assert isinstance(result, HDFTable)
 
-#@pytest.mark.skipif(not IS_PY3, reason="hp5y fail under < 3")
-#def test_h5py_read(h5py_file, arr_dshape):
+def test_h5py_read(h5py_file):
 
-#    with resource(h5py_file,'/data',dshape=arr_dshape) as result:
-#        assert isinstance(result, h5py.Dataset)
-
+    result = resource(h5py_file, '/data')
+    assert result.dialect == 'h5py'
+    assert isinstance(result, HDFTable)
 
 def test_pytables_write(pytables_filename, arr_dshape):
 
-    with resource(pytables_filename, '/data', dshape=arr_dshape) as result:
-        assert isinstance(result, tb.Table)
-
+    result = resource(pytables_filename, '/data', dshape=arr_dshape)
+    assert result.dialect == 'PyTables'
+    assert isinstance(result, HDFTable)
 
 def test_pytables_write2(pytables_filename, arr_dshape):
 
-    with resource(pytables_filename + '::/data', dshape=arr_dshape) as result:
-        assert isinstance(result, tb.Table)
+    result = resource(pytables_filename + '::/data', dshape=arr_dshape)
+    assert result.dialect == 'PyTables'
+    assert isinstance(result, HDFTable)
 
 
 def test_pytables_read(pytables_file):
 
-    with resource(pytables_file, '/data') as result:
-        assert isinstance(result, tb.Table)
-
+    result = resource(pytables_file, '/data')
+    assert result.dialect == 'PyTables'
+    assert isinstance(result, HDFTable)
 
 def test_pytables_read2(pytables_file):
 
-    with resource(pytables_file + '::/data') as result:
-        assert isinstance(result, tb.Table)
+    result = resource(pytables_file + '::/data')
+    assert result.dialect == 'PyTables'
+    assert isinstance(result, HDFTable)
