@@ -10,8 +10,7 @@ def test_not_impemented():
 
     # these are by definition not implemented
     for obj in ['foo', None, object]:
-        with pytest.raises(NotImplementedError):
-            cleanup(obj)
+        cleanup(obj)
 
 
 def test_csv_notimplemented(tmpdir):
@@ -22,8 +21,7 @@ def test_csv_notimplemented(tmpdir):
     append(csv, data)
 
     r = resource(f1)
-    with pytest.raises(NotImplementedError):
-        cleanup(r)
+    cleanup(r)
 
 
 def test_csv(tmpdir):

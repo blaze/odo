@@ -29,11 +29,4 @@ def cleanup(rsrc):
     >>> r = resource('foo.h5',dshape=discover(df))
     >>> cleanup(r)
     """
-    raise NotImplementedError("cleanup not implemented for type %r" %
-                              type(rsrc).__name__)
-
-
-@dispatch((str, unicode))
-def cleanup(uri, **kwargs):
-    data = resource(uri, **kwargs)
-    cleanup(data)
+    pass
