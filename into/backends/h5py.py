@@ -120,14 +120,15 @@ def h5py_to_numpy_chunks(dset, chunksize=2**20, **kwargs):
 @resource.register('.+\.hdf5')
 def resource_hdf5(uri, datapath=None, dshape=None, **kwargs):
     f = h5py.File(uri)
-    ds = datashape.dshape(dshape)
     olddatapath = datapath
-    if datapath:
-        while ds and datapath:
-            datapath, name = datapath.rsplit('/', 1)
-            ds = Record([[name, ds]])
-        ds = datashape.dshape(ds)
-    f = create(h5py.File, path=uri, dshape=ds, **kwargs)
+    if dshape is not None:
+        ds = datashape.dshape(dshape)
+        if datapath:
+            while ds and datapath:
+                datapath, name = datapath.rsplit('/', 1)
+                ds = Record([[name, ds]])
+            ds = datashape.dshape(ds)
+        f = create(h5py.File, path=uri, dshape=ds, **kwargs)
     if olddatapath:
         return f[olddatapath]
     else:

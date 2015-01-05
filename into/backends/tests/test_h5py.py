@@ -96,6 +96,9 @@ def test_resource():
         assert isinstance(r, h5py.File)
         assert discover(r) == ds
 
+        r2 = resource(fn + '::/x')
+        assert isinstance(r2, h5py.Dataset)
+
 
 def test_resource_with_datapath():
     with tmpfile('.hdf5') as fn:
