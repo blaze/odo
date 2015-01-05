@@ -64,7 +64,8 @@ def discover_typeengine(typ):
         return dshape(revtypes[type(typ)])[0]
     else:
         for k, v in revtypes.items():
-            if isinstance(k, type) and isinstance(typ, k):
+            if isinstance(k, type) and (isinstance(typ, k) or
+                            hasattr(typ, 'impl') and isinstance(typ.impl, k)):
                 return v
             if k == typ:
                 return v
