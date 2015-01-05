@@ -52,6 +52,7 @@ revtypes.update({sa.types.VARCHAR: 'string',
                  sa.types.INTEGER: 'int',
                  sa.types.NUMERIC: 'float64',  # TODO: extend datashape to decimal
                  sa.types.BIGINT: 'int64',
+                 sa.types.NullType: 'string',
                  sa.types.Float: 'float64'})
 
 
