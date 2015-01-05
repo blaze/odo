@@ -142,7 +142,7 @@ def test_varlen_dtypes():
 
 def test_resource_shape():
     with tmpfile('.hdf5') as fn:
-        assert resource(fn, dshape='10 * int').shape == (10,)
+        assert resource(fn+'::/data', dshape='10 * int').shape == (10,)
     with tmpfile('.hdf5') as fn:
         assert resource(fn+'::/data', dshape='10 * 10 * int').shape == (10, 10)
     with tmpfile('.hdf5') as fn:
