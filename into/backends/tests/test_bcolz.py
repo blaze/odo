@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 from into.backends.bcolz import (append, convert, ctable, carray, resource,
                                  discover, drop)
 from into.chunks import chunks
-from into import append, convert, resource, discover
+from into import append, convert, discover, into
 import numpy as np
 from into.utils import tmpfile
 import os
@@ -53,7 +53,6 @@ def test_append_other():
 
 def test_resource_ctable():
     with tmpfile('.bcolz') as fn:
-        os.remove(fn)
         r = resource(fn,
                      dshape='var * {name: string[5, "ascii"], balance: int32}')
 
@@ -68,7 +67,6 @@ def get_expectedlen(x):
 
 def test_resource_ctable_overrides_expectedlen():
     with tmpfile('.bcolz') as fn:
-        os.remove(fn)
         r = resource(fn,
                      dshape='100 * {name: string[5, "ascii"], balance: int32}',
                      expectedlen=200)
@@ -80,7 +78,6 @@ def test_resource_ctable_overrides_expectedlen():
 
 def test_resource_ctable_correctly_infers_length():
     with tmpfile('.bcolz') as fn:
-        os.remove(fn)
         r = resource(fn,
                      dshape='100 * {name: string[5, "ascii"], balance: int32}')
 
@@ -91,16 +88,15 @@ def test_resource_ctable_correctly_infers_length():
 
 def test_resource_carray():
     with tmpfile('.bcolz') as fn:
-        os.remove(fn)
         r = resource(fn, dshape='var * int32')
 
         assert isinstance(r, carray)
         assert r.dtype == 'i4'
+        assert r.shape == (0,)
 
 
 def test_resource_existing_carray():
     with tmpfile('.bcolz') as fn:
-        os.remove(fn)
         r = resource(fn, dshape='var * int32')
         append(r, [1, 2, 3])
         r.flush()
@@ -110,17 +106,16 @@ def test_resource_existing_carray():
 
 def test_resource_carray_overrides_expectedlen():
     with tmpfile('.bcolz') as fn:
-        os.remove(fn)
         r = resource(fn, dshape='100 * int32', expectedlen=200)
 
         assert isinstance(r, carray)
         assert r.dtype == 'i4'
+        assert r.shape == (100,)
         assert get_expectedlen(r) == 200
 
 
 def test_resource_ctable_correctly_infers_length():
     with tmpfile('.bcolz') as fn:
-        os.remove(fn)
         r = resource(fn, dshape='100 * int32')
 
         assert isinstance(r, carray)
@@ -130,12 +125,11 @@ def test_resource_ctable_correctly_infers_length():
 
 def test_resource_nd_carray():
     with tmpfile('.bcolz') as fn:
-        os.remove(fn)
         r = resource(fn, dshape='10 * 10 * 10 * int32')
 
         assert isinstance(r, carray)
         assert r.dtype == 'i4'
-        assert r.shape[1:] == (10, 10)
+        assert r.shape == (10, 10, 10)
 
 
 y = np.array([('Alice', 100), ('Bob', 200)],
@@ -149,9 +143,7 @@ def test_convert_numpy_to_ctable():
 
 def test_resource_existing_ctable():
     with tmpfile('.bcolz') as fn:
-        os.remove(fn)
-        r = resource(fn, dshape=discover(y))
-        append(r, y)
+        r = into(fn, y)
         r.flush()
 
         r2 = resource(fn)
@@ -160,9 +152,17 @@ def test_resource_existing_ctable():
 
 def test_drop():
     with tmpfile('.bcolz') as fn:
-        os.remove(fn)
         r = resource(fn, dshape='var * {name: string[5, "ascii"], balance: int32}')
 
         assert os.path.exists(fn)
         drop(fn)
         assert not os.path.exists(fn)
+
+
+def test_resource_shape():
+    with tmpfile('.bcolz') as fn:
+        assert resource(fn, dshape='10 * int').shape == (10,)
+    with tmpfile('.bcolz') as fn:
+        assert resource(fn, dshape='10 * 10 * int').shape == (10, 10)
+    with tmpfile('.bcolz') as fn:
+        assert resource(fn, dshape='var * 10 * int').shape == (0, 10)

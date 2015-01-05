@@ -184,7 +184,6 @@ def test_pandas_csv_naive_behavior_results_in_columns():
                        [4, 'Denis',   400],
                        [5, 'Edith',  -500]], columns=['id', 'name', 'amount'])
     with tmpfile('.csv') as fn:
-        os.remove(fn)
         into(fn, df)
 
         with open(fn) as f:

@@ -81,7 +81,12 @@ def resource_bcolz(uri, dshape=None, **kwargs):
         dshape = datashape.dshape(dshape)
 
         dt = datashape.to_numpy_dtype(dshape)
-        shape = (0,) + tuple(map(int, dshape.shape[1:]))
+        shape_tail = tuple(map(int, dshape.shape[1:]))  # tail of shape
+        if dshape.shape[0] == datashape.var:
+            shape = (0,) + shape_tail
+        else:
+            shape = (int(dshape.shape[0]),) + shape_tail
+
         x = np.empty(shape=shape, dtype=dt)
 
         kwargs = keyfilter(keywords.__contains__, kwargs)

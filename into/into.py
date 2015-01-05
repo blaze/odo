@@ -62,16 +62,16 @@ def into_object(a, b, **kwargs):
 
 @into.register(str, object)
 def into_string(uri, b, **kwargs):
-    try:
-        if 'dshape' not in kwargs:
-            ds = discover(b)
-            if isdimension(ds[0]):
-                ds = var * ds.subshape[0]
-            kwargs['dshape'] = ds
-    except NotImplementedError:
-        pass
-    a = resource(uri, **kwargs)
-    return into(a, b, **kwargs)
+    ds = kwargs.pop('dshape', None)
+    if not ds:
+        ds = discover(b)
+    if isdimension(ds[0]):
+        resource_ds = 0 * ds.subshape[0]
+    else:
+        resource_ds = ds
+
+    a = resource(uri, dshape=resource_ds, **kwargs)
+    return into(a, b, dshape=ds, **kwargs)
 
 
 @into.register((type, str), str)

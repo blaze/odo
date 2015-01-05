@@ -46,6 +46,13 @@ def test_append():
         assert eq(dset[:], np.concatenate([x, x]))
 
 
+def test_into_resource():
+    with tmpfile('.hdf5') as fn:
+        d = into(fn+'::/x', x)
+        assert d.shape == x.shape
+        assert eq(d[:], x[:])
+
+
 def test_numpy():
     with file(x) as (fn, f, dset):
         assert eq(convert(np.ndarray, dset), x)
@@ -75,7 +82,6 @@ def test_create():
 
 def test_create_partially_present_dataset():
     with tmpfile('.hdf5') as fn:
-        os.remove(fn)
         ds1 = datashape.dshape('{x: int32}')
         f = create(h5py.File, dshape=ds1, path=fn)
 
@@ -89,7 +95,6 @@ def test_create_partially_present_dataset():
 
 def test_resource():
     with tmpfile('.hdf5') as fn:
-        os.remove(fn)
         ds = datashape.dshape('{x: int32, y: 3 * int32}')
         r = resource(fn, dshape=ds)
 
@@ -102,7 +107,6 @@ def test_resource():
 
 def test_resource_with_datapath():
     with tmpfile('.hdf5') as fn:
-        os.remove(fn)
         ds = datashape.dshape('3 * 4 * int32')
         r = resource(fn + '::/data', dshape=ds)
 
@@ -114,7 +118,6 @@ def test_resource_with_datapath():
 
 def test_resource_with_variable_length():
     with tmpfile('.hdf5') as fn:
-        os.remove(fn)
         ds = datashape.dshape('var * 4 * int32')
         r = resource(fn + '::/data', dshape=ds)
 
@@ -135,3 +138,12 @@ def test_varlen_dtypes():
         dset = into(fn + '::/data', y)
 
         assert into(list, dset) == into(list, dset)
+
+
+def test_resource_shape():
+    with tmpfile('.hdf5') as fn:
+        assert resource(fn, dshape='10 * int').shape == (10,)
+    with tmpfile('.hdf5') as fn:
+        assert resource(fn+'::/data', dshape='10 * 10 * int').shape == (10, 10)
+    with tmpfile('.hdf5') as fn:
+        assert resource(fn+'::/data', dshape='var * 10 * int').shape == (0, 10)

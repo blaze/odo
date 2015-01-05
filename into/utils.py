@@ -38,6 +38,7 @@ def expand_tuples(L):
 def tmpfile(extension=''):
     extension = '.' + extension.lstrip('.')
     handle, filename = tempfile.mkstemp(extension)
+    os.remove(filename)
 
     yield filename
 
