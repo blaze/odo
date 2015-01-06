@@ -145,18 +145,17 @@ def test_hdfstore_read2(hdfstore_file):
     assert result.dialect == 'HDFStore'
     assert isinstance(result, HDFTable)
 
-# def test_h5py_write(h5py_filename, arr_dshape):
+def test_h5py_write(h5py_filename, arr_dshape):
 
-#    result = resource(h5py_filename, '/data', dshape=arr_dshape)
-#    assert result.dialect == 'h5py'
-#    assert isinstance(result, HDFTable)
+    result = resource(h5py_filename, '/data', dshape=arr_dshape)
+    assert result.dialect == 'h5py'
+    assert isinstance(result, HDFTable)
 
-# def test_h5py_write2(h5py_filename, arr_dshape):
+def test_h5py_write2(h5py_filename, arr_dshape):
 
-#    result = resource(h5py_filename + '::/data', dshape=arr_dshape)
-#    assert result.dialect == 'h5py'
-#    assert isinstance(result, HDFTable)
-
+    result = resource(h5py_filename + '::/data', dshape=arr_dshape)
+    assert result.dialect == 'h5py'
+    assert isinstance(result, HDFTable)
 
 def test_h5py_read(h5py_file):
 

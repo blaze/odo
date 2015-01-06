@@ -15,14 +15,6 @@ from datashape import discover, dshape
 from collections import Iterator
 
 try:
-     from .backends.pandas import pd
-except:
-    pass
-try:
-     from .backends.bcolz import bcolz
-except:
-    pass
-try:
      from .backends.h5py import h5py
 except:
     pass
@@ -32,6 +24,14 @@ except:
     pass
 try:
      from .backends.hdfstore import tables
+except:
+    pass
+try:
+     from .backends.pandas import pd
+except:
+    pass
+try:
+     from .backends.bcolz import bcolz
 except:
     pass
 try:
