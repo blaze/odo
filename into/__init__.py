@@ -26,6 +26,10 @@ try:
 except:
     pass
 try:
+     from .backends.hdfstore import HDFStore
+except:
+    pass
+try:
      from .backends.pytables import tables
 except:
     pass
