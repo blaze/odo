@@ -75,3 +75,6 @@ def append_chunks_dataframe_to_hdfstore(store, c, **kwargs):
 @append.register((pd.io.pytables.Fixed, EmptyHDFStoreDataset), object)
 def append_object_to_hdfstore(store, o, **kwargs):
     return append(store, convert(chunks(pd.DataFrame), o, **kwargs), **kwargs)
+
+
+ooc_types |= set(HDFDataset)
