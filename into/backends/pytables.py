@@ -10,15 +10,15 @@ from collections import Iterator
 import datashape
 from datashape import discover
 from datashape.dispatch import dispatch
-from into import append
-from into.convert import convert, ooc_types
-from into.drop import drop
-from into.create import create
-from into.cleanup import cleanup
-from into.resource import resource, resource_matches
-from into.chunks import chunks, Chunks
-from into.utils import tmpfile
-from into.backends.hdf import HDFFile, HDFTable, full_node_path
+from ..append import append
+from ..convert import convert, ooc_types
+from ..drop import drop
+from ..create import create
+from ..cleanup import cleanup
+from ..resource import resource, resource_matches
+from ..chunks import chunks, Chunks
+from ..utils import tmpfile
+from .hdf import HDFFile, HDFTable, full_node_path
 
 
 @discover.register((tables.Array, tables.Table))

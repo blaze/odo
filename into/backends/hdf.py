@@ -17,14 +17,15 @@ from contextlib import contextmanager
 
 import os
 import numpy as np
-from datashape.dispatch import dispatch
-from into import append, discover, convert, resource
-from into.drop import drop
-from into.create import create
-from into.cleanup import cleanup
-from into.convert import ooc_types
-from into.chunks import chunks
 import pandas as pd
+
+from datashape.dispatch import dispatch
+from into import append, discover, resource
+from ..drop import drop
+from ..create import create
+from ..cleanup import cleanup
+from ..convert import ooc_types, convert
+from ..chunks import chunks
 
 __all__ = ['HDFFile', 'HDFTable']
 

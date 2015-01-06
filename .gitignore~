@@ -1,6 +1,0 @@
-*.pyc
-
-__conda_version__.txt
-build/
-dist/
-into.egg-info/
