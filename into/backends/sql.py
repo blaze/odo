@@ -287,6 +287,15 @@ def resource_monet(uri, *args, **kwargs):
     return resource_sql(uri, *args, **kwargs)
 
 
+@resource.register('hive://.+')
+def resource_hive(uri, *args, **kwargs):
+    try:
+        import pyhive
+    except ImportError:
+        raise ImportError("Please install the `PyHive` library.")
+    return resource_sql(uri, *args, **kwargs)
+
+
 ooc_types.add(sa.Table)
 
 
