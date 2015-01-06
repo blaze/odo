@@ -1,7 +1,7 @@
 import IPython
 import os
 import sqlalchemy as sa
-
+import psutil
 
 class PrettyMixin(object):
 
@@ -45,3 +45,59 @@ def normpath(path):
 
 
 hostname = 'localhost'
+
+
+def find_running_process(process, port):
+    """
+    find an actual running process with our pid
+    return None if no process found
+
+    Paramaters
+    ---------
+    process : a psutil process
+    port : a port for discovery
+
+    """
+
+    # only q processes with at least a single connection
+    # leave everything else alone
+    for proc in psutil.process_iter():
+        try:
+            name = proc.name()
+        except psutil.AccessDenied:
+            pass
+        else:
+            if name == 'q' or name == 'q.exe':
+                try:
+                    conns = proc.connections()
+                except psutil.AccessDenied:
+                    pass
+                else:
+                    for conn in conns:  # probably a single element list
+                        _, p = conn.laddr
+                        if p == port:
+                            return proc
+
+def kill_process(process):
+    """
+    kill a process and its children
+
+    Parameters
+    ----------
+    process : a psutil process
+    """
+
+    def killp(proc):
+        try:
+            proc.terminate()
+        except psutil.NoSuchProcess:
+            pass
+
+    # need to make sure that we kill any process children as well
+    try:
+        for proc in process.children():
+            killp(proc)
+    except psutil.NoSuchProcess:
+        pass
+
+    killp(process)

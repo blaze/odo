@@ -22,7 +22,8 @@ from toolz.compatibility import range
 
 import blaze as bz
 import kdbpy
-from kdbpy.util import normpath, hostname, PrettyMixin, CredsMixin
+from kdbpy.util import (normpath, hostname, PrettyMixin, CredsMixin,
+                        find_running_process, kill_process)
 
 class PortInUse(ValueError): pass
 class PortIsFixed(ValueError): pass
@@ -30,6 +31,10 @@ class PortIsFixed(ValueError): pass
 
 # chosen randomly from IANA unassigned port numbers
 DEFAULT_PORT_RANGE = (47823,47923)
+
+def generate_ports():
+    ports = range(*DEFAULT_PORT_RANGE)
+    return iter(random.sample(ports, len(ports)))
 
 class Credentials(PrettyMixin):
     """Lightweight credentials container.
@@ -58,13 +63,8 @@ class Credentials(PrettyMixin):
 
         # create assignable ports
         if not self.is_fixed_port:
-            self.ports = self.get_ports()
+            self.ports = generate_ports()
             self.port = next(self.get_port())
-
-    def get_ports(self):
-        ports = list(range(*DEFAULT_PORT_RANGE))
-        random.shuffle(ports)
-        return iter(ports)
 
     def get_port(self):
         """
@@ -81,7 +81,7 @@ class Credentials(PrettyMixin):
         """ copy-constructor, duplicate the iterator """
         new_self = type(self)()
         new_self.__dict__.update(self.__dict__)
-        if hasattr(new_self,'ports'):
+        if hasattr(new_self, 'ports'):
             new_self.ports = iter(list(self.ports))
         return new_self
 
@@ -187,12 +187,11 @@ class KQ(PrettyMixin, CredsMixin):
 
         """
 
-        while(True):
+        while True:
 
             try:
 
                 self.q.start(start=start)
-                break
 
             except PortInUse:
 
@@ -201,11 +200,13 @@ class KQ(PrettyMixin, CredsMixin):
 
                 # in use, so get a new port
                 next(self.credentials.get_port())
-                continue
 
             except StopIteration:
                 # no port left
                 raise ValueError("exhausted all designated ports")
+
+            else:
+                break
 
         self.kdb.start()
         return self
@@ -423,34 +424,6 @@ class Q(PrettyMixin, CredsMixin):
                 raise OSError("Unsupported operating system: %r" % arch_name)
         return path
 
-    def find_running_process(self):
-        """
-        find an actual running process with our pid
-        return None if no process found
-
-        """
-        if self.process is not None:
-            return self.process
-
-        # only q processes with at least a single connection
-        # leave everything else alone
-        for proc in psutil.process_iter():
-            try:
-                name = proc.name()
-            except psutil.AccessDenied:
-                pass
-            else:
-                if name == 'q' or name == 'q.exe':
-                    try:
-                        conns = proc.connections()
-                    except psutil.AccessDenied:
-                        pass
-                    else:
-                        for conn in conns:  # probably a single element list
-                            _, port = conn.laddr
-                            if port == self.port:
-                                return proc
-
     @property
     def is_started(self):
         """
@@ -493,7 +466,7 @@ class Q(PrettyMixin, CredsMixin):
 
         # if we find a running process that matches our port
         # then raise. We cannot connect to an existing process
-        proc = self.process or self.find_running_process()
+        proc = self.process or find_running_process(self.process, self.port)
         if proc is not None:
             raise PortInUse("cannot create a Q process for attaching " \
                             "to the port {port}".format(port=self.port))
@@ -503,7 +476,6 @@ class Q(PrettyMixin, CredsMixin):
         # that can potentially block though
         with open(os.devnull, 'w') as wnull, open(os.devnull, 'r') as rnull:
 
-            #print("\nstarting -> {port}".format(port=self.port))
             self.processes[self.credentials] = psutil.Popen([self.path, '-p',
                                                              str(self.port)],
                                                             stdin=rnull, stdout=wnull,
@@ -517,25 +489,9 @@ class Q(PrettyMixin, CredsMixin):
     def stop(self):
         """ terminate the q_process, returning boolean if it existed previously
         """
-        process = self.process or self.find_running_process()
+        process = self.process or find_running_process(self.process, self.port)
         if process is not None:
-
-            #print("stopping -> {port}".format(port=self.port))
-            def killp(proc):
-                try:
-                    proc.terminate()
-                    #print("terminating -> {pid}".format(pid=proc.pid))
-                except psutil.NoSuchProcess:
-                    pass
-
-            # need to make sure that we kill any process children as well
-            try:
-                for proc in process.children():
-                    killp(proc)
-            except psutil.NoSuchProcess:
-                pass
-
-            killp(process)
+            kill_process(process)
 
             # if we are actually killing a running processes
             # then this might not be in our processes map

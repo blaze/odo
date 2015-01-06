@@ -18,7 +18,7 @@ from blaze import CSV, Data, discover, Expr
 from qpython.qwriter import QWriterException
 
 from kdbpy import kdb as k
-from kdbpy.kdb import which, Credentials, PortInUse, PortIsFixed
+from kdbpy.kdb import which, Credentials, PortInUse, PortIsFixed, generate_ports
 from kdbpy.exampleutils import example_data
 
 try:
@@ -39,7 +39,7 @@ def qproc2(creds2):
     q.stop()
 
 
-def check_processes(starting):
+def check_process_table_ok(starting):
     """
     check that we only have the fixtures in the processes table
     and didn't create / destroy any
@@ -62,7 +62,7 @@ def test_basic():
     kq.stop()
     assert not kq.is_started
 
-    check_processes(starting)
+    check_process_table_ok(starting)
 
     kq.start(start='restart')
     assert kq.is_started
@@ -71,7 +71,7 @@ def test_basic():
     assert kq.is_started
     kq.stop()
 
-    check_processes(starting)
+    check_process_table_ok(starting)
 
 def test_basic_inuse():
 
@@ -90,7 +90,7 @@ def test_basic_inuse():
     kq.stop()
     kq2.stop()
 
-    check_processes(starting)
+    check_process_table_ok(starting)
 
 def test_basic_inuse2():
 
@@ -102,7 +102,7 @@ def test_basic_inuse2():
     creds2 = copy.copy(creds)
     creds3 = copy.copy(creds)
 
-    ports = list(creds.get_ports())
+    ports = list(generate_ports())
     creds.ports = iter(ports)
     creds.port = ports[0]
     creds2.ports = iter(ports)
@@ -122,7 +122,7 @@ def test_basic_inuse2():
     kq.stop()
     kq2.stop()
     kq3.stop()
-    check_processes(starting)
+    check_process_table_ok(starting)
 
 def test_basic_fixed():
 
@@ -137,7 +137,7 @@ def test_basic_fixed():
         k.KQ(creds2).start(start=False)
 
     kq.stop()
-    check_processes(starting)
+    check_process_table_ok(starting)
 
 def test_context():
     # test the context manager
@@ -153,7 +153,7 @@ def test_context():
     with k.KQ(Credentials(port=47500),start=True) as kq:
         assert kq.is_started
 
-    check_processes(starting)
+    check_process_table_ok(starting)
 
 def test_kq_repr():
     with k.KQ() as kq:
@@ -191,7 +191,7 @@ def test_q_process():
 
     q.stop()
 
-    check_processes(starting)
+    check_process_table_ok(starting)
 
 @pytest.mark.xfail(raises=PortInUse,
                    reason='fails with fixed port at times')
@@ -210,7 +210,7 @@ def test_fixed_port_restart():
     q.stop()
     q3.stop()
 
-    check_processes(starting)
+    check_process_table_ok(starting)
 
 def test_q_process_detached(qproc):
     # check our q process attributes

@@ -28,8 +28,8 @@ def creds2():
 
 @pytest.yield_fixture(scope='module')
 def kq(creds):
-    with k.KQ(creds,start=True) as kq:
-        yield kq
+    with k.KQ(creds,start=True) as r:
+        yield r
 
 @pytest.fixture(scope='module')
 def kdb(kq):
