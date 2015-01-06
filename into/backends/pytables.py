@@ -1,25 +1,24 @@
 from __future__ import absolute_import, division, print_function
 
+import os
+import tables
+import numpy as np
+import shutil
+from toolz import first
+from collections import Iterator
+
+import datashape
 from datashape import discover
 from datashape.dispatch import dispatch
 from ..append import append
 from ..convert import convert, ooc_types
-from ..resource import resource
+from ..drop import drop
+from ..create import create
+from ..cleanup import cleanup
+from ..resource import resource, resource_matches
 from ..chunks import chunks, Chunks
 from ..utils import tmpfile
-
-import os
-
-import numpy as np
-import tables
-
-from toolz import first
-
-import datashape
-
-import shutil
-
-__all__ = ['PyTables']
+from .hdf import HDFFile, HDFTable, full_node_path
 
 
 @discover.register((tables.Array, tables.Table))
@@ -37,15 +36,61 @@ def discover_tables_node(f):
     return discover(f.getNode('/'))
 
 
-@append.register((tables.Array, tables.Table), np.ndarray)
-def numpy_to_pytables(t, x, **kwargs):
-    t.append(x)
-    return x
+@resource.register('^(pytables://)?.+\.(h5|hdf5)', priority=11.0)
+def resource_pytables(path, *args, **kwargs):
+    path = resource_matches(path, 'pytables')
+    return PyTables(path, *args, **kwargs)
+
+
+@drop.register((tables.Table, tables.Array))
+def drop_table(t):
+    t.remove()
+
+
+@dispatch(tables.File)
+def pathname(f):
+    return f.filename
+
+
+@dispatch(tables.File)
+def dialect(f):
+    return 'PyTables'
+
+
+@dispatch(tables.File)
+def get_table(f, datapath, **kwargs):
+
+    assert datapath is not None
+    return f.get_node(full_node_path(datapath))
+
+
+@create.register(tables.File, object)
+def create_file(f, pathname):
+    f.close()
+    return tables.open_file(pathname, mode='a')
+
+
+@cleanup.register(tables.File)
+def cleanup_file(f):
+    f.close()
+
+
+@cleanup.register((tables.Table, tables.Group))
+def cleanup_group(f):
+    f._v_file.close()
 
 
 @append.register((tables.Array, tables.Table), object)
-def append_h5py(dset, x, **kwargs):
-    return append(dset, convert(chunks(np.ndarray), x, **kwargs), **kwargs)
+def numpy_to_pytables(t, x, **kwargs):
+    converted = convert(chunks(np.ndarray), x, **kwargs)
+    return append_chunks_to_pytables(t, converted, **kwargs)
+
+
+@append.register((tables.Array, tables.Table), chunks(np.ndarray))
+def append_chunks_to_pytables(t, data, **kwargs):
+    for chunk in data:
+        t.append(chunk)
+    return t
 
 
 @convert.register(np.ndarray, tables.Table, cost=3.0)
@@ -54,11 +99,19 @@ def pytables_to_numpy(t, **kwargs):
 
 
 @convert.register(chunks(np.ndarray), tables.Table, cost=3.0)
-def pytables_to_numpy_chunks(t, chunksize=2**20, **kwargs):
-    def load():
-        for i in range(0, t.shape[0], chunksize):
-            yield t[i: i + chunksize]
-    return chunks(np.ndarray)(load)
+def pytables_to_numpy_chunks(t, chunksize=2 ** 20, **kwargs):
+    return chunks(np.ndarray)(pytables_to_numpy_iterator(t, chunksize=chunksize, **kwargs))
+
+
+@convert.register(Iterator, tables.Table, cost=5.0)
+def pytables_to_numpy_iterator(t, chunksize=1e7, **kwargs):
+    """ return the embedded iterator """
+
+    # make sure the iterator stays open for this
+    # entire operation
+    chunksize = int(chunksize)
+    for i in range(0, t.shape[0], chunksize):
+        yield t[i: i + chunksize]
 
 
 def dtype_to_pytables(dtype):
@@ -86,7 +139,7 @@ def dtype_to_pytables(dtype):
     return d
 
 
-def PyTables(path, datapath, dshape=None, **kwargs):
+def PyTables(path, datapath=None, dshape=None, **kwargs):
     """Create or open a ``tables.Table`` object.
 
     Parameters
@@ -100,7 +153,7 @@ def PyTables(path, datapath, dshape=None, **kwargs):
 
     Returns
     -------
-    t : tables.Table
+    t : HDFFile or HDFTable if datapath is provided
 
     Examples
     --------
@@ -116,50 +169,59 @@ def PyTables(path, datapath, dshape=None, **kwargs):
     array([(100.3, b'mars'), (100.42, b'jupyter')],
           dtype=[('volume', '<f8'), ('planet', 'S10')])
     """
-    def possibly_create_table(filename, dtype):
-        f = tables.open_file(filename, mode='a')
+    def create_table_or_file(f, datapath=datapath, dshape=dshape):
+
+        if dshape:
+
+            # dshape is ony required if the path does not exists
+            if not dshape:
+                f.close()
+                raise ValueError(
+                    "cannot create a PyTables without a datashape")
+
+            if isinstance(dshape, str):
+                dshape = datashape.dshape(dshape)
+            if dshape[0] == datashape.var:
+                dshape = dshape.subshape[0]
+
+            # if we have a non-convertible dshape
+            # then report as a ValueError
+            try:
+                dshape = dtype_to_pytables(datashape.to_numpy_dtype(dshape))
+            except NotImplementedError as e:
+                f.close()
+                raise ValueError(e)
+
+        # no datapath, then return the store
+        if datapath is None:
+            return HDFFile(f)
+
+        # create the table if needed
         try:
-            if datapath not in f:
-                if dtype is None:
-                    raise ValueError('dshape cannot be None and datapath not'
-                                     ' in file')
-                else:
-                    f.create_table('/', datapath.lstrip('/'), description=dtype)
-        finally:
-            f.close()
+            node = f.get_node(datapath)
+        except tables.NoSuchNodeError:
 
-    if dshape:
-        if isinstance(dshape, str):
-            dshape = datashape.dshape(dshape)
-        if dshape[0] == datashape.var:
-            dshape = dshape.subshape[0]
-        dtype = dtype_to_pytables(datashape.to_numpy_dtype(dshape))
-    else:
-        dtype = None
+            try:
+                # create a new node
+                f.create_table(
+                    '/', datapath.lstrip('/'), description=dshape, createparents=True)
+            except:
+                f.close()
+                raise
 
-    if os.path.exists(path):
-        possibly_create_table(path, dtype)
-    else:
-        with tmpfile('.h5') as filename:
-            possibly_create_table(filename, dtype)
-            shutil.copyfile(filename, path)
-    return tables.open_file(path, mode='a').get_node(datapath)
+        return HDFTable(HDFFile(f), datapath)
 
+    if not os.path.exists(path):
+        f = tables.open_file(path, mode='a')
+        return create_table_or_file(f, datapath, dshape)
 
-@resource.register('.+\.h5')
-def resource_pytables(path, datapath, **kwargs):
-    return PyTables(path, datapath, **kwargs)
+    f = tables.open_file(path, mode='a')
 
+    # validate that we have a PyTables file
+    if not f._isPTFile:
+        f.close()
+        raise NotImplementedError("not a pytables type")
 
-@dispatch((tables.Table, tables.Array))
-def drop(t):
-    t.remove()
-
-
-@dispatch(tables.File)
-def drop(f):
-    f.close()
-    os.remove(f.filename)
-
+    return create_table_or_file(f, datapath, dshape)
 
 ooc_types |= set((tables.Table, tables.Array))

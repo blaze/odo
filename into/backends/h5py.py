@@ -2,19 +2,24 @@ from __future__ import absolute_import, division, print_function
 
 import datashape
 from datashape import (DataShape, Record, Mono, dshape, to_numpy,
-        to_numpy_dtype, discover)
+                       to_numpy_dtype, discover)
 from datashape.predicates import isrecord, iscollection
 from datashape.dispatch import dispatch
 import h5py
 import numpy as np
 from toolz import assoc, keyfilter
+from collections import Iterator
+import os
 
 from ..append import append
 from ..convert import convert, ooc_types
 from ..create import create
-from ..resource import resource
+from ..drop import drop
+from ..cleanup import cleanup
+from ..resource import resource, resource_matches
 from ..chunks import chunks, Chunks
 from ..compatibility import unicode
+from into.backends.hdf import HDFFile, HDFTable
 
 h5py_attributes = ['chunks', 'compression', 'compression_opts', 'dtype',
                    'fillvalue', 'fletcher32', 'maxshape', 'shape']
@@ -53,10 +58,19 @@ def dataset_from_dshape(file, datapath, ds, **kwargs):
         kwargs['maxshape'] = kwargs.get('maxshape', (None,) + shape[1:])
 
     kwargs2 = keyfilter(h5py_attributes.__contains__, kwargs)
-    return file.require_dataset(datapath, shape=shape, dtype=dtype, **kwargs2)
+    try:
+        return file.require_dataset(datapath, shape=shape, dtype=dtype, **kwargs2)
+    except TypeError as e:
+        # we have a shape mismatch
+        # all dims must match except ndim=0 (the appending dim)
+        existing_shape = file[datapath].shape
+        if not (shape[1:] == existing_shape[1:]):
+            raise
 
 
 def create_from_datashape(group, ds, name=None, **kwargs):
+
+    ds = dshape(ds)
     assert isrecord(ds)
     if isinstance(ds, DataShape) and len(ds) == 1:
         ds = ds[0]
@@ -70,15 +84,81 @@ def create_from_datashape(group, ds, name=None, **kwargs):
                                 ds=sub_ds, **kwargs)
 
 
-@create.register(h5py.File)
-def create_h5py_file(cls, path=None, dshape=None, **kwargs):
-    f = h5py.File(path)
-    create_from_datashape(f, dshape, **kwargs)
+@create.register(h5py.File, object)
+def create(f, pathname, dshape=None, **kwargs):
+    try:
+        f.close()
+    except:
+        pass
+
+    f = h5py.File(pathname)
+    if dshape is not None:
+        create_from_datashape(f, dshape, **kwargs)
     return f
+
+
+@resource.register('^(h5py://)?.+\.(h5|hdf5)', priority=10.0)
+def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
+
+    uri = resource_matches(uri, 'h5py')
+
+    olddatapath = datapath
+
+    if dshape is not None:
+        ds = datashape.dshape(dshape)
+        if datapath is not None:
+            while ds and datapath:
+                datapath, name = datapath.rsplit('/', 1)
+                ds = Record([[name, ds]])
+            ds = datashape.dshape(ds)
+        f = create(h5py.File, pathname=uri, dshape=ds, **kwargs)
+    else:
+        f = h5py.File(uri)
+        ds = discover(f)
+
+    if olddatapath is not None:
+        return HDFTable(HDFFile(f), olddatapath)
+
+    return HDFFile(f)
+
+
+@drop.register((h5py.Group, h5py.Dataset))
+def drop_group(h):
+    del h.file[h.name]
+
+
+@dispatch(h5py.File)
+def pathname(f):
+    return f.filename
+
+
+@dispatch(h5py.File)
+def dialect(f):
+    return 'h5py'
+
+
+@dispatch(h5py.File)
+def get_table(f, datapath, **kwargs):
+    assert datapath is not None
+    return f[datapath]
+
+
+@cleanup.register(h5py.File)
+def cleanup_file(f):
+    try:
+        f.close()
+    except:
+        pass
+
+
+@cleanup.register(h5py.Dataset)
+def cleanup_dataset(dset):
+    dset.file.close()
 
 
 @append.register(h5py.Dataset, np.ndarray)
 def append_h5py(dset, x, **kwargs):
+
     if not sum(x.shape):
         return dset
     shape = list(dset.shape)
@@ -89,60 +169,41 @@ def append_h5py(dset, x, **kwargs):
 
 
 @append.register(h5py.Dataset, chunks(np.ndarray))
-def append_h5py(dset, c, **kwargs):
+def append_h5py_dset_chunks(dset, c, **kwargs):
+
     for chunk in c:
-        append(dset, chunk)
+        append_h5py(dset, chunk)
     return dset
 
 
 @append.register(h5py.Dataset, object)
-def append_h5py(dset, x, **kwargs):
-    return append(dset, convert(chunks(np.ndarray), x, **kwargs), **kwargs)
+def append_h5py_dset(dset, x, **kwargs):
+
+    converted = convert(chunks(np.ndarray), x, **kwargs)
+    return append_h5py_dset_chunks(dset, converted, **kwargs)
 
 
 @convert.register(np.ndarray, h5py.Dataset, cost=3.0)
 def h5py_to_numpy(dset, force=False, **kwargs):
     if dset.size > 1e9:
         raise MemoryError("File size is large: %0.2f GB.\n"
-        "Convert with flag force=True to force loading" % d.size / 1e9)
+                          "Convert with flag force=True to force loading" %
+                          dset.size / 1e9)
     else:
         return dset[:]
 
 
 @convert.register(chunks(np.ndarray), h5py.Dataset, cost=3.0)
-def h5py_to_numpy_chunks(dset, chunksize=2**20, **kwargs):
-    def load():
-        for i in range(0, dset.shape[0], chunksize):
-            yield dset[i: i + chunksize]
-    return chunks(np.ndarray)(load)
+def h5py_to_numpy_chunks(t, chunksize=2 ** 20, **kwargs):
+    return chunks(np.ndarray)(h5py_to_numpy_iterator(t, chunksize=chunksize, **kwargs))
 
 
-@resource.register('.+\.hdf5')
-def resource_hdf5(uri, datapath=None, dshape=None, **kwargs):
-    f = h5py.File(uri)
-    olddatapath = datapath
-    if dshape is not None:
-        ds = datashape.dshape(dshape)
-        if datapath:
-            while ds and datapath:
-                datapath, name = datapath.rsplit('/', 1)
-                ds = Record([[name, ds]])
-            ds = datashape.dshape(ds)
-        f = create(h5py.File, path=uri, dshape=ds, **kwargs)
-    if olddatapath:
-        return f[olddatapath]
-    else:
-        return f
+@convert.register(Iterator, h5py.Dataset, cost=5.0)
+def h5py_to_numpy_iterator(t, chunksize=1e7, **kwargs):
+    """ return the embedded iterator """
 
-
-@dispatch((h5py.Group, h5py.Dataset))
-def drop(h):
-    del h.file[h.name]
-
-
-@dispatch(h5py.File)
-def drop(h):
-    os.remove(h.filename)
-
+    chunksize = int(chunksize)
+    for i in range(0, t.shape[0], chunksize):
+        yield t[i: i + chunksize]
 
 ooc_types.add(h5py.Dataset)

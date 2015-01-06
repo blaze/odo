@@ -245,7 +245,6 @@ def convert_glob_of_csvs_to_chunks_of_dataframes(csvs, **kwargs):
 def drop(c):
     os.unlink(c.path)
 
-
 """
 @append.register(CSV, Iterator)
 def append_iterator_to_csv(c, seq, dshape=None, **kwargs):

@@ -5,6 +5,7 @@ from multipledispatch import Dispatcher
 from .convert import convert
 from .append import append
 from .resource import resource
+from .cleanup import cleanup
 from datashape import discover, var
 from datashape.dispatch import namespace
 from datashape.predicates import isdimension
@@ -65,20 +66,25 @@ def into_string(uri, b, **kwargs):
     try:
         if 'dshape' not in kwargs:
             ds = discover(b)
-            if isdimension(ds[0]):
-                ds = var * ds.subshape[0]
+
+            # protect against an odd datashape interrogation
+            try:
+                if isdimension(ds[0]):
+                    ds = var * ds.subshape[0]
+            except KeyError:
+                pass
             kwargs['dshape'] = ds
     except NotImplementedError:
         pass
+
     a = resource(uri, **kwargs)
     return into(a, b, **kwargs)
 
-
 @into.register((type, str), str)
 def into_string_string(a, b, **kwargs):
+
     r = resource(b, **kwargs)
     return into(a, r, **kwargs)
-
 
 @into.register(object)
 def into_curried(o, **kwargs1):

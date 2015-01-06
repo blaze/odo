@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import pytest
+pytest.importorskip('sqlalchemy')
 
 from datashape import dshape
 from into.backends.csv import CSV

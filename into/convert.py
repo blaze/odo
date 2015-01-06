@@ -78,6 +78,21 @@ def numpy_to_list(x, **kwargs):
 def numpy_chunks_to_numpy(c, **kwargs):
     return np.concatenate(list(c))
 
+@convert.register(chunks(np.ndarray), np.ndarray, cost=1.0)
+def numpy_to_chunks_of_numpy(c, **kwargs):
+    # this is a trivial conversion, but we need
+    # in order to have a low-cost conversion
+    return chunks(np.ndarray)([c])
+
+@convert.register(pd.DataFrame, chunks(pd.DataFrame), cost=1.0)
+def pandas_chunks_to_pandas(c, **kwargs):
+    return pd.concat(list(c))
+
+@convert.register(chunks(pd.DataFrame), pd.DataFrame, cost=1.0)
+def pandas_to_chunks_of_pandas(c, **kwargs):
+    # this is a trivial conversion, but we need
+    # in order to have a low-cost conversion
+    return chunks(pd.DataFrame)([c])
 
 def ishashable(x):
     try:

@@ -58,7 +58,19 @@ class RegexDispatcher(object):
 
     def dispatch(self, s):
         funcs = [func for r, func in self.funcs.items() if re.match(r, s)]
-        return max(funcs, key=self.priorities.get)
+        return self.dispatch_iter(funcs)
+
+    def dispatch_iter(self, funcs):
+        # return a list of the functions reverse sorted by priority
+        # that match the pattern
+        return sorted(funcs, key=self.priorities.get, reverse=True)
 
     def __call__(self, s, *args, **kwargs):
-        return self.dispatch(s)(s, *args, **kwargs)
+        for f in self.dispatch(s):
+            try:
+                return f(s, *args, **kwargs)
+            except NotImplementedError:
+                continue
+
+        # can't find anything
+        raise NotImplementedError("unable to match any regexes for dispatching")

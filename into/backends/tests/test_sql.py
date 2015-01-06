@@ -1,5 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
+import pytest
+pytest.importorskip('sqlalchemy')
+
 import sqlalchemy as sa
 from datashape import discover, dshape
 import datashape
@@ -170,7 +173,7 @@ def test_into_table_iterator():
 
 
 def test_resource_on_dialects():
-    assert (resource.dispatch('mysql://foo') is
+    assert (resource.dispatch('mysql://foo') ==
             resource.dispatch('mysql+pymysql://foo'))
-    assert (resource.dispatch('never-before-seen-sql://foo') is
+    assert (resource.dispatch('never-before-seen-sql://foo') ==
             resource.dispatch('mysql://foo'))

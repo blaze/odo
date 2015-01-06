@@ -9,24 +9,29 @@ from .append import append
 from .resource import resource
 from .into import into
 from .drop import drop
+from .cleanup import cleanup
 from .chunks import chunks, Chunks
 from datashape import discover, dshape
 from collections import Iterator
 
-try:
-     from .backends.pandas import pd
-except:
-    pass
-try:
-     from .backends.bcolz import bcolz
-except:
-    pass
 try:
      from .backends.h5py import h5py
 except:
     pass
 try:
      from .backends.pytables import tables
+except:
+    pass
+try:
+     from .backends.hdfstore import tables
+except:
+    pass
+try:
+     from .backends.pandas import pd
+except:
+    pass
+try:
+     from .backends.bcolz import bcolz
 except:
     pass
 try:

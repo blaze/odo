@@ -1,5 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
+import pytest
+pytest.importorskip('pymongo')
+
 import pymongo
 from contextlib import contextmanager
 import datashape
@@ -10,7 +13,11 @@ from copy import deepcopy
 from bson.objectid import ObjectId
 
 
-conn = pymongo.MongoClient()
+try:
+    conn = pymongo.MongoClient()
+except pymongo.errors.ConnectionFailure:
+    pytest.skip("unable to connect to mongo")
+
 db = conn._test_db
 
 
@@ -25,22 +32,16 @@ def coll(data):
     finally:
         c.drop()
 
-bank = ({'name': 'Alice', 'amount': 100},
-        {'name': 'Alice', 'amount': 200},
-        {'name': 'Bob', 'amount': 100},
-        {'name': 'Bob', 'amount': 200},
-        {'name': 'Bob', 'amount': 300})
+@pytest.fixture(scope='module')
+def ds():
+    return dshape('var * {name: string, amount: int}')
 
-
-ds = dshape('var * {name: string, amount: int}')
-
-
-def test_discover():
+def test_discover(bank):
     with coll(bank) as c:
         assert discover(bank) == discover(c)
 
 
-def test_append_convert():
+def test_append_convert(bank, ds):
     with coll([]) as c:
         append(c, bank, dshape=ds)
 
