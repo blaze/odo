@@ -23,6 +23,14 @@ def eq(a, b):
     return c
 
 
+def test_Series_to_ndarray():
+    assert eq(convert(np.ndarray, pd.Series([1, 2, 3]), dshape='3 * float64'),
+              np.array([1.0, 2.0, 3.0]))
+    assert eq(convert(np.ndarray, pd.Series(['aa', 'bbb', 'ccccc']),
+                      dshape='3 * string[5, "A"]'),
+              np.array(['aa', 'bbb', 'ccccc'], dtype='S5'))
+
+
 def test_set_to_Series():
     assert eq(convert(pd.Series, set([1, 2, 3])),
               pd.Series([1, 2, 3]))

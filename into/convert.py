@@ -56,8 +56,11 @@ convert.register(np.ndarray, np.recarray, cost=0.0)(identity)
 
 
 @convert.register(np.ndarray, pd.Series, cost=0.1)
-def series_to_array(s, **kwargs):
-    return np.array(s)
+def series_to_array(s, dshape=None, **kwargs):
+    dtype = datashape.to_numpy_dtype(datashape.dshape(dshape))
+    if s.dtype == dtype:
+        return s.values
+    return s.values.astype(dtype)
 
 
 @convert.register(list, np.ndarray, cost=10.0)

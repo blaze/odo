@@ -5,6 +5,7 @@ import datashape
 
 import pandas as pd
 
+
 @discover.register(pd.DataFrame)
 def discover_dataframe(df):
     obj = datashape.coretypes.object_
