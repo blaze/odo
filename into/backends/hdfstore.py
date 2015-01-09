@@ -34,7 +34,7 @@ from collections import namedtuple
 
 EmptyHDFStoreDataset = namedtuple('EmptyHDFStoreDataset', 'parent,pathname,dshape')
 
-@resource.register('hdfstore://.+\.hdf5', priority=11)
+@resource.register('hdfstore://.+', priority=11)
 def resource_hdfstore(uri, datapath=None, dshape=None, **kwargs):
     # TODO:
     # 1. Support nested datashapes (e.g. groups)
