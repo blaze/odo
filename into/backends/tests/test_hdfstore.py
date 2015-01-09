@@ -110,3 +110,10 @@ def test_fixed_shape():
         r = resource('hdfstore://'+fn+'::/foo')
         assert isinstance(r.shape, list)
         assert discover(r).shape == (len(df),)
+
+
+def test_fixed_convert():
+    with tmpfile('.hdf5') as fn:
+        df.to_hdf(fn, 'foo')
+        r = resource('hdfstore://'+fn+'::/foo')
+        assert eq(convert(pd.DataFrame, r), df)

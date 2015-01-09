@@ -27,10 +27,15 @@ def discover_hdfstore_storer(storer):
     return n * measure
 
 
-@convert.register(chunks(pd.DataFrame), HDFDataset)
+@convert.register(chunks(pd.DataFrame), pd.io.pytables.AppendableFrameTable)
 def hdfstore_to_chunks_dataframes(data, chunksize=1000000, **kwargs):
     return chunks(pd.DataFrame)(data.parent.select(data.pathname, chunksize=chunksize))
 
+
+@convert.register(pd.DataFrame, (pd.io.pytables.AppendableFrameTable,
+                                 pd.io.pytables.FrameFixed))
+def hdfstore_to_chunks_dataframes(data, **kwargs):
+    return data.read()
 
 from collections import namedtuple
 
