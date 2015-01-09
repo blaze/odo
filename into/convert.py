@@ -102,7 +102,7 @@ def numpy_to_chunks_numpy(x, chunksize=2**20, **kwargs):
 
 @convert.register(pd.DataFrame, chunks(pd.DataFrame), cost=1.0)
 def chunks_dataframe_to_dataframe(c, **kwargs):
-    return pd.concat(list(c), axis=0)
+    return pd.concat(list(c), axis=0, ignore_index=True)
 
 
 @convert.register(chunks(pd.DataFrame), pd.DataFrame, cost=0.5)
