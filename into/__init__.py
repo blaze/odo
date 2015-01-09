@@ -12,6 +12,7 @@ from .drop import drop
 from .chunks import chunks, Chunks
 from datashape import discover, dshape
 from collections import Iterator
+import numpy as np
 
 try:
      from .backends.pandas import pd
@@ -23,6 +24,10 @@ except:
     pass
 try:
      from .backends.h5py import h5py
+except:
+    pass
+try:
+     from .backends.hdfstore import HDFStore
 except:
     pass
 try:

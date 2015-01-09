@@ -1,4 +1,6 @@
-from into.convert import convert, list_to_numpy, iterator_to_numpy_chunks
+from into.convert import (convert, list_to_numpy, iterator_to_numpy_chunks,
+        numpy_to_chunks_numpy, dataframe_to_chunks_dataframe,
+        chunks_dataframe_to_dataframe)
 from into.chunks import chunks
 from datashape import discover
 from toolz import first
@@ -160,3 +162,22 @@ def test_numpy_to_list_preserves_ns_datetimes():
     x = np.array([(0, 0)], dtype=[('a', 'M8[ns]'), ('b', 'i4')])
 
     assert convert(list, x) == [(datetime.datetime(1970, 1, 1, 0, 0), 0)]
+
+
+def test_numpy_to_chunks_numpy():
+    x = np.arange(100)
+    c = numpy_to_chunks_numpy(x, chunksize=10)
+    assert isinstance(c, chunks(np.ndarray))
+    assert len(list(c)) == 10
+    assert eq(list(c)[0], x[:10])
+
+
+def test_pandas_and_chunks_pandas():
+    df = pd.DataFrame({'a': [1, 2, 3, 4], 'b': [1., 2., 3., 4.]})
+
+    c = dataframe_to_chunks_dataframe(df, chunksize=2)
+    assert isinstance(c, chunks(pd.DataFrame))
+    assert len(list(c)) == 2
+
+    df2 = chunks_dataframe_to_dataframe(c)
+    assert str(df2) == str(df)

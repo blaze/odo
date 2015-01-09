@@ -94,6 +94,22 @@ def numpy_chunks_to_numpy(c, **kwargs):
     return np.concatenate(list(c))
 
 
+@convert.register(chunks(np.ndarray), np.ndarray, cost=0.5)
+def numpy_to_chunks_numpy(x, chunksize=2**20, **kwargs):
+    return chunks(np.ndarray)(
+            lambda: (x[i:i+chunksize] for i in range(0, x.shape[0], chunksize)))
+
+
+@convert.register(pd.DataFrame, chunks(pd.DataFrame), cost=1.0)
+def chunks_dataframe_to_dataframe(c, **kwargs):
+    return pd.concat(list(c), axis=0)
+
+
+@convert.register(chunks(pd.DataFrame), pd.DataFrame, cost=0.5)
+def dataframe_to_chunks_dataframe(x, chunksize=2**20, **kwargs):
+    return chunks(pd.DataFrame)(
+            lambda: (x.iloc[i:i+chunksize] for i in range(0, x.shape[0], chunksize)))
+
 def ishashable(x):
     try:
         hash(x)
@@ -173,11 +189,11 @@ def numpy_record_to_tuple(rec, **kwargs):
     return rec.tolist()
 
 
-@convert.register(chunks(np.ndarray), chunks(pd.DataFrame), cost=1.0)
+@convert.register(chunks(np.ndarray), chunks(pd.DataFrame), cost=0.5)
 def chunked_pandas_to_chunked_numpy(c, **kwargs):
     return chunks(np.ndarray)(lambda: (convert(np.ndarray, chunk, **kwargs) for chunk in c))
 
-@convert.register(chunks(pd.DataFrame), chunks(np.ndarray), cost=1.0)
+@convert.register(chunks(pd.DataFrame), chunks(np.ndarray), cost=0.5)
 def chunked_numpy_to_chunked_pandas(c, **kwargs):
     return chunks(pd.DataFrame)(lambda: (convert(pd.DataFrame, chunk, **kwargs) for chunk in c))
 

@@ -1,10 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
-from into.backends.h5py import append, create, resource, discover, convert
+from into.backends.h5py import (append, create, resource, discover, convert,
+        resource_h5py)
 from contextlib import contextmanager
 from into.utils import tmpfile
 from into.chunks import chunks
-from into import into, append, convert, resource, discover
+from into import into, append, convert, discover
 import datashape
 import h5py
 import numpy as np

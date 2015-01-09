@@ -146,7 +146,7 @@ def PyTables(path, datapath, dshape=None, **kwargs):
     return tables.open_file(path, mode='a').get_node(datapath)
 
 
-@resource.register('.+\.h5')
+@resource.register('pytables://.+', priority=11)
 def resource_pytables(path, datapath, **kwargs):
     return PyTables(path, datapath, **kwargs)
 
