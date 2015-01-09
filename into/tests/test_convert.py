@@ -31,6 +31,20 @@ def test_Series_to_ndarray():
               np.array(['aa', 'bbb', 'ccccc'], dtype='S5'))
 
 
+def test_Series_to_object_ndarray():
+    ds = datashape.dshape('{amount: float64, name: string, id: int64}')
+    expected = np.array([1.0, 'Alice', 3], dtype='object')
+    result = convert(np.ndarray, pd.Series(expected), dshape=ds)
+    np.testing.assert_array_equal(result, expected)
+
+
+def test_Series_to_datetime64_ndarray():
+    s = pd.Series(pd.date_range(start='now', freq='N', periods=10).values)
+    expected = s.values
+    result = convert(np.ndarray, s.values)
+    np.testing.assert_array_equal(result, expected)
+
+
 def test_set_to_Series():
     assert eq(convert(pd.Series, set([1, 2, 3])),
               pd.Series([1, 2, 3]))

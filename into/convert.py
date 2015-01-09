@@ -55,12 +55,24 @@ convert.register(np.recarray, np.ndarray, cost=0.0)(identity)
 convert.register(np.ndarray, np.recarray, cost=0.0)(identity)
 
 
+higher_precision_freqs = frozenset(('ns', 'ps', 'fs', 'as'))
+
+
 @convert.register(np.ndarray, pd.Series, cost=0.1)
 def series_to_array(s, dshape=None, **kwargs):
     dtype = datashape.to_numpy_dtype(datashape.dshape(dshape))
-    if s.dtype == dtype:
-        return s.values
-    return s.values.astype(dtype)
+    sdtype = s.dtype
+    values = s.values
+
+    # don't lose precision of datetime64 more precise than microseconds
+    if ((issubclass(sdtype.type, np.datetime64) and
+            np.datetime_data(sdtype)[0] in higher_precision_freqs)
+            or s.dtype == dtype):
+        return values
+    try:
+        return values.astype(dtype)
+    except ValueError:  # object series and record dshape, e.g., a frame row
+        return values
 
 
 @convert.register(list, np.ndarray, cost=10.0)
