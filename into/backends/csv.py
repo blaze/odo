@@ -151,7 +151,7 @@ def _csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
         except StopIteration:
             found_names = pd.read_csv(c.path, encoding=encoding,
                                       compression=compression)
-
+    if names and header == 'infer':
         if [n.strip() for n in found_names] == [n.strip() for n in names]:
             header = 0
         elif (all(re.match('^\s*\D\w*\s*$', n) for n in found_names) and

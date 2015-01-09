@@ -257,3 +257,9 @@ def test_csv_missing_values():
     with filetext('name,val\nAlice,100\nNA,200', extension='csv') as fn:
         csv = CSV(fn)
         assert discover(csv).measure.dict['name'] == Option(string)
+
+
+def test_csv_separator_header():
+    with filetext('a|b|c\n1|2|3\n4|5|6', extension='csv') as fn:
+        csv = CSV(fn, delimiter='|', has_header=True)
+        assert convert(list, csv) == [(1, 2, 3), (4, 5, 6)]
