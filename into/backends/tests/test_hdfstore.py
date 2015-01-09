@@ -68,7 +68,7 @@ def test_append():
     with file(df) as (fn, f, dset):
         append(dset, df)
         append(dset, df)
-        assert discover(dset).shape[0] == len(df) * 3
+        assert discover(dset).shape == (len(df) * 3,)
 
 
 def test_into_resource():
@@ -102,3 +102,11 @@ def test_append_other():
         x = into(np.ndarray, df)
         dset = into('hdfstore://'+fn+'::/data', x)
         assert discover(dset) == discover(x)
+
+
+def test_fixed_shape():
+    with tmpfile('.hdf5') as fn:
+        df.to_hdf(fn, 'foo')
+        r = resource('hdfstore://'+fn+'::/foo')
+        assert isinstance(r.shape, list)
+        assert discover(r).shape == (len(df),)

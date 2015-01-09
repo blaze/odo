@@ -21,6 +21,8 @@ def discover_hdfstore(f):
 def discover_hdfstore_storer(storer):
     f = storer.parent
     n = storer.shape
+    if isinstance(n, list):
+        n = n[0]
     measure = discover(f.select(storer.pathname, start=0, stop=10)).measure
     return n * measure
 
