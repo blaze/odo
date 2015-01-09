@@ -12,6 +12,7 @@ from .drop import drop
 from .chunks import chunks, Chunks
 from datashape import discover, dshape
 from collections import Iterator
+import numpy as np
 
 try:
      from .backends.pandas import pd
