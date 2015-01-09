@@ -35,6 +35,18 @@ def test_discover():
         assert str(discover(f)) == str(discover({'data': df}))
 
 
+def test_discover():
+    with tmpfile('hdf5') as fn:
+        df.to_hdf(fn, '/a/b/data')
+        df.to_hdf(fn, '/a/b/data2')
+        df.to_hdf(fn, '/a/data')
+
+        hdf = pd.HDFStore(fn)
+
+        assert discover(hdf) == discover({'a': {'b': {'data': df, 'data2': df},
+                                                'data': df}})
+
+
 def eq(a, b):
     if isinstance(a, pd.DataFrame):
         a = into(np.ndarray, a)

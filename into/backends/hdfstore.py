@@ -14,7 +14,17 @@ HDFDataset = (pd.io.pytables.AppendableFrameTable, pd.io.pytables.FrameFixed)
 
 @discover.register(pd.HDFStore)
 def discover_hdfstore(f):
-    return discover(dict((k.lstrip('/'), f.get_storer(k)) for k in f.keys()))
+    d = dict()
+    for key in f.keys():
+        d2 = d
+        key2 = key.lstrip('/')
+        while '/' in key2:
+            group, key2 = key2.split('/', 1)
+            if group not in d2:
+                d2[group] = dict()
+            d2 = d2[group]
+        d2[key2] = f.get_storer(key)
+    return discover(d)
 
 
 @discover.register(pd.io.pytables.Fixed)
