@@ -123,6 +123,13 @@ def test_resource_ctable_correctly_infers_length():
         assert get_expectedlen(r) == 100
 
 
+def test_into_respects_expected_len_during_append():
+    with tmpfile('.bcolz') as fn:
+        b = into(fn, [1, 2, 3])
+        assert get_expectedlen(b) == 3
+        assert len(b) == 3
+
+
 def test_resource_nd_carray():
     with tmpfile('.bcolz') as fn:
         r = resource(fn, dshape='10 * 10 * 10 * int32')

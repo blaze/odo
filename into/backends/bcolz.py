@@ -68,7 +68,7 @@ def bcolz_to_numpy_chunks(x, chunksize=2**20, **kwargs):
 
 
 @resource.register('.*\.bcolz/?')
-def resource_bcolz(uri, dshape=None, **kwargs):
+def resource_bcolz(uri, dshape=None, expected_dshape=None, **kwargs):
     if os.path.exists(uri):
         try:
             return ctable(rootdir=uri)
@@ -91,9 +91,9 @@ def resource_bcolz(uri, dshape=None, **kwargs):
 
         kwargs = keyfilter(keywords.__contains__, kwargs)
         expectedlen = kwargs.pop('expectedlen',
-                                 int(dshape[0])
-                                 if dshape is not None and
-                                 isinstance(dshape[0], datashape.Fixed)
+                                 int(expected_dshape[0])
+                                 if expected_dshape is not None and
+                                 isinstance(expected_dshape[0], datashape.Fixed)
                                  else None)
 
         if datashape.predicates.isrecord(dshape.measure):
