@@ -70,7 +70,7 @@ def into_string(uri, b, **kwargs):
     else:
         resource_ds = ds
 
-    a = resource(uri, dshape=resource_ds, **kwargs)
+    a = resource(uri, dshape=resource_ds, expected_dshape=ds, **kwargs)
     return into(a, b, dshape=ds, **kwargs)
 
 
