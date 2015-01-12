@@ -211,7 +211,7 @@ def sql_to_iterator(t, **kwargs):
 
 
 @append.register(sa.Table, Iterator)
-def append_iterator_to_table(t, rows, **kwargs):
+def append_iterator_to_table(t, rows, dshape=None, **kwargs):
     assert not isinstance(t, type)
     rows = iter(rows)
 
@@ -223,7 +223,16 @@ def append_iterator_to_table(t, rows, **kwargs):
         return
     rows = chain([row], rows)
     if isinstance(row, (tuple, list)):
-        names = discover(t).measure.names
+        if dshape and isinstance(dshape.measure, datashape.Record):
+            names = dshape.measure.names
+            if not set(names) == set(discover(t).measure.names):
+                raise ValueError("Column names of incoming data don't match "
+                "column names of existing SQL table\n"
+                "Names in SQL table: %s\n"
+                "Names from incoming data: %s\n" %
+                (discover(t).measure.names, names))
+        else:
+            names = discover(t).measure.names
         rows = (dict(zip(names, row)) for row in rows)
 
     engine = t.bind
