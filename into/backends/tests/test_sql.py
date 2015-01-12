@@ -5,7 +5,7 @@ from datashape import discover, dshape
 import datashape
 from into.backends.sql import (dshape_to_table, create_from_datashape,
         dshape_to_alchemy)
-from into.utils import tmpfile
+from into.utils import tmpfile, raises
 from into import convert, append, create, resource, discover
 
 
@@ -172,6 +172,12 @@ def test_sql_field_names_disagree_on_order():
     r = resource('sqlite:///:memory:::tb', dshape=dshape('{x: int, y: int}'))
     append(r, [(1, 2), (10, 20)], dshape=dshape('{y: int, x: int}'))
     assert convert(set, r) == set([(2, 1), (20, 10)])
+
+
+def test_sql_field_names_disagree_on_names():
+    r = resource('sqlite:///:memory:::tb', dshape=dshape('{x: int, y: int}'))
+    assert raises(Exception, lambda:
+            append(r, [(1, 2), (10, 20)], dshape=dshape('{x: int, z: int}')))
 
 
 def test_resource_on_dialects():
