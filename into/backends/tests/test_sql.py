@@ -160,13 +160,18 @@ def test_into_table_iterator():
 
     assert convert(list, t) == data
 
-
     t2 = dshape_to_table('points2', '{x: int, y: int}', metadata=metadata)
     t2.create()
     data2 = [{'x': 1, 'y': 1}, {'x': 2, 'y': 4}, {'x': 3, 'y': 9}]
     append(t2, data2)
 
     assert convert(list, t2) == data
+
+
+def test_sql_field_names_disagree_on_order():
+    r = resource('sqlite:///:memory:::tb', dshape=dshape('{x: int, y: int}'))
+    append(r, [(1, 2), (10, 20)], dshape=dshape('{y: int, x: int}'))
+    assert convert(set, r) == set([(2, 1), (20, 10)])
 
 
 def test_resource_on_dialects():

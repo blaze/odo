@@ -211,7 +211,7 @@ def sql_to_iterator(t, **kwargs):
 
 
 @append.register(sa.Table, Iterator)
-def append_iterator_to_table(t, rows, **kwargs):
+def append_iterator_to_table(t, rows, dshape=None, **kwargs):
     assert not isinstance(t, type)
     rows = iter(rows)
 
@@ -223,7 +223,10 @@ def append_iterator_to_table(t, rows, **kwargs):
         return
     rows = chain([row], rows)
     if isinstance(row, (tuple, list)):
-        names = discover(t).measure.names
+        if dshape:
+            names = dshape.measure.names
+        else:
+            names = discover(t).measure.names
         rows = (dict(zip(names, row)) for row in rows)
 
     engine = t.bind
