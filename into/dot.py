@@ -35,12 +35,15 @@ def dot_graph(filename='conversions'):
     # Convert to pydot
     p = nx.to_pydot(dg)
 
+    p.set_overlap(False)
+    p.set_splines(True)
+
     with open(filename + '.dot', 'w') as f:
         f.write(p.to_string())
 
-    os.system('dot -Tpdf %s.dot -o %s.pdf' % (filename, filename))
+    os.system('neato -Tpdf %s.dot -o %s.pdf' % (filename, filename))
     print("Writing graph to %s.pdf" % filename)
-    os.system('dot -Tpng %s.dot -o %s.png' % (filename, filename))
+    os.system('neato -Tpng %s.dot -o %s.png' % (filename, filename))
     print("Writing graph to %s.png" % filename)
 
 if __name__ == '__main__':
