@@ -129,24 +129,24 @@ def resource_jsonlines(path, **kwargs):
 def resource_json_ambiguous(path, **kwargs):
     """ Try to guess if this file is line-delimited or not """
     if os.path.exists(path):
-        with open(path) as f:
-            one = next(f)
-            try:
-                two = next(f)
-            except StopIteration:  # only one line
-                return resource_json(path, **kwargs)
-            try:
-                json.loads(one)
-                return resource_jsonlines(path, **kwargs)
-            except:
-                return resource_json(path, **kwargs)
+        f = open(path)
+        one = next(f)
+        try:
+            two = next(f)
+        except StopIteration:  # only one line
+            f.close()
+            return resource_json(path, **kwargs)
+        try:
+            json.loads(one)
+            f.close()
+            return resource_jsonlines(path, **kwargs)
+        except:
+            f.close()
+            return resource_json(path, **kwargs)
 
     # File doesn't exist, is the dshape variable length?
     dshape = kwargs.get('dshape', None)
-    if not dshape:
-        raise ValueError("Don't know if you intend line-delimited or no."
-                "Please add protocol json:// or jsonlines:// as appropriate")
-    if dshape[0] == var:
+    if dshape and dshape[0] == var:
         return resource_jsonlines(path, dshape=dshape, **kwargs)
     else:
         return resource_json(path, dshape=dshape, **kwargs)
