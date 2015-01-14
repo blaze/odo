@@ -17,7 +17,8 @@ from blaze import compute
 
 from blaze.dispatch import dispatch
 
-from blaze.compute.core import compute
+import blaze as bz
+from blaze.compute.core import compute, swap_resources_into_scope
 from blaze.expr import Symbol, Projection, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
 from blaze.expr import Slice, Distinct, Summary, nelements
@@ -383,6 +384,13 @@ def compute_down(expr, data, **kwargs):
         return result.reset_index(drop=all(name is None
                                            for name in result.index.names))
     return result
+
+
+def compile(data):
+    expr, data = swap_resources_into_scope(data, data._resources())
+    leaf = expr._leaves()[0]
+    data_leaf = data[leaf]._qsymbol
+    return str(compute(expr, {leaf: data_leaf}))
 
 
 @dispatch(Field, KQ)
