@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+from datashape import dshape, Record
+from toolz import pluck, get
 from contextlib import contextmanager
 import inspect
 import datetime
@@ -133,4 +135,70 @@ def assert_allclose(lhs, rhs):
             if isinstance(right, datetime.datetime):
                 right = normalize_to_date(right)
             assert left == right
+
+
+
+def records_to_tuples(ds, data):
+    """ Transform records into tuples
+
+    Examples
+    --------
+    >>> seq = [{'a': 1, 'b': 10}, {'a': 2, 'b': 20}]
+    >>> list(records_to_tuples('var * {a: int, b: int}', seq))
+    [(1, 10), (2, 20)]
+
+    >>> records_to_tuples('{a: int, b: int}', seq[0])  # single elements
+    (1, 10)
+
+    >>> records_to_tuples('var * int', [1, 2, 3])  # pass through on non-records
+    [1, 2, 3]
+
+    See Also
+    --------
+
+    tuples_to_records
+    """
+    if isinstance(ds, (str, unicode)):
+        ds = dshape(ds)
+    if isinstance(ds.measure, Record) and len(ds.shape) == 1:
+        return pluck(ds.measure.names, data)
+    if isinstance(ds.measure, Record) and len(ds.shape) == 0:
+        return get(ds.measure.names, data)
+    if not isinstance(ds.measure, Record):
+        return data
+    raise NotImplementedError()
+
+
+def tuples_to_records(ds, data):
+    """ Transform tuples into records
+
+    Examples
+    --------
+    >>> seq = [(1, 10), (2, 20)]
+    >>> list(tuples_to_records('var * {a: int, b: int}', seq))
+    [{'a': 1, 'b': 10}, {'a': 2, 'b': 20}]
+
+    >>> tuples_to_records('{a: int, b: int}', seq[0])  # single elements
+    {'a': 1, 'b': 10}
+
+    >>> tuples_to_records('var * int', [1, 2, 3])  # pass through on non-records
+    [1, 2, 3]
+
+    See Also
+    --------
+
+    records_to_tuples
+    """
+    if isinstance(ds, (str, unicode)):
+        ds = dshape(ds)
+    if isinstance(ds.measure, Record) and len(ds.shape) == 1:
+        names = ds.measure.names
+        return (dict(zip(names, tup)) for tup in data)
+    if isinstance(ds.measure, Record) and len(ds.shape) == 0:
+        names = ds.measure.names
+        return dict(zip(names, data))
+    if not isinstance(ds.measure, Record):
+        return data
+    raise NotImplementedError()
+
 
