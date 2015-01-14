@@ -148,9 +148,9 @@ def resource_json_ambiguous(path, **kwargs):
     # File doesn't exist, is the dshape variable length?
     dshape = kwargs.get('dshape', None)
     if dshape and dshape[0] == var:
-        return resource_jsonlines(path, dshape=dshape, **kwargs)
+        return resource_jsonlines(path, **kwargs)
     else:
-        return resource_json(path, dshape=dshape, **kwargs)
+        return resource_json(path, **kwargs)
 
 
 ooc_types.add(JSONLines)
