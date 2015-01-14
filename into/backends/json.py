@@ -118,6 +118,7 @@ def resource_json(path, **kwargs):
     return JSON(path)
 
 
+@resource.register('.*\.jsonlines', priority=11)
 @resource.register('jsonlines://.*\.json', priority=11)
 def resource_jsonlines(path, **kwargs):
     if 'jsonlines://' in path:
