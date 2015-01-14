@@ -13,6 +13,7 @@ import blaze as bz
 from blaze import compute, into, by, discover, dshape, summary, Data
 from kdbpy.compute.qtable import qtypes
 from kdbpy.tests import assert_series_equal
+from kdbpy.compute.core import compile
 
 
 @pytest.fixture(scope='module')
@@ -418,3 +419,9 @@ def test_empty_all_types(rstring, kdb):
     expected = ', '.join(s.format(name=name, type=qtypes[t])
                          for name, t in zip(names, types))
     assert discover(d) == dshape('var * {%s}' % expected)
+
+
+def test_compile_query(q):
+    t = bz.Data(q)
+    result = t.amount + 1
+    assert compile(result) == '(+; `t.amount; 1)'
