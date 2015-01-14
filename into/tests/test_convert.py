@@ -181,3 +181,14 @@ def test_pandas_and_chunks_pandas():
 
     df2 = chunks_dataframe_to_dataframe(c)
     assert str(df2) == str(df)
+
+
+def test_recarray():
+    data = np.array([(1, 1.), (2, 2.)], dtype=[('a', 'i4'), ('b', 'f4')])
+    result = convert(np.recarray, data)
+    assert isinstance(result, np.recarray)
+    assert eq(result.a, data['a'])
+
+    result2 = convert(np.ndarray, data)
+    assert not isinstance(result2, np.recarray)
+    assert eq(result2, data)
