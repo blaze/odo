@@ -14,14 +14,6 @@ from .numpy_dtype import dshape_to_numpy
 convert = NetworkDispatcher('convert')
 
 
-def identity(x, **kwargs):
-    """
-
-    >>> identity('anything')
-    'anything'
-    """
-    return x
-
 @convert.register(np.ndarray, pd.DataFrame, cost=0.2)
 def dataframe_to_numpy(df, dshape=None, **kwargs):
     dtype = dshape_to_numpy(dshape)
@@ -51,8 +43,14 @@ def DataFrame_to_Series(x, **kwargs):
 def series_to_dataframe(x, **kwargs):
     return x.to_frame()
 
-convert.register(np.recarray, np.ndarray, cost=0.0)(identity)
-convert.register(np.ndarray, np.recarray, cost=0.0)(identity)
+
+@convert.register(np.recarray, np.ndarray, cost=0.0)
+def ndarray_to_recarray(x, **kwargs):
+    return x.view(np.recarray)
+
+@convert.register(np.ndarray, np.recarray, cost=0.0)
+def recarray_to_ndarray(x, **kwargs):
+    return x.view(np.ndarray)
 
 
 higher_precision_freqs = frozenset(('ns', 'ps', 'fs', 'as'))
