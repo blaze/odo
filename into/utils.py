@@ -8,6 +8,7 @@ import datetime
 import tempfile
 import os
 import numpy as np
+from .compatibility import unicode
 
 
 def raises(err, lamda):
