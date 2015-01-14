@@ -97,6 +97,14 @@ def test_list_to_numpy_on_tuples():
     assert convert(list, x) == [('a', 1), ('b', 2), ('c', 3)]
 
 
+def test_list_to_numpy_on_dicts():
+    data = [{'name': 'Alice', 'amount': 100},
+            {'name': 'Bob', 'amount': 200}]
+    ds = datashape.dshape('var * {name: string[5, "A"], amount: int}')
+    x = list_to_numpy(data, dshape=ds)
+    assert convert(list, x) == [('Alice', 100), ('Bob', 200)]
+
+
 def test_chunks_numpy_pandas():
     x = np.array([('Alice', 100), ('Bob', 200)],
                  dtype=[('name', 'S7'), ('amount', 'i4')])
