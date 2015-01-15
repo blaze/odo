@@ -5,7 +5,10 @@ from toolz.curried import map, take, pipe, pluck, get, concat
 from collections import Iterator, Iterable
 import os
 
-from datashape import discover, var, dshape, Record
+from datashape import discover, var, dshape, Record, DataShape
+from datashape import coretypes as ct
+from datashape.dispatch import dispatch
+import datetime
 from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
@@ -50,11 +53,22 @@ class JSONLines(object):
         self.path = path
 
 
+def date_to_datetime_dshape(ds):
+    shape = ds.shape
+    if isinstance(ds.measure, Record):
+        measure = Record([[name, ct.datetime_ if typ == ct.date_ else typ]
+            for name, typ in ds.measure.parameters[0]])
+    else:
+        measure = ds.measure
+    return DataShape(*(shape + (measure,)))
+
+
 @discover.register(JSON)
 def discover_json(j, **kwargs):
     with open(j.path) as f:
         data = json.load(f)
-    return discover(data)
+    ds = discover(data)
+    return date_to_datetime_dshape(ds)
 
 
 @discover.register(JSONLines)
@@ -62,9 +76,11 @@ def discover_json(j, n=10, **kwargs):
     with open(j.path) as f:
         data = pipe(f, map(json.loads), take(n), list)
     if len(data) < n:
-        return discover(data)
+        ds = discover(data)
     else:
-        return datashape.var * discover(data).subshape[0]
+        ds = datashape.var * discover(data).subshape[0]
+    return date_to_datetime_dshape(ds)
+
 
 
 @convert.register(list, JSON)
@@ -93,7 +109,7 @@ def iterator_to_json_lines(j, seq, dshape=None, **kwargs):
         seq = tuples_to_records(dshape, seq)
     with open(j.path, 'a') as f:
         for item in seq:
-            json.dump(item, f)
+            json.dump(item, f, default=json_dumps)
             f.write('\n')
     return j
 
@@ -107,7 +123,7 @@ def list_to_json(j, seq, dshape=None, **kwargs):
             assert not json.load(f)  # assert empty
 
     with open(j.path, 'w') as f:
-        json.dump(seq, f)
+        json.dump(seq, f, default=json_dumps)
     return j
 
 
@@ -156,6 +172,19 @@ def resource_json_ambiguous(path, **kwargs):
         return resource_jsonlines(path, **kwargs)
     else:
         return resource_json(path, **kwargs)
+
+
+@dispatch(datetime.datetime)
+def json_dumps(dt):
+    s = dt.isoformat()
+    if not dt.tzname():
+        s = s + 'Z'
+    return s
+
+
+@dispatch(datetime.date)
+def json_dumps(dt):
+    return dt.isoformat()
 
 
 ooc_types.add(JSONLines)
