@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import json
 from toolz.curried import map, take, pipe, pluck, get, concat
-from collections import Iterator
+from collections import Iterator, Iterable
 import os
 
 from datashape import discover, var, dshape, Record
@@ -89,7 +89,7 @@ def object_to_jsonlines(j, o, **kwargs):
 def iterator_to_json_lines(j, seq, dshape=None, **kwargs):
     row = next(seq)
     seq = concat([[row], seq])
-    if isinstance(row, (tuple, list)):
+    if not isinstance(row, (dict, str)) and isinstance(row, Iterable):
         seq = tuples_to_records(dshape, seq)
     with open(j.path, 'a') as f:
         for item in seq:
@@ -100,7 +100,7 @@ def iterator_to_json_lines(j, seq, dshape=None, **kwargs):
 
 @append.register(JSON, list)
 def list_to_json(j, seq, dshape=None, **kwargs):
-    if isinstance(seq[0], (tuple, list)):
+    if not isinstance(seq[0], (dict, str)) and isinstance(seq[0], Iterable):
         seq = list(tuples_to_records(dshape, seq))
     if os.path.exists(j.path):
         with open(j.path) as f:
@@ -108,6 +108,7 @@ def list_to_json(j, seq, dshape=None, **kwargs):
 
     with open(j.path, 'w') as f:
         json.dump(seq, f)
+    return j
 
 
 @append.register(JSON, object)
@@ -150,7 +151,7 @@ def resource_json_ambiguous(path, **kwargs):
             return resource_json(path, **kwargs)
 
     # File doesn't exist, is the dshape variable length?
-    dshape = kwargs.get('dshape', None)
+    dshape = kwargs.get('expected_dshape', None)
     if dshape and dshape[0] == var:
         return resource_jsonlines(path, **kwargs)
     else:
