@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import json
-from toolz.curried import map, take, pipe, pluck, get
+from toolz.curried import map, take, pipe, pluck, get, concat
 from collections import Iterator
 import os
 
@@ -9,9 +9,7 @@ from datashape import discover, var, dshape, Record
 from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
-from ..chunks import chunks
-from ..numpy_dtype import dshape_to_pandas
-from .pandas import coerce_datetimes
+from ..utils import tuples_to_records
 
 
 class JSON(object):
@@ -88,7 +86,11 @@ def object_to_jsonlines(j, o, **kwargs):
 
 
 @append.register(JSONLines, Iterator)
-def iterator_to_json_lines(j, seq, **kwargs):
+def iterator_to_json_lines(j, seq, dshape=None, **kwargs):
+    row = next(seq)
+    seq = concat([[row], seq])
+    if isinstance(row, (tuple, list)):
+        seq = tuples_to_records(dshape, seq)
     with open(j.path, 'a') as f:
         for item in seq:
             json.dump(item, f)
@@ -97,7 +99,9 @@ def iterator_to_json_lines(j, seq, **kwargs):
 
 
 @append.register(JSON, list)
-def list_to_json(j, seq, **kwargs):
+def list_to_json(j, seq, dshape=None, **kwargs):
+    if isinstance(seq[0], (tuple, list)):
+        seq = list(tuples_to_records(dshape, seq))
     if os.path.exists(j.path):
         with open(j.path) as f:
             assert not json.load(f)  # assert empty

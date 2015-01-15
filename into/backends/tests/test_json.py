@@ -84,3 +84,20 @@ def test_convert_jsonlines():
     with jsonlines_file(dat) as fn:
         j = JSONLines(fn)
         assert convert(list, j) == dat
+
+
+def test_tuples_to_json():
+    ds = dshape('var * {a: int, b: int}')
+    with tmpfile('json') as fn:
+        j = JSON(fn)
+
+        append(j, [(1, 2), (10, 20)], dshape=ds)
+        with open(fn) as f:
+            assert '"a": 1' in f.read()
+
+    with tmpfile('json') as fn:
+        j = JSONLines(fn)
+
+        append(j, [(1, 2), (10, 20)], dshape=ds)
+        with open(fn) as f:
+            assert '"a": 1' in f.read()
