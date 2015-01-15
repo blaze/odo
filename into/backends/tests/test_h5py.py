@@ -4,7 +4,7 @@ from into.backends.h5py import (append, create, resource, discover, convert,
         resource_h5py)
 from contextlib import contextmanager
 from into.utils import tmpfile
-from into.chunks import chunks
+from into.chunks import iterable
 from into import into, append, convert, discover
 import datashape
 import h5py
@@ -61,13 +61,13 @@ def test_numpy():
 
 def test_chunks():
     with file(x) as (fn, f, dset):
-        c = convert(chunks(np.ndarray), dset)
+        c = convert(iterable(np.ndarray), dset)
         assert eq(convert(np.ndarray, c), x)
 
 
 def test_append_chunks():
     with file(x) as (fn, f, dset):
-        append(dset, chunks(np.ndarray)([x, x]))
+        append(dset, iterable(np.ndarray)([x, x]))
 
         assert len(dset) == len(x) * 3
 

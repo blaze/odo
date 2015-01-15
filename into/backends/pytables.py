@@ -5,7 +5,7 @@ from datashape.dispatch import dispatch
 from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
-from ..chunks import chunks, Chunks
+from ..chunks import iterable
 from ..utils import tmpfile
 
 import os
@@ -45,7 +45,7 @@ def numpy_to_pytables(t, x, **kwargs):
 
 @append.register((tables.Array, tables.Table), object)
 def append_h5py(dset, x, **kwargs):
-    return append(dset, convert(chunks(np.ndarray), x, **kwargs), **kwargs)
+    return append(dset, convert(iterable(np.ndarray), x, **kwargs), **kwargs)
 
 
 @convert.register(np.ndarray, tables.Table, cost=3.0)
@@ -53,12 +53,12 @@ def pytables_to_numpy(t, **kwargs):
     return t[:]
 
 
-@convert.register(chunks(np.ndarray), tables.Table, cost=3.0)
+@convert.register(iterable(np.ndarray), tables.Table, cost=3.0)
 def pytables_to_numpy_chunks(t, chunksize=2**20, **kwargs):
     def load():
         for i in range(0, t.shape[0], chunksize):
             yield t[i: i + chunksize]
-    return chunks(np.ndarray)(load)
+    return iterable(np.ndarray)(load)
 
 
 def dtype_to_pytables(dtype):

@@ -6,7 +6,7 @@ import datashape
 from datashape import discover
 from ..append import append
 from ..convert import convert, ooc_types
-from ..chunks import chunks, Chunks
+from ..chunks import iterable, IterableOf
 from ..resource import resource
 
 
@@ -37,9 +37,9 @@ def discover_hdfstore_storer(storer):
     return n * measure
 
 
-@convert.register(chunks(pd.DataFrame), pd.io.pytables.AppendableFrameTable)
+@convert.register(iterable(pd.DataFrame), pd.io.pytables.AppendableFrameTable)
 def hdfstore_to_chunks_dataframes(data, chunksize=1000000, **kwargs):
-    return chunks(pd.DataFrame)(data.parent.select(data.pathname, chunksize=chunksize))
+    return iterable(pd.DataFrame)(data.parent.select(data.pathname, chunksize=chunksize))
 
 
 @convert.register(pd.DataFrame, (pd.io.pytables.AppendableFrameTable,
@@ -81,7 +81,7 @@ def append_dataframe_to_hdfstore(store, df, **kwargs):
 
 
 @append.register((pd.io.pytables.Fixed, EmptyHDFStoreDataset),
-                 chunks(pd.DataFrame))
+                 iterable(pd.DataFrame))
 def append_chunks_dataframe_to_hdfstore(store, c, **kwargs):
     parent = store.parent
     for chunk in c:
@@ -91,7 +91,7 @@ def append_chunks_dataframe_to_hdfstore(store, c, **kwargs):
 
 @append.register((pd.io.pytables.Fixed, EmptyHDFStoreDataset), object)
 def append_object_to_hdfstore(store, o, **kwargs):
-    return append(store, convert(chunks(pd.DataFrame), o, **kwargs), **kwargs)
+    return append(store, convert(iterable(pd.DataFrame), o, **kwargs), **kwargs)
 
 
 ooc_types |= set(HDFDataset)

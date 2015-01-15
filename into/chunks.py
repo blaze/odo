@@ -5,20 +5,20 @@ from datashape import discover, var
 from .utils import cls_name
 
 
-class Chunks(object):
+class IterableOf(object):
     """ An Iterable of chunked data
 
     Iterates over chunks of in-memory data.  Contains an iterable or a function
     that returns an iterator.
 
-    >>> c = Chunks([[1, 2, 3], [4, 5, 6]])
+    >>> c = IterableOf([[1, 2, 3], [4, 5, 6]])
     >>> next(iter(c))
     [1, 2, 3]
 
-    For typed containers see the ``chunks`` function which generates
-    parametrized Chunks classes.
+    For typed containers see the ``iterable`` function which generates
+    parametrized ``IterableOf`` classes.
 
-    >>> c = chunks(list)([[1, 2, 3], [4, 5, 6]])
+    >>> c = iterable(list)([[1, 2, 3], [4, 5, 6]])
     >>> next(iter(c))
     [1, 2, 3]
 
@@ -36,15 +36,15 @@ class Chunks(object):
             return iter(self.data)
 
 
-def chunks(cls):
-    """ Parametrized Chunks Class """
-    return type('Chunks_' + cls_name(cls).replace('.', '_'), (Chunks,), {'container': cls})
+def iterable(cls):
+    """ Parametrized IterableOf Class """
+    return type('iterable(%s)' % cls_name(cls), (IterableOf,), {'container': cls})
 
-chunks.__doc__ = Chunks.__doc__
+iterable.__doc__ = IterableOf.__doc__
 
-chunks = memoize(chunks)
+iterable = memoize(iterable)
 
 
-@discover.register(Chunks)
+@discover.register(IterableOf)
 def discover_chunks(c, **kwargs):
     return var * discover(first(c)).subshape[0]

@@ -1,7 +1,7 @@
 from into.convert import (convert, list_to_numpy, iterator_to_numpy_chunks,
         numpy_to_chunks_numpy, dataframe_to_chunks_dataframe,
         chunks_dataframe_to_dataframe)
-from into.chunks import chunks
+from into.chunks import iterable
 from datashape import discover
 from toolz import first
 from collections import Iterator
@@ -70,7 +70,7 @@ def test_dataframe_and_series():
 
 def test_iterator_and_numpy_chunks():
     c = iterator_to_numpy_chunks([1, 2, 3], chunksize=2)
-    assert isinstance(c, chunks(np.ndarray))
+    assert isinstance(c, iterable(np.ndarray))
     assert all(isinstance(chunk, np.ndarray) for chunk in c)
 
     c = iterator_to_numpy_chunks([1, 2, 3], chunksize=2)
@@ -108,15 +108,15 @@ def test_list_to_numpy_on_dicts():
 def test_chunks_numpy_pandas():
     x = np.array([('Alice', 100), ('Bob', 200)],
                  dtype=[('name', 'S7'), ('amount', 'i4')])
-    n = chunks(np.ndarray)([x, x])
+    n = iterable(np.ndarray)([x, x])
 
-    pan = convert(chunks(pd.DataFrame), n)
-    num = convert(chunks(np.ndarray), pan)
+    pan = convert(iterable(pd.DataFrame), n)
+    num = convert(iterable(np.ndarray), pan)
 
-    assert isinstance(pan, chunks(pd.DataFrame))
+    assert isinstance(pan, iterable(pd.DataFrame))
     assert all(isinstance(chunk, pd.DataFrame) for chunk in pan)
 
-    assert isinstance(num, chunks(np.ndarray))
+    assert isinstance(num, iterable(np.ndarray))
     assert all(isinstance(chunk, np.ndarray) for chunk in num)
 
 
@@ -175,7 +175,7 @@ def test_numpy_to_list_preserves_ns_datetimes():
 def test_numpy_to_chunks_numpy():
     x = np.arange(100)
     c = numpy_to_chunks_numpy(x, chunksize=10)
-    assert isinstance(c, chunks(np.ndarray))
+    assert isinstance(c, iterable(np.ndarray))
     assert len(list(c)) == 10
     assert eq(list(c)[0], x[:10])
 
@@ -184,7 +184,7 @@ def test_pandas_and_chunks_pandas():
     df = pd.DataFrame({'a': [1, 2, 3, 4], 'b': [1., 2., 3., 4.]})
 
     c = dataframe_to_chunks_dataframe(df, chunksize=2)
-    assert isinstance(c, chunks(pd.DataFrame))
+    assert isinstance(c, iterable(pd.DataFrame))
     assert len(list(c)) == 2
 
     df2 = chunks_dataframe_to_dataframe(c)

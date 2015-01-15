@@ -13,7 +13,7 @@ from ..append import append
 from ..convert import convert, ooc_types
 from ..create import create
 from ..resource import resource
-from ..chunks import chunks, Chunks
+from ..chunks import iterable, IterableOf
 from ..compatibility import unicode
 
 h5py_attributes = ['chunks', 'compression', 'compression_opts', 'dtype',
@@ -95,7 +95,7 @@ def append_h5py(dset, x, **kwargs):
     return dset
 
 
-@append.register(h5py.Dataset, chunks(np.ndarray))
+@append.register(h5py.Dataset, iterable(np.ndarray))
 def append_h5py(dset, c, **kwargs):
     for chunk in c:
         append(dset, chunk)
@@ -104,7 +104,7 @@ def append_h5py(dset, c, **kwargs):
 
 @append.register(h5py.Dataset, object)
 def append_h5py(dset, x, **kwargs):
-    return append(dset, convert(chunks(np.ndarray), x, **kwargs), **kwargs)
+    return append(dset, convert(iterable(np.ndarray), x, **kwargs), **kwargs)
 
 
 @convert.register(np.ndarray, h5py.Dataset, cost=3.0)
@@ -116,12 +116,12 @@ def h5py_to_numpy(dset, force=False, **kwargs):
         return dset[:]
 
 
-@convert.register(chunks(np.ndarray), h5py.Dataset, cost=3.0)
+@convert.register(iterable(np.ndarray), h5py.Dataset, cost=3.0)
 def h5py_to_numpy_chunks(dset, chunksize=2**20, **kwargs):
     def load():
         for i in range(0, dset.shape[0], chunksize):
             yield dset[i: i + chunksize]
-    return chunks(np.ndarray)(load)
+    return iterable(np.ndarray)(load)
 
 
 @resource.register('h5py://.+', priority=11)
