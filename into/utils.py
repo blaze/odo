@@ -176,10 +176,10 @@ def tuples_to_records(ds, data):
     Examples
     --------
     >>> seq = [(1, 10), (2, 20)]
-    >>> list(tuples_to_records('var * {a: int, b: int}', seq))
+    >>> list(tuples_to_records('var * {a: int, b: int}', seq))  # doctest: +SKIP
     [{'a': 1, 'b': 10}, {'a': 2, 'b': 20}]
 
-    >>> tuples_to_records('{a: int, b: int}', seq[0])  # single elements
+    >>> tuples_to_records('{a: int, b: int}', seq[0])  # doctest: +SKIP
     {'a': 1, 'b': 10}
 
     >>> tuples_to_records('var * int', [1, 2, 3])  # pass through on non-records
