@@ -9,6 +9,7 @@ import datashape
 from .core import NetworkDispatcher, ooc_types
 from .chunks import chunks, Chunks
 from .numpy_dtype import dshape_to_numpy
+from .utils import records_to_tuples
 
 
 convert = NetworkDispatcher('convert')
@@ -133,8 +134,22 @@ def iterable_to_tuple(x, **kwargs):
     return tuple(x)
 
 
+def element_of(seq):
+    """
+
+    >>> element_of([1, 2, 3])
+    1
+    >>> element_of([[1, 2], [3, 4]])
+    1
+    """
+    while isinstance(seq, list) and seq:
+        seq = seq[0]
+    return seq
+
 @convert.register(np.ndarray, list, cost=10.0)
 def list_to_numpy(seq, dshape=None, **kwargs):
+    if isinstance(element_of(seq), dict):
+        seq = list(records_to_tuples(dshape, seq))
     if (seq and isinstance(seq[0], Iterable)
             and not ishashable(seq[0])
             and not isscalar(dshape)):

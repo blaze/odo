@@ -51,6 +51,10 @@ try:
 except:
     pass
 try:
+     from .backends.json import JSON, JSONLines
+except:
+    pass
+try:
      from .backends import sql_csv
 except:
     pass
