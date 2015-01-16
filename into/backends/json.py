@@ -78,7 +78,7 @@ def discover_json(j, n=10, **kwargs):
     if len(data) < n:
         ds = discover(data)
     else:
-        ds = datashape.var * discover(data).subshape[0]
+        ds = var * discover(data).subshape[0]
     return date_to_datetime_dshape(ds)
 
 
