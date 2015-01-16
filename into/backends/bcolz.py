@@ -11,7 +11,7 @@ from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
 from ..drop import drop
-from ..chunks import chunks
+from ..chunks import iterable
 
 keywords = ['cparams', 'dflt', 'expectedlen', 'chunklen', 'rootdir']
 
@@ -30,7 +30,7 @@ def numpy_append_to_bcolz(a, b, **kwargs):
 
 @append.register((ctable, carray), object)
 def numpy_append_to_bcolz(a, b, **kwargs):
-    return append(a, convert(chunks(np.ndarray), b, **kwargs), **kwargs)
+    return append(a, convert(iterable(np.ndarray), b, **kwargs), **kwargs)
 
 
 @convert.register(ctable, np.ndarray, cost=2.0)
@@ -48,7 +48,7 @@ def convert_bcolz_to_numpy(x, **kwargs):
     return x[:]
 
 
-@append.register((carray, ctable), chunks(np.ndarray))
+@append.register((carray, ctable), iterable(np.ndarray))
 def append_carray_with_chunks(a, c, **kwargs):
     for chunk in c:
         append(a, chunk)
@@ -56,7 +56,7 @@ def append_carray_with_chunks(a, c, **kwargs):
     return a
 
 
-@convert.register(chunks(np.ndarray), (ctable, carray), cost=1.2)
+@convert.register(iterable(np.ndarray), (ctable, carray), cost=1.2)
 def bcolz_to_numpy_chunks(x, chunksize=2**20, **kwargs):
     def load():
         first_n = min(1000, chunksize)
@@ -64,7 +64,7 @@ def bcolz_to_numpy_chunks(x, chunksize=2**20, **kwargs):
         yield first
         for i in range(first_n, x.shape[0], chunksize):
             yield x[i: i + chunksize]
-    return chunks(np.ndarray)(load)
+    return iterable(np.ndarray)(load)
 
 
 @resource.register('.*\.bcolz/?')

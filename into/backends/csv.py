@@ -19,7 +19,7 @@ from ..utils import keywords
 from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
-from ..chunks import chunks
+from ..chunks import iterable
 from ..numpy_dtype import dshape_to_pandas
 from .pandas import coerce_datetimes
 
@@ -57,7 +57,7 @@ class CSV(object):
 
 @append.register(CSV, object)
 def append_object_to_csv(c, seq, **kwargs):
-    append(c, convert(chunks(pd.DataFrame), seq, **kwargs), **kwargs)
+    append(c, convert(iterable(pd.DataFrame), seq, **kwargs), **kwargs)
     return c
 
 
@@ -92,7 +92,7 @@ def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
     return c
 
 
-@append.register(CSV, chunks(pd.DataFrame))
+@append.register(CSV, iterable(pd.DataFrame))
 def append_iterator_to_csv(c, cs, **kwargs):
     for chunk in cs:
         append(c, chunk, **kwargs)
@@ -174,7 +174,7 @@ def _csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
                              **kwargs2)
 
 
-@convert.register(chunks(pd.DataFrame), CSV, cost=10.0)
+@convert.register(iterable(pd.DataFrame), CSV, cost=10.0)
 def CSV_to_chunks_of_dataframes(c, chunksize=2**20, **kwargs):
     # Load a small 1000 line DF to start
     # This helps with rapid viewing of a large CSV file
@@ -187,7 +187,7 @@ def CSV_to_chunks_of_dataframes(c, chunksize=2**20, **kwargs):
         yield first
         for df in rest:
             yield df
-    return chunks(pd.DataFrame)(_)
+    return iterable(pd.DataFrame)(_)
 
 
 @discover.register(CSV)
@@ -226,19 +226,19 @@ from glob import glob
 def resource_glob(uri, **kwargs):
     filenames = sorted(glob(uri))
     r = resource(filenames[0], **kwargs)
-    return chunks(type(r))([resource(u, **kwargs) for u in sorted(glob(uri))])
+    return iterable(type(r))([resource(u, **kwargs) for u in sorted(glob(uri))])
 
     # Alternatively check each time we iterate?
     def _():
         return (resource(u, **kwargs) for u in glob(uri))
-    return chunks(type(r))(_)
+    return iterable(type(r))(_)
 
 
-@convert.register(chunks(pd.DataFrame), chunks(CSV), cost=10.0)
+@convert.register(iterable(pd.DataFrame), iterable(CSV), cost=10.0)
 def convert_glob_of_csvs_to_chunks_of_dataframes(csvs, **kwargs):
     def _():
-        return concat(convert(chunks(pd.DataFrame), csv, **kwargs) for csv in csvs)
-    return chunks(pd.DataFrame)(_)
+        return concat(convert(iterable(pd.DataFrame), csv, **kwargs) for csv in csvs)
+    return iterable(pd.DataFrame)(_)
 
 
 @dispatch(CSV)

@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from into.backends.bcolz import (append, convert, ctable, carray, resource,
                                  discover, drop)
-from into.chunks import chunks
+from into.chunks import iterable
 from into import append, convert, discover, into
 import numpy as np
 from into.utils import tmpfile
@@ -31,8 +31,8 @@ def test_convert():
 
 
 def test_chunks():
-    c = convert(chunks(np.ndarray), a, chunksize=2)
-    assert isinstance(c, chunks(np.ndarray))
+    c = convert(iterable(np.ndarray), a, chunksize=2)
+    assert isinstance(c, iterable(np.ndarray))
     assert len(list(c)) == 2
     assert eq(list(c)[1], [3, 4])
 
@@ -41,7 +41,7 @@ def test_chunks():
 
 def test_append_chunks():
     b = carray(x)
-    append(b, chunks(np.ndarray)([x, x]))
+    append(b, iterable(np.ndarray)([x, x]))
     assert len(b) == len(x) * 3
 
 

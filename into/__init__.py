@@ -9,7 +9,7 @@ from .append import append
 from .resource import resource
 from .into import into
 from .drop import drop
-from .chunks import chunks, Chunks
+from .chunks import iterable, IterableOf
 from datashape import discover, dshape
 from collections import Iterator
 import numpy as np

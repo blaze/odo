@@ -2,7 +2,7 @@
 from into.backends.hdfstore import discover
 from contextlib import contextmanager
 from into.utils import tmpfile
-from into.chunks import chunks
+from into.chunks import iterable
 from into import into, append, convert, resource, discover
 import datashape
 import pandas as pd
@@ -60,7 +60,7 @@ def eq(a, b):
 
 def test_chunks():
     with file(df) as (fn, f, dset):
-        c = convert(chunks(pd.DataFrame), dset)
+        c = convert(iterable(pd.DataFrame), dset)
         assert eq(convert(np.ndarray, c), df)
 
 
@@ -97,14 +97,14 @@ def test_convert_pandas():
 
 def test_convert_chunks():
     with file(df) as (fn, f, dset):
-        c = convert(chunks(pd.DataFrame), dset, chunksize=len(df) / 2)
+        c = convert(iterable(pd.DataFrame), dset, chunksize=len(df) / 2)
         assert len(list(c)) == 2
         assert eq(convert(pd.DataFrame, c), df)
 
 
 def test_append_chunks():
     with file(df) as (fn, f, dset):
-        append(dset, chunks(pd.DataFrame)([df, df]))
+        append(dset, iterable(pd.DataFrame)([df, df]))
 
         assert discover(dset).shape[0] == len(df) * 3
 

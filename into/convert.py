@@ -7,7 +7,7 @@ from toolz import concat, curry, partition_all
 from collections import Iterator, Iterable
 import datashape
 from .core import NetworkDispatcher, ooc_types
-from .chunks import chunks, Chunks
+from .chunks import iterable, IterableOf
 from .numpy_dtype import dshape_to_numpy
 from .utils import records_to_tuples
 
@@ -88,25 +88,25 @@ def numpy_to_list(x, **kwargs):
         return x.tolist()
 
 
-@convert.register(np.ndarray, chunks(np.ndarray), cost=1.0)
+@convert.register(np.ndarray, iterable(np.ndarray), cost=1.0)
 def numpy_chunks_to_numpy(c, **kwargs):
     return np.concatenate(list(c))
 
 
-@convert.register(chunks(np.ndarray), np.ndarray, cost=0.5)
+@convert.register(iterable(np.ndarray), np.ndarray, cost=0.5)
 def numpy_to_chunks_numpy(x, chunksize=2**20, **kwargs):
-    return chunks(np.ndarray)(
+    return iterable(np.ndarray)(
             lambda: (x[i:i+chunksize] for i in range(0, x.shape[0], chunksize)))
 
 
-@convert.register(pd.DataFrame, chunks(pd.DataFrame), cost=1.0)
+@convert.register(pd.DataFrame, iterable(pd.DataFrame), cost=1.0)
 def chunks_dataframe_to_dataframe(c, **kwargs):
     return pd.concat(list(c), axis=0, ignore_index=True)
 
 
-@convert.register(chunks(pd.DataFrame), pd.DataFrame, cost=0.5)
+@convert.register(iterable(pd.DataFrame), pd.DataFrame, cost=0.5)
 def dataframe_to_chunks_dataframe(x, chunksize=2**20, **kwargs):
-    return chunks(pd.DataFrame)(
+    return iterable(pd.DataFrame)(
             lambda: (x.iloc[i:i+chunksize] for i in range(0, x.shape[0], chunksize)))
 
 def ishashable(x):
@@ -168,12 +168,12 @@ def iterator_to_list(seq, **kwargs):
     return list(seq)
 
 
-@convert.register(Iterator, (chunks(pd.DataFrame), chunks(np.ndarray)), cost=10.0)
+@convert.register(Iterator, (iterable(pd.DataFrame), iterable(np.ndarray)), cost=10.0)
 def numpy_chunks_to_iterator(c, **kwargs):
     return concat(convert(Iterator, chunk, **kwargs) for chunk in c)
 
 
-@convert.register(chunks(np.ndarray), Iterator, cost=10.0)
+@convert.register(iterable(np.ndarray), Iterator, cost=10.0)
 def iterator_to_numpy_chunks(seq, chunksize=1024, **kwargs):
     seq2 = partition_all(chunksize, seq)
     first, rest = next(seq2), seq2
@@ -182,10 +182,10 @@ def iterator_to_numpy_chunks(seq, chunksize=1024, **kwargs):
         yield x
         for i in rest:
             yield convert(np.ndarray, i, **kwargs)
-    return chunks(np.ndarray)(_)
+    return iterable(np.ndarray)(_)
 
 
-@convert.register(chunks(pd.DataFrame), Iterator, cost=10.0)
+@convert.register(iterable(pd.DataFrame), Iterator, cost=10.0)
 def iterator_to_DataFrame_chunks(seq, chunksize=1024, **kwargs):
     seq2 = partition_all(chunksize, seq)
     first, rest = next(seq2), seq2
@@ -194,7 +194,7 @@ def iterator_to_DataFrame_chunks(seq, chunksize=1024, **kwargs):
         yield df
         for i in rest:
             yield convert(pd.DataFrame, i, **kwargs)
-    return chunks(pd.DataFrame)(_)
+    return iterable(pd.DataFrame)(_)
 
 
 @convert.register(tuple, np.record)
@@ -202,22 +202,22 @@ def numpy_record_to_tuple(rec, **kwargs):
     return rec.tolist()
 
 
-@convert.register(chunks(np.ndarray), chunks(pd.DataFrame), cost=0.5)
+@convert.register(iterable(np.ndarray), iterable(pd.DataFrame), cost=0.5)
 def chunked_pandas_to_chunked_numpy(c, **kwargs):
-    return chunks(np.ndarray)(lambda: (convert(np.ndarray, chunk, **kwargs) for chunk in c))
+    return iterable(np.ndarray)(lambda: (convert(np.ndarray, chunk, **kwargs) for chunk in c))
 
-@convert.register(chunks(pd.DataFrame), chunks(np.ndarray), cost=0.5)
+@convert.register(iterable(pd.DataFrame), iterable(np.ndarray), cost=0.5)
 def chunked_numpy_to_chunked_pandas(c, **kwargs):
-    return chunks(pd.DataFrame)(lambda: (convert(pd.DataFrame, chunk, **kwargs) for chunk in c))
+    return iterable(pd.DataFrame)(lambda: (convert(pd.DataFrame, chunk, **kwargs) for chunk in c))
 
 
-@convert.register(chunks(np.ndarray), chunks(list), cost=10.0)
+@convert.register(iterable(np.ndarray), iterable(list), cost=10.0)
 def chunked_list_to_chunked_numpy(c, **kwargs):
-    return chunks(np.ndarray)(lambda: (convert(np.ndarray, chunk, **kwargs) for chunk in c))
+    return iterable(np.ndarray)(lambda: (convert(np.ndarray, chunk, **kwargs) for chunk in c))
 
-@convert.register(chunks(list), chunks(np.ndarray), cost=10.0)
+@convert.register(iterable(list), iterable(np.ndarray), cost=10.0)
 def chunked_numpy_to_chunked_list(c, **kwargs):
-    return chunks(list)(lambda: (convert(list, chunk, **kwargs) for chunk in c))
+    return iterable(list)(lambda: (convert(list, chunk, **kwargs) for chunk in c))
 
 
-ooc_types |= set([Iterator, Chunks])
+ooc_types |= set([Iterator, IterableOf])
