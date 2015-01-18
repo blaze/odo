@@ -63,7 +63,7 @@ try:
 except:
     pass
 try:
-    from .backends.aws import s3, S3
+    from .backends.aws import S3
 except ImportError:
     pass
 

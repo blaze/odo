@@ -1,5 +1,5 @@
 import pytest
-from into import into, resource, S3, discover, CSV, s3
+from into import into, resource, S3, discover, CSV
 import pandas as pd
 import pandas.util.testing as tm
 import datashape
@@ -14,7 +14,7 @@ tips_uri = 's3://nyqpug/tips.csv'
 
 def test_s3_resource():
     csv = resource(tips_uri)
-    assert isinstance(csv, S3)
+    assert isinstance(csv, S3(CSV))
 
 
 def test_s3_discover():
@@ -22,8 +22,7 @@ def test_s3_discover():
     assert isinstance(discover(csv), datashape.DataShape)
 
 
-@pytest.mark.xfail(raises=NotImplementedError,
-                   reason='not implemented yet')
+@pytest.mark.xfail(raises=IOError, reason='not implemented yet')
 def test_frame_to_s3():
     df = pd.DataFrame({
         'a': list('abc'),
@@ -31,9 +30,10 @@ def test_frame_to_s3():
         'c': [1.0, 2.0, 3.0]
     })[['a', 'b', 'c']]
 
-    to_this = s3(CSV)('s3://nyqpug/test.csv')
+    to_this = S3(CSV)('s3://nyqpug/test.csv')
     s3_csv = into(to_this, df)
-    tm.assert_frame_equal(into(pd.DataFrame, s3_csv), df)
+    result = into(pd.DataFrame, s3_csv)
+    tm.assert_frame_equal(result, df)
 
 
 @pytest.mark.xfail(raises=NotImplementedError,
