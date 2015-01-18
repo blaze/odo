@@ -62,6 +62,10 @@ try:
      from .backends import sql_csv
 except:
     pass
+try:
+    from .backends.aws import s3, S3
+except ImportError:
+    pass
 
 
 restart_ordering() # Restart multipledispatch ordering and do ordering
