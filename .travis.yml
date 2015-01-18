@@ -25,6 +25,11 @@ install:
   - conda create -n test-environment python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python
   - source activate test-environment
 
+  # aws things
+  - pip install boto
+  - pip install psycopg2
+  - pip install redshift_sqlalchemy
+
   # Install PyMongo
   - pip install pymongo
 
