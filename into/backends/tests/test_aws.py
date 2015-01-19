@@ -1,4 +1,6 @@
 import pytest
+import os
+import shutil
 from into import into, resource, S3, discover, CSV
 import pandas as pd
 import pandas.util.testing as tm
@@ -20,6 +22,14 @@ def test_s3_resource():
 def test_s3_discover():
     csv = resource(tips_uri)
     assert isinstance(discover(csv), datashape.DataShape)
+
+
+def test_s3_to_local_csv():
+    csv = into(CSV, resource(tips_uri))
+    path = os.path.abspath(csv.path)
+
+    assert os.path.exists(path)
+    shutil.rmtree(os.path.dirname(path))
 
 
 @pytest.mark.xfail(raises=IOError, reason='not implemented yet')
