@@ -254,6 +254,17 @@ def append_anything_to_sql_Table(t, o, **kwargs):
     return append(t, convert(Iterator, o, **kwargs), **kwargs)
 
 
+@append.register(sa.Table, sa.sql.Select)
+def append_select_statement_to_sql_Table(t, o, **kwargs):
+    assert o.bind.has_table(t.name), 'tables must come from the same database'
+
+    query = t.insert().from_select(o.columns.keys(), o)
+
+    with o.bind.connect() as conn:
+        conn.execute(query)
+    return t
+
+
 @resource.register('(.*sql.*|oracle)(\+\w*)?://.+')
 def resource_sql(uri, *args, **kwargs):
     kwargs2 = keyfilter(keywords(sa.create_engine).__contains__,
