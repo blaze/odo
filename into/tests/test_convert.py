@@ -2,7 +2,7 @@ from into.convert import (convert, list_to_numpy, iterator_to_numpy_chunks,
         numpy_to_chunks_numpy, dataframe_to_chunks_dataframe,
         chunks_dataframe_to_dataframe)
 from into.chunks import chunks
-from datashape import discover
+from datashape import discover, dshape
 from toolz import first
 from collections import Iterator
 import datetime
@@ -200,3 +200,10 @@ def test_recarray():
     result2 = convert(np.ndarray, data)
     assert not isinstance(result2, np.recarray)
     assert eq(result2, data)
+
+
+def test_empty_iterator_to_chunks_dataframe():
+    ds = dshape('var * {x: int}')
+    result = convert(pd.DataFrame, iter([]), dshape=ds)
+    assert isinstance(result, pd.DataFrame)
+    assert list(result.columns) == ['x']
