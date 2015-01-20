@@ -19,7 +19,7 @@ SAS_type_map = {'number': 'float64',
 
 
 @resource.register('.+\.(sas7bdat)')
-def resource_csv(uri, **kwargs):
+def resource_sas(uri, **kwargs):
     return SAS7BDAT(uri, **kwargs)
 
 
