@@ -101,7 +101,11 @@ def numpy_to_chunks_numpy(x, chunksize=2**20, **kwargs):
 
 @convert.register(pd.DataFrame, chunks(pd.DataFrame), cost=1.0)
 def chunks_dataframe_to_dataframe(c, **kwargs):
-    return pd.concat(list(c), axis=0, ignore_index=True)
+    c = list(c)
+    if not c:  # empty case
+        return pd.DataFrame(columns=kwargs.get('dshape').measure.names)
+    else:
+        return pd.concat(c, axis=0, ignore_index=True)
 
 
 @convert.register(chunks(pd.DataFrame), pd.DataFrame, cost=0.5)
@@ -188,7 +192,10 @@ def iterator_to_numpy_chunks(seq, chunksize=1024, **kwargs):
 @convert.register(chunks(pd.DataFrame), Iterator, cost=10.0)
 def iterator_to_DataFrame_chunks(seq, chunksize=1024, **kwargs):
     seq2 = partition_all(chunksize, seq)
-    first, rest = next(seq2), seq2
+    try:
+        first, rest = next(seq2), seq2
+    except StopIteration:
+        return chunks(pd.DataFrame)([])
     df = convert(pd.DataFrame, first, **kwargs)
     def _():
         yield df

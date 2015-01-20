@@ -1,12 +1,15 @@
 from __future__ import absolute_import, division, print_function
 
+import pytest
+import os
+import numpy as np
 import sqlalchemy as sa
 from datashape import discover, dshape
 import datashape
 from into.backends.sql import (dshape_to_table, create_from_datashape,
-        dshape_to_alchemy)
+                               dshape_to_alchemy)
 from into.utils import tmpfile, raises
-from into import convert, append, create, resource, discover
+from into import convert, append, resource, discover, into
 
 
 def test_resource():
@@ -100,6 +103,20 @@ def single_table_engine():
     return engine, t
 
 
+def test_select_to_iterator():
+    engine, t = single_table_engine()
+    append(t, [('Alice', 100), ('Bob', 200)])
+
+    sel = sa.select([t.c.amount + 1])
+
+    assert convert(list, sel) == [(101,), (201,)]
+    assert convert(list, sel, dshape=dshape('var * int')) == [101, 201]
+
+    sel2 = sa.select([sa.sql.func.sum(t.c.amount)])
+
+    assert convert(int, sel2, dshape=dshape('int')) == 300
+
+
 def test_discovery_engine():
     engine, t = single_table_engine()
 
@@ -112,6 +129,18 @@ def test_discovery_metadata():
     engine, t = single_table_engine()
     metadata = t.metadata
     assert str(discover(metadata)) == str(discover({'accounts': t}))
+
+
+def test_discover_views():
+    engine, t = single_table_engine()
+    metadata = t.metadata
+    with engine.connect() as conn:
+        conn.execute('''CREATE VIEW myview AS
+                        SELECT name, amount
+                        FROM accounts
+                        WHERE amount > 0''')
+
+    assert str(discover(metadata)) == str(discover({'accounts': t, 'myview': t}))
 
 
 def test_extend_empty():
@@ -176,8 +205,8 @@ def test_sql_field_names_disagree_on_order():
 
 def test_sql_field_names_disagree_on_names():
     r = resource('sqlite:///:memory:::tb', dshape=dshape('{x: int, y: int}'))
-    assert raises(Exception, lambda:
-            append(r, [(1, 2), (10, 20)], dshape=dshape('{x: int, z: int}')))
+    assert raises(Exception, lambda: append(r, [(1, 2), (10, 20)],
+                                            dshape=dshape('{x: int, z: int}')))
 
 
 def test_resource_on_dialects():
@@ -185,3 +214,30 @@ def test_resource_on_dialects():
             resource.dispatch('mysql+pymysql://foo'))
     assert (resource.dispatch('never-before-seen-sql://foo') is
             resource.dispatch('mysql://foo'))
+
+
+@pytest.yield_fixture
+def sqlite_file():
+    try:
+        yield 'sqlite:///db.db'
+    finally:
+        os.remove('db.db')
+
+
+def test_append_from_select(sqlite_file):
+    # we can't test in memory here because that creates two independent
+    # databases
+    raw = np.array([(200.0, 'Glenn'),
+                    (314.14, 'Hope'),
+                    (235.43, 'Bob')], dtype=[('amount', 'float64'),
+                                             ('name', 'S5')])
+    raw2 = np.array([(800.0, 'Joe'),
+                     (914.14, 'Alice'),
+                     (1235.43, 'Ratso')], dtype=[('amount', 'float64'),
+                                                 ('name', 'S5')])
+    t = into('%s::t' % sqlite_file, raw)
+    s = into('%s::s' % sqlite_file, raw2)
+    t = append(t, s.select())
+    result = into(list, t)
+    expected = np.concatenate((raw, raw2)).tolist()
+    assert result == expected

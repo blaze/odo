@@ -4,17 +4,21 @@ import sqlalchemy as sa
 from itertools import chain
 from collections import Iterator
 from datashape import (DataShape, Record, Option, var, dshape)
-from datashape.predicates import isdimension, isrecord
+from datashape.predicates import isdimension, isrecord, isscalar
 from datashape import discover
 from datashape.dispatch import dispatch
+from datetime import datetime, date
 import datashape
-from toolz import partition_all, keyfilter, first
+from toolz import partition_all, keyfilter, first, pluck
 
 from ..utils import keywords
 from ..convert import convert, ooc_types
 from ..append import append
 from ..resource import resource
 from ..chunks import Chunks
+
+base = (int, float, datetime, date, bool, str)
+
 
 # http://docs.sqlalchemy.org/en/latest/core/types.html
 
@@ -88,7 +92,7 @@ def discover_sqlalchemy_table(t):
 @dispatch(sa.engine.base.Engine, str)
 def discover(engine, tablename):
     metadata = sa.MetaData()
-    metadata.reflect(engine)
+    metadata.reflect(engine, views=True)
     table = metadata.tables[tablename]
     return discover(table)
 
@@ -101,7 +105,7 @@ def discover(engine):
 
 @dispatch(sa.MetaData)
 def discover(metadata):
-    metadata.reflect()
+    metadata.reflect(views=True)
     pairs = []
     for name, table in sorted(metadata.tables.items(), key=first):
         try:
@@ -210,6 +214,31 @@ def sql_to_iterator(t, **kwargs):
             yield item
 
 
+@convert.register(Iterator, sa.sql.Select, cost=300.0)
+def select_to_iterator(sel, dshape=None, **kwargs):
+    engine = sel.bind  # TODO: get engine from select
+
+    with engine.connect() as conn:
+        result = conn.execute(sel)
+        if dshape and isscalar(dshape.measure):
+            result = pluck(0, result)
+
+        for item in result:
+            yield item
+
+
+@convert.register(base, sa.sql.Select, cost=300.0)
+def select_to_base(sel, dshape=None, **kwargs):
+    engine = sel.bind  # TODO: get engine from select
+
+    with engine.connect() as conn:
+        result = conn.execute(sel)
+        assert not dshape or isscalar(dshape)
+        result = list(result)[0][0]
+
+    return result
+
+
 @append.register(sa.Table, Iterator)
 def append_iterator_to_table(t, rows, dshape=None, **kwargs):
     assert not isinstance(t, type)
@@ -254,6 +283,17 @@ def append_anything_to_sql_Table(t, o, **kwargs):
     return append(t, convert(Iterator, o, **kwargs), **kwargs)
 
 
+@append.register(sa.Table, sa.sql.Select)
+def append_select_statement_to_sql_Table(t, o, **kwargs):
+    assert o.bind.has_table(t.name), 'tables must come from the same database'
+
+    query = t.insert().from_select(o.columns.keys(), o)
+
+    with o.bind.connect() as conn:
+        conn.execute(query)
+    return t
+
+
 @resource.register('(.*sql.*|oracle)(\+\w*)?://.+')
 def resource_sql(uri, *args, **kwargs):
     kwargs2 = keyfilter(keywords(sa.create_engine).__contains__,
@@ -263,7 +303,7 @@ def resource_sql(uri, *args, **kwargs):
     if args and isinstance(args[0], str):
         table_name, args = args[0], args[1:]
         metadata = sa.MetaData(engine)
-        metadata.reflect()
+        metadata.reflect(views=True)
         if table_name not in metadata.tables:
             if ds:
                 t = dshape_to_table(table_name, ds, metadata)
