@@ -2,28 +2,17 @@ from __future__ import absolute_import, division, print_function
 
 import sas7bdat
 from sas7bdat import SAS7BDAT
-import datashape
-from datashape import discover
 
-import re
 import datashape
-from datashape import discover, Record, Option, dshape
-from datashape.predicates import isrecord
-from datashape.dispatch import dispatch
+from datashape import discover, dshape
 from collections import Iterator
-import pandas
 import pandas as pd
-import os
-import gzip
-import bz2
+import sqlalchemy as sa
+from .sql import dshape_to_alchemy, dshape_to_table
 
-from ..utils import keywords
 from ..append import append
 from ..convert import convert
 from ..resource import resource
-from ..chunks import chunks
-from ..numpy_dtype import dshape_to_pandas
-from .pandas import coerce_datetimes
 
 SAS_type_map = {'number': 'float64',
                 'string': 'string'}
@@ -43,16 +32,29 @@ def discover_sas(f, **kwargs):
     return dshape(ds)
 
 
-@convert.register(pd.DataFrame, SAS7BDAT, cost=1.0)
+@convert.register(pd.DataFrame, SAS7BDAT, cost=4.0)
 def sas_to_DataFrame(s, dshape=None, **kwargs):
     return s.to_data_frame()
 
 
-@convert.register(list, SAS7BDAT, cost=1.0)
+@convert.register(list, SAS7BDAT, cost=8.0)
 def sas_to_list(s, dshape=None, **kwargs):
+    s.skip_header = True
     return list(s.readlines())
 
 
 @convert.register(Iterator, SAS7BDAT, cost=1.0)
-def sas_to_iterator(s, columns=None, dshape=None, **kwargs):
+def sas_to_iterator(s):
+    s.skip_header = True
     return s.readlines()
+
+
+@append.register(sa.Table, SAS7BDAT)
+def append_sas_to_table(t, s, **kwargs):
+    append(t, sas_to_iterator(s), **kwargs)
+
+
+def sas_to_table(s, metadata=None):
+    ds = discover_sas(s)
+    name = s.header.properties.name.decode("utf-8")
+    return dshape_to_table(name, ds, metadata)
