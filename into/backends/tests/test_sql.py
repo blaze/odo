@@ -103,6 +103,20 @@ def single_table_engine():
     return engine, t
 
 
+def test_select_to_iterator():
+    engine, t = single_table_engine()
+    append(t, [('Alice', 100), ('Bob', 200)])
+
+    sel = sa.select([t.c.amount + 1])
+
+    assert convert(list, sel) == [(101,), (201,)]
+    assert convert(list, sel, dshape=dshape('var * int')) == [101, 201]
+
+    sel2 = sa.select([sa.sql.func.sum(t.c.amount)])
+
+    assert convert(int, sel2, dshape=dshape('int')) == 300
+
+
 def test_discovery_engine():
     engine, t = single_table_engine()
 

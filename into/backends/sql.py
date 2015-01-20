@@ -4,17 +4,21 @@ import sqlalchemy as sa
 from itertools import chain
 from collections import Iterator
 from datashape import (DataShape, Record, Option, var, dshape)
-from datashape.predicates import isdimension, isrecord
+from datashape.predicates import isdimension, isrecord, isscalar
 from datashape import discover
 from datashape.dispatch import dispatch
+from datetime import datetime, date
 import datashape
-from toolz import partition_all, keyfilter, first
+from toolz import partition_all, keyfilter, first, pluck
 
 from ..utils import keywords
 from ..convert import convert, ooc_types
 from ..append import append
 from ..resource import resource
 from ..chunks import Chunks
+
+base = (int, float, datetime, date, bool, str)
+
 
 # http://docs.sqlalchemy.org/en/latest/core/types.html
 
@@ -208,6 +212,31 @@ def sql_to_iterator(t, **kwargs):
         result = conn.execute(sa.sql.select([t]))
         for item in result:
             yield item
+
+
+@convert.register(Iterator, sa.sql.Select, cost=300.0)
+def select_to_iterator(sel, dshape=None, **kwargs):
+    engine = sel.bind  # TODO: get engine from select
+
+    with engine.connect() as conn:
+        result = conn.execute(sel)
+        if dshape and isscalar(dshape.measure):
+            result = pluck(0, result)
+
+        for item in result:
+            yield item
+
+
+@convert.register(base, sa.sql.Select, cost=300.0)
+def select_to_base(sel, dshape=None, **kwargs):
+    engine = sel.bind  # TODO: get engine from select
+
+    with engine.connect() as conn:
+        result = conn.execute(sel)
+        assert not dshape or isscalar(dshape)
+        result = list(result)[0][0]
+
+    return result
 
 
 @append.register(sa.Table, Iterator)
