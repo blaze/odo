@@ -120,7 +120,12 @@ def list_to_json(j, seq, dshape=None, **kwargs):
         seq = list(tuples_to_records(dshape, seq))
     if os.path.exists(j.path):
         with open(j.path) as f:
-            assert not json.load(f)  # assert empty
+            if json.load(f):
+                raise ValueError("Can only append to empty JSON File.\n"
+                "Either remove contents from this file, save to a new file \n"
+                "or use line-delimited JSON format.\n"
+                "Consider using the jsonlines:// protocol, e.g.\n"
+                "\tinto('jsonlines://%s', your-data)" % j.path)
 
     with open(j.path, 'w') as f:
         json.dump(seq, f, default=json_dumps)
