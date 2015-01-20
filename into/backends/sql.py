@@ -88,7 +88,7 @@ def discover_sqlalchemy_table(t):
 @dispatch(sa.engine.base.Engine, str)
 def discover(engine, tablename):
     metadata = sa.MetaData()
-    metadata.reflect(engine)
+    metadata.reflect(engine, views=True)
     table = metadata.tables[tablename]
     return discover(table)
 
@@ -101,7 +101,7 @@ def discover(engine):
 
 @dispatch(sa.MetaData)
 def discover(metadata):
-    metadata.reflect()
+    metadata.reflect(views=True)
     pairs = []
     for name, table in sorted(metadata.tables.items(), key=first):
         try:
@@ -263,7 +263,7 @@ def resource_sql(uri, *args, **kwargs):
     if args and isinstance(args[0], str):
         table_name, args = args[0], args[1:]
         metadata = sa.MetaData(engine)
-        metadata.reflect()
+        metadata.reflect(views=True)
         if table_name not in metadata.tables:
             if ds:
                 t = dshape_to_table(table_name, ds, metadata)

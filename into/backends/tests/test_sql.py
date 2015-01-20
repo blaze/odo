@@ -114,6 +114,18 @@ def test_discovery_metadata():
     assert str(discover(metadata)) == str(discover({'accounts': t}))
 
 
+def test_discover_views():
+    engine, t = single_table_engine()
+    metadata = t.metadata
+    with engine.connect() as conn:
+        conn.execute('''CREATE VIEW myview AS
+                        SELECT name, amount
+                        FROM accounts
+                        WHERE amount > 0''')
+
+    assert str(discover(metadata)) == str(discover({'accounts': t, 'myview': t}))
+
+
 def test_extend_empty():
     engine, t = single_table_engine()
 
