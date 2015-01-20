@@ -9,7 +9,7 @@ from datashape import discover
 from datashape.dispatch import dispatch
 from datetime import datetime, date
 import datashape
-from toolz import partition_all, keyfilter, first
+from toolz import partition_all, keyfilter, first, pluck
 
 from ..utils import keywords
 from ..convert import convert, ooc_types
@@ -220,12 +220,11 @@ def select_to_iterator(sel, dshape=None, **kwargs):
 
     with engine.connect() as conn:
         result = conn.execute(sel)
+        if dshape and isscalar(dshape.measure):
+            result = pluck(0, result)
 
-    if not dshape:
-        return result
-    if isscalar(dshape.measure):
-        return [x[0] for x in result]
-    return result
+        for item in result:
+            yield item
 
 
 @convert.register(base, sa.sql.Select, cost=300.0)
@@ -234,10 +233,10 @@ def select_to_base(sel, dshape=None, **kwargs):
 
     with engine.connect() as conn:
         result = conn.execute(sel)
+        assert not dshape or isscalar(dshape)
+        result = list(result)[0][0]
 
-    assert not dshape or isscalar(dshape)
-
-    return list(result)[0][0]
+    return result
 
 
 @append.register(sa.Table, Iterator)
