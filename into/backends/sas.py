@@ -7,8 +7,6 @@ import datashape
 from datashape import discover, dshape
 from collections import Iterator
 import pandas as pd
-import sqlalchemy as sa
-from .sql import dshape_to_alchemy, dshape_to_table
 
 from ..append import append
 from ..convert import convert
@@ -37,24 +35,7 @@ def sas_to_DataFrame(s, dshape=None, **kwargs):
     return s.to_data_frame()
 
 
-@convert.register(list, SAS7BDAT, cost=8.0)
-def sas_to_list(s, dshape=None, **kwargs):
-    s.skip_header = True
-    return list(s.readlines())
-
-
 @convert.register(Iterator, SAS7BDAT, cost=1.0)
-def sas_to_iterator(s):
+def sas_to_iterator(s, **kwargs):
     s.skip_header = True
     return s.readlines()
-
-
-@append.register(sa.Table, SAS7BDAT)
-def append_sas_to_table(t, s, **kwargs):
-    append(t, sas_to_iterator(s), **kwargs)
-
-
-def sas_to_table(s, metadata=None):
-    ds = discover_sas(s)
-    name = s.header.properties.name.decode("utf-8")
-    return dshape_to_table(name, ds, metadata)
