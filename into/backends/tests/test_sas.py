@@ -1,18 +1,18 @@
 from __future__ import absolute_import, division, print_function
 
 import pytest
-import sys
+sas7bdat = pytest.importorskip('sas7bdat')
+pytest.importorskip('into.backends.sas')
 import os
 import pandas as pd
 import numpy as np
-import gzip
 import datashape
-from datashape import Option, string
 from collections import Iterator
 from sas7bdat import SAS7BDAT
+import sqlalchemy as sa
 
 from into.backends.sas import (discover, sas_to_DataFrame, sas_to_list,
-                               sas_to_iterator)
+                               sas_to_iterator, sas_to_table)
 from into.utils import tmpfile, filetext, filetexts, raises
 from into import into, append, convert, resource, discover, dshape
 from into.compatibility import unicode, skipif
@@ -54,6 +54,19 @@ def test_convert_sas_to_list(sasfile):
     assert isinstance(out, list)
     assert all(isinstance(ln, list) for ln in out)
 
+
 def test_convert_sas_to_iterator(sasfile):
     itr = sas_to_iterator(sasfile)
     assert isinstance(itr, Iterator)
+
+
+def test_append_sas_to_sqlite_round_trip(sasfile):
+    df2 = convert(pd.DataFrame, sasfile)
+    engine = sa.create_engine('sqlite:///:memory:', echo=True)
+    metadata = sa.MetaData(engine)
+    t = sas_to_table(sasfile, metadata=metadata)
+    t.create()
+    append(t, sasfile, dshape=discover(sasfile))
+    df = convert(pd.DataFrame, t)
+    for col in df.columns:
+        assert np.allclose(df2[col], df[col])
