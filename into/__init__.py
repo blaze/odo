@@ -58,6 +58,10 @@ try:
      from .backends import sql_csv
 except:
     pass
+try:
+     from .backends.bokeh import ColumnDataSource
+except:
+    pass
 
 
 restart_ordering() # Restart multipledispatch ordering and do ordering
