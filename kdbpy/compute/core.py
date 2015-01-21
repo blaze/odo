@@ -297,8 +297,12 @@ def compute_up(expr, data, **kwargs):
 def compute_down(expr, data, **kwargs):
     if expr.axis != (0,):
         raise ValueError("axis == 1 not supported on record types")
+
+    # if we have single field access on a table, that's the same as just
+    # counting q's magic i variable
     if getattr(data, 'fields', ()) and not isinstance(data, q.select):
-        return q.count(q.Symbol(data.s))
+        # i is a magic variable in q indicating the row number
+        return q.count(q.Symbol('i'))
     return q.count(data)
 
 

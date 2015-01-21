@@ -10,8 +10,7 @@ import pandas.util.testing as tm
 from datashape import null, dshape, Record, var
 
 import blaze as bz
-from blaze import compute, into, by, discover, dshape, summary, Data, symbol
-from kdbpy import QTable
+from blaze import compute, into, by, discover, dshape, summary, Data
 from kdbpy.compute.qtable import qtypes
 from kdbpy.tests import assert_series_equal
 
@@ -113,7 +112,7 @@ def test_multikey_by(t, q, df):
 @pytest.mark.xfail(raises=AttributeError,
                    reason='Cannot nest joins in groupbys yet')
 def test_join_then_by(db):
-    joined = bz.join(db.dates, db.prices, on_left='account', on_right='account')
+    joined = bz.join(db.dates, db.prices, 'account')
     expr = by(joined.date, amt_mean=joined.amount.mean())
 
     query = ('select amt_mean: avg amount by date from '
@@ -149,6 +148,22 @@ def test_nrows(t, q, df):
     qresult = compute(t.nrows, q)
     expected = len(df)
     assert qresult == expected
+
+
+def test_column_nrows(db):
+    qresult = compute(db.t.on.nrows)
+    expected = len(db.t)
+    assert qresult == expected
+
+
+def test_date_nrows_in_by_expression(db):
+    expr = by(db.t.name, count=db.t.when.nrows)
+    result = compute(expr)
+    expected = pd.DataFrame([('Alice', 2),
+                             ('Bob', 1),
+                             ('Joe', 1),
+                             ('Smithers', 2)], columns=['name', 'count'])
+    tm.assert_frame_equal(result, expected)
 
 
 @pytest.mark.parametrize('reduction', ['std', 'var'])
