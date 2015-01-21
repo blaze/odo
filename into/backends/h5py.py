@@ -1,20 +1,22 @@
 from __future__ import absolute_import, division, print_function
 
+import os
+
 import datashape
-from datashape import (DataShape, Record, Mono, dshape, to_numpy,
-        to_numpy_dtype, discover)
-from datashape.predicates import isrecord, iscollection
+from datashape import (DataShape, Record, dshape, to_numpy, to_numpy_dtype,
+                       discover)
+from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
 import h5py
 import numpy as np
-from toolz import assoc, keyfilter
+from toolz import keyfilter
 
 from ..append import append
 from ..convert import convert, ooc_types
 from ..create import create
 from ..resource import resource
-from ..chunks import chunks, Chunks
-from ..compatibility import unicode
+from ..chunks import chunks
+
 
 h5py_attributes = ['chunks', 'compression', 'compression_opts', 'dtype',
                    'fillvalue', 'fletcher32', 'maxshape', 'shape']
@@ -31,16 +33,8 @@ def discover_h5py_dataset(d):
     return dshape(s.replace('object', 'string'))
 
 
-def varlen_dtype(dt):
-    """ Inject variable length string element for 'O' """
-    if "'O'" not in str(dt):
-        return dt
-    varlen = h5py.special_dtype(vlen=unicode)
-    return np.dtype(eval(str(dt).replace("'O'", 'varlen')))
-
-
 def dataset_from_dshape(file, datapath, ds, **kwargs):
-    dtype = varlen_dtype(to_numpy_dtype(ds))
+    dtype = to_numpy_dtype(ds)
     if datashape.var not in list(ds):
         shape = to_numpy(ds)[0]
     elif datashape.var not in list(ds)[1:]:
@@ -111,13 +105,13 @@ def append_h5py(dset, x, **kwargs):
 def h5py_to_numpy(dset, force=False, **kwargs):
     if dset.size > 1e9:
         raise MemoryError("File size is large: %0.2f GB.\n"
-        "Convert with flag force=True to force loading" % d.size / 1e9)
+                          "Convert with flag force=True to force loading" % d.size / 1e9)
     else:
         return dset[:]
 
 
 @convert.register(chunks(np.ndarray), h5py.Dataset, cost=3.0)
-def h5py_to_numpy_chunks(dset, chunksize=2**20, **kwargs):
+def h5py_to_numpy_chunks(dset, chunksize=2 ** 20, **kwargs):
     def load():
         for i in range(0, dset.shape[0], chunksize):
             yield dset[i: i + chunksize]
@@ -145,6 +139,7 @@ def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
 @resource.register('.+\.(hdf5|h5)')
 def resource_hdf5(*args, **kwargs):
     return resource_h5py(*args, **kwargs)
+
 
 @dispatch((h5py.Group, h5py.Dataset))
 def drop(h):
