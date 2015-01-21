@@ -22,7 +22,7 @@ install:
   - conda update conda
 
   # Install dependencies
-  - conda create -n test-environment python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python
+  - conda create -n test-environment python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python bokeh
   - source activate test-environment
 
   # Install PyMongo
