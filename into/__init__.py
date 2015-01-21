@@ -59,6 +59,10 @@ try:
 except:
     pass
 try:
+     from .backends.hdfs import HDFS
+except:
+    pass
+try:
      from .backends import sql_csv
 except:
     pass
