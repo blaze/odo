@@ -99,7 +99,7 @@ def desubs(expr, t):
 def compute_atom(atom, symbol):
     s = getattr(atom, 'str', atom.s)
     split = s.split('.', 1)
-    if '.' in s and first(split) == symbol:
+    if '.' in s and first(split) == getattr(symbol, '_name', symbol):
         return type(atom)(second(split))
     return atom
 
@@ -297,8 +297,12 @@ def compute_up(expr, data, **kwargs):
 def compute_down(expr, data, **kwargs):
     if expr.axis != (0,):
         raise ValueError("axis == 1 not supported on record types")
+
+    # if we have single field access on a table, that's the same as just
+    # counting q's magic i variable
     if getattr(data, 'fields', ()) and not isinstance(data, q.select):
-        return q.count(q.Symbol(data.s))
+        # i is a magic variable in q indicating the row number
+        return q.count(q.Symbol('i'))
     return q.count(data)
 
 
