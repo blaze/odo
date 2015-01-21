@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import re
 import sqlalchemy as sa
 from itertools import chain
 from collections import Iterator
@@ -360,7 +361,24 @@ def resource_hive(uri, *args, **kwargs):
         import pyhive
     except ImportError:
         raise ImportError("Please install the `PyHive` library.")
-    return resource_sql(uri, *args, **kwargs)
+
+    pattern = 'hive://((?P<user>[a-zA-Z_]\w*)@)?(?P<host>[\w.]+)(:(?P<port>\d*))?(/(?P<database>\w*))?'
+    d = re.search(pattern, uri.split('::')[0]).groupdict()
+
+    defaults = {'port': '10000',
+                'user': 'hdfs',
+                'database': 'default'}
+    for k, v in d.items():
+        if not v:
+            d[k] = defaults[k]
+    if d['user']:
+        d['user'] = d['user'] + '@'
+
+    uri2 = 'hive://%(user)s%(host)s:%(port)s/%(database)s' % d
+    if '::' in uri:
+        uri2 = uri2 + '::' + uri.split('::')[1]
+
+    return resource_sql(uri2, *args, **kwargs)
 
 
 ooc_types.add(sa.Table)

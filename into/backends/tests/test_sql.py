@@ -260,3 +260,12 @@ def test_engine_metadata_caching():
 
         assert a.metadata is b.metadata
         assert engine is a.bind is b.bind
+
+
+def test_hive_resource():
+    db = resource('hive://hdfs@54.91.57.226:10000/default')
+    assert isinstance(db, sa.engine.Engine)
+
+    db = resource('hive://54.91.57.226/')
+    assert isinstance(db, sa.engine.Engine)
+    assert str(db.url) == 'hive://hdfs@54.91.57.226:10000/default'
