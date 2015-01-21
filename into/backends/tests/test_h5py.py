@@ -1,15 +1,16 @@
 from __future__ import absolute_import, division, print_function
 
-from into.backends.h5py import (append, create, resource, discover, convert,
-        resource_h5py)
+import os
 from contextlib import contextmanager
+
+from into.backends.h5py import append, create, resource, discover, convert
+
 from into.utils import tmpfile
 from into.chunks import chunks
-from into import into, append, convert, discover
+from into import into, append, convert, discover, drop
 import datashape
 import h5py
 import numpy as np
-import os
 
 
 @contextmanager
@@ -26,6 +27,37 @@ def file(x):
 
 
 x = np.ones((2, 3), dtype='i4')
+
+
+def test_drop_group():
+    with tmpfile('.hdf5') as fn:
+        f = h5py.File(fn)
+        try:
+            f.create_dataset('/group/data', data=x, chunks=True,
+                             maxshape=(None,) + x.shape[1:])
+            drop(f['/group'])
+            assert '/group' not in f.keys()
+        finally:
+            f.close()
+
+
+def test_drop_dataset():
+    with tmpfile('.hdf5') as fn:
+        f = h5py.File(fn)
+        try:
+            data = f.create_dataset('/data', data=x, chunks=True,
+                                    maxshape=(None,) + x.shape[1:])
+
+            drop(data)
+            assert '/data' not in f.keys()
+        finally:
+            f.close()
+
+
+def test_drop_file():
+    with file(x) as (fn, f, data):
+        drop(f)
+    assert not os.path.exists(fn)
 
 
 def test_discover():
@@ -49,7 +81,7 @@ def test_append():
 
 def test_into_resource():
     with tmpfile('.hdf5') as fn:
-        d = into(fn+'::/x', x)
+        d = into(fn + '::/x', x)
         assert d.shape == x.shape
         assert eq(d[:], x[:])
 
