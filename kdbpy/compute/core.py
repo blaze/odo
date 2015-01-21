@@ -99,7 +99,7 @@ def desubs(expr, t):
 def compute_atom(atom, symbol):
     s = getattr(atom, 'str', atom.s)
     split = s.split('.', 1)
-    if '.' in s and first(split) == symbol:
+    if '.' in s and first(split) == getattr(symbol, '_name', symbol):
         return type(atom)(second(split))
     return atom
 
