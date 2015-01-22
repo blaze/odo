@@ -95,6 +95,9 @@ def metadata_of_engine(engine):
     return metadata
 
 
+create_engine = memoize(sa.create_engine)
+
+
 @dispatch(sa.engine.base.Engine, str)
 def discover(engine, tablename):
     metadata = metadata_of_engine(engine)
@@ -305,7 +308,7 @@ def append_select_statement_to_sql_Table(t, o, **kwargs):
 def resource_sql(uri, *args, **kwargs):
     kwargs2 = keyfilter(keywords(sa.create_engine).__contains__,
                        kwargs)
-    engine = sa.create_engine(uri, **kwargs2)
+    engine = create_engine(uri, **kwargs2)
     ds = kwargs.get('dshape')
     if args and isinstance(args[0], str):
         table_name, args = args[0], args[1:]
