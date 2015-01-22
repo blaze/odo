@@ -95,7 +95,14 @@ def metadata_of_engine(engine):
     return metadata
 
 
-create_engine = memoize(sa.create_engine)
+def create_engine(uri, *args, **kwargs):
+    if ':memory:' in uri:
+        return sa.create_engine(uri, *args, **kwargs)
+    else:
+        return memoized_create_engine(uri, *args, **kwargs)
+
+
+memoized_create_engine = memoize(sa.create_engine)
 
 
 @dispatch(sa.engine.base.Engine, str)
