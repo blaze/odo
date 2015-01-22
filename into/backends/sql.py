@@ -9,7 +9,7 @@ from datashape import discover
 from datashape.dispatch import dispatch
 from datetime import datetime, date
 import datashape
-from toolz import partition_all, keyfilter, first, pluck
+from toolz import partition_all, keyfilter, first, pluck, memoize
 
 from ..utils import keywords
 from ..convert import convert, ooc_types
@@ -89,17 +89,24 @@ def discover_sqlalchemy_table(t):
     return var * Record(list(sum([discover(c).parameters[0] for c in t.columns], ())))
 
 
+@memoize
+def metadata_of_engine(engine):
+    metadata = sa.MetaData(engine)
+    return metadata
+
+
 @dispatch(sa.engine.base.Engine, str)
 def discover(engine, tablename):
-    metadata = sa.MetaData()
-    metadata.reflect(engine, views=True)
+    metadata = metadata_of_engine(engine)
+    if tablename not in metadata.tables:
+        metadata.reflect(engine, views=engine.dialect.supports_views)
     table = metadata.tables[tablename]
     return discover(table)
 
 
 @dispatch(sa.engine.base.Engine)
 def discover(engine):
-    metadata = sa.MetaData(engine)
+    metadata = metadata_of_engine(engine)
     return discover(metadata)
 
 
@@ -151,7 +158,7 @@ def create_from_datashape(o, ds, **kwargs):
 @dispatch(sa.engine.base.Engine, DataShape)
 def create_from_datashape(engine, ds, **kwargs):
     assert isrecord(ds)
-    metadata = sa.MetaData(engine)
+    metadata = metadata_of_engine(engine)
     for name, sub_ds in ds[0].dict.items():
         t = dshape_to_table(name, sub_ds, metadata=metadata)
         t.create()
@@ -302,7 +309,7 @@ def resource_sql(uri, *args, **kwargs):
     ds = kwargs.get('dshape')
     if args and isinstance(args[0], str):
         table_name, args = args[0], args[1:]
-        metadata = sa.MetaData(engine)
+        metadata = metadata_of_engine(engine)
         metadata.reflect(views=True)
         if table_name not in metadata.tables:
             if ds:
