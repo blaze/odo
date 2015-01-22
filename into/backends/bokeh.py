@@ -6,7 +6,8 @@ from bokeh.models import ColumnDataSource
 
 @convert.register(pd.DataFrame, ColumnDataSource)
 def columndatasource_to_dataframe(cds, **kwargs):
-    return cds.to_df()
+    df = cds.to_df()
+    return df[sorted(df.columns)]
 
 
 @convert.register(ColumnDataSource, pd.DataFrame)
