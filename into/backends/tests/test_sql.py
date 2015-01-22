@@ -241,3 +241,13 @@ def test_append_from_select(sqlite_file):
     result = into(list, t)
     expected = np.concatenate((raw, raw2)).tolist()
     assert result == expected
+
+
+def test_engine_metadata_caching():
+    with tmpfile('db') as fn:
+        engine = resource('sqlite:///' + fn)
+        a = resource('sqlite:///' + fn + '::a', dshape=dshape('var * {x: int}'))
+        b = resource('sqlite:///' + fn + '::b', dshape=dshape('var * {y: int}'))
+
+        assert a.metadata is b.metadata
+        assert engine is a.bind is b.bind
