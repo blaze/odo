@@ -6,13 +6,17 @@ from __future__ import absolute_import, print_function, division
 
 import numbers
 import datetime
+import itertools
 
+from contextlib import contextmanager
+
+import numpy as np
 import pandas as pd
 
 from toolz.compatibility import zip
 from toolz import map, first, second
 
-from into import resource, convert, into
+from into import resource, convert, into, append
 from blaze import compute
 
 from blaze.dispatch import dispatch
@@ -25,7 +29,7 @@ from blaze.expr import DateTime, Millisecond, Microsecond
 from blaze.expr.datetime import Minute
 
 from .. import q
-from .qtable import QTable
+from .qtable import QTable, is_splayed, is_partitioned
 from ..kdb import KQ
 from ..util import parse_connection_string
 
@@ -217,7 +221,7 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Selection, q.Expr)
 def compute_up(expr, data, **kwargs):
-    # template: ?[selectable, predicate or list of predicates, by, aggregations]
+    # template: ?[select, predicate or list of predicates, by, aggregations]
     predicate = compute(expr.predicate, {expr._child: data})
     result = q.select(data, constraints=q.List(q.List(q.List(predicate))))
     leaf_name = expr._leaves()[0]._name
@@ -395,3 +399,41 @@ def resource_kdb(uri, engine=None, **kwargs):
     if engine is None:
         engine = KQ(parse_connection_string(uri), start=True)
     return engine
+
+
+@convert.register(pd.DataFrame, QTable, cost=5.0)
+def qtable_to_frame(t, **kwargs):
+    return t.engine.eval(t.tablename)
+
+
+_prefix = 'tmp_%d_%%d' % abs(hash(__file__))
+
+_temps = (_prefix % i for i in itertools.count())
+
+
+@contextmanager
+def tmpvar(engine, value):
+    tmp = next(_temps)
+
+    try:
+        engine.set(np.string_(tmp), value)
+        yield tmp
+    finally:
+        # remove our temp from the namespace
+        engine.eval('delete {tmp} from `.'.format(tmp=tmp))
+
+
+def append_frame_to_in_memory_qtable(t, df, **kwargs):
+    with tmpvar(t.engine, df) as tmpdf:
+        # uj is union join and will append one table to another
+        t.engine.eval('{t}: {t} uj {df}'.format(t=t.tablename, df=tmpdf))
+    return t
+
+
+@append.register(QTable, pd.DataFrame)
+def append_frame_to_qtable(t, df, **kwargs):
+    if is_splayed(t):
+        raise NotImplementedError('append not defined for splayed tables')
+    elif is_partitioned(t):
+        raise NotImplementedError('append not defined for partitioned tables')
+    return append_frame_to_in_memory_qtable(t, df, **kwargs)
