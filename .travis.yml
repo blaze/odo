@@ -34,8 +34,8 @@ install:
   # Install DataShape
   - pip install --upgrade git+http://github.com/ContinuumIO/datashape
 
-  # Install DataShape
-  - pip install sas7bdat
+  # Install sas7bdat
+  - if [[ $TRAVIS_PYTHON_VERSION != '2.6' ]]; then pip install sas7bdat; fi
 
   # For bcolz
   - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda install unittest2; fi
