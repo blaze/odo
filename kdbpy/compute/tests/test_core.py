@@ -13,11 +13,7 @@ import blaze as bz
 from blaze import compute, into, by, discover, dshape, summary, Data
 from kdbpy.compute.qtable import qtypes
 from kdbpy.tests import assert_series_equal
-
-
-@pytest.fixture(scope='module')
-def db(kdb):
-    return bz.Data(kdb)
+from into import into
 
 
 def test_projection(t, q, df):
