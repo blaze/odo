@@ -1,21 +1,20 @@
 import pytest
 
-from blaze import Data, compute
+import pandas as pd
+import pandas.util.testing as tm
+from blaze import compute, into
 from kdbpy.compute.qtable import is_splayed
 
 
-@pytest.fixture(scope='module')
-def nbbo(rstring, kdbpar):
-    return Data(rstring + '/start/db::nbbo_t')
+def test_splayed_nrows(par):
+    assert compute(par.nbbo_t.nrows) == compute(par.nbbo_t.sym.nrows)
 
 
-def test_splayed_nrows(nbbo):
-    assert compute(nbbo.nrows) == compute(nbbo.sym.nrows)
+def test_splayed_time_type(par):
+    assert compute(par.nbbo_t.nrows) == compute(par.nbbo_t.time.nrows)
 
 
-def test_splayed_time_type(nbbo):
-    assert compute(nbbo.nrows) == compute(nbbo.time.nrows)
+def test_is_splayed(par):
+    assert is_splayed(par.nbbo_t)
 
 
-def test_is_splayed(nbbo):
-    assert is_splayed(nbbo)
