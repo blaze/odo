@@ -8,22 +8,11 @@ import pandas.util.testing as tm
 from into import into
 
 import blaze as bz
-from blaze import Data, by, compute
-from blaze.expr import Field
+from blaze import by, compute
 
 from kdbpy.compute.qtable import is_standard
 from kdbpy.compute.functions import wmean
 from kdbpy.tests import assert_series_equal
-
-
-@pytest.fixture(scope='module')
-def par(kdbpar):
-    return Data(kdbpar)
-
-
-@pytest.fixture(scope='module')
-def db(kdb):
-    return Data(kdb)
 
 
 def test_resource_doesnt_bork(par):
@@ -70,7 +59,7 @@ def test_complex_date_op(par):
               wprice=wmean(par.daily.price, weights=par.daily.size))
     assert repr(expr)
     result = compute(expr)
-    query = ('select cnt: count price, size: sum size, wprice: size wavg price '
+    query = ('select cnt: count price, size: sum size, wprice: size wavg price'
              '  by date from daily')
     expected = par.data.eval(query).reset_index()
     tm.assert_frame_equal(result, expected)
@@ -98,7 +87,8 @@ def test_is_standard(par):
 
 def test_by_mean(par):
     expr = by(par.daily.sym, price=par.daily.price.mean())
-    expected = par.data.eval('select avg price by sym from daily').reset_index()
+    qs = 'select avg price by sym from daily'
+    expected = par.data.eval(qs).reset_index()
     result = compute(expr)
     tm.assert_frame_equal(result, expected)
 
@@ -142,4 +132,19 @@ def test_by_grouper_type_fails(par):
     query = 'select avg_price: avg price by sym from daily where (i mod 2) = 0'
     expected = par.data.eval(query).reset_index()
     result = compute(expr)
+    tm.assert_frame_equal(result, expected)
+
+
+def test_convert_qtable_to_frame(db, q):
+    tablename = q.tablename
+    expected = db.data.eval(tablename)
+    result = into(pd.DataFrame, getattr(db, tablename))
+    tm.assert_frame_equal(result, expected)
+
+
+def test_append_frame_to_in_memory_qtable(db, q):
+    tablename = q.tablename
+    df = db.data.eval(tablename)
+    expected = pd.concat([df, df], ignore_index=True)
+    result = into(pd.DataFrame, into(q, df))
     tm.assert_frame_equal(result, expected)
