@@ -84,3 +84,13 @@ def test_nunique(par):
     expr = par.trade.sym.nunique()
     qs = 'count distinct exec sym from select sym from trade'
     assert compute(expr) == par.data.eval(qs)
+
+
+@pytest.mark.xfail(raises=NotImplementedError,
+                   reason='not implemented for partitioned tables')
+def test_append_frame_to_partitioned(par):
+    tablename = par.trade._name
+    df = par.data.eval('select from %s' % tablename)
+    expected = pd.concat([df, df], ignore_index=True)
+    result = into(pd.DataFrame, into(par.trade, df))
+    tm.assert_frame_equal(result, expected)

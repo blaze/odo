@@ -133,3 +133,18 @@ def test_by_grouper_type_fails(par):
     expected = par.data.eval(query).reset_index()
     result = compute(expr)
     tm.assert_frame_equal(result, expected)
+
+
+def test_convert_qtable_to_frame(db, q):
+    tablename = q.tablename
+    expected = db.data.eval(tablename)
+    result = into(pd.DataFrame, getattr(db, tablename))
+    tm.assert_frame_equal(result, expected)
+
+
+def test_append_frame_to_in_memory_qtable(db, q):
+    tablename = q.tablename
+    df = db.data.eval(tablename)
+    expected = pd.concat([df, df], ignore_index=True)
+    result = into(pd.DataFrame, into(q, df))
+    tm.assert_frame_equal(result, expected)
