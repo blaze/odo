@@ -5,7 +5,7 @@ try:
     from sas7bdat import SAS7BDAT
 except ImportError:
     sas7bdat = None
-    SAS7BDAT = None
+    SAS7BDAT = type(None)
 
 import datashape
 from datashape import discover, dshape, var
