@@ -13,6 +13,8 @@ from sas7bdat import SAS7BDAT
 from into.backends.sas import discover, sas_to_DataFrame, sas_to_iterator
 from into.utils import tmpfile
 from into import append, convert, resource, dshape
+from numpy import dtype
+
 
 cur_path = os.path.abspath(os.path.dirname(__file__))
 test_path = os.path.join(cur_path, 'airline.sas7bdat')
@@ -33,8 +35,8 @@ def test_resource_sas7bdat(sasfile):
 
 
 def test_discover_sas(sasfile):
-    ds = ", ".join(col + ": float64" for col in columns)
-    expected = dshape("var * {" + ds + "}")
+    ds = ", ".join(col + ": float64" for col in columns[1:])
+    expected = dshape("var * {DATE: date, " + ds + "}")
     ans = discover(sasfile)
     assert discover(sasfile) == expected
 
@@ -42,7 +44,9 @@ def test_discover_sas(sasfile):
 def test_convert_sas_to_dataframe(sasfile):
     df = sas_to_DataFrame(sasfile)
     assert set(df.columns) == set(columns)
-    assert all([df[col].dtype == np.dtype('float64') for col in df.columns])
+    assert all([df[col].dtype == np.dtype('float64') for col in df.columns
+                if col != 'DATE'])
+    assert df['DATE'].dtype == dtype('O')
 
 
 def test_convert_sas_to_list(sasfile):
@@ -60,7 +64,7 @@ def test_append_sas_to_sqlite_round_trip(sasfile):
     expected = convert(set, sasfile)
 
     with tmpfile('db') as fn:
-        r = resource('sqlite:///%s::A', dshape=discover(sasfile))
+        r = resource('sqlite:///%s::SAS', dshape=discover(sasfile))
         append(r, sasfile)
 
         result = convert(set, r)
