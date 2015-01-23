@@ -423,5 +423,10 @@ def test_empty_all_types(rstring, kdb):
 
 def test_compile_query(q):
     t = bz.Data(q)
-    result = t.amount + 1
-    assert compile(result) == '(+; `t.amount; 1)'
+    from kdbpy import q
+    assert compile(t.amount + 1) == q.add(q.Symbol('t')['amount'], 1)
+
+
+def test_compile_query_from_db(db):
+    from kdbpy import q
+    assert compile(db.t.amount * 2) == q.mul(q.Symbol('t')['amount'], 2)

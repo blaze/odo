@@ -7,17 +7,18 @@ from __future__ import absolute_import, print_function, division
 import numbers
 import datetime
 
+from operator import attrgetter
+
 import pandas as pd
 
 from toolz.compatibility import zip
-from toolz import map, first, second
+from toolz import map, first, second, compose
 
 from into import resource, convert, into
 from blaze import compute
 
 from blaze.dispatch import dispatch
 
-import blaze as bz
 from blaze.compute.core import compute, swap_resources_into_scope
 from blaze.expr import Symbol, Projection, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
@@ -218,7 +219,7 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Selection, q.Expr)
 def compute_up(expr, data, **kwargs):
-    # template: ?[selectable, predicate or list of predicates, by, aggregations]
+    # template: ?[table, predicate or list of predicates, by, aggregations]
     predicate = compute(expr.predicate, {expr._child: data})
     result = q.select(data, constraints=q.List(q.List(q.List(predicate))))
     leaf_name = expr._leaves()[0]._name
@@ -388,9 +389,11 @@ def compute_down(expr, data, **kwargs):
 
 def compile(data):
     expr, data = swap_resources_into_scope(data, data._resources())
-    leaf = expr._leaves()[0]
-    data_leaf = data[leaf]._qsymbol
-    return str(compute(expr, {leaf: data_leaf}))
+    leaves = expr._leaves()
+    import ipdb; ipdb.set_trace()
+    data_leaves = map(compose(attrgetter('_qsymbol'), data.__getitem__),
+                      leaves)
+    return compute(expr, dict(zip(leaves, data_leaves)))
 
 
 @dispatch(Field, KQ)
