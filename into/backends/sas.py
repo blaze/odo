@@ -1,7 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
-import sas7bdat
-from sas7bdat import SAS7BDAT
+try:
+    import sas7bdat
+    from sas7bdat import SAS7BDAT
+except ImportError:
+    sas7bdat = None
 
 import datashape
 from datashape import discover, dshape, var
