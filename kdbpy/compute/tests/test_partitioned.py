@@ -57,7 +57,19 @@ def test_selection(par):
     tm.assert_frame_equal(result, expected)
 
 
-def test_partitioned_nrows_on_virtual_column(par):
+def test_by_on_selection(par):
+    t = par.trade
+    sel = t[(t.price > 25.0) & (t.size > 30)]
+    expr = by(sel.sym,
+              ap=sel.price.mean(),
+              mp=sel.size.max(),
+              cp=sel.cond.nrows)
+    qs = 'select ap: avg price, mp: max size, cp: count cond by sym from trade where price > 25.0, size > 30'
+    expected = par.data.eval(qs).reset_index().sort_index(axis=1)
+    result = compute(expr).sort_index(axis=1)
+    tm.assert_frame_equal(result, expected)
+
+
 def test_nunique(par):
     expr = par.trade.sym.nunique()
     qs = 'count distinct exec sym from select sym from trade'
