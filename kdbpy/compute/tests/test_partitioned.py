@@ -64,6 +64,28 @@ def test_nunique(par):
     assert compute(expr) == par.data.eval(qs)
 
 
+@pytest.mark.xfail(raises=QException,
+                   reason="partitioned tables don't yet work with comparisons")
+def test_any(par):
+    price = par.trade.price
+    expr = (price > 50) & (price < 100)
+    qs = ('first exec price from select price: any[price within 50 100]'
+          '  from trade')
+    expected = par.data.eval(qs)
+    result = compute(expr.any())
+    tm.assert_frame_equal(result, expected)
+
+
+@pytest.mark.xfail(raises=QException,
+                   reason="partitioned tables don't yet work with comparisons")
+def test_all(par):
+    price = par.trade.price
+    expr = (price > 0) & (price < 100000)
+    qs = ('first exec price from select price: all[price within 0 100000]'
+          '  from trade')
+    expected = par.data.eval(qs)
+    result = compute(expr.all())
+    tm.assert_frame_equal(result, expected)
 
 
 agg_funcs = {'mean': 'avg'}
