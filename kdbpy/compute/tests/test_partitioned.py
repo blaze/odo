@@ -58,6 +58,26 @@ def test_selection(par):
 
 
 def test_partitioned_nrows_on_virtual_column(par):
+def test_nunique(par):
+    expr = par.trade.sym.nunique()
+    qs = 'count distinct exec sym from select sym from trade'
+    assert compute(expr) == par.data.eval(qs)
+
+
+
+
+agg_funcs = {'mean': 'avg'}
+
+
+@pytest.mark.parametrize('agg', ['mean', 'sum', 'count', 'min', 'max'])
+def test_agg(par, agg):
+    expr = getattr(par.trade.price, agg)()
+    qs = ('first exec price from select %s price from trade' %
+          agg_funcs.get(agg, agg))
+    assert compute(expr) == par.data.eval(qs)
+
+
+def test_nrows_on_virtual_column(par):
     assert compute(par.quote.nrows) == compute(par.quote.date.nrows)
 
 
@@ -76,14 +96,6 @@ def test_simple_arithmetic(par):
     result = compute(expr)
     expected = par.data.eval('select (price + 1) * 2 from trade').squeeze()
     assert_series_equal(result, expected)
-
-
-@pytest.mark.xfail(raises=QException,
-                   reason='nunique on partitioned tables not yet implemented')
-def test_nunique(par):
-    expr = par.trade.sym.nunique()
-    qs = 'count distinct exec sym from select sym from trade'
-    assert compute(expr) == par.data.eval(qs)
 
 
 @pytest.mark.xfail(raises=NotImplementedError,
