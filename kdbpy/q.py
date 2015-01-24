@@ -85,6 +85,9 @@ class Symbol(Atom):
             return '`$"%s"' % joined
         return '`' + joined
 
+    def __eq__(self, other):
+        return type(self) == type(other) and self.str == other.str
+
 
 class List(object):
     is_partitioned = False
