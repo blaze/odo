@@ -218,6 +218,13 @@ unops = {'-': neg,
          'count': count,
          'nelements': count,
          'nunique': unop('.kdbpy.nunique')}
+         'first': unop('*:'),
+         'last': unop('last')
+         }
+
+
+first = unops['first']
+last = unops['last']
 
 
 def symlist(*args):
