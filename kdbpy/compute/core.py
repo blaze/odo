@@ -282,8 +282,7 @@ def get_fields(expr):
     --------
     >>> t = symbol('t', '1000 * {price: float64, size: int64}')
     >>> expr = (t.price * t.size) / t.size.sum()
-    >>> fields = get_fields(expr)
-    >>> fields
+    >>> get_fields(expr)
     [t.price, t.size]
     """
     return list(uniq(filter(lambda x: isinstance(x, Field), expr._subterms())))
