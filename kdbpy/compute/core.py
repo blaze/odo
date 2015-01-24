@@ -8,23 +8,24 @@ import numbers
 import datetime
 import itertools
 
+from operator import attrgetter
 from contextlib import contextmanager
 
 import numpy as np
 import pandas as pd
 
 from toolz.compatibility import zip
-from toolz import map, first, second
+from toolz import map, first, second, merge
 
 from into import resource, convert, into, append
-from blaze import compute
+from blaze import compute, symbol
 
 from blaze.dispatch import dispatch
 
 from blaze.compute.core import compute
 from blaze.expr import Symbol, Projection, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
-from blaze.expr import Slice, Distinct, Summary, nelements
+from blaze.expr import Slice, Distinct, Summary
 from blaze.expr import DateTime, Millisecond, Microsecond
 from blaze.expr.datetime import Minute
 
@@ -274,6 +275,64 @@ def compute_up(expr, data, **kwargs):
     return desubs(q.select(data, aggregates=aggregates), expr._leaves()[0])
 
 
+def get_fields(expr):
+    """Get all of the fields of an expression
+
+    Examples
+    --------
+    >>> t = symbol('t', '1000 * {price: float64, size: int64}')
+    >>> expr = (t.price * t.size) / t.size.sum()
+    >>> fields = get_fields(expr)
+    >>> fields
+    [t.price, t.size]
+    """
+    return list(uniq(filter(lambda x: isinstance(x, Field), expr._subterms())))
+
+
+def uniq(seq):
+    """Unique elements in a sequence while preserving order
+
+    Examples
+    --------
+    >>> x = [2, 1, 2, 3]
+    >>> list(uniq(x))
+    [2, 1, 3]
+    """
+    seen = set()
+
+    for x in seq:
+        if x not in seen:
+            yield x
+        seen.add(x)
+
+
+def rewrite_summary(expr, data):
+    """Rewrite a summary to be something that will work in a select statement
+
+    Examples
+    --------
+    >>> from blaze import summary
+    >>> t = symbol('t', '10 * {name: string, amount: float64, id: int64}')
+    >>> qt = q.Symbol('t')
+    >>> agg = summary(avg=t.amount.mean(), max_id=t.id.max())
+    >>> usual_result = compute(agg, qt)
+    >>> usual_result
+    (?; `t; (); 0b; (`avg; `max_id)!((avg; `amount); (max; `id)))
+    >>> rewritten_result = q.Dict(list(rewrite_summary(agg, qt)))
+    >>> rewritten_result
+    (`avg; `max_id)!((avg; `amount); (max; `id))
+    """
+    agg_funcs = expr.values
+    for qsym, subexpr, fields in zip(map(q.Symbol, expr.names),
+                                     agg_funcs,
+                                     map(get_fields, agg_funcs)):
+        new_fields = [symbol(field._name, field.dshape) for field in fields]
+        new_expr = subexpr._subs(dict(zip(fields, new_fields)))
+        names = map(attrgetter('_name'), new_fields)
+        new_scope = dict(zip(new_fields, map(q.Symbol, names)))
+        yield qsym, compute(new_expr, new_scope)
+
+
 @dispatch(By, q.Expr)
 def compute_up(expr, data, **kwargs):
     if isinstance(data, q.select):  # we are combining multiple selects
@@ -292,15 +351,11 @@ def compute_up(expr, data, **kwargs):
         grouper = grouper.aggregates
     else:
         grouper = q.Dict([(q.Symbol(expr.grouper._name), grouper)])
-    apply = compute(expr.apply, child)
-    aggregates = apply.aggregates
+
+    aggregates = q.Dict(list(rewrite_summary(expr.apply, data)))
     select = q.select(child, q.List(constraints), grouper, aggregates)
-    return desubs(select, child.s)
-
-
-@dispatch(nelements, q.Expr)
-def compute_up(expr, data, **kwargs):
-    return q.count(data)
+    result = desubs(select, child.s)
+    return result
 
 
 @dispatch(Reduction, q.Symbol)
