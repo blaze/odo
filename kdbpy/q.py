@@ -1,6 +1,8 @@
 import re
 import keyword
 from itertools import chain
+from toolz import compose
+
 try:
     import builtins
 except ImportError:  # pragma: no cover
@@ -217,7 +219,7 @@ unops = {'-': neg,
          'max': unop('max'),
          'count': count,
          'nelements': count,
-         'nunique': unop('.kdbpy.nunique')}
+         'nunique': compose(count, distinct),
          'first': unop('*:'),
          'last': unop('last')
          }
