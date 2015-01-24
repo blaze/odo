@@ -303,21 +303,30 @@ def compute_up(expr, data, **kwargs):
     return q.count(data)
 
 
-@dispatch(nelements, q.Expr)
+@dispatch(Reduction, q.Symbol)
 def compute_down(expr, data, **kwargs):
     if expr.axis != (0,):
         raise ValueError("axis == 1 not supported on record types")
 
-    # if we have single field access on a table, that's the same as just
-    # counting q's magic i variable
-    if isinstance(data, q.Symbol) and data.fields:
-        # i is a magic variable in q indicating the row number
-        return q.count(q.Symbol('i'))
+    reducer = q.unops[expr.symbol]
     if data.is_splayed or data.is_partitioned:
-        return q.exec_(q.select(q.Dict(OrderedDict()),
-                       from_=data, by=None, where=None))
-        return q.count(data)
-    return compute_up(expr, compute_up(expr._child, data, **kwargs), **kwargs)
+        child = compute(expr._child, data, **kwargs)
+        if child == data:
+            return q.count(data)
+
+        # if only one then we have a single element list
+        aggregates = q.List(q.Dict([(child, reducer(child))]))
+
+        # can't use exec so we first select then exec
+        sel = q.List(q.select(data, aggregates=aggregates))
+
+        # exec it
+        result = q.select(sel, grouper=q.List(), aggregates=q.List(child))
+
+        # call first here because we only have a single element
+        return q.first(desubs(q.List(result), data.s))
+
+    return reducer(compute(expr._child, data, **kwargs))
 
 
 @dispatch(Head, q.Expr)
