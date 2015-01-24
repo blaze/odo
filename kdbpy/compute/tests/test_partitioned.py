@@ -100,10 +100,12 @@ def test_all(par):
     tm.assert_frame_equal(result, expected)
 
 
-agg_funcs = {'mean': 'avg'}
+agg_funcs = {'mean': 'avg', 'std': 'dev'}
 
 
-@pytest.mark.parametrize('agg', ['mean', 'sum', 'count', 'min', 'max'])
+@pytest.mark.parametrize('agg', ['mean', 'sum', 'count', 'min', 'max',
+                                 pytest.mark.xfail('std', raises=QException),
+                                 pytest.mark.xfail('var', raises=QException)])
 def test_agg(par, agg):
     expr = getattr(par.trade.price, agg)()
     qs = ('first exec price from select %s price from trade' %
