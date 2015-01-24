@@ -292,9 +292,15 @@ def compute_up(expr, data, **kwargs):
         grouper = grouper.aggregates
     else:
         grouper = q.Dict([(q.Symbol(expr.grouper._name), grouper)])
-    aggregates = compute(expr.apply, child).aggregates
+    apply = compute(expr.apply, child)
+    aggregates = apply.aggregates
     select = q.select(child, q.List(constraints), grouper, aggregates)
     return desubs(select, child.s)
+
+
+@dispatch(nelements, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return q.count(data)
 
 
 @dispatch(nelements, q.Expr)
@@ -304,10 +310,14 @@ def compute_down(expr, data, **kwargs):
 
     # if we have single field access on a table, that's the same as just
     # counting q's magic i variable
-    if getattr(data, 'fields', ()) and not isinstance(data, q.select):
+    if isinstance(data, q.Symbol) and data.fields:
         # i is a magic variable in q indicating the row number
         return q.count(q.Symbol('i'))
-    return q.count(data)
+    if data.is_splayed or data.is_partitioned:
+        return q.exec_(q.select(q.Dict(OrderedDict()),
+                       from_=data, by=None, where=None))
+        return q.count(data)
+    return compute_up(expr, compute_up(expr._child, data, **kwargs), **kwargs)
 
 
 @dispatch(Head, q.Expr)
