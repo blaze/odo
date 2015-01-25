@@ -126,6 +126,25 @@ def test_nrows_on_virtual_column(par):
     assert compute(par.quote.nrows) == compute(par.quote.date.nrows)
 
 
+def test_chained_reduction(par):
+    t = par.trade
+    t = t[t.price > 30]
+    expr = t.price.min()
+    result = compute(expr)
+    series = compute(par.trade.price)
+    expected = series[series > 30].min()
+    assert result == expected
+
+
+def test_chained_reduction_different_field(par):
+    t = par.trade
+    expr = t[t.price > 30].size.min()
+    result = compute(expr)
+    df = compute(t[['price', 'size']])
+    expected = df[df.price > 30]['size'].min()
+    assert result == expected
+
+
 @xfail(raises=QException,
        reason="Can't get head from a single field on a partitioned table")
 def test_field_head(par):
