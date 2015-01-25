@@ -10,6 +10,8 @@ from qpython.qcollection import QException
 from kdbpy.compute.qtable import is_partitioned
 from kdbpy.tests import assert_series_equal
 
+xfail = pytest.mark.xfail
+
 
 def test_is_partitioned(par):
     assert is_partitioned(par.trade)
@@ -76,8 +78,8 @@ def test_nunique(par):
     assert compute(expr) == par.data.eval(qs)
 
 
-@pytest.mark.xfail(raises=QException,
-                   reason="partitioned tables don't yet work with comparisons")
+@xfail(raises=QException,
+       reason="partitioned tables don't yet work with comparisons")
 def test_any(par):
     price = par.trade.price
     expr = (price > 50) & (price < 100)
@@ -88,8 +90,8 @@ def test_any(par):
     tm.assert_frame_equal(result, expected)
 
 
-@pytest.mark.xfail(raises=QException,
-                   reason="partitioned tables don't yet work with comparisons")
+@xfail(raises=QException,
+       reason="partitioned tables don't yet work with comparisons")
 def test_all(par):
     price = par.trade.price
     expr = (price > 0) & (price < 100000)
@@ -103,9 +105,11 @@ def test_all(par):
 agg_funcs = {'mean': 'avg', 'std': 'dev'}
 
 
+# for some insane reason standard deviation and variance work on win32 but not
+# on OS X or Linux
 @pytest.mark.parametrize('agg', ['mean', 'sum', 'count', 'min', 'max',
-                                 pytest.mark.xfail('std', raises=QException),
-                                 pytest.mark.xfail('var', raises=QException)])
+                                 xfail('sys.platform != "win32"', 'std'),
+                                 xfail('sys.platform != "win32"', 'var')])
 def test_agg(par, agg):
     expr = getattr(par.trade.price, agg)()
     qs = ('first exec price from select %s price from trade' %
@@ -117,7 +121,8 @@ def test_nrows_on_virtual_column(par):
     assert compute(par.quote.nrows) == compute(par.quote.date.nrows)
 
 
-@pytest.mark.xfail(raises=QException)
+@xfail(raises=QException,
+       reason="Can't get head from a single field on a partitioned table")
 def test_field_head(par):
     result = compute(par.trade.price.head(5))
     query = 'exec price from .Q.ind[trade; til 5]'
@@ -125,8 +130,7 @@ def test_field_head(par):
     assert_series_equal(result, expected, check_exact=True)
 
 
-@pytest.mark.xfail(raises=QException,
-                   reason='field expressions not working')
+@xfail(raises=QException, reason='field expressions not working')
 def test_simple_arithmetic(par):
     expr = par.trade.price + 1 * 2
     result = compute(expr)
@@ -134,8 +138,8 @@ def test_simple_arithmetic(par):
     assert_series_equal(result, expected)
 
 
-@pytest.mark.xfail(raises=NotImplementedError,
-                   reason='not implemented for partitioned tables')
+@xfail(raises=NotImplementedError,
+       reason='not implemented for partitioned tables')
 def test_append_frame_to_partitioned(par):
     tablename = par.trade._name
     df = par.data.eval('select from %s' % tablename)
