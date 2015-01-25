@@ -1,6 +1,8 @@
 import re
 import keyword
 from itertools import chain
+from toolz import compose
+
 try:
     import builtins
 except ImportError:  # pragma: no cover
@@ -82,6 +84,9 @@ class Symbol(Atom):
         if not isidentifier(joined) and not keyword.iskeyword(joined):
             return '`$"%s"' % joined
         return '`' + joined
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.str == other.str
 
 
 class List(object):
@@ -215,9 +220,18 @@ unops = {'-': neg,
          'var': unop('var'),
          'min': unop('min'),
          'max': unop('max'),
+         'any': unop('any'),
+         'all': unop('all'),
          'count': count,
          'nelements': count,
-         'nunique': unop('.kdbpy.nunique')}
+         'nunique': compose(count, distinct),
+         'first': unop('*:'),
+         'last': unop('last')
+         }
+
+
+first = unops['first']
+last = unops['last']
 
 
 def symlist(*args):
@@ -261,9 +275,12 @@ class select(List):
 
     def __init__(self, child, constraints=None, grouper=None, aggregates=None):
         super(select, self).__init__('?', child,
-                                     constraints if constraints is not None else List(),
-                                     grouper if grouper is not None else Bool(),
-                                     aggregates if aggregates is not None else List())
+                                     constraints
+                                     if constraints is not None else List(),
+                                     grouper
+                                     if grouper is not None else Bool(),
+                                     aggregates
+                                     if aggregates is not None else List())
 
     def __str__(self):
         return super(select, self).__str__()

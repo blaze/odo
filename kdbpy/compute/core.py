@@ -17,14 +17,14 @@ from toolz.compatibility import zip
 from toolz import map, first, second
 
 from into import resource, convert, into, append
-from blaze import compute
+from blaze import compute, symbol
 
 from blaze.dispatch import dispatch
 
 from blaze.compute.core import compute
 from blaze.expr import Symbol, Projection, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
-from blaze.expr import Slice, Distinct, Summary, nelements
+from blaze.expr import Slice, Distinct, Summary
 from blaze.expr import DateTime, Millisecond, Microsecond
 from blaze.expr.datetime import Minute
 
@@ -274,6 +274,63 @@ def compute_up(expr, data, **kwargs):
     return desubs(q.select(data, aggregates=aggregates), expr._leaves()[0])
 
 
+def get_fields(expr):
+    """Get all of the fields of an expression
+
+    Examples
+    --------
+    >>> t = symbol('t', '1000 * {price: float64, size: int64}')
+    >>> expr = (t.price * t.size) / t.size.sum()
+    >>> get_fields(expr)
+    [t.price, t.size]
+    """
+    return list(uniq(filter(lambda x: isinstance(x, Field), expr._subterms())))
+
+
+def uniq(seq):
+    """Unique elements in a sequence while preserving order
+
+    Examples
+    --------
+    >>> x = [2, 1, 2, 3]
+    >>> list(uniq(x))
+    [2, 1, 3]
+    """
+    seen = set()
+
+    for x in seq:
+        if x not in seen:
+            yield x
+        seen.add(x)
+
+
+def rewrite_summary(expr, data):
+    """Rewrite a summary to be something that will work in a select statement
+
+    Examples
+    --------
+    >>> from blaze import summary
+    >>> t = symbol('t', '10 * {name: string, amount: float64, id: int64}')
+    >>> qt = q.Symbol('t')
+    >>> agg = summary(avg=t.amount.mean(), max_id=t.id.max())
+    >>> usual_result = compute(agg, qt)
+    >>> usual_result
+    (?; `t; (); 0b; (`avg; `max_id)!((avg; `amount); (max; `id)))
+    >>> rewritten_result = q.Dict(list(rewrite_summary(agg, qt)))
+    >>> rewritten_result
+    (`avg; `max_id)!((avg; `amount); (max; `id))
+    """
+    agg_funcs = expr.values
+    for qsym, subexpr, fields in zip(map(q.Symbol, expr.names),
+                                     agg_funcs,
+                                     map(get_fields, agg_funcs)):
+        new_fields = [symbol(field._name, field.dshape) for field in fields]
+        new_expr = subexpr._subs(dict(zip(fields, new_fields)))
+        names = [field._name for field in new_fields]
+        new_scope = dict(zip(new_fields, map(q.Symbol, names)))
+        yield qsym, compute(new_expr, new_scope)
+
+
 @dispatch(By, q.Expr)
 def compute_up(expr, data, **kwargs):
     if isinstance(data, q.select):  # we are combining multiple selects
@@ -292,22 +349,37 @@ def compute_up(expr, data, **kwargs):
         grouper = grouper.aggregates
     else:
         grouper = q.Dict([(q.Symbol(expr.grouper._name), grouper)])
-    aggregates = compute(expr.apply, child).aggregates
+
+    aggregates = q.Dict(list(rewrite_summary(expr.apply, data)))
     select = q.select(child, q.List(constraints), grouper, aggregates)
-    return desubs(select, child.s)
+    result = desubs(select, child.s)
+    return result
 
 
-@dispatch(nelements, q.Expr)
+@dispatch(Reduction, q.Symbol)
 def compute_down(expr, data, **kwargs):
     if expr.axis != (0,):
         raise ValueError("axis == 1 not supported on record types")
 
-    # if we have single field access on a table, that's the same as just
-    # counting q's magic i variable
-    if getattr(data, 'fields', ()) and not isinstance(data, q.select):
-        # i is a magic variable in q indicating the row number
-        return q.count(q.Symbol('i'))
-    return q.count(data)
+    reducer = q.unops[expr.symbol]
+    if data.is_splayed or data.is_partitioned:
+        child = compute(expr._child, data, **kwargs)
+        if child == data:
+            return q.count(data)
+
+        # if only one then we have a single element list
+        aggregates = q.List(q.Dict([(child, reducer(child))]))
+
+        # can't use exec so we first select then exec
+        sel = q.List(q.select(data, aggregates=aggregates))
+
+        # exec it
+        result = q.select(sel, grouper=q.List(), aggregates=q.List(child))
+
+        # call first here because we only have a single element
+        return q.first(desubs(q.List(result), data.s))
+
+    return reducer(compute(expr._child, data, **kwargs))
 
 
 @dispatch(Head, q.Expr)

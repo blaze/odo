@@ -148,3 +148,20 @@ def test_append_frame_to_in_memory_qtable(db, q):
     expected = pd.concat([df, df], ignore_index=True)
     result = into(pd.DataFrame, into(q, df))
     tm.assert_frame_equal(result, expected)
+
+
+def test_multi_groupby(par):
+    t = par.daily
+    qs = ('select price: sum price, '
+          '       fst: first date, '
+          '       lst: last date, '
+          '       cnt: count date '
+          '   by sym from daily')
+    expected = par.data.eval(qs).reset_index()
+    expr = by(t.sym,
+              price=t.price.sum(),
+              fst=t.date.min(),
+              lst=t.date.max(),
+              cnt=t.date.nrows)
+    result = compute(expr)
+    tm.assert_frame_equal(result.sort_index(axis=1), expected.sort_index(axis=1))
