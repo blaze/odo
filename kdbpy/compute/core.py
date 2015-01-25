@@ -8,14 +8,13 @@ import numbers
 import datetime
 import itertools
 
-from operator import attrgetter
 from contextlib import contextmanager
 
 import numpy as np
 import pandas as pd
 
 from toolz.compatibility import zip
-from toolz import map, first, second, merge
+from toolz import map, first, second
 
 from into import resource, convert, into, append
 from blaze import compute, symbol
@@ -327,7 +326,7 @@ def rewrite_summary(expr, data):
                                      map(get_fields, agg_funcs)):
         new_fields = [symbol(field._name, field.dshape) for field in fields]
         new_expr = subexpr._subs(dict(zip(fields, new_fields)))
-        names = map(attrgetter('_name'), new_fields)
+        names = [field._name for field in new_fields]
         new_scope = dict(zip(new_fields, map(q.Symbol, names)))
         yield qsym, compute(new_expr, new_scope)
 
