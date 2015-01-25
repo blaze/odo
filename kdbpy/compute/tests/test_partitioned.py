@@ -1,3 +1,4 @@
+import sys
 import pytest
 
 import pandas as pd
@@ -108,8 +109,12 @@ agg_funcs = {'mean': 'avg', 'std': 'dev'}
 # for some insane reason standard deviation and variance work on win32 but not
 # on OS X or Linux
 @pytest.mark.parametrize('agg', ['mean', 'sum', 'count', 'min', 'max',
-                                 xfail('sys.platform != "win32"', 'std'),
-                                 xfail('sys.platform != "win32"', 'var')])
+                                 xfail(sys.platform != 'win32', 'std',
+                                       reason="Doesn't work on non-windows",
+                                       raises=QException),
+                                 xfail(sys.platform != 'win32', 'var',
+                                       reason="Doesn't work on non-windows",
+                                       raises=QException)])
 def test_agg(par, agg):
     expr = getattr(par.trade.price, agg)()
     qs = ('first exec price from select %s price from trade' %
