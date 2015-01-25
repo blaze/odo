@@ -364,7 +364,38 @@ def compute_up(expr, data, **kwargs):
     return result
 
 
-@dispatch(Reduction, q.Symbol)
+def _compute_special_reduction(expr, data, **kwargs):
+    """A gross hack until we can convert SQL-like things to blaze expressions.
+
+    Notes
+    -----
+    What I think we really want is to be able to parse a blaze expression from
+    left to right.
+
+    Examples
+    --------
+    >>> t = symbol('t', '10 * {a: float64, b: int64}')
+    >>> qt = q.Symbol('t')
+    >>> compute_special_reduction(t[(t.a > 10) & (t.b < 10)].b, qt)
+    ((&; (>; `t.a; 10); (<; `t.b; 10)), [`t.b])
+    """
+    preds = [sube for sube in expr._traverse() if isinstance(sube, Relational)]
+    if not preds:
+        constraints = None
+    else:
+        constraints = compute(reduce(and_, preds), data, **kwargs)
+    leaf = expr._leaves()[0]
+    children = [compute(field, data, **kwargs)
+                for field in get_fields(expr._subs({expr._child: leaf}))]
+    assert len(children) == 1, 'can only handle a single field right now'
+    return constraints, children
+
+
+# do this here so we get a doctest
+compute_special_reduction = dispatch(Field, q.Expr)(_compute_special_reduction)
+
+
+@dispatch(Reduction, q.Expr)
 def compute_down(expr, data, **kwargs):
     if expr.axis != (0,):
         raise ValueError("axis == 1 not supported on record types")
