@@ -159,6 +159,13 @@ def test_append_with_different_columns(db, q):
     tm.assert_frame_equal(result, expected)
 
 
+def test_append_with_kq(db, q):
+    df = db.data.eval(q.tablename)
+    expected = pd.concat([df, df], ignore_index=True)
+    result = into(pd.DataFrame, into(compute(db.t), df))
+    tm.assert_frame_equal(result, expected)
+
+
 def test_multi_groupby(par):
     t = par.daily
     qs = ('select price: sum price, '
