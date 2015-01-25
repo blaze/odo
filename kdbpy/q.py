@@ -166,6 +166,8 @@ take = binop('#')
 partake = binop('.Q.ind')
 and_ = binop('&')
 or_ = binop('|')
+cor = binop('cor')
+cov = binop('cov')
 
 
 def xor(x, y):
@@ -179,6 +181,7 @@ def floordiv(x, y):
 neg = unop('-:')
 null = unop('^:')
 not_ = unop('~:')
+sqrt = unop('sqrt')
 floor = unop('_:')
 ceil = unop('-_-:')
 count = unop('#:')
@@ -206,7 +209,26 @@ binops = {
     '|': or_,
     '&': and_,
     '^': xor,
+
+    'cor': cor,
+    'cov': cov
 }
+
+
+def var(x, unbiased=False, _var=unop('var')):
+    y = _var(x)
+    if unbiased:
+        return y
+    n = count(x)
+    return mul(div(sub(n, 1), n), y)
+
+
+def std(x, unbiased=False, _std=unop('dev')):
+    y = _std(x)
+    if unbiased:
+        return y
+    n = count(x)
+    return mul(sqrt(div(sub(n, 1), n)), y)
 
 
 unops = {'-': neg,
@@ -216,8 +238,8 @@ unops = {'-': neg,
          # reductions
          'sum': unop('sum'),
          'mean': unop('avg'),
-         'std': unop('dev'),
-         'var': unop('var'),
+         'std': std,
+         'var': var,
          'min': unop('min'),
          'max': unop('max'),
          'any': unop('any'),
