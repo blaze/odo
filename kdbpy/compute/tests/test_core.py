@@ -2,6 +2,7 @@ from __future__ import print_function, division, absolute_import
 
 import string
 import pytest
+from itertools import product
 
 import numpy as np
 
@@ -131,9 +132,10 @@ def test_reductions(t, q, df, reduction):
     assert compute(expr, q) == compute(expr, df)
 
 
-@pytest.mark.parametrize('reduction', ['std', 'var'])
-def test_std_var(t, q, df, reduction):
-    expr = getattr(t.amount, reduction)()
+@pytest.mark.parametrize(('reduction', 'unbiased'),
+                         product(['std', 'var'], [True, False]))
+def test_std_var(t, q, df, reduction, unbiased):
+    expr = getattr(t.amount, reduction)(unbiased=unbiased)
     np.testing.assert_almost_equal(compute(expr, q), compute(expr, df))
 
 
