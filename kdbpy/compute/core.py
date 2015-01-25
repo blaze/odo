@@ -8,6 +8,7 @@ import numbers
 import datetime
 import itertools
 
+from functools import partial
 from contextlib import contextmanager
 
 import numpy as np
@@ -24,7 +25,7 @@ from blaze.dispatch import dispatch
 from blaze.compute.core import compute
 from blaze.expr import Symbol, Projection, Selection, Field
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
-from blaze.expr import Slice, Distinct, Summary
+from blaze.expr import Slice, Distinct, Summary, std, var
 from blaze.expr import DateTime, Millisecond, Microsecond
 from blaze.expr.datetime import Minute
 
@@ -203,6 +204,13 @@ def compute_up(expr, data, **kwargs):
     return q.unops[expr.symbol](data)
 
 
+@dispatch((std, var), q.Expr)
+def compute_up(expr, data, **kwargs):
+    if expr.axis != (0,):
+        raise ValueError("Axis keyword argument on reductions not supported")
+    return q.unops[expr.symbol](data, unbiased=expr.unbiased)
+
+
 @dispatch(UnaryOp, q.Expr)
 def compute_up(expr, data, **kwargs):
     return q.unops[expr.symbol](data)
@@ -362,6 +370,10 @@ def compute_down(expr, data, **kwargs):
         raise ValueError("axis == 1 not supported on record types")
 
     reducer = q.unops[expr.symbol]
+
+    if isinstance(expr, (std, var)):  # need the unbiased argument for std/var
+        reducer = partial(reducer, unbiased=expr.unbiased)
+
     if data.is_splayed or data.is_partitioned:
         child = compute(expr._child, data, **kwargs)
         if child == data:
