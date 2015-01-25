@@ -498,19 +498,22 @@ _temps = (_prefix % i for i in itertools.count())
 @contextmanager
 def tmpvar(engine, value):
     tmp = next(_temps)
+    engine.set(np.string_(tmp), value)
 
     try:
-        engine.set(np.string_(tmp), value)
         yield tmp
     finally:
-        # remove our temp from the namespace
-        engine.eval('delete {tmp} from `.'.format(tmp=tmp))
+        # remove our temp from the toplevel namespace
+        engine.eval('delete %s from `.' % tmp)
 
 
 def append_frame_to_in_memory_qtable(t, df, **kwargs):
-    with tmpvar(t.engine, df) as tmpdf:
+    reindexed = df.reindex(columns=t.columns).dropna(axis=1, how='all')
+    format_string = '{target}: {target} uj {source}'
+
+    with tmpvar(t.engine, reindexed) as source:
         # uj is union join and will append one table to another
-        t.engine.eval('{t}: {t} uj {df}'.format(t=t.tablename, df=tmpdf))
+        t.engine.eval(format_string.format(target=t.tablename, source=source))
     return t
 
 
