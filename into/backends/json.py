@@ -12,6 +12,7 @@ import datetime
 from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
+from ..chunks import chunks
 from ..utils import tuples_to_records
 
 
@@ -190,6 +191,20 @@ def json_dumps(dt):
 @dispatch(datetime.date)
 def json_dumps(dt):
     return dt.isoformat()
+
+
+@convert.register(chunks(list), chunks(JSON))
+def convert_glob_of_jsons_into_chunks_of_lists(jsons, **kwargs):
+    def _():
+        return concat(convert(chunks(list), js, **kwargs) for js in jsons)
+    return chunks(list)(_)
+
+
+@convert.register(chunks(Iterator), chunks(JSONLines))
+def convert_glob_of_jsons_into_chunks_of_lists(jsons, **kwargs):
+    def _():
+        return concat(convert(chunks(Iterator), js, **kwargs) for js in jsons)
+    return chunks(Iterator)(_)
 
 
 ooc_types.add(JSONLines)

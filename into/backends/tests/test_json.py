@@ -4,6 +4,7 @@ from into import into
 from contextlib import contextmanager
 from datashape import dshape
 import datetime
+import os
 import json
 
 @contextmanager
@@ -139,3 +140,17 @@ def test_empty_line():
             f.write(text)
         j = JSONLines(fn)
         assert len(convert(list, j)) == 2
+
+
+def test_multiple_jsonlines():
+    try:
+        with open('_test_a1.json', 'w') as f:
+            json.dump(dat, f)
+        with open('_test_a2.json', 'w') as f:
+            json.dump(dat, f)
+        r = resource('_test_a*.json')
+        result = convert(list, r)
+        assert len(result) == len(dat) * 2
+    finally:
+        os.remove('_test_a1.json')
+        os.remove('_test_a2.json')
