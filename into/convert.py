@@ -226,5 +226,17 @@ def chunked_list_to_chunked_numpy(c, **kwargs):
 def chunked_numpy_to_chunked_list(c, **kwargs):
     return chunks(list)(lambda: (convert(list, chunk, **kwargs) for chunk in c))
 
+@convert.register(chunks(Iterator), chunks(list), cost=0.1)
+def chunked_list_to_chunked_iterator(c, **kwargs):
+    return chunks(Iterator)(c.data)
+
+@convert.register(chunks(list), chunks(Iterator), cost=0.1)
+def chunked_Iterator_to_chunked_list(c, **kwargs):
+    return chunks(Iterator)(lambda: (convert(Iterator, chunk, **kwargs) for chunk in c))
+
+@convert.register(Iterator, chunks(Iterator), cost=0.1)
+def chunked_iterator_to_iterator(c, **kwargs):
+    return concat(c)
+
 
 ooc_types |= set([Iterator, Chunks])
