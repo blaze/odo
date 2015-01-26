@@ -116,6 +116,10 @@ def test_select_to_iterator():
 
     assert convert(int, sel2, dshape=dshape('int')) == 300
 
+    sel3 = sa.select([t])
+
+    result = convert(list, sel3, dshape=discover(t))
+    assert type(result[0]) is tuple
 
 def test_discovery_engine():
     engine, t = single_table_engine()

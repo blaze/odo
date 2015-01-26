@@ -9,7 +9,7 @@ from datashape import discover
 from datashape.dispatch import dispatch
 from datetime import datetime, date
 import datashape
-from toolz import partition_all, keyfilter, first, pluck, memoize
+from toolz import partition_all, keyfilter, first, pluck, memoize, map
 
 from ..utils import keywords
 from ..convert import convert, ooc_types
@@ -239,6 +239,8 @@ def select_to_iterator(sel, dshape=None, **kwargs):
         result = conn.execute(sel)
         if dshape and isscalar(dshape.measure):
             result = pluck(0, result)
+        else:
+            result = map(tuple, result)  # Turn RowProxy into tuple
 
         for item in result:
             yield item
