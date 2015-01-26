@@ -144,20 +144,35 @@ def object_to_jsonlines(j, o, **kwargs):
 
 
 @append.register(JSONLines, Iterator)
-def iterator_to_json_lines(j, seq, dshape=None, **kwargs):
+def iterator_to_json_lines(j, seq, dshape=None, encoding='utf-8', **kwargs):
     row = next(seq)
     seq = concat([[row], seq])
     if not isinstance(row, (dict, str)) and isinstance(row, Iterable):
         seq = tuples_to_records(dshape, seq)
-    with open(j.path, 'a') as f:
-        for item in seq:
-            json.dump(item, f, default=json_dumps)
-            f.write('\n')
+
+    lines = (json.dumps(item, default=json_dumps) for item in seq)
+
+    # Open file
+    if j.path.split(os.path.extsep)[-1] == 'gz':
+        f = gzip.open(j.path, 'ab')
+        lines2 = (line.encode(encoding) for line in lines)
+        endl = b'\n'
+    else:
+        f = open(j.path, 'a')
+        lines2 = lines
+        endl = '\n'
+
+    for line in lines2:
+        f.write(line)
+        f.write(endl)
+
+    f.close()
+
     return j
 
 
 @append.register(JSON, list)
-def list_to_json(j, seq, dshape=None, **kwargs):
+def list_to_json(j, seq, dshape=None, encoding='utf-8', **kwargs):
     if not isinstance(seq[0], (dict, str)) and isinstance(seq[0], Iterable):
         seq = list(tuples_to_records(dshape, seq))
     if os.path.exists(j.path):
@@ -169,8 +184,17 @@ def list_to_json(j, seq, dshape=None, **kwargs):
                 "Consider using the jsonlines:// protocol, e.g.\n"
                 "\tinto('jsonlines://%s', your-data)" % j.path)
 
-    with open(j.path, 'w') as f:
-        json.dump(seq, f, default=json_dumps)
+    text = json.dumps(seq, default=json_dumps)
+
+    if j.path.split(os.path.extsep)[-1] == 'gz':
+        f = gzip.open(j.path, 'wb')
+        text = text.encode(encoding)
+    else:
+        f = open(j.path, 'w')
+
+    f.write(text)
+
+    f.close()
     return j
 
 
