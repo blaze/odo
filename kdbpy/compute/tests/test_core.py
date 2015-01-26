@@ -2,6 +2,7 @@ from __future__ import print_function, division, absolute_import
 
 import string
 import pytest
+from itertools import product
 
 import numpy as np
 
@@ -14,11 +15,6 @@ from blaze import compute, into, by, discover, dshape, summary, Data
 from kdbpy.compute.qtable import qtypes
 from kdbpy.tests import assert_series_equal
 from kdbpy.compute.core import compile
-
-
-@pytest.fixture(scope='module')
-def db(kdb):
-    return bz.Data(kdb)
 
 
 def test_projection(t, q, df):
@@ -133,28 +129,28 @@ def test_field(t, q, df):
                                        'nelements'])
 def test_reductions(t, q, df, reduction):
     expr = getattr(t.amount, reduction)()
-    result = compute(expr, q)
-    expected = compute(expr, df)
-    assert result == expected
+    assert compute(expr, q) == compute(expr, df)
+
+
+@pytest.mark.parametrize(('reduction', 'unbiased'),
+                         product(['std', 'var'], [True, False]))
+def test_std_var(t, q, df, reduction, unbiased):
+    expr = getattr(t.amount, reduction)(unbiased=unbiased)
+    np.testing.assert_almost_equal(compute(expr, q), compute(expr, df))
 
 
 @pytest.mark.xfail(raises=ValueError,
                    reason='axis=1 does not make sense for q right now')
 def test_reduction_axis_argument_fails(t, q, df):
-    expr = t.amount.mean(axis=1)
-    compute(expr, q)
+    compute(t.amount.mean(axis=1), q)
 
 
 def test_nrows(t, q, df):
-    qresult = compute(t.nrows, q)
-    expected = len(df)
-    assert qresult == expected
+    assert compute(t.nrows, q) == len(df)
 
 
 def test_column_nrows(db):
-    qresult = compute(db.t.on.nrows)
-    expected = len(db.t)
-    assert qresult == expected
+    assert compute(db.t.on.nrows) == len(db.t)
 
 
 def test_date_nrows_in_by_expression(db):
@@ -165,14 +161,6 @@ def test_date_nrows_in_by_expression(db):
                              ('Joe', 1),
                              ('Smithers', 2)], columns=['name', 'count'])
     tm.assert_frame_equal(result, expected)
-
-
-@pytest.mark.parametrize('reduction', ['std', 'var'])
-def test_variability(t, q, df, reduction):
-    expr = getattr(t.amount, reduction)(unbiased=True)
-    result = compute(expr, q)
-    expected = compute(expr, df)
-    np.testing.assert_allclose(result, expected)
 
 
 def test_simple_join(rt, st, rq, sq, rdf, sdf):
@@ -214,27 +202,25 @@ def test_multicolumn_sort(t, q, df):
     tm.assert_frame_equal(result, expected)
 
 
-@pytest.mark.xfail(raises=ValueError, reason='axis == 1 not supported on record'
-                   ' types')
+@pytest.mark.xfail(raises=ValueError,
+                   reason='axis == 1 not supported on record types')
 def test_nelements(t, q, df):  # pragma: no cover
-    qresult = compute(t.nelements(axis=1), q)
-    expected = df.shape[1]
-    assert qresult == expected
+    assert compute(t.nelements(axis=1), q) == df.shape[1]
 
 
 def test_discover(q):
-    assert (str(discover(q)) ==
-            str(dshape('var * {name: string, id: int64, amount: float64, '
-                       'when: datetime, on: date}')))
+    assert (discover(q) ==
+            dshape('var * {name: string, id: int64, amount: float64, '
+                   '       when: datetime, on: date}'))
 
 
 def test_into_from_keyed(rq, rdf):
-    result = into(pd.DataFrame, rdf)
+    result = into(pd.DataFrame, rq)
     tm.assert_frame_equal(result, rdf)
 
 
 def test_into_from_qtable(q, df):
-    result = into(pd.DataFrame, df)
+    result = into(pd.DataFrame, q)
     tm.assert_frame_equal(result, df)
 
 
@@ -250,8 +236,7 @@ def test_slice(t, q, df):
 
 def test_neg_index_series(t, q, df):
     expr = t.amount[-1]
-    qresult = compute(expr, q)
-    assert qresult == compute(expr, df)
+    assert compute(expr, q) == compute(expr, df)
 
 
 def test_neg_index_frame(t, q, df):
@@ -268,68 +253,53 @@ def test_index_row(t, q, df):
 
 def test_neg_slice(t, q, df):
     expr = t[-2:]
-    qresult = compute(expr, q)
-    expected = compute(expr, df)
-    expected = expected.reset_index(drop=True)
-    tm.assert_frame_equal(qresult, expected)
+    tm.assert_frame_equal(compute(expr, q),
+                          compute(expr, df).reset_index(drop=True))
 
 
 def test_neg_bounded_slice(t, q, df):
     # this should be empty in Q, though it's possible to do this
     expr = t[-2:5]
-    qresult = compute(expr, q)
-    expected = compute(expr, df).reset_index(drop=True)
-    tm.assert_frame_equal(qresult, expected)
+    tm.assert_frame_equal(compute(expr, q),
+                          compute(expr, df).reset_index(drop=True))
 
 
 def test_neg_bounded_by_negative_slice(t, q, df):
     # this should be empty in Q, though it's possible to do this
     expr = t[-5:-2]
-    qresult = compute(expr, q)
-    expected = compute(expr, df).reset_index(drop=True)
-    tm.assert_frame_equal(qresult, expected)
+    tm.assert_frame_equal(compute(expr, q),
+                          compute(expr, df).reset_index(drop=True))
 
 
 def test_raw_summary(t, q, df):
     expr = summary(s=t.amount.sum(), mn=t.id.mean())
-    result = compute(expr, q)
-    tm.assert_series_equal(result.squeeze(), compute(expr, df))
+    tm.assert_series_equal(compute(expr, q).squeeze(), compute(expr, df))
 
 
 def test_simple_summary(t, q, df):
     expr = by(t.name, s=t.amount.sum())
-    result = compute(expr, q)
-    expected = compute(expr, df)
-    tm.assert_frame_equal(result, expected)
+    tm.assert_frame_equal(compute(expr, q), compute(expr, df))
 
 
 def test_twofunc_summary(t, q, df):
     expr = by(t.name, s=t.amount.sum(), mn=t.id.mean())
-    result = compute(expr, q)
-    expected = compute(expr, df)
-    tm.assert_frame_equal(result, expected)
+    tm.assert_frame_equal(compute(expr, q), compute(expr, df))
 
 
 def test_complex_summary(t, q, df):
     expr = by(t.name, s=t.amount.sum(), mn=t.id.mean(),
               mx=t.amount.max() + 1)
-    result = compute(expr, q)
-    expected = compute(expr, df)
-    tm.assert_frame_equal(result, expected)
+    tm.assert_frame_equal(compute(expr, q), compute(expr, df))
 
 
 def test_distinct(t, q, df):
     expr = t.name.distinct()
-    result = compute(expr, q)
-    expected = compute(expr, df)
-    tm.assert_series_equal(result, expected)
+    tm.assert_series_equal(compute(expr, q), compute(expr, df))
 
 
 def test_nunique(t, q, df):
     expr = t.name.nunique()
-    result = compute(expr, q)
-    expected = compute(expr, df)
-    assert result == expected
+    assert compute(expr, q) == compute(expr, df)
 
 
 @pytest.mark.parametrize('attr', ['year', 'month', 'day', 'hour', 'minute',
@@ -352,28 +322,23 @@ def test_dates_date(t, q, df):
 def test_by_with_where(t, q, df):
     r = t[t.amount > 1]
     expr = by(r.name, s=r.amount.sum(), m=r.amount.mean())
-    result = compute(expr, q)
-    expected = compute(expr, df)
-    tm.assert_frame_equal(result, expected)
+    tm.assert_frame_equal(compute(expr, q), compute(expr, df))
 
 
 def test_by_name(t, q, df):
     expr = by(t.when.day, m=t.amount.mean())
     name = 'when_day'
-    result = compute(expr, q)
-    expected = compute(expr, df).rename(columns={'index': name})
-    tm.assert_frame_equal(result, expected)
+    tm.assert_frame_equal(compute(expr, q),
+                          compute(expr, df).rename(columns={'index': name}))
 
 
 def test_by_with_complex_where(t, q, df):
     r = t[((t.amount > 1) & (t.id > 0)) | (t.amount < 4)]
     expr = by(r.name, s=r.amount.sum(), m=r.amount.mean())
-    result = compute(expr, q)
-    expected = compute(expr, df)
-    tm.assert_frame_equal(result, expected)
+    tm.assert_frame_equal(compute(expr, q), compute(expr, df))
 
 
-@pytest.mark.parametrize('d, ts',
+@pytest.mark.parametrize(('d', 'ts'),
                          [('2014-01-02',
                            pd.Timestamp('2014-01-02 00:00:00.000000001')),
                           (pd.Timestamp('2014-01-02'),

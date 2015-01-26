@@ -1,6 +1,8 @@
 import re
 import keyword
 from itertools import chain
+from toolz import compose
+
 try:
     import builtins
 except ImportError:  # pragma: no cover
@@ -83,6 +85,9 @@ class Symbol(Atom):
             return '`$"%s"' % joined
         return '`' + joined
 
+    def __eq__(self, other):
+        return type(self) == type(other) and self.str == other.str
+
 
 class List(object):
     is_partitioned = False
@@ -161,6 +166,8 @@ take = binop('#')
 partake = binop('.Q.ind')
 and_ = binop('&')
 or_ = binop('|')
+cor = binop('cor')
+cov = binop('cov')
 
 
 def xor(x, y):
@@ -174,6 +181,7 @@ def floordiv(x, y):
 neg = unop('-:')
 null = unop('^:')
 not_ = unop('~:')
+sqrt = unop('sqrt')
 floor = unop('_:')
 ceil = unop('-_-:')
 count = unop('#:')
@@ -201,7 +209,26 @@ binops = {
     '|': or_,
     '&': and_,
     '^': xor,
+
+    'cor': cor,
+    'cov': cov
 }
+
+
+def var(x, unbiased=False, _var=unop('var')):
+    y = _var(x)
+    if unbiased:
+        return y
+    n = count(x)
+    return mul(div(sub(n, 1), n), y)
+
+
+def std(x, unbiased=False, _std=unop('dev')):
+    y = _std(x)
+    if unbiased:
+        return y
+    n = count(x)
+    return mul(sqrt(div(sub(n, 1), n)), y)
 
 
 unops = {'-': neg,
@@ -211,13 +238,22 @@ unops = {'-': neg,
          # reductions
          'sum': unop('sum'),
          'mean': unop('avg'),
-         'std': unop('dev'),
-         'var': unop('var'),
+         'std': std,
+         'var': var,
          'min': unop('min'),
          'max': unop('max'),
+         'any': unop('any'),
+         'all': unop('all'),
          'count': count,
          'nelements': count,
-         'nunique': unop('.kdbpy.nunique')}
+         'nunique': compose(count, distinct),
+         'first': unop('*:'),
+         'last': unop('last')
+         }
+
+
+first = unops['first']
+last = unops['last']
 
 
 def symlist(*args):
@@ -261,9 +297,12 @@ class select(List):
 
     def __init__(self, child, constraints=None, grouper=None, aggregates=None):
         super(select, self).__init__('?', child,
-                                     constraints if constraints is not None else List(),
-                                     grouper if grouper is not None else Bool(),
-                                     aggregates if aggregates is not None else List())
+                                     constraints
+                                     if constraints is not None else List(),
+                                     grouper
+                                     if grouper is not None else Bool(),
+                                     aggregates
+                                     if aggregates is not None else List())
 
     def __str__(self):
         return super(select, self).__str__()

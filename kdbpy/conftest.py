@@ -3,6 +3,7 @@ import itertools
 
 import pytest
 
+import blaze as bz
 from kdbpy import kdb as k
 from kdbpy.exampleutils import example_data
 
@@ -30,6 +31,16 @@ def kq(creds):
 def kdb(kq):
     kq.read_kdb(os.path.join(os.path.dirname(__file__), 'conftest.q'))
     return kq
+
+
+@pytest.fixture(scope='module')
+def db(kdb):
+    return bz.Data(kdb)
+
+
+@pytest.fixture(scope='module')
+def par(kdbpar):
+    return bz.Data(kdbpar)
 
 
 @pytest.fixture(scope='module')

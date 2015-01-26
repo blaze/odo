@@ -6,28 +6,33 @@ from __future__ import absolute_import, print_function, division
 
 import numbers
 import datetime
+import itertools
 
-from operator import attrgetter
+from operator import attrgetter, and_
 
+from functools import partial
+from contextlib import contextmanager
+
+import numpy as np
 import pandas as pd
 
 from toolz.compatibility import zip
 from toolz import map, first, second, compose
 
-from into import resource, convert, into
-from blaze import compute
+from into import resource, convert, into, append
+from blaze import compute, symbol
 
 from blaze.dispatch import dispatch
 
 from blaze.compute.core import compute, swap_resources_into_scope
-from blaze.expr import Symbol, Projection, Selection, Field
+from blaze.expr import Symbol, Projection, Selection, Field, Relational
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
-from blaze.expr import Slice, Distinct, Summary, nelements
+from blaze.expr import Slice, Distinct, Summary, std, var
 from blaze.expr import DateTime, Millisecond, Microsecond
 from blaze.expr.datetime import Minute
 
 from .. import q
-from .qtable import QTable
+from .qtable import QTable, is_splayed, is_partitioned
 from ..kdb import KQ
 from ..util import parse_connection_string
 
@@ -201,6 +206,13 @@ def compute_up(expr, data, **kwargs):
     return q.unops[expr.symbol](data)
 
 
+@dispatch((std, var), q.Expr)
+def compute_up(expr, data, **kwargs):
+    if expr.axis != (0,):
+        raise ValueError("Axis keyword argument on reductions not supported")
+    return q.unops[expr.symbol](data, unbiased=expr.unbiased)
+
+
 @dispatch(UnaryOp, q.Expr)
 def compute_up(expr, data, **kwargs):
     return q.unops[expr.symbol](data)
@@ -219,7 +231,7 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(Selection, q.Expr)
 def compute_up(expr, data, **kwargs):
-    # template: ?[table, predicate or list of predicates, by, aggregations]
+    # template: ?[select, predicate or list of predicates, by, aggregations]
     predicate = compute(expr.predicate, {expr._child: data})
     result = q.select(data, constraints=q.List(q.List(q.List(predicate))))
     leaf_name = expr._leaves()[0]._name
@@ -272,6 +284,63 @@ def compute_up(expr, data, **kwargs):
     return desubs(q.select(data, aggregates=aggregates), expr._leaves()[0])
 
 
+def get_fields(expr):
+    """Get all of the fields of an expression
+
+    Examples
+    --------
+    >>> t = symbol('t', '1000 * {price: float64, size: int64}')
+    >>> expr = (t.price * t.size) / t.size.sum()
+    >>> get_fields(expr)
+    [t.price, t.size]
+    """
+    return list(uniq(filter(lambda x: isinstance(x, Field), expr._subterms())))
+
+
+def uniq(seq):
+    """Unique elements in a sequence while preserving order
+
+    Examples
+    --------
+    >>> x = [2, 1, 2, 3]
+    >>> list(uniq(x))
+    [2, 1, 3]
+    """
+    seen = set()
+
+    for x in seq:
+        if x not in seen:
+            yield x
+        seen.add(x)
+
+
+def rewrite_summary(expr, data):
+    """Rewrite a summary to be something that will work in a select statement
+
+    Examples
+    --------
+    >>> from blaze import summary
+    >>> t = symbol('t', '10 * {name: string, amount: float64, id: int64}')
+    >>> qt = q.Symbol('t')
+    >>> agg = summary(avg=t.amount.mean(), max_id=t.id.max())
+    >>> usual_result = compute(agg, qt)
+    >>> usual_result
+    (?; `t; (); 0b; (`avg; `max_id)!((avg; `amount); (max; `id)))
+    >>> rewritten_result = q.Dict(list(rewrite_summary(agg, qt)))
+    >>> rewritten_result
+    (`avg; `max_id)!((avg; `amount); (max; `id))
+    """
+    agg_funcs = expr.values
+    for qsym, subexpr, fields in zip(map(q.Symbol, expr.names),
+                                     agg_funcs,
+                                     map(get_fields, agg_funcs)):
+        new_fields = [symbol(field._name, field.dshape) for field in fields]
+        new_expr = subexpr._subs(dict(zip(fields, new_fields)))
+        names = [field._name for field in new_fields]
+        new_scope = dict(zip(new_fields, map(q.Symbol, names)))
+        yield qsym, compute(new_expr, new_scope)
+
+
 @dispatch(By, q.Expr)
 def compute_up(expr, data, **kwargs):
     if isinstance(data, q.select):  # we are combining multiple selects
@@ -290,22 +359,82 @@ def compute_up(expr, data, **kwargs):
         grouper = grouper.aggregates
     else:
         grouper = q.Dict([(q.Symbol(expr.grouper._name), grouper)])
-    aggregates = compute(expr.apply, child).aggregates
+
+    aggregates = q.Dict(list(rewrite_summary(expr.apply, data)))
     select = q.select(child, q.List(constraints), grouper, aggregates)
-    return desubs(select, child.s)
+    result = desubs(select, child.s)
+    return result
 
 
-@dispatch(nelements, q.Expr)
+def _compute_special_reduction(expr, data, **kwargs):
+    """A gross hack until we can convert SQL-like things to blaze expressions.
+
+    Notes
+    -----
+    What I think we really want is to be able to parse a blaze expression from
+    left to right.
+
+    Examples
+    --------
+    >>> t = symbol('t', '10 * {a: float64, b: int64}')
+    >>> qt = q.Symbol('t')
+    >>> compute_special_reduction(t[(t.a > 10) & (t.b < 10)].b, qt)
+    ((&; (>; `t.a; 10); (<; `t.b; 10)), [`t.b])
+    """
+    preds = [sube for sube in expr._traverse() if isinstance(sube, Relational)]
+    if not preds:
+        constraints = None
+    else:
+        constraints = compute(reduce(and_, preds), data, **kwargs)
+    leaf = expr._leaves()[0]
+    children = [compute(field, data, **kwargs)
+                for field in get_fields(expr._subs({expr._child: leaf}))]
+    assert len(children) == 1, 'can only handle a single field right now'
+    return constraints, children
+
+
+# do this here so we get a doctest
+compute_special_reduction = dispatch(Field, q.Expr)(_compute_special_reduction)
+
+
+@dispatch(Reduction, q.Expr)
 def compute_down(expr, data, **kwargs):
     if expr.axis != (0,):
         raise ValueError("axis == 1 not supported on record types")
 
-    # if we have single field access on a table, that's the same as just
-    # counting q's magic i variable
-    if getattr(data, 'fields', ()) and not isinstance(data, q.select):
-        # i is a magic variable in q indicating the row number
-        return q.count(q.Symbol('i'))
-    return q.count(data)
+    reducer = q.unops[expr.symbol]
+
+    if isinstance(expr, (std, var)):  # need the unbiased argument for std/var
+        reducer = partial(reducer, unbiased=expr.unbiased)
+
+    if data.is_splayed or data.is_partitioned:
+        # we're only fields and symbols, e.g., t.field.min()
+        if all(isinstance(sube, (Field, Symbol))
+               for sube in expr._child._subterms()):
+            field, constraints = compute(expr._child, data, **kwargs), q.List()
+            if field == data:
+                return reducer(data)
+        else:
+            # more complicated, e.g., t[t.amount > 10].price.min()
+            constraints, (field,) = compute_special_reduction(expr._child,
+                                                              data,
+                                                              **kwargs)
+            constraints = compose(*([q.List] * 4))(constraints)
+
+        # if only one then we have a single element list
+        aggregates = q.List(q.Dict([(field, reducer(field))]))
+
+        # can't use exec so we first select then exec
+        sel = q.List(q.select(data, aggregates=aggregates,
+                              constraints=constraints))
+
+        # exec it
+        result = q.select(sel, grouper=q.List(), aggregates=q.List(field))
+
+        # call first here because we only have a single element
+        return q.first(desubs(q.List(result), data.s))
+
+    return reducer(compute(expr._child, data, **kwargs))
 
 
 @dispatch(Head, q.Expr)
@@ -406,3 +535,44 @@ def resource_kdb(uri, engine=None, **kwargs):
     if engine is None:
         engine = KQ(parse_connection_string(uri), start=True)
     return engine
+
+
+@convert.register(pd.DataFrame, QTable, cost=5.0)
+def qtable_to_frame(t, **kwargs):
+    return t.engine.eval(t.tablename)
+
+
+_prefix = 'tmp_%d_%%d' % abs(hash(__file__))
+
+_temps = (_prefix % i for i in itertools.count())
+
+
+@contextmanager
+def tmpvar(engine, value):
+    tmp = next(_temps)
+    engine.set(np.string_(tmp), value)
+
+    try:
+        yield tmp
+    finally:
+        # remove our temp from the toplevel namespace
+        engine.eval('delete %s from `.' % tmp)
+
+
+def append_frame_to_in_memory_qtable(t, df, **kwargs):
+    reindexed = df.reindex(columns=t.columns).dropna(axis=1, how='all')
+    format_string = '{target}: {target} uj {source}'
+
+    with tmpvar(t.engine, reindexed) as source:
+        # uj is union join and will append one table to another
+        t.engine.eval(format_string.format(target=t.tablename, source=source))
+    return t
+
+
+@append.register(QTable, pd.DataFrame)
+def append_frame_to_qtable(t, df, **kwargs):
+    if is_splayed(t):
+        raise NotImplementedError('append not defined for splayed tables')
+    elif is_partitioned(t):
+        raise NotImplementedError('append not defined for partitioned tables')
+    return append_frame_to_in_memory_qtable(t, df, **kwargs)
