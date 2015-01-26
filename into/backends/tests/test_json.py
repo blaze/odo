@@ -159,10 +159,11 @@ def test_multiple_jsonlines():
 
 def test_gzip_lines():
     with tmpfile('json.gz') as fn:
-        f = gzip.open(fn, 'w')
+        f = gzip.open(fn, 'wb')
         for item in dat:
-            json.dump(item, f)
-            f.write('\n')
+            s = json.dumps(item).encode('utf-8')
+            f.write(s)
+            f.write(b'\n')
         f.close()
         js = JSONLines(fn)
         assert convert(list, js) == dat
@@ -170,8 +171,9 @@ def test_gzip_lines():
 
 def test_gzip():
     with tmpfile('json.gz') as fn:
-        f = gzip.open(fn, 'w')
-        json.dump(dat, f)
+        f = gzip.open(fn, 'wb')
+        s = json.dumps(dat).encode('utf-8')
+        f.write(s)
         f.close()
         js = JSON(fn)
         assert convert(list, js) == dat
