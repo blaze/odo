@@ -8,6 +8,7 @@ import numbers
 import datetime
 import itertools
 
+from operator import and_
 from functools import partial
 from contextlib import contextmanager
 
@@ -15,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from toolz.compatibility import zip
-from toolz import map, first, second
+from toolz import map, first, second, compose
 
 from into import resource, convert, into, append
 from blaze import compute, symbol
@@ -23,7 +24,7 @@ from blaze import compute, symbol
 from blaze.dispatch import dispatch
 
 from blaze.compute.core import compute
-from blaze.expr import Symbol, Projection, Selection, Field
+from blaze.expr import Symbol, Projection, Selection, Field, Relational
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
 from blaze.expr import Slice, Distinct, Summary, std, var
 from blaze.expr import DateTime, Millisecond, Microsecond
@@ -364,7 +365,38 @@ def compute_up(expr, data, **kwargs):
     return result
 
 
-@dispatch(Reduction, q.Symbol)
+def _compute_special_reduction(expr, data, **kwargs):
+    """A gross hack until we can convert SQL-like things to blaze expressions.
+
+    Notes
+    -----
+    What I think we really want is to be able to parse a blaze expression from
+    left to right.
+
+    Examples
+    --------
+    >>> t = symbol('t', '10 * {a: float64, b: int64}')
+    >>> qt = q.Symbol('t')
+    >>> compute_special_reduction(t[(t.a > 10) & (t.b < 10)].b, qt)
+    ((&; (>; `t.a; 10); (<; `t.b; 10)), [`t.b])
+    """
+    preds = [sube for sube in expr._traverse() if isinstance(sube, Relational)]
+    if not preds:
+        constraints = None
+    else:
+        constraints = compute(reduce(and_, preds), data, **kwargs)
+    leaf = expr._leaves()[0]
+    children = [compute(field, data, **kwargs)
+                for field in get_fields(expr._subs({expr._child: leaf}))]
+    assert len(children) == 1, 'can only handle a single field right now'
+    return constraints, children
+
+
+# do this here so we get a doctest
+compute_special_reduction = dispatch(Field, q.Expr)(_compute_special_reduction)
+
+
+@dispatch(Reduction, q.Expr)
 def compute_down(expr, data, **kwargs):
     if expr.axis != (0,):
         raise ValueError("axis == 1 not supported on record types")
@@ -375,18 +407,28 @@ def compute_down(expr, data, **kwargs):
         reducer = partial(reducer, unbiased=expr.unbiased)
 
     if data.is_splayed or data.is_partitioned:
-        child = compute(expr._child, data, **kwargs)
-        if child == data:
-            return q.count(data)
+        # we're only fields and symbols, e.g., t.field.min()
+        if all(isinstance(sube, (Field, Symbol))
+               for sube in expr._child._subterms()):
+            field, constraints = compute(expr._child, data, **kwargs), q.List()
+            if field == data:
+                return reducer(data)
+        else:
+            # more complicated, e.g., t[t.amount > 10].price.min()
+            constraints, (field,) = compute_special_reduction(expr._child,
+                                                              data,
+                                                              **kwargs)
+            constraints = compose(*([q.List] * 4))(constraints)
 
         # if only one then we have a single element list
-        aggregates = q.List(q.Dict([(child, reducer(child))]))
+        aggregates = q.List(q.Dict([(field, reducer(field))]))
 
         # can't use exec so we first select then exec
-        sel = q.List(q.select(data, aggregates=aggregates))
+        sel = q.List(q.select(data, aggregates=aggregates,
+                              constraints=constraints))
 
         # exec it
-        result = q.select(sel, grouper=q.List(), aggregates=q.List(child))
+        result = q.select(sel, grouper=q.List(), aggregates=q.List(field))
 
         # call first here because we only have a single element
         return q.first(desubs(q.List(result), data.s))

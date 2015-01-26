@@ -1,6 +1,9 @@
 import sys
+from itertools import product, starmap
+
 import pytest
 
+import numpy as np
 import pandas as pd
 import pandas.util.testing as tm
 
@@ -106,15 +109,7 @@ def test_all(par):
 agg_funcs = {'mean': 'avg', 'std': 'dev'}
 
 
-# for some insane reason standard deviation and variance work on win32 but not
-# on OS X or Linux
-@pytest.mark.parametrize('agg', ['mean', 'sum', 'count', 'min', 'max',
-                                 xfail(sys.platform != 'win32', 'std',
-                                       reason="Doesn't work on non-windows",
-                                       raises=QException),
-                                 xfail(sys.platform != 'win32', 'var',
-                                       reason="Doesn't work on non-windows",
-                                       raises=QException)])
+@pytest.mark.parametrize('agg', ['mean', 'sum', 'count', 'min', 'max'])
 def test_agg(par, agg):
     expr = getattr(par.trade.price, agg)()
     qs = ('first exec price from select %s price from trade' %
@@ -122,8 +117,46 @@ def test_agg(par, agg):
     assert compute(expr) == par.data.eval(qs)
 
 
+# for some insane reason standard deviation and variance work on win32 but not
+# on OS X or Linux
+def xfail_std_var(agg, unbiased, not_win32=sys.platform != 'win32'):
+    return xfail(not_win32, (agg, unbiased),
+                 reason="Doesn't work on non-windows",
+                 raises=QException)
+
+
+@pytest.mark.parametrize(('agg', 'unbiased'),
+                         starmap(xfail_std_var,
+                                 product(['std', 'var'], [True, False])))
+def test_std_var(par, agg, unbiased):
+    expr = getattr(par.trade.price, agg)(unbiased=unbiased)
+    expected = getattr(into(pd.Series, par.trade.price),
+                       agg)(ddof=int(unbiased))
+    np.testing.assert_almost_equal(compute(expr), expected)
+
+
+
 def test_nrows_on_virtual_column(par):
     assert compute(par.quote.nrows) == compute(par.quote.date.nrows)
+
+
+def test_chained_reduction(par):
+    t = par.trade
+    t = t[t.price > 30]
+    expr = t.price.min()
+    result = compute(expr)
+    series = compute(par.trade.price)
+    expected = series[series > 30].min()
+    assert result == expected
+
+
+def test_chained_reduction_different_field(par):
+    t = par.trade
+    expr = t[t.price > 30].size.min()
+    result = compute(expr)
+    df = compute(t[['price', 'size']])
+    expected = df[df.price > 30]['size'].min()
+    assert result == expected
 
 
 @xfail(raises=QException,
