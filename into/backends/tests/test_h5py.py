@@ -66,6 +66,24 @@ def test_discover():
         assert str(discover(f)) == str(discover({'data': x}))
 
 
+def test_discover_on_data_with_object_in_record_name():
+    object_dtype = h5py.special_dtype(vlen=unicode)
+    data = np.array([(u'a', 1), (u'b', 2)], dtype=[('lrg_object',
+                                                    object_dtype),
+                                                   ('an_int', 'int64')])
+    with tmpfile('.hdf5') as fn:
+        f = h5py.File(fn)
+        try:
+            f.create_dataset('/data', data=data)
+        except:
+            raise
+        else:
+            assert (discover(f['data']) ==
+                    datashape.dshape('2 * {lrg_object: string, an_int: int64}'))
+        finally:
+            f.close()
+
+
 def eq(a, b):
     c = a == b
     if isinstance(c, np.ndarray):

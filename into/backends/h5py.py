@@ -3,8 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 
 import datashape
-from datashape import (DataShape, Record, dshape, to_numpy, to_numpy_dtype,
-                       discover)
+from datashape import DataShape, Record, to_numpy, to_numpy_dtype, discover
 from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
 import h5py
@@ -27,14 +26,64 @@ def discover_h5py_group_file(g):
     return DataShape(Record([[k, discover(v)] for k, v in g.items()]))
 
 
+def record_dshape_replace(dshape, old, new):
+    assert isrecord(dshape), 'input dshape must be a record'
+
+    for name, subshape in dshape.fields:
+        if subshape == old:
+            yield name, new
+        else:
+            if isrecord(subshape):
+                yield record_dshape_replace(subshape, old, new)
+            else:
+                yield name, subshape
+
+
 @discover.register(h5py.Dataset)
 def discover_h5py_dataset(d):
-    s = str(datashape.from_numpy(d.shape, d.dtype))
-    return dshape(s.replace('object', 'string'))
+    dshape = datashape.from_numpy(d.shape, d.dtype)
+    shape, measure = dshape.shape, dshape.measure
+    if not isrecord(measure):
+        if dshape == datashape.object_:
+            args = shape + (datashape.string,)
+            return DataShape(*args)
+        return dshape
+    else:
+        records = list(record_dshape_replace(measure, datashape.object_,
+                                             datashape.string))
+        args = shape + (datashape.Record(records),)
+        return DataShape(*args)
+
+
+def dtype_replace(dtype, old, new):
+    names = dtype.names
+
+    assert names is not None, 'dtype must be record-like'
+
+    for name, subdtype in zip(names, map(dtype.__getitem__, names)):
+        if subdtype == old:
+            yield name, new
+        else:
+            if subdtype.names is not None:
+                yield dtype_replace(subdtype, old, new)
+            else:
+                yield name, subdtype
+
+
+def varlen_dtype(dt):
+    """ Inject variable length string element for 'O' """
+    varlen = h5py.special_dtype(vlen=unicode)
+    if dt == np.object_:
+        return varlen
+    elif dt.names is None:  # some kind of non record like dtype
+        return dt
+    else:
+        return np.dtype(list(dtype_replace(dt, np.dtype('object'), varlen)))
 
 
 def dataset_from_dshape(file, datapath, ds, **kwargs):
-    dtype = to_numpy_dtype(ds)
+    dtype = varlen_dtype(to_numpy_dtype(ds))
+
     if datashape.var not in list(ds):
         shape = to_numpy(ds)[0]
     elif datashape.var not in list(ds)[1:]:
