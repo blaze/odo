@@ -4,10 +4,12 @@ import json
 from toolz.curried import map, take, pipe, pluck, get, concat, filter
 from collections import Iterator, Iterable
 import os
+from contextlib import contextmanager
 
 from datashape import discover, var, dshape, Record, DataShape
 from datashape import coretypes as ct
 from datashape.dispatch import dispatch
+import gzip
 import datetime
 from ..append import append
 from ..convert import convert, ooc_types
@@ -72,10 +74,15 @@ def discover_json(j, **kwargs):
     return date_to_datetime_dshape(ds)
 
 
+def nonempty(line):
+    return len(line.strip()) > 0
+
+
 @discover.register(JSONLines)
-def discover_jsonlines(j, n=10, **kwargs):
-    with open(j.path) as f:
-        data = pipe(f, filter(lambda line: len(line.strip()) > 0), map(json.loads), take(n), list)
+def discover_jsonlines(j, n=10, encoding='utf-8', **kwargs):
+    with json_lines(j.path, encoding=encoding) as lines:
+        data = pipe(lines, filter(nonempty), map(json.loads), take(n), list)
+
     if len(data) < n:
         ds = discover(data)
     else:
@@ -92,9 +99,29 @@ def json_to_list(j, dshape=None, **kwargs):
 
 
 @convert.register(Iterator, JSONLines)
-def json_lines_to_iterator(j, **kwargs):
-    f = open(j.path)
-    return map(json.loads, filter(lambda line: len(line.strip()) > 0, f))
+def json_lines_to_iterator(j, encoding='utf-8', **kwargs):
+    with json_lines(j.path, encoding=encoding) as lines:
+        for item in pipe(lines, filter(nonempty), map(json.loads)):
+            yield item
+
+
+@contextmanager
+def json_lines(path, encoding='utf-8'):
+    """ Return lines of a json-lines file
+
+    Handles compression like gzip """
+    if path.split(os.path.extsep)[-1] == 'gz':
+        f = gzip.open(path)
+        lines = (line.decode(encoding) for line in f)
+    else:
+        f = open(path)
+        lines = f
+
+    try:
+        yield lines
+    finally:
+        f.close()
+
 
 
 @append.register(JSONLines, object)

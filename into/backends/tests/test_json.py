@@ -4,6 +4,7 @@ from into import into
 from contextlib import contextmanager
 from datashape import dshape
 import datetime
+import gzip
 import os
 import json
 
@@ -154,3 +155,14 @@ def test_multiple_jsonlines():
     finally:
         os.remove('_test_a1.json')
         os.remove('_test_a2.json')
+
+
+def test_gzip():
+    with tmpfile('json.gz') as fn:
+        f = gzip.open(fn, 'w')
+        for item in dat:
+            json.dump(item, f)
+            f.write('\n')
+        f.close()
+        js = JSONLines(fn)
+        assert convert(list, js) == dat
