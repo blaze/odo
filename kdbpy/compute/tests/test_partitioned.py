@@ -135,7 +135,6 @@ def test_std_var(par, agg, unbiased):
     np.testing.assert_almost_equal(compute(expr), expected)
 
 
-
 def test_nrows_on_virtual_column(par):
     assert compute(par.quote.nrows) == compute(par.quote.date.nrows)
 
