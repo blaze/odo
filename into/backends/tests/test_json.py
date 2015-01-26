@@ -189,7 +189,6 @@ def test_write_gzip_lines():
         f.close()
         assert line.decode('utf-8').strip() == str(json.dumps(dat[0]))
 
-
 def test_write_gzip():
     with tmpfile('json.gz') as fn:
         j = JSON(fn)
@@ -199,3 +198,10 @@ def test_write_gzip():
         text = f.read()
         f.close()
         assert text.decode('utf-8').strip() == str(json.dumps(dat))
+
+
+def test_resource_gzip():
+    assert isinstance(resource('foo.json.gz'), (JSON, JSONLines))
+    assert isinstance(resource('json://foo.json.gz'), (JSON, JSONLines))
+    assert isinstance(resource('jsonlines://foo.json.gz'), (JSON, JSONLines))
+    assert isinstance(resource('jsonlines://foo.jsonlines.gz'), (JSON, JSONLines))

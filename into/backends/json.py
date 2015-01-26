@@ -203,22 +203,22 @@ def object_to_json(j, o, **kwargs):
     return append(j, convert(list, o, **kwargs), **kwargs)
 
 
-@resource.register('json://.*\.json', priority=11)
+@resource.register('json://.*\.json(\.gz)?', priority=11)
 def resource_json(path, **kwargs):
     if 'json://' in path:
         path = path[len('json://'):]
     return JSON(path)
 
 
-@resource.register('.*\.jsonlines', priority=11)
-@resource.register('jsonlines://.*\.json', priority=11)
+@resource.register('.*\.jsonlines(\.gz)?', priority=11)
+@resource.register('jsonlines://.*\.json(\.gz)?', priority=11)
 def resource_jsonlines(path, **kwargs):
     if 'jsonlines://' in path:
         path = path[len('jsonlines://'):]
     return JSONLines(path)
 
 
-@resource.register('.*\.json')
+@resource.register('.*\.json(\.gz)?')
 def resource_json_ambiguous(path, **kwargs):
     """ Try to guess if this file is line-delimited or not """
     if os.path.exists(path):
