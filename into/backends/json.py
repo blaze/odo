@@ -68,8 +68,7 @@ def date_to_datetime_dshape(ds):
 
 @discover.register(JSON)
 def discover_json(j, **kwargs):
-    with open(j.path) as f:
-        data = json.load(f)
+    data = json_load(j.path)
     ds = discover(data)
     return date_to_datetime_dshape(ds)
 
@@ -93,9 +92,7 @@ def discover_jsonlines(j, n=10, encoding='utf-8', **kwargs):
 
 @convert.register(list, JSON)
 def json_to_list(j, dshape=None, **kwargs):
-    with open(j.path) as f:
-        data = json.load(f)
-    return data
+    return json_load(j.path, **kwargs)
 
 
 @convert.register(Iterator, JSONLines)
@@ -122,6 +119,23 @@ def json_lines(path, encoding='utf-8'):
     finally:
         f.close()
 
+
+def json_load(path, encoding='utf-8', **kwargs):
+    """ Return data of a json file
+
+    Handles compression like gzip """
+    if path.split(os.path.extsep)[-1] == 'gz':
+        f = gzip.open(path)
+        s = f.read().decode(encoding)
+    else:
+        f = open(path)
+        s = f.read()
+
+    data = json.loads(s)
+
+    f.close()
+
+    return data
 
 
 @append.register(JSONLines, object)
