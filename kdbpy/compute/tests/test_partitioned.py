@@ -1,4 +1,6 @@
 import sys
+from itertools import starmap, product
+
 import pytest
 
 import pandas as pd
@@ -106,17 +108,28 @@ def test_all(par):
 agg_funcs = {'mean': 'avg', 'std': 'dev'}
 
 
-# for some insane reason standard deviation and variance work on win32 but not
-# on OS X or Linux
-@pytest.mark.parametrize('agg', ['mean', 'sum', 'count', 'min', 'max',
-                                 xfail(sys.platform != 'win32', 'std',
-                                       reason="Doesn't work on non-windows",
-                                       raises=QException),
-                                 xfail(sys.platform != 'win32', 'var',
-                                       reason="Doesn't work on non-windows",
-                                       raises=QException)])
+@pytest.mark.parametrize('agg', ['mean', 'sum', 'count', 'min', 'max'])
 def test_agg(par, agg):
     expr = getattr(par.trade.price, agg)()
+    qs = ('first exec price from select %s price from trade' %
+          agg_funcs.get(agg, agg))
+    assert compute(expr) == par.data.eval(qs)
+
+
+# for some insane reason standard deviation and variance work on win32 but not
+# on OS X or Linux
+def xfail_std_var(pair):
+    agg, unbiased = pair
+    return xfail(sys.platform != 'win32', (agg, unbiased),
+                 reason="Doesn't work on non-windows",
+                 raises=QException)
+
+
+@pytest.mark.parametrize(('agg', 'unbiased'),
+                         map(xfail_std_var, product(['std', 'var'],
+                                                    [True, False])))
+def test_std_var(par, agg, unbiased):
+    expr = getattr(par.trade.price, agg)(unbiased=unbiased)
     qs = ('first exec price from select %s price from trade' %
           agg_funcs.get(agg, agg))
     assert compute(expr) == par.data.eval(qs)
