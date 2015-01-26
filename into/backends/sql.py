@@ -324,7 +324,7 @@ def append_select_statement_to_sql_Table(t, o, **kwargs):
 
 @resource.register('(.*sql.*|oracle)(\+\w*)?://.+')
 def resource_sql(uri, *args, **kwargs):
-    kwargs2 = keyfilter(sa_create_engine_kwargs, kwargs)
+    kwargs2 = keyfilter(sa_create_engine_kwargs.__contains__, kwargs)
     engine = create_engine(uri, **kwargs2)
     ds = kwargs.get('dshape')
     if args and isinstance(args[0], str):
