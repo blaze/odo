@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import json
-from toolz.curried import map, take, pipe, pluck, get, concat
+from toolz.curried import map, take, pipe, pluck, get, concat, filter
 from collections import Iterator, Iterable
 import os
 
@@ -72,9 +72,9 @@ def discover_json(j, **kwargs):
 
 
 @discover.register(JSONLines)
-def discover_json(j, n=10, **kwargs):
+def discover_jsonlines(j, n=10, **kwargs):
     with open(j.path) as f:
-        data = pipe(f, map(json.loads), take(n), list)
+        data = pipe(f, filter(lambda line: len(line.strip()) > 0), map(json.loads), take(n), list)
     if len(data) < n:
         ds = discover(data)
     else:
@@ -93,7 +93,7 @@ def json_to_list(j, dshape=None, **kwargs):
 @convert.register(Iterator, JSONLines)
 def json_lines_to_iterator(j, **kwargs):
     f = open(j.path)
-    return map(json.loads, f)
+    return map(json.loads, filter(lambda line: len(line.strip()) > 0, f))
 
 
 @append.register(JSONLines, object)

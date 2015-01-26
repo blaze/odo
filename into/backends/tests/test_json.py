@@ -130,3 +130,12 @@ def test_json_encoder():
                        default=json_dumps)
     assert result == '[1, "2000-01-01T12:30:00Z"]'
     assert json.loads(result) == [1, "2000-01-01T12:30:00Z"]
+
+
+def test_empty_line():
+    text = '{"a": 1}\n{"a": 2}\n\n'  # extra endline
+    with tmpfile('.json') as fn:
+        with open(fn, 'w') as f:
+            f.write(text)
+        j = JSONLines(fn)
+        assert len(convert(list, j)) == 2
