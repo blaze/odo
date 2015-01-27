@@ -71,6 +71,8 @@ def dshape_to_hive(ds):
 
     >>> dshape_to_hive('int16')
     'SMALLINT'
+    >>> dshape_to_hive('?int16')  # Ignore option types
+    'SMALLINT'
     >>> dshape_to_hive('string[256]')
     'VARCHAR(256)'
     """
@@ -78,6 +80,8 @@ def dshape_to_hive(ds):
         ds = datashape.dshape(ds)
     if isinstance(ds, ct.DataShape):
         ds = ds.measure
+    if isinstance(ds, ct.Option):
+        ds = ds.ty
     if isinstance(ds, ct.String):
         if ds.fixlen:
             return 'VARCHAR(%d)' % ds.fixlen
