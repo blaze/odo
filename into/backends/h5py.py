@@ -110,7 +110,7 @@ def varlen_dtype(dt):
     >>> r
     dtype('O')
     >>> r.metadata['vlen']
-    <type 'unicode'>
+    <type 'unicode'>  # doctest: +SKIP
     >>> dt = np.dtype([('a', 'int64'), ('b', 'object'),
     ...                ('c', [('d', 'object'), ('e', 'float64')])])
     ...
@@ -119,9 +119,13 @@ def varlen_dtype(dt):
     >>> r
     dtype([('a', '<i8'), ('b', 'O'), ('c', [('d', 'O'), ('e', '<f8')])])
     >>> r['b'].metadata['vlen']
-    <type 'unicode'>
+    <type 'unicode'>  # doctest: +SKIP
     """
-    varlen = h5py.special_dtype(vlen=unicode)
+    try:
+        varlen = h5py.special_dtype(vlen=unicode)
+    except NameError:
+        varlen = h5py.special_dtype(vlen=str)
+
     if dt == np.object_:
         return varlen
     elif dt.names is None:  # some kind of non record like dtype
