@@ -11,7 +11,7 @@ from ..resource import resource
 
 
 class _SSH(object):
-    """ Parent class for data accessed through ssh
+    """ Parent class for data accessed through ``ssh``
 
     See ``paramiko.SSHClient.connect`` for authentication keyword arguments
 
@@ -19,15 +19,15 @@ class _SSH(object):
     --------
 
     >>> from into import SSH, CSV
-    >>> SSH(CSV)('/path/to/file.csv')
+    >>> s = SSH(CSV)('/path/to/file.csv', hostname='hostname', username='alice')
 
     Normally create through resource uris
 
-    >>> data = resource('ssh://alice@hostname:/path/to/file.csv')
+    >>> data = resource('ssh://alice@host:/path/to/file.csv', password='pass')
     >>> data.path
     '/path/to/file.csv'
-    >>> data.hostname
-    'hostname'
+    >>> data.auth['hostname']
+    'host'
     """
     def __init__(self, *args, **kwargs):
         self.auth = keyfilter(keywords(paramiko.SSHClient.connect).__contains__,
