@@ -33,7 +33,8 @@ def sas_to_DataFrame(s, dshape=None, **kwargs):
     df = s.to_data_frame()
     if any(typ in (date_, datetime_) for typ in dshape.measure.types):
         df = coerce_datetimes(df)
-    df = df[s.column_names]  # Reorder names to match sasfile
+    names = [col.decode('utf-8') for col in s.column_names]
+    df = df[names]  # Reorder names to match sasfile
     return df
 
 
