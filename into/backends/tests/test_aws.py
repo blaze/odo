@@ -1,7 +1,7 @@
 import pytest
 import os
 import shutil
-from into import into, resource, S3, discover, CSV
+from into import into, resource, S3, discover, CSV, drop
 import pandas as pd
 import pandas.util.testing as tm
 import datashape
@@ -46,12 +46,33 @@ def test_frame_to_s3():
     tm.assert_frame_equal(result, df)
 
 
-@pytest.mark.xfail(raises=NotImplementedError,
-                   reason=('need to figure out how to get a redshift instance '
-                           'for testing'))
+@pytest.mark.skipif('REDSHIFT_DB_URI' not in os.environ,
+                    reason=('Please define an environment variable called '
+                            'REDSHIFT_DB_URI to test redshift <- S3'))
 def test_s3_to_redshift():
-    redshift_uri = ('redshift+psycopg2://username@host.amazonaws.com:5439/'
-                    'database::t')
-    table = into(redshift_uri, 's3://bucket/csvdir')
-    assert isinstance(table, sa.Table)
-    assert table.name == 't'
+    redshift_uri = '%s::tips' % os.environ['REDSHIFT_DB_URI']
+    s3 = S3(CSV)('s3://nyqpug/tips.csv')
+    table = into(redshift_uri, s3, dshape=discover(s3))
+    dshape = discover(table)
+    ds = datashape.dshape("""
+    var * {
+        total_bill: float64,
+        tip: float64,
+        sex: string,
+        smoker: string,
+        day: string,
+        time: string,
+        size: int64
+    }""")
+    try:
+        # make sure our table is properly named
+        assert table.name == 'tips'
+
+        # make sure we have a non empty table
+        assert table.bind.execute("select count(*) from tips;").scalar() == 244
+
+        # make sure we have the proper column types
+        assert dshape == ds
+    finally:
+        # don't hang around
+        drop(table)
