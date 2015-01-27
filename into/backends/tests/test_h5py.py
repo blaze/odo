@@ -4,6 +4,7 @@ import os
 from contextlib import contextmanager
 
 from into.backends.h5py import append, create, resource, discover, convert
+from into.backends.h5py import unicode_dtype
 
 from into.utils import tmpfile
 from into.chunks import chunks
@@ -67,9 +68,8 @@ def test_discover():
 
 
 def test_discover_on_data_with_object_in_record_name():
-    object_dtype = h5py.special_dtype(vlen=unicode)
     data = np.array([(u'a', 1), (u'b', 2)], dtype=[('lrg_object',
-                                                    object_dtype),
+                                                    unicode_dtype),
                                                    ('an_int', 'int64')])
     with tmpfile('.hdf5') as fn:
         f = h5py.File(fn)

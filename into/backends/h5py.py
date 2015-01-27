@@ -21,6 +21,12 @@ h5py_attributes = ['chunks', 'compression', 'compression_opts', 'dtype',
                    'fillvalue', 'fletcher32', 'maxshape', 'shape']
 
 
+try:
+    unicode_dtype = h5py.special_dtype(vlen=unicode)
+except NameError:
+    unicode_dtype = h5py.special_dtype(vlen=str)
+
+
 @discover.register((h5py.Group, h5py.File))
 def discover_h5py_group_file(g):
     return DataShape(Record([[k, discover(v)] for k, v in g.items()]))
@@ -121,17 +127,13 @@ def varlen_dtype(dt):
     >>> r['b'].metadata['vlen']  # doctest: +SKIP
     <type 'unicode'>
     """
-    try:
-        varlen = h5py.special_dtype(vlen=unicode)
-    except NameError:
-        varlen = h5py.special_dtype(vlen=str)
-
     if dt == np.object_:
-        return varlen
+        return unicode_dtype
     elif dt.names is None:  # some kind of non record like dtype
         return dt
     else:
-        return np.dtype(list(dtype_replace(dt, np.dtype('object'), varlen)))
+        return np.dtype(list(dtype_replace(dt, np.dtype('object'),
+                                           unicode_dtype)))
 
 
 def dataset_from_dshape(file, datapath, ds, **kwargs):
