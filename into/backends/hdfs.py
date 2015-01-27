@@ -6,7 +6,11 @@ import datashape
 from datashape import discover
 from datashape import coretypes as ct
 from pywebhdfs.webhdfs import PyWebHdfsClient
+from collections import namedtuple
+from .sql import metadata_of_engine, sa
 from ..utils import tmpfile
+from ..append import append
+from ..resource import resource
 
 class _HDFS(object):
     """ Parent class for data on Hadoop File System
@@ -96,10 +100,11 @@ from ..regex import RegexDispatcher
 create_command = RegexDispatcher('create_command')
 
 @create_command.register('hive')
-def copy_hive(dialect, tbl, csv, dshape=None):
+def create_hive(dialect, tbl, csv, dshape=None):
     path = csv.path
-    tblname = tbl.table_name
-    dbname = tbl.db_name
+    tblname = tbl.name
+
+    dbname = str(tbl.engine.url).split('/')[-1]
     if dbname:
         dbname = dbname + '.'
     delimiter = csv.dialect.get('delimiter', ',')
@@ -114,11 +119,11 @@ def copy_hive(dialect, tbl, csv, dshape=None):
     column_text = ',\n'.join('%30s  %s' % col for col in columns)[12:]
 
     statement = """
-        CREATE TABLE {dbname}{tblname} (
+        CREATE EXTERNAL TABLE {dbname}{tblname} (
             {column_text}
             )
-        ROW FORMAT FIELDS DELIMITED BY {delimiter}
-                   ESCAPED BY {escapechar}
+        ROW FORMAT DELIMITED
+            FIELDS TERMINATED BY '{delimiter}'
         STORED AS TEXTFILE
         LOCATION '{path}'
         """
@@ -127,6 +132,32 @@ def copy_hive(dialect, tbl, csv, dshape=None):
         statement = statement + """
         TBLPROPERTIES ("skip.header.line.count"="1")"""
 
-    statement = statement + ';'
-
     return statement.format(**locals())
+
+
+@resource.register('hive://.+::.+', priority=16)
+def resource_hive_table(uri, **kwargs):
+    uri, table = uri.split('::')
+    engine = resource(uri, **kwargs)
+    metadata = metadata_of_engine(engine)
+    if table in metadata.tables:
+        return metadata.tables[table]
+    metadata.reflect(engine, views=False)
+    if table in metadata.tables:
+        return metadata.tables[table]
+    return TableProxy(engine, table)
+
+
+TableProxy = namedtuple('TableProxy', 'engine,name')
+
+
+@append.register(TableProxy, HDFS(CSV))
+def create_new_hive_table_from_csv(tbl, csv, **kwargs):
+    statement = create_command(tbl.engine.dialect.name, tbl, csv, **kwargs)
+    with tbl.engine.connect() as conn:
+        conn.execute(statement)
+
+    metadata = metadata_of_engine(tbl.engine)
+    tbl2 = sa.Table(tbl.name, metadata, autoload=True,
+            autoload_with=tbl.engine)
+    return tbl2

@@ -21,7 +21,8 @@ def normalize(s):
 
 def test_create_hive():
 
-    text = create_command('hive', ProxyTable('mytable', 'mydb'), data)
+    engine = sa.create_engine('sqlite:///:memory:')
+    text = create_command('hive', TableProxy('mytable', engine), data)
     expected = r"""
         CREATE TABLE mydb.mytable (
                           Name  STRING,
