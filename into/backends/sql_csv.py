@@ -90,8 +90,10 @@ try:
 except ImportError:
     pass
 else:
+    # TODO: kwargs passing? there are some dialect specific things that might
+    # be useful here
     @copy_command.register('redshift.*')
-    def copy_redshift(dialect, tbl, csv, schema_name='public', **kwargs):
+    def copy_redshift(dialect, tbl, csv, schema_name='public'):
         assert isinstance(csv, S3(CSV))
         assert csv.path.startswith('s3://')
 
@@ -123,6 +125,6 @@ def execute_copy_all(dialect, engine, statement):
 
 @append.register(sqlalchemy.Table, CSV)
 def append_csv_to_sql_table(tbl, csv, **kwargs):
-    statement = copy_command(tbl.bind.dialect.name, tbl, csv, **kwargs)
+    statement = copy_command(tbl.bind.dialect.name, tbl, csv)
     execute_copy(tbl.bind.dialect.name, tbl.bind, statement)
     return tbl
