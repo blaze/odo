@@ -1,4 +1,4 @@
-from into.backends.hdfs import discover, HDFS, CSV, create_command
+from into.backends.hdfs import discover, HDFS, CSV, create_command, TableProxy
 from into.backends.sql import resource
 import sqlalchemy as sa
 from pywebhdfs.webhdfs import PyWebHdfsClient
@@ -8,6 +8,7 @@ from into.directory import Directory
 hdfs = PyWebHdfsClient(host='54.91.57.226', port='14000', user_name='hdfs')
 data = HDFS(CSV)('/user/hive/warehouse/csv_test/data.csv', hdfs=hdfs)
 directory = HDFS(Directory(CSV))('/user/hive/mrocklin/accounts/', hdfs=hdfs)
+engine = resource('hive://hdfs@54.91.57.226:10000/default')
 
 
 def test_discover():
@@ -22,23 +23,20 @@ def test_discover_hdfs_directory():
 def normalize(s):
     return ' '.join(s.split())
 
-def dont_test_create_hive():
-
-    engine = sa.create_engine('sqlite:///:memory:')
-    text = create_command('hive', TableProxy('mytable', engine), data)
+def test_create_hive():
+    text = create_command('hive', TableProxy(engine, 'mytable'), directory)
     expected = r"""
-        CREATE TABLE mydb.mytable (
-                          Name  STRING,
-              RegistrationDate  TIMESTAMP,
-                       ZipCode  SMALLINT,
-                        Consts  DOUBLE
+        CREATE EXTERNAL TABLE default.mytable (
+                      id  SMALLINT,
+                    name  STRING,
+                  amount  SMALLINT
             )
-        ROW FORMAT FIELDS DELIMITED BY ,
-                   ESCAPED BY \
+        ROW FORMAT DELIMITED
+            FIELDS TERMINATED BY ','
         STORED AS TEXTFILE
-        LOCATION '/user/hive/warehouse/csv_test/data.csv'
+        LOCATION '/user/hive/mrocklin/accounts/'
 
-        TBLPROPERTIES ("skip.header.line.count"="1");
+        TBLPROPERTIES ("skip.header.line.count"="1")
         """
 
     assert normalize(text) == normalize(expected)
