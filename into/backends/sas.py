@@ -1,16 +1,13 @@
 from __future__ import absolute_import, division, print_function
 
-try:
-    import sas7bdat
-    from sas7bdat import SAS7BDAT
-except ImportError:
-    sas7bdat = None
-    SAS7BDAT = type(None)
+import sas7bdat
+from sas7bdat import SAS7BDAT
 
 import datashape
-from datashape import discover, dshape, var
+from datashape import discover, dshape, var, Record, date_, datetime_
 from collections import Iterator
 import pandas as pd
+from .pandas import coerce_datetimes
 from ..append import append
 from ..convert import convert
 from ..resource import resource
@@ -23,21 +20,26 @@ def resource_sas(uri, **kwargs):
 
 @discover.register(SAS7BDAT)
 def discover_sas(f, **kwargs):
-    f.skip_header = True
-    ln = next(f.readlines())
-    ds = discover(ln)
-    cols = [col.name.decode("utf-8") for col in f.header.parent.columns]
-    types = [_type.strip() for _type in str(ds).strip("()").split(',')]
-    measure = ",".join(" " + col + ":" + _type for col, _type in zip(cols, types))
-    return var * dshape("{" + measure + "}")
+    lines = f.readlines()
+    next(lines) # burn header
+    ln = next(lines)
+    types = map(discover, ln)
+    names = [col.name.decode("utf-8") for col in f.header.parent.columns]
+    return var * Record(list(zip(names, types)))
 
 
 @convert.register(pd.DataFrame, SAS7BDAT, cost=4.0)
 def sas_to_DataFrame(s, dshape=None, **kwargs):
-    return s.to_data_frame()
+    df = s.to_data_frame()
+    if any(typ in (date_, datetime_) for typ in dshape.measure.types):
+        df = coerce_datetimes(df)
+    df = df[s.column_names]  # Reorder names to match sasfile
+    return df
 
 
 @convert.register(Iterator, SAS7BDAT, cost=1.0)
 def sas_to_iterator(s, **kwargs):
-    s.skip_header = True
-    return s.readlines()
+    lines = s.readlines()
+    if not s.skip_header:
+        next(lines)  # burn
+    return lines
