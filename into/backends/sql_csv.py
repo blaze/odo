@@ -1,14 +1,16 @@
+import os
+import re
+import subprocess
+
+import sqlalchemy
 
 from ..regex import RegexDispatcher
 from ..append import append
 from .csv import CSV
-import os
-import datashape
-import sqlalchemy
-import subprocess
 
 copy_command = RegexDispatcher('copy_command')
 execute_copy = RegexDispatcher('execute_copy')
+
 
 @copy_command.register('.*sqlite')
 def copy_sqlite(dialect, tbl, csv):
@@ -17,8 +19,8 @@ def copy_sqlite(dialect, tbl, csv):
     dbpath = str(tbl.bind.url).split('///')[-1]
 
     statement = """
-        (echo '.mode csv'; echo '.import {abspath} {tblname}';) | sqlite3 {dbpath}
-        """
+     (echo '.mode csv'; echo '.import {abspath} {tblname}';) | sqlite3 {dbpath}
+    """
 
     return statement.format(**locals())
 
@@ -27,7 +29,6 @@ def copy_sqlite(dialect, tbl, csv):
 def execute_copy_sqlite(dialect, engine, statement):
     ps = subprocess.Popen(statement, shell=True, stdout=subprocess.PIPE)
     return ps.stdout.read()
-
 
 
 @copy_command.register('postgresql')
@@ -53,7 +54,6 @@ def copy_postgres(dialect, tbl, csv):
              ENCODING '{encoding}');"""
 
     return statement.format(**locals())
-
 
 
 @copy_command.register('mysql.*')
@@ -83,6 +83,36 @@ def copy_mysql(dialect, tbl, csv):
     return statement.format(**locals())
 
 
+try:
+    import boto
+    from into.backends.aws import S3
+    from redshift_sqlalchemy.dialect import CopyCommand
+except ImportError:
+    pass
+else:
+    @copy_command.register('redshift.*')
+    def copy_redshift(dialect, tbl, csv, schema_name='public', **kwargs):
+        assert isinstance(csv, S3(CSV))
+        assert csv.path.startswith('s3://')
+
+        cfg = boto.Config()
+
+        aws_access_key_id = cfg.get('Credentials', 'aws_access_key_id')
+        aws_secret_access_key = cfg.get('Credentials', 'aws_secret_access_key')
+
+        options = dict(delimiter=csv.dialect.get('delimiter', ','),
+                       ignore_header=int(csv.has_header),
+                       empty_as_null=True, blanks_as_null=False)
+
+        cmd = CopyCommand(schema_name=schema_name,
+                          table_name=tbl.name,
+                          data_location=csv.path,
+                          access_key=aws_access_key_id,
+                          secret_key=aws_secret_access_key,
+                          options=options)
+        return re.sub(r'\s+(;)', r'\1', re.sub(r'\s+', ' ', str(cmd))).strip()
+
+
 @execute_copy.register('.*', priority=9)
 def execute_copy_all(dialect, engine, statement):
     conn = engine.raw_connection()
@@ -93,6 +123,6 @@ def execute_copy_all(dialect, engine, statement):
 
 @append.register(sqlalchemy.Table, CSV)
 def append_csv_to_sql_table(tbl, csv, **kwargs):
-    statement = copy_command(tbl.bind.dialect.name, tbl, csv)
+    statement = copy_command(tbl.bind.dialect.name, tbl, csv, **kwargs)
     execute_copy(tbl.bind.dialect.name, tbl.bind, statement)
     return tbl
