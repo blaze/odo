@@ -59,6 +59,10 @@ try:
 except:
     pass
 
+try:
+    from .backends import iopro
+except:
+    pass
 
 restart_ordering() # Restart multipledispatch ordering and do ordering
 
