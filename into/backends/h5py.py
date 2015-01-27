@@ -27,9 +27,22 @@ def discover_h5py_group_file(g):
 
 
 def record_dshape_replace(dshape, old, new):
+    """Recursively replace all instances of `old` with `new` in the record
+    dshape `dshape`.
+
+    Examples
+    --------
+    >>> from datashape import Record, string, object_, dshape
+    >>> ds = DataShape(Record([('a', 'int64'),
+    ...                        ('b', 10 * Record([('c', 'object')])),
+    ...                        ('d', 'int64')]))
+    ...
+    >>> Record(list(record_dshape_replace(ds, object_, string)))
+    dshape("{a: int64, b: 10 * {c: object}, d: int64}")
+    """
     assert isrecord(dshape), 'input dshape must be a record'
 
-    for name, subshape in dshape.fields:
+    for name, subshape in dshape.measure.fields:
         if subshape == old:
             yield name, new
         else:
@@ -56,6 +69,21 @@ def discover_h5py_dataset(d):
 
 
 def dtype_replace(dtype, old, new):
+    """Replace the subdtype `old` in `subdtype` with `new`.
+
+    Parameters
+    ----------
+    dtype, old, new : dtype
+
+    Examples
+    --------
+    >>> dt = np.dtype([('a', 'int64'), ('b', 'object'),
+    ...                ('c', [('d', 'object'), ('e', 'float64')])])
+    ...
+    >>> r = np.dtype(list(dtype_replace(dt, 'int64', 'float64')))
+    >>> r
+    dtype([('a', '<f8'), ('b', 'O'), ('c', [('d', 'O'), ('e', '<f8')])])
+    """
     names = dtype.names
 
     assert names is not None, 'dtype must be record-like'
@@ -65,13 +93,34 @@ def dtype_replace(dtype, old, new):
             yield name, new
         else:
             if subdtype.names is not None:
-                yield dtype_replace(subdtype, old, new)
+                yield name, list(dtype_replace(subdtype, old, new))
             else:
                 yield name, subdtype
 
 
 def varlen_dtype(dt):
-    """ Inject variable length string element for 'O' """
+    """Inject variable length string element for object dtype
+
+    Examples
+    --------
+    >>> dt = np.dtype('object')
+    >>> dt
+    dtype('O')
+    >>> r = varlen_dtype(dt)
+    >>> r
+    dtype('O')
+    >>> r.metadata['vlen']
+    <type 'unicode'>
+    >>> dt = np.dtype([('a', 'int64'), ('b', 'object'),
+    ...                ('c', [('d', 'object'), ('e', 'float64')])])
+    ...
+    >>> dt['b'].metadata
+    >>> r = varlen_dtype(dt)
+    >>> r
+    dtype([('a', '<i8'), ('b', 'O'), ('c', [('d', 'O'), ('e', '<f8')])])
+    >>> r['b'].metadata['vlen']
+    <type 'unicode'>
+    """
     varlen = h5py.special_dtype(vlen=unicode)
     if dt == np.object_:
         return varlen
