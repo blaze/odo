@@ -3,6 +3,7 @@ import paramiko
 
 from into.utils import tmpfile, filetext, filetexts, raises
 from into.backends.ssh import *
+import re
 
 
 def test_resource():
@@ -19,3 +20,12 @@ def test_discover():
         remote = SSH(CSV)(fn, hostname='localhost')
 
         assert discover(local) == discover(remote)
+
+
+def test_ssh_pattern():
+    uris = ['localhost:myfile.csv',
+            '127.0.0.1:/myfile.csv',
+            'user@127.0.0.1:/myfile.csv',
+            'user@127.0.0.1:/my-dir/my-file3.csv']
+    for uri in uris:
+        assert re.match(ssh_pattern, uri)

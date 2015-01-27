@@ -59,14 +59,14 @@ from .csv import CSV
 from .json import JSONLines
 types_by_extension = {'csv': CSV, 'json': JSONLines}
 
+ssh_pattern = '((?P<username>[a-zA-Z]\w*)@)?(?P<hostname>[\w.-]*)(:(?P<port>\d+))?:(?P<path>[/\w.-]+)'
 
 @resource.register('ssh://.+', priority=14)
 def resource_ssh(uri, **kwargs):
     if 'ssh://' in uri:
         uri = uri[len('ssh://'):]
 
-    pattern = '((?P<username>[a-zA-Z]\w*)@)?(?P<hostname>[a-zA-Z][\w.-]*)(:(?P<port>\d+))?:(?P<path>[/\w.-]+)'
-    d = re.match(pattern, uri).groupdict()
+    d = re.match(ssh_pattern, uri).groupdict()
     path = d.pop('path')
 
     kwargs.update(d)
