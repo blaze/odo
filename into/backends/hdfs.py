@@ -113,19 +113,19 @@ from ..regex import RegexDispatcher
 create_command = RegexDispatcher('create_command')
 
 @create_command.register('hive')
-def create_hive(dialect, tbl, csv, dshape=None):
-    path = csv.path
+def create_hive(dialect, tbl, data, dshape=None):
+    path = data.path
     tblname = tbl.name
 
     dbname = str(tbl.engine.url).split('/')[-1]
     if dbname:
         dbname = dbname + '.'
-    delimiter = csv.dialect.get('delimiter', ',')
-    quotechar = csv.dialect.get('quotechar', '"')
-    escapechar = csv.dialect.get('escapechar', '\\')
-    encoding = csv.encoding or 'utf-8'
+    delimiter = data.kwargs.get('delimiter', ',')
+    quotechar = data.kwargs.get('quotechar', '"')
+    escapechar = data.kwargs.get('escapechar', '\\')
+    encoding = data.kwargs.get('encoding', 'utf-8')
 
-    ds = dshape or discover(csv)
+    ds = dshape or discover(data)
     assert isinstance(ds.measure, ct.Record)
     columns = [(name, dshape_to_hive(typ))
             for name, typ in zip(ds.measure.names, ds.measure.types)]
@@ -141,7 +141,7 @@ def create_hive(dialect, tbl, csv, dshape=None):
         LOCATION '{path}'
         """
 
-    if csv.has_header:
+    if data.kwargs.get('has_header'):
         statement = statement + """
         TBLPROPERTIES ("skip.header.line.count"="1")"""
 
@@ -164,9 +164,9 @@ def resource_hive_table(uri, **kwargs):
 TableProxy = namedtuple('TableProxy', 'engine,name')
 
 
-@append.register(TableProxy, HDFS(CSV))
-def create_new_hive_table_from_csv(tbl, csv, **kwargs):
-    statement = create_command(tbl.engine.dialect.name, tbl, csv, **kwargs)
+@append.register(TableProxy, HDFS(Directory(CSV)))
+def create_new_hive_table_from_csv(tbl, data, **kwargs):
+    statement = create_command(tbl.engine.dialect.name, tbl, data, **kwargs)
     with tbl.engine.connect() as conn:
         conn.execute(statement)
 
