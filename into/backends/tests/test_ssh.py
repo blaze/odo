@@ -22,6 +22,14 @@ def test_discover():
         assert discover(local) == discover(remote)
 
 
+def test_discover_from_resource():
+    with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
+        local = CSV(fn)
+        remote = resource('ssh://localhost:' + fn)
+
+        assert discover(local) == discover(remote)
+
+
 def test_ssh_pattern():
     uris = ['localhost:myfile.csv',
             '127.0.0.1:/myfile.csv',

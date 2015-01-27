@@ -67,6 +67,7 @@ def resource_ssh(uri, **kwargs):
         uri = uri[len('ssh://'):]
 
     d = re.match(ssh_pattern, uri).groupdict()
+    d = dict((k, v) for k, v in d.items() if v is not None)
     path = d.pop('path')
 
     kwargs.update(d)
