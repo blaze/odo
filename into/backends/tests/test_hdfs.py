@@ -3,23 +3,26 @@ from into.backends.sql import resource
 import sqlalchemy as sa
 from pywebhdfs.webhdfs import PyWebHdfsClient
 from datashape import dshape
-from collections import namedtuple
-
+from into.directory import Directory
 
 hdfs = PyWebHdfsClient(host='54.91.57.226', port='14000', user_name='hdfs')
 data = HDFS(CSV)('/user/hive/warehouse/csv_test/data.csv', hdfs=hdfs)
-ProxyTable = namedtuple('ProxyTable', 'table_name,db_name')
+directory = HDFS(Directory(CSV))('/user/hive/mrocklin/accounts/', hdfs=hdfs)
 
 
 def test_discover():
     assert discover(data) == \
             dshape('var * {Name: string, RegistrationDate: datetime, ZipCode: int64, Consts: float64}')
 
+def test_discover_hdfs_directory():
+    assert discover(directory) == \
+            dshape('var * {id: int64, name: string, amount: int64}')
+
 
 def normalize(s):
     return ' '.join(s.split())
 
-def test_create_hive():
+def dont_test_create_hive():
 
     engine = sa.create_engine('sqlite:///:memory:')
     text = create_command('hive', TableProxy('mytable', engine), data)

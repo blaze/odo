@@ -11,6 +11,7 @@ from .sql import metadata_of_engine, sa
 from ..utils import tmpfile
 from ..append import append
 from ..resource import resource
+from ..directory import _Directory, Directory
 
 class _HDFS(object):
     """ Parent class for data on Hadoop File System
@@ -39,7 +40,6 @@ class _HDFS(object):
         self.subtype.__init__(self, *args, **kwargs)
 
 
-
 @memoize
 def HDFS(cls):
     return type('HDFS(%s)' % cls.__name__, (_HDFS, cls), {'subtype':  cls})
@@ -54,6 +54,19 @@ def discover_hdfs_csv(data, length=10000, **kwargs):
         result = discover(CSV(fn, encoding=data.encoding,
                                   dialect=data.dialect,
                                   has_header=data.has_header))
+    return result
+
+
+@discover.register(HDFS(Directory(CSV)))
+def discover_hdfs_directory(data, length=10000, **kwargs):
+    files = data.hdfs.list_dir(data.path.lstrip('/'))
+    one_file = files['FileStatuses']['FileStatus'][0]['pathSuffix']
+    sample = data.hdfs.read_file(data.path.lstrip('/') + '/' + one_file, length=length)
+    with tmpfile() as fn:
+        with open(fn, 'w') as f:
+            f.write(sample)
+        o = data.container(fn, **data.kwargs)
+        result = discover(o)
     return result
 
 

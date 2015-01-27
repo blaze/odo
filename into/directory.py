@@ -30,7 +30,7 @@ class _Directory(Chunks):
 
 def Directory(cls):
     """ Parametrized DirectoryClass """
-    return type('Directory(%s)' + cls.__name__, (_Directory,), {'container': cls})
+    return type('Directory(%s)' % cls.__name__, (_Directory,), {'container': cls})
 
 Directory.__doc__ = Directory.__doc__
 
