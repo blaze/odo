@@ -1,4 +1,6 @@
-from toolz import memoize
+from __future__ import absolute_import, division, print_function
+
+from toolz import memoize, merge
 from functools import wraps
 
 from .csv import CSV
@@ -126,22 +128,39 @@ def dshape_to_hive(ds):
     raise NotImplementedError("No Hive dtype known for %s" % ds)
 
 
+import csv
+sniffer = csv.Sniffer()
+
+
 from ..regex import RegexDispatcher
 create_command = RegexDispatcher('create_command')
 
 @create_command.register('hive')
-def create_hive(dialect, tbl, data, dshape=None):
+def create_hive(dialect, tbl, data, dshape=None, **kwargs):
     path = data.path
     tblname = tbl.name
+
+    dialect = merge(data.kwargs, kwargs)
+
+    # Get sample text
+    with sample(data, length=30000) as fn:
+        text = open(fn).read()
+
+    # Handle header, dialect
+    if 'has_header' not in dialect:
+        dialect['has_header'] = sniffer.has_header(text)
+
+    d = sniffer.sniff(text)
+    delimiter = dialect.get('delimiter', d.delimiter)
+    escapechar = dialect.get('escapechar', d.escapechar)
+    lineterminator = dialect.get('lineterminator', d.lineterminator)
+    quotechar = dialect.get('quotechar', d.quotechar)
 
     dbname = str(tbl.engine.url).split('/')[-1]
     if dbname:
         dbname = dbname + '.'
-    delimiter = data.kwargs.get('delimiter', ',')
-    quotechar = data.kwargs.get('quotechar', '"')
-    escapechar = data.kwargs.get('escapechar', '\\')
-    encoding = data.kwargs.get('encoding', 'utf-8')
 
+    # Column names and types from datashape
     ds = dshape or discover(data)
     assert isinstance(ds.measure, ct.Record)
     columns = [(name, dshape_to_hive(typ))
@@ -158,7 +177,7 @@ def create_hive(dialect, tbl, data, dshape=None):
         LOCATION '{path}'
         """
 
-    if data.kwargs.get('has_header'):
+    if dialect.get('has_header'):
         statement = statement + """
         TBLPROPERTIES ("skip.header.line.count"="1")"""
 
