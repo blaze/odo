@@ -6,8 +6,8 @@ from contextlib import contextmanager
 from toolz import memoize
 import boto
 
-from into import discover, CSV, resource, convert
-from ..utils import mkdir_p, tmpfile
+from into import discover, CSV, resource, append, convert
+from ..utils import tmpfile
 
 try:
     from urlparse import urlparse
@@ -54,6 +54,7 @@ class _S3(object):
         else:
             self.s3 = get_s3_connection(aws_access_key_id=aws_access_key_id,
                                         aws_secret_access_key=aws_secret_access_key)
+        self.object = self.s3.get_bucket(self.bucket).get_key(self.key)
         self.subtype.__init__(self, uri, *args, **kwargs)
 
 
@@ -76,15 +77,11 @@ def resource_s3_csv(uri):
     return S3(CSV)(uri)
 
 
-@convert.register(CSV, S3(CSV))
-def convert_s3_to_csv(csv, **kwargs):
+@append.register(CSV, S3(CSV))
+def append_s3_to_csv(csv, s3csv, **kwargs):
     """Download an S3 CSV to a local CSV file."""
-    bucket = csv.bucket
-    mkdir_p(bucket)
-    key = csv.s3.get_bucket(bucket).get_key(csv.key)
-    filename = os.path.join(bucket, csv.key)
-    key.get_contents_to_filename(filename)
-    return CSV(filename, **kwargs)
+    s3csv.object.get_contents_to_filename(csv.path)
+    return append(csv, CSV(csv.path, **kwargs))
 
 
 @sample.register(S3(CSV))
@@ -115,13 +112,12 @@ def sample_s3_csv(data, length=8192):
     """
     # TODO: is Range always accepted by S3?
     # TODO: is Content-Type useful here?
-    resp = data.s3.make_request('GET',
-                                bucket=data.bucket,
-                                key=data.key,
-                                headers={'Range': 'bytes=0-%d' % length})
-    raw = resp.read()
+    headers = {'Range': 'bytes=0-%d' % length}
+    raw = data.object.get_contents_as_string(headers=headers)
     raw = raw[:raw.rindex(b'\n')]
     with tmpfile('.csv') as fn:
+
+        # we use wb because without an encoding boto returns bytes
         with open(fn, 'wb') as f:
             f.write(raw)
         yield fn
@@ -141,8 +137,8 @@ def convert_csv_to_s3(csv,
     except boto.exception.S3ResponseError:  # bucket doesn't exist so create it
         bucket = s3.create_bucket(bucket_name)
 
-    key = boto.s3.key.Key(bucket)
-    key.key = os.path.basename(csv.path)
+    key = boto.s3.key.Key(bucket, name=os.path.basename(csv.path),
+                          content_type='text/csv')
 
     # TODO: checkout chunked uploads for huge files
     key.set_contents_from_filename(csv.path)

@@ -201,38 +201,3 @@ def tuples_to_records(ds, data):
     if not isinstance(ds.measure, Record):
         return data
     raise NotImplementedError()
-
-
-def mkdir_p(path):
-    """Make a directory tree
-
-    Parameters
-    ----------
-    path : str
-
-    Raises
-    ------
-    OSError
-      * If another ``OSError`` other than one indicating that the directory
-        already exists is raised.
-
-    Examples
-    --------
-    >>> import random, shutil
-    >>> path = 'a/b/c/%d' % random.randint(2 ** 16, 2 ** 20)
-    >>> os.path.exists(path)
-    False
-    >>> mkdir_p(path)
-    >>> os.path.exists(path)
-    True
-    >>> shutil.rmtree(path)
-
-    See Also
-    --------
-    http://stackoverflow.com/a/600612/564538
-    """
-    try:
-        os.makedirs(path)
-    except OSError as exc:
-        if not (exc.errno == errno.EEXIST and os.path.isdir(path)):
-            raise
