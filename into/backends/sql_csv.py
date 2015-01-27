@@ -24,7 +24,7 @@ def copy_sqlite(dialect, tbl, csv):
 
 
 @execute_copy.register('sqlite')
-def excute_copy(dialect, engine, statement):
+def execute_copy_sqlite(dialect, engine, statement):
     ps = subprocess.Popen(statement, shell=True, stdout=subprocess.PIPE)
     return ps.stdout.read()
 

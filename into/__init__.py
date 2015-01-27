@@ -15,6 +15,10 @@ from collections import Iterator
 import numpy as np
 
 try:
+     from .backends.sas import sas7bdat
+except:
+    pass
+try:
      from .backends.pandas import pd
 except:
     pass
