@@ -45,6 +45,9 @@ install:
   # install psycopg2 for postgres testing
   - pip install psycopg2
 
+  # redshift sqlalchemy dialect
+  - pip install --upgrade git+git://github.com/binarydud/redshift_sqlalchemy
+
   # For bcolz
   - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda install unittest2; fi
 
