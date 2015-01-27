@@ -109,8 +109,8 @@ def varlen_dtype(dt):
     >>> r = varlen_dtype(dt)
     >>> r
     dtype('O')
-    >>> r.metadata['vlen']
-    <type 'unicode'>  # doctest: +SKIP
+    >>> r.metadata['vlen']  # doctest: +SKIP
+    <type 'unicode'>
     >>> dt = np.dtype([('a', 'int64'), ('b', 'object'),
     ...                ('c', [('d', 'object'), ('e', 'float64')])])
     ...
@@ -118,8 +118,8 @@ def varlen_dtype(dt):
     >>> r = varlen_dtype(dt)
     >>> r
     dtype([('a', '<i8'), ('b', 'O'), ('c', [('d', 'O'), ('e', '<f8')])])
-    >>> r['b'].metadata['vlen']
-    <type 'unicode'>  # doctest: +SKIP
+    >>> r['b'].metadata['vlen']  # doctest: +SKIP
+    <type 'unicode'>
     """
     try:
         varlen = h5py.special_dtype(vlen=unicode)
