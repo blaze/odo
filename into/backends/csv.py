@@ -246,36 +246,4 @@ def drop(c):
     os.unlink(c.path)
 
 
-"""
-@append.register(CSV, Iterator)
-def append_iterator_to_csv(c, seq, dshape=None, **kwargs):
-    f = open(c.path, mode='a')
-
-    # TODO: handle dict case
-    writer = csv.writer(f, **c.dialect)
-    writer.writerows(seq)
-    return c
-
-
-try:
-    from dynd import nd
-    @convert.register(Iterator, CSV)
-    def csv_to_iterator(c, chunksize=1024, dshape=None, **kwargs):
-        f = open(c.path)
-        reader = csv.reader(f, **c.dialect)
-        if c.header:
-            next(reader)
-
-        # Launder types through DyND
-        seq = pipe(reader, partition_all(chunksize),
-                           map(partial(nd.array, type=str(dshape.measure))),
-                           map(partial(nd.as_py, tuple=True)),
-                           concat)
-
-        return reader
-except ImportError:
-    pass
-"""
-
-
 ooc_types.add(CSV)
