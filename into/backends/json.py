@@ -4,14 +4,17 @@ import json
 from toolz.curried import map, take, pipe, pluck, get, concat, filter
 from collections import Iterator, Iterable
 import os
+from contextlib import contextmanager
 
 from datashape import discover, var, dshape, Record, DataShape
 from datashape import coretypes as ct
 from datashape.dispatch import dispatch
+import gzip
 import datetime
 from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
+from ..chunks import chunks
 from ..utils import tuples_to_records
 
 
@@ -65,16 +68,20 @@ def date_to_datetime_dshape(ds):
 
 @discover.register(JSON)
 def discover_json(j, **kwargs):
-    with open(j.path) as f:
-        data = json.load(f)
+    data = json_load(j.path)
     ds = discover(data)
     return date_to_datetime_dshape(ds)
 
 
+def nonempty(line):
+    return len(line.strip()) > 0
+
+
 @discover.register(JSONLines)
-def discover_jsonlines(j, n=10, **kwargs):
-    with open(j.path) as f:
-        data = pipe(f, filter(lambda line: len(line.strip()) > 0), map(json.loads), take(n), list)
+def discover_jsonlines(j, n=10, encoding='utf-8', **kwargs):
+    with json_lines(j.path, encoding=encoding) as lines:
+        data = pipe(lines, filter(nonempty), map(json.loads), take(n), list)
+
     if len(data) < n:
         ds = discover(data)
     else:
@@ -85,15 +92,50 @@ def discover_jsonlines(j, n=10, **kwargs):
 
 @convert.register(list, JSON)
 def json_to_list(j, dshape=None, **kwargs):
-    with open(j.path) as f:
-        data = json.load(f)
-    return data
+    return json_load(j.path, **kwargs)
 
 
 @convert.register(Iterator, JSONLines)
-def json_lines_to_iterator(j, **kwargs):
-    f = open(j.path)
-    return map(json.loads, filter(lambda line: len(line.strip()) > 0, f))
+def json_lines_to_iterator(j, encoding='utf-8', **kwargs):
+    with json_lines(j.path, encoding=encoding) as lines:
+        for item in pipe(lines, filter(nonempty), map(json.loads)):
+            yield item
+
+
+@contextmanager
+def json_lines(path, encoding='utf-8'):
+    """ Return lines of a json-lines file
+
+    Handles compression like gzip """
+    if path.split(os.path.extsep)[-1] == 'gz':
+        f = gzip.open(path)
+        lines = (line.decode(encoding) for line in f)
+    else:
+        f = open(path)
+        lines = f
+
+    try:
+        yield lines
+    finally:
+        f.close()
+
+
+def json_load(path, encoding='utf-8', **kwargs):
+    """ Return data of a json file
+
+    Handles compression like gzip """
+    if path.split(os.path.extsep)[-1] == 'gz':
+        f = gzip.open(path)
+        s = f.read().decode(encoding)
+    else:
+        f = open(path)
+        s = f.read()
+
+    data = json.loads(s)
+
+    f.close()
+
+    return data
 
 
 @append.register(JSONLines, object)
@@ -102,20 +144,35 @@ def object_to_jsonlines(j, o, **kwargs):
 
 
 @append.register(JSONLines, Iterator)
-def iterator_to_json_lines(j, seq, dshape=None, **kwargs):
+def iterator_to_json_lines(j, seq, dshape=None, encoding='utf-8', **kwargs):
     row = next(seq)
     seq = concat([[row], seq])
     if not isinstance(row, (dict, str)) and isinstance(row, Iterable):
         seq = tuples_to_records(dshape, seq)
-    with open(j.path, 'a') as f:
-        for item in seq:
-            json.dump(item, f, default=json_dumps)
-            f.write('\n')
+
+    lines = (json.dumps(item, default=json_dumps) for item in seq)
+
+    # Open file
+    if j.path.split(os.path.extsep)[-1] == 'gz':
+        f = gzip.open(j.path, 'ab')
+        lines2 = (line.encode(encoding) for line in lines)
+        endl = b'\n'
+    else:
+        f = open(j.path, 'a')
+        lines2 = lines
+        endl = '\n'
+
+    for line in lines2:
+        f.write(line)
+        f.write(endl)
+
+    f.close()
+
     return j
 
 
 @append.register(JSON, list)
-def list_to_json(j, seq, dshape=None, **kwargs):
+def list_to_json(j, seq, dshape=None, encoding='utf-8', **kwargs):
     if not isinstance(seq[0], (dict, str)) and isinstance(seq[0], Iterable):
         seq = list(tuples_to_records(dshape, seq))
     if os.path.exists(j.path):
@@ -127,8 +184,17 @@ def list_to_json(j, seq, dshape=None, **kwargs):
                 "Consider using the jsonlines:// protocol, e.g.\n"
                 "\tinto('jsonlines://%s', your-data)" % j.path)
 
-    with open(j.path, 'w') as f:
-        json.dump(seq, f, default=json_dumps)
+    text = json.dumps(seq, default=json_dumps)
+
+    if j.path.split(os.path.extsep)[-1] == 'gz':
+        f = gzip.open(j.path, 'wb')
+        text = text.encode(encoding)
+    else:
+        f = open(j.path, 'w')
+
+    f.write(text)
+
+    f.close()
     return j
 
 
@@ -137,22 +203,22 @@ def object_to_json(j, o, **kwargs):
     return append(j, convert(list, o, **kwargs), **kwargs)
 
 
-@resource.register('json://.*\.json', priority=11)
+@resource.register('json://.*\.json(\.gz)?', priority=11)
 def resource_json(path, **kwargs):
     if 'json://' in path:
         path = path[len('json://'):]
     return JSON(path)
 
 
-@resource.register('.*\.jsonlines', priority=11)
-@resource.register('jsonlines://.*\.json', priority=11)
+@resource.register('.*\.jsonlines(\.gz)?', priority=11)
+@resource.register('jsonlines://.*\.json(\.gz)?', priority=11)
 def resource_jsonlines(path, **kwargs):
     if 'jsonlines://' in path:
         path = path[len('jsonlines://'):]
     return JSONLines(path)
 
 
-@resource.register('.*\.json')
+@resource.register('.*\.json(\.gz)?')
 def resource_json_ambiguous(path, **kwargs):
     """ Try to guess if this file is line-delimited or not """
     if os.path.exists(path):
@@ -190,6 +256,20 @@ def json_dumps(dt):
 @dispatch(datetime.date)
 def json_dumps(dt):
     return dt.isoformat()
+
+
+@convert.register(chunks(list), chunks(JSON))
+def convert_glob_of_jsons_into_chunks_of_lists(jsons, **kwargs):
+    def _():
+        return concat(convert(chunks(list), js, **kwargs) for js in jsons)
+    return chunks(list)(_)
+
+
+@convert.register(chunks(Iterator), chunks(JSONLines))
+def convert_glob_of_jsons_into_chunks_of_lists(jsons, **kwargs):
+    def _():
+        return concat(convert(chunks(Iterator), js, **kwargs) for js in jsons)
+    return chunks(Iterator)(_)
 
 
 ooc_types.add(JSONLines)

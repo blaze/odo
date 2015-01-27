@@ -207,3 +207,11 @@ def test_empty_iterator_to_chunks_dataframe():
     result = convert(pd.DataFrame, iter([]), dshape=ds)
     assert isinstance(result, pd.DataFrame)
     assert list(result.columns) == ['x']
+
+
+def test_chunks_of_lists_and_iterators():
+    L = [1, 2], [3, 4]
+    cl = chunks(list)(L)
+    assert convert(list, cl) == [1, 2, 3, 4]
+    assert list(convert(Iterator, cl)) == [1, 2, 3, 4]
+    assert len(list(convert(chunks(Iterator), cl))) == 2

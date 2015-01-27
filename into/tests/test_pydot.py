@@ -1,3 +1,4 @@
+import os
 
 
 def test_create_pydot_image():
@@ -6,4 +7,9 @@ def test_create_pydot_image():
         dot_graph()
     except:
         pass
-
+    finally:
+        for ext in ('pdf', 'png'):
+            try:
+                os.remove('conversions.%s' % ext)
+            except:
+                pass
