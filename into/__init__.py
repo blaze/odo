@@ -63,6 +63,10 @@ try:
 except:
     pass
 try:
+     from .backends.ssh import SSH
+except:
+    pass
+try:
      from .backends import sql_csv
 except:
     pass
