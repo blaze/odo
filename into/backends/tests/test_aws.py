@@ -1,7 +1,7 @@
 import pytest
 import os
-import shutil
 from into import into, resource, S3, discover, CSV, drop
+from into.utils import tmpfile
 import pandas as pd
 import pandas.util.testing as tm
 import datashape
@@ -25,11 +25,10 @@ def test_s3_discover():
 
 
 def test_s3_to_local_csv():
-    csv = into(CSV, resource(tips_uri))
-    path = os.path.abspath(csv.path)
-
-    assert os.path.exists(path)
-    shutil.rmtree(os.path.dirname(path))
+    with tmpfile('.csv') as fn:
+        csv = into(fn, tips_uri)
+        path = os.path.abspath(csv.path)
+        assert os.path.exists(path)
 
 
 @pytest.mark.xfail(raises=IOError, reason='not implemented yet')

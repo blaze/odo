@@ -12,7 +12,7 @@ from ..utils import tmpfile
 try:
     from urlparse import urlparse
 except ImportError:
-    from urlllib.parse import urlparse
+    from urllib.parse import urlparse
 
 from multipledispatch import Dispatcher
 sample = Dispatcher('sample')
@@ -46,8 +46,8 @@ class _S3(object):
     def __init__(self, uri, s3=None, aws_access_key_id=None,
                  aws_secret_access_key=None, *args, **kwargs):
         result = urlparse(uri)
-        basename, self.key = os.path.split(result.path.lstrip('/'))
-        self.bucket = os.path.join(result.netloc, basename).rstrip('/')
+        self.bucket = result.netloc
+        self.key = result.path.lstrip('/')
 
         if s3 is not None:
             self.s3 = s3
@@ -112,11 +112,18 @@ def sample_s3_csv(data, length=8192):
     """
     # TODO: is Range always accepted by S3?
     # TODO: is Content-Type useful here?
-    headers = {'Range': 'bytes=0-%d' % length}
+    headers = {'Range': 'bytes=0-%d' % length}#, 'Content-Type': 'text/csv'}
     raw = data.object.get_contents_as_string(headers=headers)
-    raw = raw[:raw.rindex(b'\n')]
-    with tmpfile('.csv') as fn:
 
+    # this is generally cheap as we usually have a tiny amount of data
+    try:
+        index = raw.rindex(b'\r\n')
+    except ValueError:
+        index = raw.rindex(b'\n')
+
+    raw = raw[:index]
+
+    with tmpfile('.csv') as fn:
         # we use wb because without an encoding boto returns bytes
         with open(fn, 'wb') as f:
             f.write(raw)
@@ -145,30 +152,7 @@ def convert_csv_to_s3(csv,
     return S3(CSV('s3://%s/%s' % (bucket.name, key.key)), s3=s3)
 
 
-def uri_to_path(uri):
-    """Turn `uri` into a proper path
-
-    Parameters
-    ----------
-    s, substring : str
-
-    Returns
-    -------
-    stripped : str
-        `s` without `substring`
-
-    Examples
-    --------
-    >>> uri_to_path('s3://nyqpug/tips.csv')  # doctest: +SKIP
-    'nyqpug/tips.csv'
-    >>> uri_to_path('http://nyqpug/tips.csv')  # doctest: +SKIP
-    'nyqpug/tips.csv'
-    """
-    r = urlparse(uri)
-    return os.path.join(r.netloc, r.path).replace('/', os.sep)
-
-
 @discover.register(S3(CSV))
 def discover_s3_csv(c, length=8192, **kwargs):
     with sample(c, length=length) as fn:
-        return discover(CSV(fn))
+        return discover(CSV(fn, **kwargs))
