@@ -14,6 +14,15 @@ def test_resource():
     assert r.auth['username'] == 'joe'
 
 
+def test_resource_directory():
+    r = resource('ssh://joe@localhost:/path/to/')
+    assert issubclass(r.subtype, _Directory)
+
+    r = resource('ssh://joe@localhost:/path/to/*.csv')
+    assert r.subtype == Directory(CSV)
+    assert r.path == '/path/to/'
+
+
 def test_discover():
     with filetext('name,balance\nAlice,100\nBob,200') as fn:
         local = CSV(fn)
@@ -34,6 +43,7 @@ def test_ssh_pattern():
     uris = ['localhost:myfile.csv',
             '127.0.0.1:/myfile.csv',
             'user@127.0.0.1:/myfile.csv',
+            'user@127.0.0.1:/*.csv',
             'user@127.0.0.1:/my-dir/my-file3.csv']
     for uri in uris:
         assert re.match(ssh_pattern, uri)

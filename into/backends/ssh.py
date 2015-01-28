@@ -60,9 +60,9 @@ from .csv import CSV
 from .json import JSONLines
 types_by_extension = {'csv': CSV, 'json': JSONLines}
 
-ssh_pattern = '((?P<username>[a-zA-Z]\w*)@)?(?P<hostname>[\w.-]*)(:(?P<port>\d+))?:(?P<path>[/\w.-]+)'
+ssh_pattern = '((?P<username>[a-zA-Z]\w*)@)?(?P<hostname>[\w.-]*)(:(?P<port>\d+))?:(?P<path>[/\w.*-]+)'
 
-@resource.register('ssh://.+', priority=14)
+@resource.register('ssh://.+', priority=16)
 def resource_ssh(uri, **kwargs):
     if 'ssh://' in uri:
         uri = uri[len('ssh://'):]
@@ -75,6 +75,9 @@ def resource_ssh(uri, **kwargs):
 
     try:
         subtype = types_by_extension[path.split('.')[-1]]
+        if '*' in path:
+            subtype = Directory(subtype)
+            path = path.rsplit('/', 1)[0] + '/'
     except KeyError:
         subtype = type(resource(path))
 
