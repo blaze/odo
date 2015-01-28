@@ -91,8 +91,6 @@ try:
 except ImportError:
     pass
 else:
-    # TODO: kwargs passing? there are some dialect specific things that might
-    # be useful here
     @copy_command.register('redshift.*')
     def copy_redshift(dialect, tbl, csv, schema_name=None, **kwargs):
         assert isinstance(csv, S3(CSV))
@@ -113,6 +111,7 @@ else:
             if tbl.schema is not None:
                 schema_name = tbl.schema
             else:
+                # 'public' by default, this is a postgres convention
                 schema_name = sa.inspect(tbl.bind).default_schema_name
         cmd = CopyCommand(schema_name=schema_name,
                           table_name=tbl.name,

@@ -5,8 +5,9 @@ from contextlib import contextmanager
 
 from toolz import memoize
 import boto
+import pandas as pd
 
-from into import discover, CSV, resource, append, convert
+from into import discover, CSV, resource, append, convert, drop
 from ..utils import tmpfile
 
 try:
@@ -54,7 +55,15 @@ class _S3(object):
         else:
             self.s3 = get_s3_connection(aws_access_key_id=aws_access_key_id,
                                         aws_secret_access_key=aws_secret_access_key)
-        self.object = self.s3.get_bucket(self.bucket).get_key(self.key)
+        try:
+            bucket = self.s3.get_bucket(self.bucket)
+        except boto.exception.S3ResponseError:
+            bucket = self.s3.create_bucket(self.bucket)
+
+        self.object = bucket.get_key(self.key)
+        if self.object is None:
+            self.object = bucket.new_key(self.key)
+
         self.subtype.__init__(self, uri, *args, **kwargs)
 
 
@@ -73,8 +82,8 @@ def S3(cls):
 
 
 @resource.register('s3://.*\.csv', priority=18)
-def resource_s3_csv(uri):
-    return S3(CSV)(uri)
+def resource_s3_csv(uri, **kwargs):
+    return S3(CSV)(uri, **kwargs)
 
 
 @append.register(CSV, S3(CSV))
@@ -130,29 +139,26 @@ def sample_s3_csv(data, length=8192):
         yield fn
 
 
-@convert.register(S3(CSV), CSV)
-def convert_csv_to_s3(csv,
-                      bucket_name=None,
-                      aws_access_key_id=None,
-                      aws_secret_access_key=None,
-                      **kwargs):
-    assert bucket_name is not None, 'must provide a bucket name'
-    s3 = get_s3_connection(aws_access_key_id=aws_access_key_id,
-                           aws_secret_access_key=aws_secret_access_key)
-    try:
-        bucket = s3.get_bucket(bucket_name)
-    except boto.exception.S3ResponseError:  # bucket doesn't exist so create it
-        bucket = s3.create_bucket(bucket_name)
-
-    key = boto.s3.key.Key(bucket, name=os.path.basename(csv.path),
-                          content_type='text/csv')
-
+@append.register(_S3, CSV)
+def append_csv_to_s3(s3, csv, **kwargs):
     # TODO: checkout chunked uploads for huge files
-    key.set_contents_from_filename(csv.path)
-    return S3(CSV('s3://%s/%s' % (bucket.name, key.key)), s3=s3)
+    s3.object.set_contents_from_filename(csv.path)
+    return s3
 
 
 @discover.register(S3(CSV))
 def discover_s3_csv(c, length=8192, **kwargs):
     with sample(c, length=length) as fn:
         return discover(CSV(fn, **kwargs), **kwargs)
+
+
+@convert.register(pd.DataFrame, S3(CSV))
+def s3_csv_to_frame(csv, **kwargs):
+    # yes, this is an anti-pattern except that if we only define append, then
+    # we need a way into the convert graph
+    return convert(pd.DataFrame, CSV(csv.path, **kwargs))
+
+
+@drop.register(S3(CSV))
+def drop_s3_csv(s3):
+    s3.object.delete()

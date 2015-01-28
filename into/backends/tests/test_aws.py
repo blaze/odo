@@ -1,12 +1,13 @@
 import pytest
 import os
-from into import into, resource, S3, discover, CSV, drop
+from into import into, resource, S3, discover, CSV, drop, append
 from into.utils import tmpfile
 import pandas as pd
 import pandas.util.testing as tm
 import datashape
 
 sa = pytest.importorskip('sqlalchemy')
+boto = pytest.importorskip('boto')
 pytest.importorskip('psycopg2')
 pytest.importorskip('redshift_sqlalchemy')
 
@@ -31,13 +32,44 @@ def test_s3_to_local_csv():
         assert os.path.exists(path)
 
 
+def test_csv_to_s3_append():
+    df = tm.makeMixedDataFrame()
+    s3 = resource('s3://into-redshift-csvs/tmp.csv')
+    try:
+        with tmpfile('.csv') as fn:
+            df.to_csv(fn, index=False)
+            append(s3, CSV(fn))
+        result = into(pd.DataFrame, s3)
+    except boto.exception.S3PermissionError:
+        pytest.skip("Can't access the 'into-redshift-csvs' bucket")
+    else:
+        tm.assert_frame_equal(df, result)
+    finally:
+        drop(s3)
+
+
+def test_csv_to_s3_into():
+    df = tm.makeMixedDataFrame()
+    try:
+        with tmpfile('.csv') as fn:
+            df.to_csv(fn, index=False)
+            s3 = into('s3://into-redshift-csvs/tmp.csv', CSV(fn))
+    except boto.exception.S3PermissionError:
+        pytest.skip("Can't access the 'into-redshift-csvs' bucket")
+    else:
+        tm.assert_frame_equal(df, into(pd.DataFrame, s3))
+    finally:
+        drop(s3)
+
+
 @pytest.fixture
 def db():
-    try:
-        return os.environ['REDSHIFT_DB_URI']
-    except KeyError:
-        pytest.skip('Please define an environment variable called '
+    key = os.environ.get('REDSHIFT_DB_URI', None)
+    if not key:
+        pytest.skip('Please define a non-empty environment variable called '
                     'REDSHIFT_DB_URI to test redshift <- S3')
+    else:
+        return key
 
 
 @pytest.mark.xfail(raises=IOError, reason='not implemented yet')
