@@ -121,8 +121,8 @@ def test_tryexcept_into(tbl):
     assert into(list, sql) == data
 
 
-@pytest.mark.xfail(raises=KeyError)
 def test_failing_argument(tbl):
+    # this will start to fail if we ever restrict kwargs
     csv = CSV(file_name)
     sql = resource(url, tbl, dshape=ds)
 
