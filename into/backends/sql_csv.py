@@ -13,7 +13,7 @@ execute_copy = RegexDispatcher('execute_copy')
 
 
 @copy_command.register('.*sqlite')
-def copy_sqlite(dialect, tbl, csv):
+def copy_sqlite(dialect, tbl, csv, **kwargs):
     abspath = os.path.abspath(csv.path)
     tblname = tbl.name
     dbpath = str(tbl.bind.url).split('///')[-1]
@@ -32,7 +32,7 @@ def execute_copy_sqlite(dialect, engine, statement):
 
 
 @copy_command.register('postgresql')
-def copy_postgres(dialect, tbl, csv):
+def copy_postgres(dialect, tbl, csv, **kwargs):
     abspath = os.path.abspath(csv.path)
     tblname = tbl.name
     format_str = 'csv'
@@ -57,7 +57,7 @@ def copy_postgres(dialect, tbl, csv):
 
 
 @copy_command.register('mysql.*')
-def copy_mysql(dialect, tbl, csv):
+def copy_mysql(dialect, tbl, csv, **kwargs):
     mysql_local = ''
     abspath = os.path.abspath(csv.path)
     tblname = tbl.name
@@ -93,7 +93,7 @@ else:
     # TODO: kwargs passing? there are some dialect specific things that might
     # be useful here
     @copy_command.register('redshift.*')
-    def copy_redshift(dialect, tbl, csv, schema_name='public'):
+    def copy_redshift(dialect, tbl, csv, schema_name='public', **kwargs):
         assert isinstance(csv, S3(CSV))
         assert csv.path.startswith('s3://')
 
@@ -102,8 +102,10 @@ else:
         aws_access_key_id = cfg.get('Credentials', 'aws_access_key_id')
         aws_secret_access_key = cfg.get('Credentials', 'aws_secret_access_key')
 
-        options = dict(delimiter=csv.dialect.get('delimiter', ','),
-                       ignore_header=int(csv.has_header),
+        options = dict(delimiter=kwargs.get('delimiter',
+                                            csv.dialect.get('delimiter', ',')),
+                       ignore_header=int(kwargs.get('has_header',
+                                                    csv.has_header)),
                        empty_as_null=True, blanks_as_null=False)
 
         cmd = CopyCommand(schema_name=schema_name,
@@ -125,6 +127,6 @@ def execute_copy_all(dialect, engine, statement):
 
 @append.register(sqlalchemy.Table, CSV)
 def append_csv_to_sql_table(tbl, csv, **kwargs):
-    statement = copy_command(tbl.bind.dialect.name, tbl, csv)
+    statement = copy_command(tbl.bind.dialect.name, tbl, csv, **kwargs)
     execute_copy(tbl.bind.dialect.name, tbl.bind, statement)
     return tbl

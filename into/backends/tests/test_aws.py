@@ -108,12 +108,13 @@ def test_redshift_getting_started(db):
     redshift_uri = '%s::users' % db
     csv = S3(CSV)('s3://awssampledb/tickit/allusers_pipe.txt')
     table = into(redshift_uri, csv, dshape=dshape, delimiter='|')
+    n = 49989
     try:
         # make sure our table is properly named
         assert table.name == 'users'
 
         # make sure we have a non empty table
-        assert table.bind.execute("select count(*) from users;").scalar() == 49989
+        assert table.bind.execute("select count(*) from users;").scalar() == n
     finally:
         # don't hang around
         drop(table)
