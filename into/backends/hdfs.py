@@ -129,7 +129,7 @@ hive_types = {
         ct.int8: 'TINYINT',
         ct.int16: 'SMALLINT',
         ct.int32: 'INT',
-        ct.int64: 'SMALLINT',
+        ct.int64: 'BIGINT',
         ct.float32: 'FLOAT',
         ct.float64: 'DOUBLE',
         ct.date_: 'DATE',
@@ -143,8 +143,8 @@ def dshape_to_hive(ds):
 
     >>> dshape_to_hive('int16')
     'SMALLINT'
-    >>> dshape_to_hive('?int16')  # Ignore option types
-    'SMALLINT'
+    >>> dshape_to_hive('?int32')  # Ignore option types
+    'INT'
     >>> dshape_to_hive('string[256]')
     'VARCHAR(256)'
     """

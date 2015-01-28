@@ -8,10 +8,12 @@ from pywebhdfs.webhdfs import PyWebHdfsClient
 from datashape import dshape
 from into.directory import Directory
 
+
 hdfs = PyWebHdfsClient(host='54.91.57.226', port='14000', user_name='hdfs')
 hdfs_csv= HDFS(CSV)('/user/hive/warehouse/csv_test/data.csv', hdfs=hdfs)
 hdfs_directory = HDFS(Directory(CSV))('/user/hive/mrocklin/accounts/', hdfs=hdfs)
 engine = resource('hive://hdfs@54.91.57.226:10000/default')
+
 
 def test_discover():
     assert discover(hdfs_csv) == \
@@ -30,9 +32,9 @@ def test_create_hive():
             TableProxy(engine, 'mytable'), hdfs_directory)
     expected = r"""
         CREATE EXTERNAL TABLE default.mytable (
-                      id  SMALLINT,
+                      id  BIGINT,
                     name  STRING,
-                  amount  SMALLINT
+                  amount  BIGINT
             )
         ROW FORMAT DELIMITED
             FIELDS TERMINATED BY ','
@@ -60,9 +62,9 @@ def test_create_hive_from_remote_csv_file():
 
     expected = r"""
         CREATE TABLE default.mytable (
-                      id  SMALLINT,
+                      id  BIGINT,
                     name  STRING,
-                  amount  SMALLINT
+                  amount  BIGINT
             )
         ROW FORMAT DELIMITED
             FIELDS TERMINATED BY ','
@@ -77,9 +79,9 @@ def test_create_hive_from_remote_csv_file():
 
     expected = r"""
         CREATE TABLE default.mytable (
-                      id  SMALLINT,
+                      id  BIGINT,
                     name  STRING,
-                  amount  SMALLINT
+                  amount  BIGINT
             )
         ROW FORMAT DELIMITED
             FIELDS TERMINATED BY ','
@@ -110,6 +112,7 @@ def test_ssh_directory_hive_creation():
 
     t = into('hive://hdfs@54.91.57.226:10000/default::tmp_2', ssh_directory)
     assert isinstance(t, sa.Table)
+    assert discover(t) == discover(ssh_directory)
     assert len(into(list, t)) == 8
 
 
