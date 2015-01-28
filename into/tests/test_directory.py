@@ -4,7 +4,7 @@ import tempfile
 from contextlib import contextmanager
 import shutil
 from into.backends.csv import CSV
-from into.directory import Directory, discover, resource
+from into.directory import Directory, discover, resource, _Directory
 from into import into
 from datashape import dshape
 import os
@@ -40,3 +40,7 @@ def test_resource_directory():
         r2 = resource(os.path.join(path, '*.csv'))
         assert type(r) == Directory(CSV)
         assert r2.path.rstrip(os.path.sep) == path.rstrip(os.path.sep)
+
+
+def test_resource_directory():
+    assert isinstance(resource('/a/directory/that/doesnt/exist/'), _Directory)

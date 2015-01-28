@@ -47,16 +47,22 @@ def discover_Directory(c, **kwargs):
     return var * discover(first(c)).subshape[0]
 
 
-@resource.register('.+/\*\..+', priority=15)
+@resource.register('.+' + os.path.sep + '\*\..+', priority=15)
 def resource_directory(uri, **kwargs):
-    one_uri = first(glob(uri))
+    path = uri.rsplit(os.path.sep, 1)[0]
+    try:
+        one_uri = first(glob(uri))
+    except OSError:
+        return _Directory(path, **kwargs)
     subtype = type(resource(one_uri, **kwargs))
-    path = uri.rsplit('/', 1)[0]
     return Directory(subtype)(path, **kwargs)
 
 
-@resource.register('.+/', priority=15)
+@resource.register('.+' + os.path.sep, priority=15)
 def resource_directory_with_trailing_slash(uri, **kwargs):
-    one_uri = os.listdir(uri)[0]
+    try:
+        one_uri = os.listdir(uri)[0]
+    except OSError:
+        return _Directory(uri, **kwargs)
     subtype = type(resource(one_uri, **kwargs))
     return Directory(subtype)(uri, **kwargs)
