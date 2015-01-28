@@ -23,7 +23,7 @@ from toolz.compatibility import range
 import blaze as bz
 import kdbpy
 from kdbpy.util import (normpath, hostname, PrettyMixin, CredsMixin,
-                        find_running_process, kill_process)
+                        find_running_process, kill_process, which)
 
 class PortInUse(ValueError): pass
 class PortIsFixed(ValueError): pass
@@ -589,19 +589,6 @@ class KDB(PrettyMixin):
                 result = pd.Timedelta(result)
 
         return result
-
-
-def which(exe):
-    path = os.environ['PATH']
-    for p in path.split(os.pathsep):
-
-        # windows has things on the path that may not be directories so we need
-        # to check
-        if os.path.isdir(p):
-            for f in map(os.path.basename, os.listdir(p)):
-                if f == exe:
-                    return os.path.join(p, f)
-    raise OSError("Cannot find %r on path %s" % (exe, path))
 
 
 # TEMPORALS

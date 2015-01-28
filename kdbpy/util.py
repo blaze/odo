@@ -3,6 +3,8 @@ import os
 import sqlalchemy as sa
 import psutil
 
+hostname = 'localhost'
+
 class PrettyMixin(object):
 
     def __repr__(self):
@@ -44,7 +46,17 @@ def normpath(path):
     return path.replace(os.sep, '/')
 
 
-hostname = 'localhost'
+def which(exe):
+    path = os.environ['PATH']
+    for p in path.split(os.pathsep):
+
+        # windows has things on the path that may not be directories so we need
+        # to check
+        if os.path.isdir(p):
+            for f in map(os.path.basename, os.listdir(p)):
+                if f == exe:
+                    return os.path.join(p, f)
+    raise OSError("Cannot find %r on path %s" % (exe, path))
 
 
 def find_running_process(process, port):
