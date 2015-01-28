@@ -115,7 +115,7 @@ We're looking for better solutions.  For the moment, this works.
 @resource.register('hive://.+::.+', priority=16)
 def resource_hive_table(uri, **kwargs):
     uri, table = uri.split('::')
-    engine = resource(uri, **kwargs)
+    engine = resource(uri)
     metadata = metadata_of_engine(engine)
     if table in metadata.tables:
         return metadata.tables[table]
@@ -315,21 +315,8 @@ def create_hive_from_remote_csv_file(tbl, data, dshape=None, **kwargs):
     return statement.format(**locals())
 
 
-@append.register(sa.Table, (SSH(CSV), SSH(Directory(CSV))))
-def append_remote_csv_to_table(tbl, csv, **kwargs):
-    if tbl.bind.uri.dialect:
-        statement = ('LOAD DATA LOCAL INPATH %{path}s INTO TABLE %{tablename}s' %
-                {'path': csv.path, 'tablename': tbl.name})
-    else:
-        raise NotImplementedError("Don't know how to migrate csvs on remote "
-                "disk to database of dialect %s" % tbl.engine.dialect.name)
-    with tbl.bind.connect() as conn:
-        conn.execute(statement)
-    return tbl
-
-
 @append.register(TableProxy, (SSH(CSV), SSH(Directory(CSV))))
-def create_and_append_remote_csv_to_table(tbl, csv, **kwargs):
+def create_and_append_remote_csv_to_table(tbl, data, **kwargs):
     if tbl.engine.dialect.name == 'hive':
         statement = create_hive_from_remote_csv_file(tbl, data, **kwargs)
     else:
@@ -342,7 +329,20 @@ def create_and_append_remote_csv_to_table(tbl, csv, **kwargs):
     metadata = metadata_of_engine(tbl.engine)
     tbl2 = sa.Table(tbl.name, metadata, autoload=True,
             autoload_with=tbl.engine)
-    return tbl2
+    return append(tbl2, data, **kwargs)
+
+
+@append.register(sa.Table, (SSH(CSV), SSH(Directory(CSV))))
+def append_remote_csv_to_table(tbl, csv, **kwargs):
+    if tbl.bind.dialect.name == 'hive':
+        statement = ('LOAD DATA LOCAL INPATH "%(path)s" INTO TABLE %(tablename)s' %
+                {'path': csv.path, 'tablename': tbl.name})
+    else:
+        raise NotImplementedError("Don't know how to migrate csvs on remote "
+                "disk to database of dialect %s" % tbl.engine.dialect.name)
+    with tbl.bind.connect() as conn:
+        conn.execute(statement)
+    return tbl
 
 
 def dialect_of(data):

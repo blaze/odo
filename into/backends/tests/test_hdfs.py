@@ -2,6 +2,7 @@ from into.backends.hdfs import (discover, HDFS, CSV,
         create_hive_from_hdfs_directory_of_csvs,
         create_hive_from_remote_csv_file, TableProxy, SSH)
 from into.backends.sql import resource
+from into import into
 import sqlalchemy as sa
 from pywebhdfs.webhdfs import PyWebHdfsClient
 from datashape import dshape
@@ -88,3 +89,37 @@ def test_create_hive_from_remote_csv_file():
         """
 
     assert normalize(text) == normalize(expected)
+
+
+def test_ssh_hive_creation():
+    try:
+        drop('hive://hdfs@54.91.57.226:10000/default::tmp_1')
+    except:
+        pass
+
+    t = into('hive://hdfs@54.91.57.226:10000/default::tmp_1', ssh_csv)
+    assert isinstance(t, sa.Table)
+    assert len(into(list, t)) == 5
+
+
+def test_ssh_directory_hive_creation():
+    try:
+        drop('hive://hdfs@54.91.57.226:10000/default::tmp_2')
+    except:
+        pass
+
+    t = into('hive://hdfs@54.91.57.226:10000/default::tmp_2', ssh_directory)
+    assert isinstance(t, sa.Table)
+    assert len(into(list, t)) == 8
+
+
+def test_ssh_hive_creation_with_full_urls():
+    try:
+        drop('hive://hdfs@54.91.57.226:10000/default::tmp_3')
+    except:
+        pass
+    t = into('hive://hdfs@54.91.57.226:10000/default::tmp_3',
+             'ssh://ubuntu@54.91.57.226:accounts.csv',
+             key_filename='/home/mrocklin/.ssh/cdh_testing.key')
+    assert isinstance(t, sa.Table)
+    assert len(into(list, t)) == 5
