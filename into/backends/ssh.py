@@ -5,8 +5,9 @@ from contextlib import contextmanager
 from toolz import keyfilter, memoize, take
 from datashape import discover
 import re
+from ..directory import _Directory, Directory
 
-from ..utils import keywords, tmpfile
+from ..utils import keywords, tmpfile, sample
 from ..resource import resource
 
 
@@ -80,15 +81,27 @@ def resource_ssh(uri, **kwargs):
     return SSH(subtype)(path, **kwargs)
 
 
+@sample.register(SSH(CSV))
 @contextmanager
-def sample(data, lines=500):
+def sample_ssh(data, lines=500):
     """ Grab a few lines from the remote file """
-    with tmpfile() as fn:
+    with tmpfile('csv') as fn:
         with open(fn, 'w') as f:
             for line in take(lines, data.lines()):
                 f.write(line)
                 f.write('\n')
         yield fn
+
+
+@sample.register(SSH(Directory(CSV)))
+@contextmanager
+def sample_ssh(data, **kwargs):
+    """ Grab a few lines from a file in a remote directory """
+    sftp = data.connect().open_sftp()
+    fn = data.path + '/' + sftp.listdir(data.path)[0]
+    one_file = SSH(data.container)(fn, **data.auth)
+    with sample(one_file, **kwargs) as result:
+        yield result
 
 
 @discover.register(_SSH)
@@ -105,3 +118,11 @@ def discover_ssh_csv(data, **kwargs):
         o = CSV(fn, encoding=data.encoding, has_header=data.has_header, **data.dialect)
         result = discover(o)
     return result
+
+
+@discover.register(SSH(Directory(CSV)))
+def discover_ssh_directory(data, **kwargs):
+    sftp = data.connect().open_sftp()
+    fn = data.path + '/' + sftp.listdir(data.path)[0]
+    one_file = SSH(data.container)(fn, **data.auth)
+    return discover(one_file)
