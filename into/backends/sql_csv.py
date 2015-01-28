@@ -87,13 +87,14 @@ try:
     import boto
     from into.backends.aws import S3
     from redshift_sqlalchemy.dialect import CopyCommand
+    import sqlalchemy as sa
 except ImportError:
     pass
 else:
     # TODO: kwargs passing? there are some dialect specific things that might
     # be useful here
     @copy_command.register('redshift.*')
-    def copy_redshift(dialect, tbl, csv, schema_name='public', **kwargs):
+    def copy_redshift(dialect, tbl, csv, schema_name=None, **kwargs):
         assert isinstance(csv, S3(CSV))
         assert csv.path.startswith('s3://')
 
@@ -108,6 +109,11 @@ else:
                                                     csv.has_header)),
                        empty_as_null=True, blanks_as_null=False)
 
+        if schema_name is None:
+            if tbl.schema is not None:
+                schema_name = tbl.schema
+            else:
+                schema_name = sa.inspect(tbl.bind).default_schema_name
         cmd = CopyCommand(schema_name=schema_name,
                           table_name=tbl.name,
                           data_location=csv.path,
