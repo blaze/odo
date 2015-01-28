@@ -10,7 +10,7 @@ import subprocess
 import pprint
 import random
 
-from itertools import chain
+from itertools import chain, count
 
 import psutil
 
@@ -29,12 +29,9 @@ class PortInUse(ValueError): pass
 class PortIsFixed(ValueError): pass
 
 
-# chosen randomly from IANA unassigned port numbers
-DEFAULT_PORT_RANGE = (47823,47923)
-
-def generate_ports():
-    ports = range(*DEFAULT_PORT_RANGE)
-    return iter(random.sample(ports, len(ports)))
+# out starting port number
+DEFAULT_START_PORT_NUMBER = 47823
+port_iter = count(DEFAULT_START_PORT_NUMBER)
 
 class Credentials(PrettyMixin):
     """Lightweight credentials container.
@@ -44,12 +41,12 @@ class Credentials(PrettyMixin):
     host : str, optional
         Defaults to ``'localhost'``
     port : int
-        Defaults to a port in range %s
+        Defaults to a port of %s
     username : str
         Defaults to ``getpass.getuser()``
     password str or None
         Defaults to None
-    """ % str(DEFAULT_PORT_RANGE)
+    """ % str(DEFAULT_START_PORT_NUMBER)
     __slots__ = 'host', 'port', 'username', 'password', 'is_fixed_port'
 
     def __init__(self, host=None, port=None, username=None, password=None):
@@ -63,8 +60,7 @@ class Credentials(PrettyMixin):
 
         # create assignable ports
         if not self.is_fixed_port:
-            self.ports = generate_ports()
-            self.port = next(self.get_port())
+            self.port = next(port_iter)
 
     def get_port(self):
         """
@@ -74,15 +70,15 @@ class Credentials(PrettyMixin):
         if self.is_fixed_port:
             raise PortIsFixed
 
-        self.port = next(self.ports)
+        self.port = next(port_iter)
         yield self.port
 
     def __copy__(self):
         """ copy-constructor, duplicate the iterator """
         new_self = type(self)()
         new_self.__dict__.update(self.__dict__)
-        if hasattr(new_self, 'ports'):
-            new_self.ports = iter(list(self.ports))
+        if not self.is_fixed_port:
+            new_self.port = count(self.port)
         return new_self
 
     def __hash__(self):
@@ -454,19 +450,21 @@ class Q(PrettyMixin, CredsMixin):
 
         """
 
+        proc = self.process or find_running_process(self.process, self.port)
+
         # already started and no restart specified
         if start is True:
-            if self.process is not None:
+            if proc is not None:
                 return self
 
         # restart the process if needed
         elif start == 'restart':
 
             self.stop()
+            proc = None
 
         # if we find a running process that matches our port
         # then raise. We cannot connect to an existing process
-        proc = self.process or find_running_process(self.process, self.port)
         if proc is not None:
             raise PortInUse("cannot create a Q process for attaching " \
                             "to the port {port}".format(port=self.port))

@@ -7,6 +7,7 @@ import os
 import datetime
 import sys
 
+from itertools import count
 import pytest
 import pandas as pd
 import pandas.util.testing as tm
@@ -18,7 +19,7 @@ from blaze import CSV, Data, discover, Expr
 from qpython.qwriter import QWriterException
 
 from kdbpy import kdb as k
-from kdbpy.kdb import which, Credentials, PortInUse, PortIsFixed, generate_ports
+from kdbpy.kdb import which, Credentials, PortInUse, PortIsFixed, DEFAULT_START_PORT_NUMBER
 from kdbpy.exampleutils import example_data
 
 try:
@@ -35,6 +36,12 @@ def qproc(creds):
 @pytest.yield_fixture(scope='module')
 def qproc2(creds2):
     q = k.Q(creds2).start()
+    yield q
+    q.stop()
+
+@pytest.yield_fixture()
+def qproc3(creds):
+    q = k.Q(creds).start()
     yield q
     q.stop()
 
@@ -102,22 +109,19 @@ def test_basic_inuse2():
     creds2 = copy.copy(creds)
     creds3 = copy.copy(creds)
 
-    ports = list(generate_ports())
-    creds.ports = iter(ports)
-    creds.port = ports[0]
-    creds2.ports = iter(ports)
-    creds2.port = ports[0]
-    creds3.ports = iter(ports)
-    creds3.port = ports[0]
+    ports = count(DEFAULT_START_PORT_NUMBER+10)
+    creds.port = next(ports)
+    creds2.port = next(ports)
+    creds3.port = next(ports)
 
     kq = k.KQ(creds).start(start=False)
-    assert kq.port == ports[0]
+    assert kq.port == DEFAULT_START_PORT_NUMBER + 10
 
     kq2 = k.KQ(creds2).start(start=False)
-    assert kq2.port == ports[1]
+    assert kq2.port == DEFAULT_START_PORT_NUMBER + 11
 
     kq3 = k.KQ(creds3).start(start=False)
-    assert kq3.port == ports[2]
+    assert kq3.port == DEFAULT_START_PORT_NUMBER + 12
 
     kq.stop()
     kq2.stop()
@@ -212,16 +216,11 @@ def test_fixed_port_restart():
 
     check_process_table_ok(starting)
 
-def test_q_process_detached(qproc):
-    # check our q process attributes
-    assert qproc is not None
-    assert qproc.pid
-    assert qproc.process is not None
-
 def test_q_multi_process(qproc, qproc2):
     assert qproc.pid != qproc2.pid
 
-def test_construction(qproc, creds):
+def test_construction(qproc3, creds):
+
     # the qproc fixture must be here because it must start before KDB
     kdb = k.KDB(credentials=creds)
     kdb.start()

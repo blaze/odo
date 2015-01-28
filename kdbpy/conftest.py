@@ -5,7 +5,7 @@ import pytest
 
 import blaze as bz
 from kdbpy import kdb as k
-from kdbpy.kdb import DEFAULT_PORT_RANGE, Credentials
+from kdbpy.kdb import DEFAULT_START_PORT_NUMBER, Credentials
 from kdbpy.exampleutils import example_data
 
 syms = itertools.count()
@@ -19,12 +19,12 @@ def gensym():
 @pytest.fixture(scope='session')
 def creds():
     # must be session scoped because of downstream usage
-    return Credentials(port=DEFAULT_PORT_RANGE[0])
+    return Credentials()
 
 @pytest.fixture(scope='session')
 def creds2():
     # must be session scoped because of downstream usage
-    return Credentials(port=DEFAULT_PORT_RANGE[0]+1)
+    return Credentials()
 
 @pytest.yield_fixture(scope='module')
 def kq(creds):
