@@ -21,7 +21,6 @@ from into.backends.csv import CSV
 from into.backends.sql import create_from_datashape
 from into import into, resource
 from into.utils import assert_allclose
-import sqlalchemy
 import os
 import csv as csv_module
 
@@ -63,8 +62,8 @@ def setup_function(function):
 
 def teardown_function(function):
     os.remove(file_name)
-    engine = sqlalchemy.create_engine(url)
-    metadata = sqlalchemy.MetaData()
+    engine = sa.create_engine(url)
+    metadata = sa.MetaData()
     metadata.reflect(engine)
 
     for t in metadata.tables:
@@ -73,16 +72,16 @@ def teardown_function(function):
 
 
 def test_csv_postgres_load(tbl):
-    engine = sqlalchemy.create_engine(url)
+    engine = sa.create_engine(url)
 
     if engine.has_table(tbl):
-        metadata = sqlalchemy.MetaData()
+        metadata = sa.MetaData()
         metadata.reflect(engine)
         t = metadata.tables[tbl]
         t.drop(engine)
 
     create_from_datashape(engine, dshape('{%s: %s}' % (tbl, ds)))
-    metadata = sqlalchemy.MetaData()
+    metadata = sa.MetaData()
     metadata.reflect(engine)
     conn = engine.raw_connection()
 
