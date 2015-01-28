@@ -155,4 +155,4 @@ def convert_csv_to_s3(csv,
 @discover.register(S3(CSV))
 def discover_s3_csv(c, length=8192, **kwargs):
     with sample(c, length=length) as fn:
-        return discover(CSV(fn, **kwargs))
+        return discover(CSV(fn, **kwargs), **kwargs)
