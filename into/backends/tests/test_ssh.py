@@ -2,6 +2,7 @@ import paramiko
 
 
 from into.utils import tmpfile, filetext, filetexts, raises
+from into.directory import _Directory, Directory
 from into.backends.ssh import *
 import re
 

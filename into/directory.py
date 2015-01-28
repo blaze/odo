@@ -58,7 +58,7 @@ def resource_directory(uri, **kwargs):
     return Directory(subtype)(path, **kwargs)
 
 
-@resource.register('.+' + os.path.sep, priority=15)
+@resource.register('.+' + os.path.sep, priority=12)
 def resource_directory_with_trailing_slash(uri, **kwargs):
     try:
         one_uri = os.listdir(uri)[0]
