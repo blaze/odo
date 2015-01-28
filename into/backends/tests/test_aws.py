@@ -31,6 +31,15 @@ def test_s3_to_local_csv():
         assert os.path.exists(path)
 
 
+@pytest.fixture
+def db():
+    try:
+        return os.environ['REDSHIFT_DB_URI']
+    except KeyError:
+        pytest.skip('Please define an environment variable called '
+                    'REDSHIFT_DB_URI to test redshift <- S3')
+
+
 @pytest.mark.xfail(raises=IOError, reason='not implemented yet')
 def test_frame_to_s3():
     df = pd.DataFrame({
@@ -45,11 +54,8 @@ def test_frame_to_s3():
     tm.assert_frame_equal(result, df)
 
 
-@pytest.mark.skipif('REDSHIFT_DB_URI' not in os.environ,
-                    reason=('Please define an environment variable called '
-                            'REDSHIFT_DB_URI to test redshift <- S3'))
-def test_s3_to_redshift():
-    redshift_uri = '%s::tips' % os.environ['REDSHIFT_DB_URI']
+def test_s3_to_redshift(db):
+    redshift_uri = '%s::tips' % db
     s3 = S3(CSV)('s3://nyqpug/tips.csv')
     table = into(redshift_uri, s3, dshape=discover(s3))
     dshape = discover(table)
@@ -72,6 +78,42 @@ def test_s3_to_redshift():
 
         # make sure we have the proper column types
         assert dshape == ds
+    finally:
+        # don't hang around
+        drop(table)
+
+
+def test_redshift_getting_started(db):
+    dshape = datashape.dshape("""var * {
+        userid: int64,
+        username: ?string[8],
+        firstname: ?string[30],
+        lastname: ?string[30],
+        city: ?string[30],
+        state: ?string[2],
+        email: ?string[100],
+        phone: ?string[14],
+        likesports: ?bool,
+        liketheatre: ?bool,
+        likeconcerts: ?bool,
+        likejazz: ?bool,
+        likeclassical: ?bool,
+        likeopera: ?bool,
+        likerock: ?bool,
+        likevegas: ?bool,
+        likebroadway: ?bool,
+        likemusicals: ?bool,
+    }""")
+
+    redshift_uri = '%s::users' % db
+    csv = S3(CSV)('s3://awssampledb/tickit/allusers_pipe.txt')
+    table = into(redshift_uri, csv, dshape=dshape, delimiter='|')
+    try:
+        # make sure our table is properly named
+        assert table.name == 'users'
+
+        # make sure we have a non empty table
+        assert table.bind.execute("select count(*) from users;").scalar() == 49989
     finally:
         # don't hang around
         drop(table)

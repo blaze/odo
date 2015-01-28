@@ -1,14 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
-import csv
-
 import re
 import datashape
 from datashape import discover, Record, Option
 from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
-from collections import Iterator
-from toolz import concat, keyfilter, assoc
+from toolz import concat, keyfilter
 import pandas
 import pandas as pd
 import os
@@ -25,6 +22,7 @@ from .pandas import coerce_datetimes
 
 dialect_terms = '''delimiter doublequote escapechar lineterminator quotechar
 quoting skipinitialspace strict'''.split()
+
 
 class CSV(object):
     """ Proxy for a CSV file
@@ -200,7 +198,7 @@ def discover_csv(c, nrows=1000, **kwargs):
         df = csv_to_DataFrame(c, chunksize=50, has_header=False).get_chunk()
         df = coerce_datetimes(df)
 
-    df.columns = [str(c).strip() for c in df.columns]
+    df.columns = [str(col).strip() for col in df.columns]
 
     # Replace np.nan with None.  Forces type string rather than flaot
     for col in df.columns:
