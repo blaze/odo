@@ -143,7 +143,10 @@ def test_complex_into(tbl):
     this_dir = os.path.dirname(__file__)
     file_name = os.path.join(this_dir, 'dummydata.csv')
 
-    ds = dshape('var * {Name: string, RegistrationDate: date, ZipCode: int32, Consts: float64}')
+    ds = dshape("""
+    var * {
+        Name: string, RegistrationDate: date, ZipCode: int32, Consts: float64
+    }""")
 
     csv = CSV(file_name, has_header=True)
     sql = resource(url, tbl, dshape=ds)
