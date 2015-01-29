@@ -74,9 +74,8 @@ def test_drop():
 
             assert not os.path.exists(target)
 
-            ssh = scsv.connect()
-            sftp = ssh.open_sftp()
-            sftp.put(fn, target)
+            with sftp(**scsv.auth) as conn:
+                conn.put(fn, target)
 
             assert os.path.exists(target)
 
