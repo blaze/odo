@@ -71,8 +71,6 @@ def test_ssh_directory_hive_creation():
         assert isinstance(t, sa.Table)
         assert discover(t) == ds
         assert len(into(list, t)) > 0
-        assert len(into(list, t)) == 8
-
     finally:
         drop(t)
 
@@ -94,3 +92,12 @@ def test_ssh_hive_creation_with_full_urls():
         assert len(into(list, t)) == 2 * n
     finally:
         drop(t)
+
+
+def test_hive_resource():
+    db = resource('hive://hdfs@%s:10000/default' % host)
+    assert isinstance(db, sa.engine.Engine)
+
+    db = resource('hive://%s/' % host)
+    assert isinstance(db, sa.engine.Engine)
+    assert str(db.url) == 'hive://hdfs@%s:10000/default' % host
