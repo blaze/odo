@@ -252,6 +252,16 @@ def test_eval(kdb):
     assert kdb.eval(lambda x: x + 5, 42) == 47
 
 
+def test_getitem_compat(kdbpar):
+
+    # now that we are caching, these should be compat
+    template = 'kdb://{0.username}@{0.host}:{0.port}::{key}'
+    data = Data(template.format(kdbpar.credentials, key='trade'),
+                engine=kdbpar)
+
+    data2 = kdbpar['trade']
+    assert data2.dshape==data.dshape
+
 def test_get_set_timestamp(kdb, gensym):
     ts = pd.Timestamp('2001-01-01 09:30:00.123')
     kdb.set(gensym, ts)
@@ -470,3 +480,17 @@ def test_verbose_mode(kdb):
     finally:
         sys.stdout = oldstdout
         kdb.verbose = False
+
+def test_cache(kdb):
+
+    # set should auto-update the cache
+    assert 'mydf2' not in set(kdb.tables.name)
+    kdb['mydf2'] = pd.DataFrame({'a': [1, 2, 3], 'b': [3.0, 4.0, 5.0]})
+    assert 'mydf2' in set(kdb.tables.name)
+
+    # not in cache
+    kdb.eval('ts5: ([] ts5: 00:00:00.000000000 + 1 + til 5; amount: til 5)')
+    assert 'ts5' not in set(kdb.tables.name)
+
+    kdb.reset_cache()
+    assert 'ts5' in set(kdb.tables.name)

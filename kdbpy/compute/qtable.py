@@ -45,6 +45,8 @@ class Tables(PrettyMixin, OrderedDict):
 
 
 def tables(kdb):
+
+    kdb.reset_cache()
     names = kdb.tables.name
     metadata = kdb.eval(r'meta each value "\\a"')
 
@@ -121,8 +123,14 @@ class QTable(PrettyMixin):
 
 @discover.register(QTable)
 def discover_qtable(t):
-    return tables(t.engine)[t.tablename].dshape
 
+    # if the table is already in our cache
+    # then don't rediscover
+    if t.tablename in set(t.engine.tables.name):
+        data = t.engine.retrieve('data',t.engine._data)
+    else:
+        data = tables(t.engine)
+    return data[t.tablename].dshape
 
 @discover.register(KQ)
 def discover_kq(kq):

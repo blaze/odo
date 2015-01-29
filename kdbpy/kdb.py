@@ -107,14 +107,16 @@ class Credentials(PrettyMixin):
 class KQ(PrettyMixin, CredsMixin):
     """ manage the kdb & q process """
 
-    def __init__(self, credentials=None, start=False, path=None, verbose=False):
+    def __init__(self, credentials=None, start=False, path=None, verbose=False, cache=True):
         """
         Parameters
         ----------
         credentials: Credentials, or default to kdb.credentials()
         path: path to q_exec, default None (use arch default)
         start: boolean/'restart':
-        how to to restart kdb if already started
+          how to to restart kdb if already started
+        verbose: boolean, turn on verbose mode
+        cache: use caching mode for tables/data
 
         Returns
         -------
@@ -129,6 +131,10 @@ class KQ(PrettyMixin, CredsMixin):
         self.q = Q(credentials=credentials, path=path)
         self.kdb = KDB(credentials=credentials)
         self._loaded = set()
+
+        self.cache = cache
+        self.reset_cache()
+
         if start:
             self.start(start=start)
             self.load_libs()
@@ -344,8 +350,26 @@ class KQ(PrettyMixin, CredsMixin):
             result = None
         return result
 
-    @property
-    def tables(self):
+    ### cache interaction ###
+    def reset_cache(self):
+        self._cache = dict()
+
+    def retrieve(self, key, f):
+        """
+        retrieve an item from the cache by key, if its not present or
+        the cache is not enabled, execute and cache with f
+        """
+        if self.cache:
+            res = self._cache.get(key)
+            if res is None:
+                res = f()
+                self._cache[key] = res
+        else:
+            res = f()
+        return res
+
+    def _tables(self):
+        """ return all of the table meta data """
         types = {True: 'partitioned', False: 'splayed', -1: 'binary'}
         names = self.eval(r'\a').tolist()
         code = r'{[x] {t: .Q.qp[x]; $[(type t) = -7h; -1; t]}[eval x]} each value "\\a"'
@@ -353,21 +377,35 @@ class KQ(PrettyMixin, CredsMixin):
         return pd.DataFrame({'name': names, 'kind': values})[['name', 'kind']]
 
     @property
+    def tables(self):
+        return self.retrieve('tables',self._tables)
+
+    @property
     def memory(self):
         result = self.eval('.Q.w[]')
         return pd.Series(result.values, index=result.keys, name='memory')
 
+    def _data(self):
+        """ return the table as a blaze Data object """
+        template = 'kdb://{0.username}@{0.host}:{0.port}'
+        return bz.Data(template.format(self.credentials),
+                       engine=self)
+
     def __getitem__(self, key):
         assert isinstance(key, basestring), 'key must be a string'
         if key in set(self.tables.name):
-            template = 'kdb://{0.username}@{0.host}:{0.port}::{key}'
-            return bz.Data(template.format(self.credentials, key=key),
-                           engine=self)
+
+            data = self.retrieve('data',self._data)
+            return data[key]
+
         return self.get(key)
 
     def __setitem__(self, key, value):
-        self.set(key, value)
+        # flush the cache
+        self.reset_cache()
 
+        # set
+        self.set(key, value)
 
 class Q(PrettyMixin, CredsMixin):
     """ manage the q exec process """
