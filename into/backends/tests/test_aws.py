@@ -32,34 +32,47 @@ def test_s3_to_local_csv():
         assert os.path.exists(path)
 
 
-def test_csv_to_s3_append():
-    df = tm.makeMixedDataFrame()
-    s3 = resource('s3://into-redshift-csvs/tmp.csv')
+@pytest.fixture(scope='module')
+def conn():
     try:
-        with tmpfile('.csv') as fn:
-            df.to_csv(fn, index=False)
-            append(s3, CSV(fn))
-        result = into(pd.DataFrame, s3)
-    except boto.exception.S3PermissionError:
-        pytest.skip("Can't access the 'into-redshift-csvs' bucket")
+        return boto.connect_s3()
+    except boto.exception.S3ResponseError:
+        pytest.skip('unable to connect to s3')
     else:
-        tm.assert_frame_equal(df, result)
-    finally:
-        drop(s3)
+        grants = conn.get_bucket(test_bucket_name).get_acl().acl.grants
+        if not any(g.permission == 'FULL_CONTROL' or
+                   g.permission == 'READ' for g in grants):
+            pytest.skip('no permission to read on bucket %s' %
+                        test_bucket_name)
 
 
-def test_csv_to_s3_into():
+test_bucket_name = 'into-redshift-csvs'
+test_key_name = 'tmp.csv'
+
+
+@pytest.yield_fixture
+def s3_bucket(conn):
+    yield 's3://%s/%s' % (test_bucket_name, test_key_name)
+    conn.get_bucket(test_bucket_name).get_key(test_key_name).delete()
+
+
+def test_csv_to_s3_append(s3_bucket):
     df = tm.makeMixedDataFrame()
-    try:
-        with tmpfile('.csv') as fn:
-            df.to_csv(fn, index=False)
-            s3 = into('s3://into-redshift-csvs/tmp.csv', CSV(fn))
-    except boto.exception.S3PermissionError:
-        pytest.skip("Can't access the 'into-redshift-csvs' bucket")
-    else:
-        tm.assert_frame_equal(df, into(pd.DataFrame, s3))
-    finally:
-        drop(s3)
+    s3 = resource(s3_bucket)
+    with tmpfile('.csv') as fn:
+        df.to_csv(fn, index=False)
+        append(s3, CSV(fn))
+    result = into(pd.DataFrame, s3)
+    tm.assert_frame_equal(df, result)
+
+
+def test_csv_to_s3_into(s3_bucket):
+    df = tm.makeMixedDataFrame()
+    with tmpfile('.csv') as fn:
+        df.to_csv(fn, index=False)
+        s3 = into(s3_bucket, CSV(fn))
+    result = into(pd.DataFrame, s3)
+    tm.assert_frame_equal(df, result)
 
 
 @pytest.fixture
