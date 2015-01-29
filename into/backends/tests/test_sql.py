@@ -152,6 +152,13 @@ def test_discover_views():
     assert str(discover(metadata)) == str(discover({'accounts': t, 'myview': t}))
 
 
+def test_discover_select():
+    engine, t = single_table_engine()
+    select = sa.sql.select([t])
+
+    assert str(discover(t)) == str(discover(select))
+
+
 def test_extend_empty():
     engine, t = single_table_engine()
 
