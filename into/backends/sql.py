@@ -92,10 +92,9 @@ def discover_sqlalchemy_column(col):
         return Record([[col.name, discover(col.type)]])
 
 
-@discover.register(sa.Table)
-def discover_sqlalchemy_table(t):
-    return var * Record(list(sum([discover(c).parameters[0] for c in t.columns], ())))
-
+@discover.register((sa.Table, sa.sql.Select))
+def discover_sqlalchemy_sqlobj(sqlobj):
+    return var * Record(list(sum([discover(c).parameters[0] for c in sqlobj.columns], ())))
 
 @memoize
 def metadata_of_engine(engine):
