@@ -488,11 +488,8 @@ def test_cache(kdb):
     kdb['mydf2'] = pd.DataFrame({'a': [1, 2, 3], 'b': [3.0, 4.0, 5.0]})
     assert 'mydf2' in set(kdb.tables.name)
 
-    # not in cache
+    # not in cache (but are resetting and rediscovering anyhow)
     kdb.eval('ts5: ([] ts5: 00:00:00.000000000 + 1 + til 5; amount: til 5)')
-    assert 'ts5' not in set(kdb.tables.name)
-
-    kdb.reset_cache()
     assert 'ts5' in set(kdb.tables.name)
 
     # ncached

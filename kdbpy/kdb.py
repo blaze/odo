@@ -226,9 +226,19 @@ class KQ(PrettyMixin, CredsMixin):
         return self
 
     def eval(self, *args, **kwargs):
+
+        # print the query if verbose is set
         if self.verbose:
             pprint.pprint((args, kwargs))
-        return self.kdb.eval(*args, **kwargs)
+
+        # execute the query
+        result = self.kdb.eval(*args, **kwargs)
+
+        # we set a variable, flush the cache
+        if result is None:
+            self.reset_cache()
+
+        return result
 
     def read_csv(self, filename, table, encoding=None, *args, **kwargs):
         """Put a CSV file's data into the Q namespace
@@ -305,6 +315,9 @@ class KQ(PrettyMixin, CredsMixin):
             the value to set
 
         """
+        # flush the cache
+        self.reset_cache()
+
         self.kdb.q('set', np.string_(key), value)
 
     def get(self, key):
@@ -381,6 +394,10 @@ class KQ(PrettyMixin, CredsMixin):
             res = f()
         return res
 
+    @property
+    def tables(self):
+        return self.retrieve('tables',self._tables)
+
     def _tables(self):
         """ return all of the table meta data """
         types = {True: 'partitioned', False: 'splayed', -1: 'binary'}
@@ -390,26 +407,24 @@ class KQ(PrettyMixin, CredsMixin):
         return pd.DataFrame({'name': names, 'kind': values})[['name', 'kind']]
 
     @property
-    def tables(self):
-        return self.retrieve('tables',self._tables)
+    def dshape(self):
+        return self.retrieve('dshape',self._dshape)
+
+    def _dshape(self):
+        """ return datashape of the KQ object """
+        return bz.discover(self)
 
     @property
     def memory(self):
         result = self.eval('.Q.w[]')
         return pd.Series(result.values, index=result.keys, name='memory')
 
-    def _data(self):
-        """ return the table as a blaze Data object """
-        template = 'kdb://{0.username}@{0.host}:{0.port}'
-        return bz.Data(template.format(self.credentials),
-                       engine=self)
-
     def __getitem__(self, key):
         assert isinstance(key, basestring), 'key must be a string'
         if key in set(self.tables.name):
 
-            data = self.retrieve('data',self._data)
-            return data[key]
+            dshape = self.retrieve('dshape',self._dshape)
+            return bz.Data(self,dshape=dshape)[key]
 
         return self.get(key)
 
@@ -626,6 +641,7 @@ class KDB(PrettyMixin):
             else:
                 result = expr()
         else:
+
             result = self.q.sync(expr, *args)
 
         # need to coerce datetime-like scalars
@@ -638,7 +654,6 @@ class KDB(PrettyMixin):
                 result = pd.Timedelta(result)
 
         return result
-
 
 # TEMPORALS
 _q_base_timestamp = pd.Timestamp('2000-01-01')
