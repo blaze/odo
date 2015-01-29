@@ -12,9 +12,23 @@ import iopro
 import iopro.pyodbc
 
 @memoize
-def get_iopro_db_engine(raw_sa_conn):
-    """Return a memoized pyodbc connection that iopro can use.
+def get_iopro_db_engine(engine):
+    """Return an iopro.pyodbc-ized sqlachemy engine
+
+    Parameters
+    ----------
+    engine - A sqlalchemy engine
+
+    Return
+    ------
+    An new sqlalchemy engine that will use iopro.pyodbc to make the
+    connection to the db. If the connection cannot be made, a
+    NotImplementedError exception will be raised so that a calling
+    "convert()" or "into()" will be able to use a different
+    sql->ndarray conversion path.
     
+    Notes
+    -----
     This function will try to make a db connection
       that iopro.pyodbc can use from an existing
       sqlalchemy engine/connection.
@@ -22,12 +36,13 @@ def get_iopro_db_engine(raw_sa_conn):
     connectionstring = "DRIVER={mysql};\
                        SERVER=localhost;\
                        DATABASE=continuum_db;\
-                       USER=continuum_user;\
+                       UID=continuum_user;\
                        PASSWORD=continuum_test;\
                        OPTION=3;"
 
     The DRIVER={mysql} part comes from the odbcinst.ini file that *MUST*
-      exist in order for ODBC to be able to find the correct driver.
+      exist (on *nix) in order for ODBC to be able to find the correct
+      driver.
     Furthermore, this file should have sections that *MATCH* the
       sqlalchemy driver names.
     i.e. if sqlalchemy.engine.get_backend_name() returns "mysql",
@@ -41,34 +56,35 @@ def get_iopro_db_engine(raw_sa_conn):
       data-source names (DSNs).
     No DSNs are used here because we extract all necessary data from
       the sqlalchemy engine.
-                       
     """
-    url = raw_sa_conn.url
+    url = engine.url
     connect_args = url.translate_connect_args()
 
-    server = connect_args.get('host')
-    user = connect_args.get('username')
-    password = connect_args.get('password')
-    database = connect_args.get('database')
-    port = connect_args.get('port')
+    server = connect_args.get('host','')
+    uid = connect_args.get('username','')
+    password = connect_args.get('password','')
+    database = connect_args.get('database','')
+    port = connect_args.get('port','')
+    option = connect_args.get('option','')
 
     driver = dialect = url.get_backend_name()
     
     if driver == "mysql":
-        #option 3 is required by mysql
+        #option=3 is required by mysql
         option = "3"
         dialect = "mysql+pyodbc"
-
+    elif driver == "mssql":
+        dialect = "mssql+pyodbc"
+    else:
+        raise NotImplementedError("sqlalchemy does not support the {} database "\
+                                  "with the pyodbc dialect yet.".format(driver))
+        
     #Note: It appears to be OK to leave parameters empty. Default
     #  values will be filled in by the odbc driver.
-    connection_string = "DRIVER={{{}}};\
-    SERVER={};\
-    PORT={};\
-    DATABASE={};\
-    USER={};\
-    PASSWORD={};\
-    OPTION={};\
-    ".format(driver, server, port, database, user, password, option)
+    connection_string = "DRIVER={{{}}};SERVER={};PORT={};DATABASE={};UID={};"\
+                        "PASSWORD={};OPTION={};".format(driver, server, port,
+                                                        database, uid, password,
+                                                        option)
 
     def getconn():
         #If the odbc connection cannot be made, raising the
@@ -76,31 +92,39 @@ def get_iopro_db_engine(raw_sa_conn):
         #  dispatch manager fall back to a working conversion path.
         try:
             iopro_db_conn = iopro.pyodbc.connect(connection_string)
-        except:
+        except Exception as e:
             raise NotImplementedError("iopro odbc connection failed. "
-                                      "Falling back to defaults.")
+                                      "Falling back to defaults. "
+                                      "Original exception: %s" % (e))
         return iopro_db_conn
 
     new_sa_engine = sa.create_engine("{}://".format(dialect), creator=getconn)
 
     return new_sa_engine
-    
-@convert.register(np.ndarray, sa.sql.Select, cost=10.0)
-def iopro_sqlselect_to_ndarray(sqlselect, **kwargs):
-    """Use iopro to dump a sql select to an ndarray *fast*
 
-    Remake the database connection so that iopro can
-    use its fast fetchsarray() function to turn sql
-    data into a numpy struct array (not a recarray).
+    
+#The cost=26.0 comes from adding up all of the costs from the original
+#  convert() path and dividing by 15 (15x is the new speedup)
+@convert.register(np.ndarray, sa.sql.Select, cost=26.0)
+def iopro_sqlselect_to_ndarray(sqlselect, **kwargs):
+    """Return a numpy struct-array from a sql.Select
+
+    Parameters
+    ----------
+    sqlselect - a sqlalchemy sql.Select object
+
+    Return
+    ------
+    A numpy struct array with the sql results
+
+    Notes
+    -----
     In testing, using fetchsarray() on mysql is about
     15x faster than naive methods at the 10,000 row
     range.
-
-    If a pyodbc database connection can't be made, get_iopro_db_engine
-    will raise a NotImplementedError thereby letting the
-    convert() dispatcher fallback to a different conversion
     """
 
+    #Remake the database engine so that iopro can use fetchsarray()
     orig_engine = sqlselect.bind
     iopro_db_engine = get_iopro_db_engine(orig_engine)
 
@@ -113,31 +137,23 @@ def iopro_sqlselect_to_ndarray(sqlselect, **kwargs):
 
     return results
 
-@convert.register(np.ndarray, sa.Table, cost=10.0)
+
+#The cost=26.0 comes from adding up all of the costs from the original
+#  convert() path and dividing by 15 (15x is the new speedup)
+@convert.register(np.ndarray, sa.Table, cost=26.0)
 def iopro_sqltable_to_ndarray(table, **kwargs):
-    """Use iopro to dump a sql table to an ndarray *fast*
+    """Return a numpy struct-array of an entire table
 
-    Remake the database connection so that iopro can
-    use its fast fetchsarray() function to turn sql
-    data into a numpy struct array (not a recarray).
-    In testing, using fetchsarray() on mysql is about
-    15x faster than naive methods at the 10,000 row
-    range. 
+    Parameters
+    ----------
+    table - a sqlalchemy Table object
 
-    If a pyodbc database connection can't be made, get_iopro_db_engine
-    will raise a NotImplementedError thereby letting the
-    convert() dispatcher fallback to a different conversion
+    Return
+    ------
+    A numpy struct array with the sql results
     """
     
-    orig_engine = table.bind
-    iopro_db_engine = get_iopro_db_engine(orig_engine)
-
-    conn = iopro_db_engine.raw_connection()
-    cursor = conn.cursor()
-    cursor.execute(str(sa.sql.select([table])))
-    results = cursor.fetchsarray()
-    cursor.close()
-    conn.close()
+    results = iopro_sqlselect_to_ndarray(sa.sql.select([table]))
 
     return results
 

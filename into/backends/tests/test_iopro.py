@@ -8,9 +8,20 @@ import numpy as np
 from numpy import ndarray, random
 from datashape import discover, dshape
 
-url = 'mysql+pymysql://continuum:continuum_test@localhost/continuum'
-sql_engine = resource(url)
+import iopro, iopro.pyodbc
 
+mysql_url = 'mysql+pymysql://continuum:continuum_test@localhost/continuum'
+pyodbc_mysql_url = 'DRIVER={mysql};SERVER=localhost;DATABASE=continuum;'\
+                   'UID=continuum;PASSWORD=continuum_test;OPTION=3;'
+
+#WARNING: pyodbc has no problem connecting to postgres,
+#  but sqlalchemy doesn't have a dialect to do so.
+#  So, we can't actually use a postgres database in this "convert" testing
+postgres_url = 'postgresql://continuum:continuum_test@localhost/continuum'
+pyodbc_postgres_url = 'DRIVER={postgresql};SERVER=localhost;DATABASE=continuum;'\
+                      'UID=continuum;PASSWORD=continuum_test;PORT=;OPTION=;'
+
+sql_engine = resource(mysql_url)
 
 def make_market_data(N=1000, randomize=True):
     """
@@ -54,6 +65,21 @@ def populate_db(sql_engine, tablename, array):
     return table
 
 
+def test_pyodbc_connections():
+    odbc = iopro.pyodbc.connect(pyodbc_mysql_url)
+    cursor = odbc.cursor()
+    cursor.execute("show tables")
+    res = cursor.fetchall()
+    cursor.close()
+    odbc.close()
+
+    odbc = iopro.pyodbc.connect(pyodbc_postgres_url)
+    cursor = odbc.cursor()
+    cursor.execute("select tablename from pg_tables where schemaname = 'public'")
+    res = cursor.fetchall()
+    cursor.close()
+
+
 def test_iopro_sqltable_to_ndarray():
 
     tablename = "market"
@@ -63,10 +89,12 @@ def test_iopro_sqltable_to_ndarray():
     #convert() will automatically figure out how to
     #  go from a table to np.ndarray
     #convert should eventually call iopro_sqltable_to_ndarray
-    res = convert(np.ndarray, table)
+    res = convert(np.ndarray, table, dshape=discover(table))
     res2 = iopro_sqltable_to_ndarray(table)
-    
+    res3 = into(np.ndarray, table)
+
     assert all(res == res2)
+    assert all(res2 == res3)
 
 def test_iopro_sqlselect_to_ndarray():
 
@@ -78,10 +106,12 @@ def test_iopro_sqlselect_to_ndarray():
     #convert() will automatically figure out how to
     #  go from a table to np.ndarray
     #convert should eventually call iopro_sqlselect_to_ndarray
-    res = convert(np.ndarray, select)
+    res = convert(np.ndarray, select, dshape=discover(select))
     res2 = iopro_sqlselect_to_ndarray(select)
+    res3 = into(np.ndarray, select)
 
     assert all(res == res2)
+    assert all(res2 == res3)
 
 
 def test_iopro_convert_path():
@@ -98,4 +128,3 @@ def test_iopro_convert_path():
     result = path(convert.graph, sa.Table, np.ndarray)
 
     assert expected == result
-    
