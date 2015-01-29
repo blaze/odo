@@ -494,3 +494,6 @@ def test_cache(kdb):
 
     kdb.reset_cache()
     assert 'ts5' in set(kdb.tables.name)
+
+    # ncached
+    assert "ncached={0}".format(len(set(kdb.tables.name))) in str(kdb)

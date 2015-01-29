@@ -46,7 +46,6 @@ class Tables(PrettyMixin, OrderedDict):
 
 def tables(kdb):
 
-    kdb.reset_cache()
     names = kdb.tables.name
     metadata = kdb.eval(r'meta each value "\\a"')
 

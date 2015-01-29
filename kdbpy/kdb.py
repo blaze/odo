@@ -162,8 +162,11 @@ class KQ(PrettyMixin, CredsMixin):
             p.text('q=')
             p.pretty(self.q)
             p.breakable()
+            p.text('ncached=')
+            p.pretty(self.ncached()),
+            p.breakable()
             p.text('cached=')
-            p.pretty(self.cache)
+            p.pretty(self._cache.keys())
         return '{0.__class__.__name__}(kdb={0.kdb}, q={0.q})'.format(self)
 
     # context manager, so allow
@@ -354,6 +357,13 @@ class KQ(PrettyMixin, CredsMixin):
         return result
 
     ### cache interaction ###
+    def ncached(self):
+        """ return the number of cached tables """
+        t = self._cache.get('tables')
+        if t is not None:
+            return len(t)
+        return 0
+
     def reset_cache(self):
         self._cache = dict()
 
