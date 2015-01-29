@@ -36,6 +36,16 @@ install:
   # For bcolz
   - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda install unittest2; fi
 
+# Before_script section stolen from fabric
+# See license https://github.com/fabric/fabric/blob/master/LICENSE
+before_script:
+ # Allow us to SSH passwordless to localhost
+ - ssh-keygen -f ~/.ssh/id_rsa -N ""
+ - cp ~/.ssh/{id_rsa.pub,authorized_keys}
+ # Creation of an SSH agent for testing forwarding
+ - eval $(ssh-agent)
+ - ssh-add
+
 script:
     - py.test --doctest-modules into
 
