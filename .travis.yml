@@ -26,19 +26,10 @@ install:
   - source activate test-environment
 
   # Install PyMongo
-  - pip install pymongo
-
-  # Install MySQL py2.y/3.x
-  - pip install pymysql
+  - pip install pymongo pymysql paramiko sas7bdat psycopg2
 
   # Install DataShape
   - pip install --upgrade git+http://github.com/ContinuumIO/datashape
-
-  # Install sas7bdat
-  - pip install sas7bdat
-
-  # install psycopg2 for postgres testing
-  - pip install psycopg2
 
   # For bcolz
   - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda install unittest2; fi
