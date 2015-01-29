@@ -1,12 +1,20 @@
 import paramiko
 
-
 from into.utils import tmpfile, filetext, filetexts, raises
 from into.directory import _Directory, Directory
 from into.backends.ssh import *
 from into import into
 import re
 import os
+
+
+try:
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(hostname='localhost')
+except:
+    import pytest
+    pytest.importorskip('a_library_that_does_not_exist')  # Punt on testing
 
 
 def test_resource():
