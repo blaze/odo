@@ -10,6 +10,7 @@ from ..directory import _Directory, Directory
 from ..utils import keywords, tmpfile, sample
 from ..resource import resource
 from ..append import append
+from ..drop import drop
 
 
 class _SSH(object):
@@ -130,6 +131,13 @@ def discover_ssh_directory(data, **kwargs):
     fn = data.path + '/' + sftp.listdir(data.path)[0]
     one_file = SSH(data.container)(fn, **data.auth)
     return discover(one_file)
+
+
+@drop.register(_SSH)
+def drop_ssh(data, **kwargs):
+    ssh = data.connect()
+    sftp = ssh.open_sftp()
+    sftp.remove(data.path)
 
 
 @append.register(_SSH, object)

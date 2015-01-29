@@ -6,6 +6,7 @@ from into.directory import _Directory, Directory
 from into.backends.ssh import *
 from into import into
 import re
+import os
 
 
 def test_resource():
@@ -63,3 +64,22 @@ def test_copy_remote_csv():
             # Round trip
             csv2 = into(target, scsv)
             assert into(list, csv) == into(list, csv2)
+
+
+def test_drop():
+    with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
+        with tmpfile('csv') as target:
+            csv = CSV(fn)
+            scsv = SSH(CSV)(target, hostname='localhost')
+
+            assert not os.path.exists(target)
+
+            ssh = scsv.connect()
+            sftp = ssh.open_sftp()
+            sftp.put(fn, target)
+
+            assert os.path.exists(target)
+
+            drop(scsv)
+
+            assert not os.path.exists(target)
