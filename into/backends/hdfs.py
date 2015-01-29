@@ -8,7 +8,6 @@ import datashape
 import sqlalchemy as sa
 from datashape import discover, dshape
 from datashape import coretypes as ct
-from pywebhdfs.webhdfs import PyWebHdfsClient
 from collections import namedtuple
 from contextlib import contextmanager
 from .ssh import SSH, _SSH
@@ -17,7 +16,12 @@ from ..utils import tmpfile, sample
 from ..append import append
 from ..resource import resource
 from ..directory import _Directory, Directory
+from ..compatibility import unicode
 
+try:
+    from pywebhdfs.webhdfs import PyWebHdfsClient
+except ImportError:
+    pass
 
 class _HDFS(object):
     """ Parent class for data on Hadoop File System

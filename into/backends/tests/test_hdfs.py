@@ -1,8 +1,13 @@
+try:
+    from pywebhdfs.webhdfs import PyWebHdfsClient
+except ImportError:
+    import pytest
+    pytest.importorskip('does_not_exist')
+
 from into.backends.hdfs import (discover, HDFS, CSV, TableProxy, SSH)
 from into.backends.sql import resource
 from into import into, drop
 import sqlalchemy as sa
-from pywebhdfs.webhdfs import PyWebHdfsClient
 from datashape import dshape
 from into.directory import Directory
 import os
