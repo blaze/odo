@@ -8,6 +8,7 @@ from .resource import resource
 from datashape import discover, var
 from datashape.dispatch import namespace
 from datashape.predicates import isdimension
+from .compatibility import unicode
 
 
 if 'into' not in namespace:
