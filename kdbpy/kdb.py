@@ -161,6 +161,9 @@ class KQ(PrettyMixin, CredsMixin):
             p.breakable()
             p.text('q=')
             p.pretty(self.q)
+            p.breakable()
+            p.text('cached=')
+            p.pretty(self.cache)
         return '{0.__class__.__name__}(kdb={0.kdb}, q={0.q})'.format(self)
 
     # context manager, so allow
