@@ -52,6 +52,8 @@ def into_object(a, b, **kwargs):
     into.append.append      - Add things onto existing things
     into.resource.resource  - Specify things with strings
     """
+    if isinstance(b, (str, unicode)):
+        b = resource(b, **kwargs)
     try:
         if 'dshape' not in kwargs:
             kwargs['dshape'] = discover(b)
