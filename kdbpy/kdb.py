@@ -137,7 +137,6 @@ class KQ(PrettyMixin, CredsMixin):
 
         if start:
             self.start(start=start)
-            self.load_libs()
 
     def load_libs(self,
                   libpath=os.path.join(os.path.dirname(kdbpy.__file__), 'q'),
@@ -217,6 +216,7 @@ class KQ(PrettyMixin, CredsMixin):
                 break
 
         self.kdb.start()
+        self.load_libs()
         return self
 
     def stop(self):
