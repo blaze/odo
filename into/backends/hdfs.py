@@ -6,11 +6,12 @@ from functools import wraps
 from .csv import CSV
 import datashape
 import sqlalchemy as sa
-from datashape import discover
+from datashape import discover, dshape
 from datashape import coretypes as ct
 from pywebhdfs.webhdfs import PyWebHdfsClient
 from collections import namedtuple
 from contextlib import contextmanager
+from .ssh import SSH, _SSH
 from .sql import metadata_of_engine, sa
 from ..utils import tmpfile, sample
 from ..append import append
@@ -24,13 +25,17 @@ class _HDFS(object):
     Examples
     --------
 
-    >>> from into import HDFS, CSV
-    >>> HDFS(CSV)('/path/to/file.csv')
+    >>> HDFS(CSV)('/path/to/file.csv', host='54.91.255.255',
+    ...           port=14000, user='hdfs')  # doctest: +SKIP
+
+    Alternatively use resource strings
+
+    >>> resource('hdfs://hdfs@54.91.255.255:/path/to/file.csv')  # doctest: +SKIP
     """
     def __init__(self, *args, **kwargs):
         hdfs = kwargs.pop('hdfs', None)
         host = kwargs.pop('host', None)
-        port = kwargs.pop('port', '14000')
+        port = str(kwargs.pop('port', '14000'))
         user = kwargs.pop('user', 'hdfs')
 
         if not hdfs and (host and port and user):
@@ -164,63 +169,78 @@ def dshape_to_hive(ds):
     raise NotImplementedError("No Hive dtype known for %s" % ds)
 
 
+def create_hive_statement(tbl_name, dshape, path=None, table_type='',
+        db_name='default', **dialect):
+    """ Generic CREATE TABLE statement for hive
 
-"""
-Load Data in HDFS into Hive
-===========================
+    Parameters
+    ----------
 
-We push types like HDFS(CSV) and HDFS(Directory(CSV)) into Hive tables.  This
-requires that we bring a bit of the CSV file locally, inspect it (sniff for csv
-dialect), generate the appropriate CREATE EXTERNAL TABLE command, and then
-execute.
-"""
+    tbl_name : string
+        Specifies table name "mytable"
+    dshape : DataShape
+        Datashape of the desired table
+    path : string (optional)
+        Location of data
+    table_type : string (optional)
+        Table Modifier like EXTERNAL or LOCAL
+    db_name : string
+        Specifies database name.  Defaults to "default"
 
-import csv
-sniffer = csv.Sniffer()
+    **dialect : keyword arguments dict
+        CSV dialect with keys delimiter, has_header, etc.
 
-def create_hive_from_hdfs_directory_of_csvs(tbl, data, dshape=None, **kwargs):
+    Example
+    -------
+
+    >>> ds = dshape('var * {name: string, balance: int64, when: datetime}')
+    >>> print(create_hive_statement('accounts', ds, delimiter=','))  # doctest: +NORMALIZE_WHITESPACE
+    CREATE  TABLE default.accounts (
+            name  STRING,
+         balance  BIGINT,
+            when  TIMESTAMP
+    )
+    ROW FORMAT DELIMITED
+        FIELDS TERMINATED BY ','
+    STORED AS TEXTFILE
+
+    >>> print(create_hive_statement('accounts', ds, delimiter=',',
+    ...         has_header=True, path='/data/accounts/', table_type='EXTERNAL'))  # doctest: +NORMALIZE_WHITESPACE
+    CREATE EXTERNAL TABLE default.accounts (
+            name  STRING,
+         balance  BIGINT,
+            when  TIMESTAMP
+    )
+    ROW FORMAT DELIMITED
+        FIELDS TERMINATED BY ','
+    STORED AS TEXTFILE
+    LOCATION '/data/accounts/'
+    TBLPROPERTIES ("skip.header.line.count"="1")
     """
-    Generate string to create Hive table
+    if db_name:
+        db_name = db_name + '.'
 
-    Most of the logic is here.  Also easy to test.
-    """
-    path = data.path
-    tblname = tbl.name
-
-    dialect = merge(data.kwargs, kwargs)
-
-    # Get sample text
-    with sample(data, length=30000) as fn:
-        text = open(fn).read()
-
-    # Handle header, dialect
-    if 'has_header' not in dialect:
-        dialect['has_header'] = sniffer.has_header(text)
-
-    d = sniffer.sniff(text)
-    delimiter = dialect.get('delimiter', d.delimiter)
-    escapechar = dialect.get('escapechar', d.escapechar)
-    lineterminator = dialect.get('lineterminator', d.lineterminator)
-    quotechar = dialect.get('quotechar', d.quotechar)
-
-    dbname = str(tbl.engine.url).split('/')[-1]
-    if dbname:
-        dbname = dbname + '.'
+    if not table_type:
+        table_type = ''
 
     # Column names and types from datashape
     ds = dshape or discover(data)
     assert isinstance(ds.measure, ct.Record)
     columns = [(name, dshape_to_hive(typ))
             for name, typ in zip(ds.measure.names, ds.measure.types)]
-    column_text = ',\n'.join('%30s  %s' % col for col in columns)[12:]
+    column_text = ',\n'.join('%20s  %s' % col for col in columns)[12:]
 
     statement = """
-        CREATE EXTERNAL TABLE {dbname}{tblname} (
+        CREATE {table_type} TABLE {db_name}{tbl_name} (
             {column_text}
-            )
+        )
         ROW FORMAT DELIMITED
             FIELDS TERMINATED BY '{delimiter}'
         STORED AS TEXTFILE
+        """
+
+    if path:
+        statement = statement +"""
         LOCATION '{path}'
         """
 
@@ -228,18 +248,43 @@ def create_hive_from_hdfs_directory_of_csvs(tbl, data, dshape=None, **kwargs):
         statement = statement + """
         TBLPROPERTIES ("skip.header.line.count"="1")"""
 
-    return statement.format(**locals())
+    return statement.format(**merge(dialect, locals())).strip('\n')
+
+
+"""
+Load Data from HDFS or SSH into Hive
+====================================
+
+We push types like HDFS(CSV) and HDFS(Directory(CSV)) into Hive tables.  This
+requires that we bring a bit of the CSV file locally, inspect it (sniff for csv
+dialect), generate the appropriate CREATE EXTERNAL TABLE command, and then
+execute.
+"""
 
 
 @append.register(TableProxy, HDFS(Directory(CSV)))
-def create_new_hive_table_from_csv(tbl, data, **kwargs):
+def create_new_hive_table_from_csv(tbl, data, dshape=None, **kwargs):
     """
     Create new Hive table from directory of CSV files on HDFS
 
     Actually executes command.
     """
+    if isinstance(data, _SSH):
+        table_type = None
+    elif isinstance(data, _HDFS):
+        table_type = 'EXTERNAL'
+    else:
+        table_type = None
+
+    if not dshape:
+        dshape = discover(data)
+
     if tbl.engine.dialect.name == 'hive':
-        statement = create_hive_from_hdfs_directory_of_csvs(tbl, data, **kwargs)
+        statement = create_hive_statement(tbl.name, dshape,
+                                path=data.path,
+                                db_name = str(tbl.engine.url).split('/')[-1],
+                                table_type=table_type,
+                                **dialect_of(data))
     else:
         raise NotImplementedError("Don't know how to migrate directory of csvs"
                 " on HDFS to database of dialect %s" % tbl.engine.dialect.name)
@@ -253,87 +298,18 @@ def create_new_hive_table_from_csv(tbl, data, **kwargs):
     return tbl2
 
 
-"""
-Load Remote data into Hive
-==========================
-
-We push types like SSH(CSV) and SSH(Directory(CSV)) into Hive tables.
-
-Often our data is on the cluster but not on HDFS.  There are slightly different
-CREATE TABLE and LOAD commands in this case.
-
-Note that there is a *lot* of code duplication to what we just saw above.  I'm
-not sure yet how best to refactor this.  There are a lot of annoying bits to
-work around that have so far pushed me to write ugly code.
-"""
-from .ssh import SSH
-
-def create_hive_from_remote_csv_file(tbl, data, dshape=None, **kwargs):
-    path = data.path
-    tblname = tbl.name
-
-    dialect = merge(dialect_of(data), kwargs)
-
-    # Get sample text
-    with sample(data) as fn:
-        text = open(fn).read()
-
-    # Handle header, dialect
-    if 'has_header' not in dialect:
-        dialect['has_header'] = sniffer.has_header(text)
-
-    d = sniffer.sniff(text)
-    delimiter = dialect.get('delimiter', d.delimiter)
-    escapechar = dialect.get('escapechar', d.escapechar)
-    lineterminator = dialect.get('lineterminator', d.lineterminator)
-    quotechar = dialect.get('quotechar', d.quotechar)
-
-    dbname = str(tbl.engine.url).split('/')[-1]
-    if dbname:
-        dbname = dbname + '.'
-
-    # Column names and types from datashape
-    ds = dshape or discover(data)
-    assert isinstance(ds.measure, ct.Record)
-    columns = [(name, dshape_to_hive(typ))
-            for name, typ in zip(ds.measure.names, ds.measure.types)]
-    column_text = ',\n'.join('%30s  %s' % col for col in columns)[12:]
-
-    statement = """
-        CREATE TABLE {dbname}{tblname} (
-            {column_text}
-            )
-        ROW FORMAT DELIMITED
-            FIELDS TERMINATED BY '{delimiter}'
-        STORED AS TEXTFILE
-        """
-
-    if dialect.get('has_header'):
-        statement = statement + """
-        TBLPROPERTIES ("skip.header.line.count"="1")"""
-
-    return statement.format(**locals())
-
-
 @append.register(TableProxy, (SSH(CSV), SSH(Directory(CSV))))
-def create_and_append_remote_csv_to_table(tbl, data, **kwargs):
-    if tbl.engine.dialect.name == 'hive':
-        statement = create_hive_from_remote_csv_file(tbl, data, **kwargs)
-    else:
-        raise NotImplementedError("Don't know how to migrate csvs on remote "
-                "disk to database of dialect %s" % tbl.engine.dialect.name)
-
-    with tbl.engine.connect() as conn:
-        conn.execute(statement)
-
-    metadata = metadata_of_engine(tbl.engine)
-    tbl2 = sa.Table(tbl.name, metadata, autoload=True,
-            autoload_with=tbl.engine)
-    return append(tbl2, data, **kwargs)
+def append_remote_csv_to_new_table(tbl, csv, **kwargs):
+    t = create_new_hive_table_from_csv(tbl, csv, **kwargs)
+    return append(t, csv, **kwargs)
 
 
 @append.register(sa.Table, (SSH(CSV), SSH(Directory(CSV))))
 def append_remote_csv_to_table(tbl, csv, **kwargs):
+    """
+    Load Remote data into existing Hive table
+    """
+
     if tbl.bind.dialect.name == 'hive':
         statement = ('LOAD DATA LOCAL INPATH "%(path)s" INTO TABLE %(tablename)s' %
                 {'path': csv.path, 'tablename': tbl.name})
@@ -345,9 +321,41 @@ def append_remote_csv_to_table(tbl, csv, **kwargs):
     return tbl
 
 
-def dialect_of(data):
-    if isinstance(data, CSV):
-        return data.dialect
-    if isinstance(data, _Directory):
-        return data.kwargs
-    raise NotImplementedError()
+
+import csv
+sniffer = csv.Sniffer()
+
+
+def dialect_of(data, **kwargs):
+    """ CSV dialect of a CSV file stored in SSH, HDFS, or a Directory. """
+    keys = set(['delimiter', 'doublequote', 'escapechar', 'lineterminator',
+                'quotechar', 'quoting', 'skipinitialspace', 'strict', 'has_header'])
+    if isinstance(data, (HDFS(CSV), SSH(CSV))):
+        with sample(data) as fn:
+            d = dialect_of(CSV(fn, **data.dialect))
+    elif isinstance(data, (HDFS(Directory(CSV)), SSH(Directory(CSV)))):
+        with sample(data) as fn:
+            d = dialect_of(CSV(fn, **data.kwargs))
+    elif isinstance(data, Directory(CSV)):
+        d = dialect_of(next(data))
+    else:
+        assert isinstance(data, CSV)
+
+        # Get sample text
+        with open(data.path, 'r') as f:
+            text = f.read(1000)
+
+        result = dict()
+
+        d = sniffer.sniff(text)
+        d = dict((k, getattr(d, k)) for k in keys if hasattr(d, k))
+
+        if data.has_header is None:
+            d['has_header'] = sniffer.has_header(text)
+
+        d.update(data.dialect)
+
+    d.update(kwargs)
+    d = dict((k, v) for k, v in d.items() if k in keys)
+
+    return d

@@ -14,7 +14,7 @@ class _Directory(Chunks):
     For typed containers see the ``Directory`` function which generates
     parametrized Directory classes.
 
-    >>> from into import Directory, CSV
+    >>> from into import CSV
     >>> c = Directory(CSV)('path/to/data/')
 
     Normal use through resource strings
@@ -52,7 +52,7 @@ def resource_directory(uri, **kwargs):
     path = uri.rsplit(os.path.sep, 1)[0]
     try:
         one_uri = first(glob(uri))
-    except OSError:
+    except (OSError, StopIteration):
         return _Directory(path, **kwargs)
     subtype = type(resource(one_uri, **kwargs))
     return Directory(subtype)(path, **kwargs)
@@ -62,7 +62,7 @@ def resource_directory(uri, **kwargs):
 def resource_directory_with_trailing_slash(uri, **kwargs):
     try:
         one_uri = os.listdir(uri)[0]
-    except OSError:
+    except (OSError, IndexError):
         return _Directory(uri, **kwargs)
     subtype = type(resource(one_uri, **kwargs))
     return Directory(subtype)(uri, **kwargs)
