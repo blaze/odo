@@ -4,6 +4,7 @@ import paramiko
 from into.utils import tmpfile, filetext, filetexts, raises
 from into.directory import _Directory, Directory
 from into.backends.ssh import *
+from into import into
 import re
 
 
@@ -48,3 +49,17 @@ def test_ssh_pattern():
             'user@127.0.0.1:/my-dir/my-file3.csv']
     for uri in uris:
         assert re.match(ssh_pattern, uri)
+
+
+def test_copy_remote_csv():
+    with tmpfile('csv') as target:
+        with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
+            csv = resource(fn)
+            scsv = into('ssh://localhost:foo.csv', csv)
+            assert isinstance(scsv, SSH(CSV))
+            assert discover(scsv) == discover(csv)
+
+
+            # Round trip
+            csv2 = into(target, scsv)
+            assert into(list, csv) == into(list, csv2)

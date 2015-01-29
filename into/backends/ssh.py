@@ -9,6 +9,7 @@ from ..directory import _Directory, Directory
 
 from ..utils import keywords, tmpfile, sample
 from ..resource import resource
+from ..append import append
 
 
 class _SSH(object):
@@ -129,3 +130,23 @@ def discover_ssh_directory(data, **kwargs):
     fn = data.path + '/' + sftp.listdir(data.path)[0]
     one_file = SSH(data.container)(fn, **data.auth)
     return discover(one_file)
+
+
+@append.register(_SSH, object)
+def append_anything_to_ssh(target, source, **kwargs):
+    if not isinstance(source, target.subtype):
+        raise NotImplementedError() # TODO: create local temp
+    ssh = target.connect()
+    sftp = ssh.open_sftp()
+    # TODO: handle overwrite case
+    sftp.put(source.path, target.path)
+    return target
+
+
+@append.register(CSV, SSH(CSV))
+def append_sshcsv_to_csv(target, source, **kwargs):
+    ssh = source.connect()
+    sftp = ssh.open_sftp()
+    # TODO: handle overwrite case
+    sftp.get(source.path, target.path)
+    return target
