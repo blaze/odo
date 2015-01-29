@@ -263,7 +263,7 @@ execute.
 
 
 @append.register(TableProxy, HDFS(Directory(CSV)))
-def create_new_hive_table_from_csv(tbl, data, dshape=None, **kwargs):
+def create_new_hive_table_from_csv(tbl, data, dshape=None, path=None, **kwargs):
     """
     Create new Hive table from directory of CSV files on HDFS
 
@@ -299,9 +299,26 @@ def create_new_hive_table_from_csv(tbl, data, dshape=None, **kwargs):
 
 
 @append.register(TableProxy, (SSH(CSV), SSH(Directory(CSV))))
-def append_remote_csv_to_new_table(tbl, csv, **kwargs):
-    t = create_new_hive_table_from_csv(tbl, csv, **kwargs)
-    return append(t, csv, **kwargs)
+def append_remote_csv_to_new_table(tbl, data, dshape=None, **kwargs):
+    if not dshape:
+        dshape = discover(data)
+
+    if tbl.engine.dialect.name == 'hive':
+        statement = create_hive_statement(tbl.name, dshape,
+                                db_name = str(tbl.engine.url).split('/')[-1],
+                                **dialect_of(data))
+    else:
+        raise NotImplementedError("Don't know how to migrate directory of csvs"
+                " on Local disk to database of dialect %s" % tbl.engine.dialect.name)
+
+    with tbl.engine.connect() as conn:
+        conn.execute(statement)
+
+    metadata = metadata_of_engine(tbl.engine)
+    tbl2 = sa.Table(tbl.name, metadata, autoload=True,
+            autoload_with=tbl.engine)
+
+    return append(tbl2, data, **kwargs)
 
 
 @append.register(sa.Table, (SSH(CSV), SSH(Directory(CSV))))
@@ -309,17 +326,19 @@ def append_remote_csv_to_table(tbl, csv, **kwargs):
     """
     Load Remote data into existing Hive table
     """
+    path = csv.path
+    if path[0] != '/':
+        path = '/home/%s/%s' % (csv.auth['username'], csv.path)
 
     if tbl.bind.dialect.name == 'hive':
         statement = ('LOAD DATA LOCAL INPATH "%(path)s" INTO TABLE %(tablename)s' %
-                {'path': csv.path, 'tablename': tbl.name})
+                {'path': path, 'tablename': tbl.name})
     else:
         raise NotImplementedError("Don't know how to migrate csvs on remote "
                 "disk to database of dialect %s" % tbl.engine.dialect.name)
     with tbl.bind.connect() as conn:
         conn.execute(statement)
     return tbl
-
 
 
 import csv
