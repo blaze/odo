@@ -5,15 +5,12 @@ sas7bdat = pytest.importorskip('sas7bdat')
 pytest.importorskip('into.backends.sas')
 import os
 import pandas as pd
-import numpy as np
-import datashape
 from collections import Iterator
 from sas7bdat import SAS7BDAT
 
-from into.backends.sas import discover, sas_to_DataFrame, sas_to_iterator
+from into.backends.sas import discover, sas_to_iterator
 from into.utils import tmpfile
 from into import append, convert, resource, dshape
-from numpy import dtype
 
 
 cur_path = os.path.abspath(os.path.dirname(__file__))
@@ -65,7 +62,7 @@ def test_append_sas_to_sqlite_round_trip():
     expected = convert(set, sasfile)
 
     with tmpfile('db') as fn:
-        r = resource('sqlite:///%s::SAS', dshape=discover(sasfile))
+        r = resource('sqlite:///%s::SAS' % fn, dshape=discover(sasfile))
         append(r, sasfile)
 
         result = convert(set, r)

@@ -1,13 +1,19 @@
 from __future__ import absolute_import, division, print_function
 
 import pytest
-
-psycopg2 = pytest.importorskip('psycopg2')
 import subprocess
-ps = subprocess.Popen("ps aux | grep postgres",shell=True, stdout=subprocess.PIPE)
+import itertools
+import re
+
+sa = pytest.importorskip('sqlalchemy')
+psycopg2 = pytest.importorskip('psycopg2')
+
+ps = subprocess.Popen("ps aux | grep postgres",
+                      shell=True, stdout=subprocess.PIPE)
 output = ps.stdout.read()
 num_processes = len(output.splitlines())
-pytestmark = pytest.mark.skipif(num_processes < 6, reason="No Postgres Installation")
+pytestmark = pytest.mark.skipif(num_processes < 6,
+                                reason="No Postgres Installation")
 
 
 from datashape import dshape
@@ -15,33 +21,37 @@ from into.backends.csv import CSV
 from into.backends.sql import create_from_datashape
 from into import into, resource
 from into.utils import assert_allclose
-import sqlalchemy
 import os
 import csv as csv_module
-import pandas as pd
-import datetime as dt
-import numpy as np
 
-url = 'postgresql://localhost/postgres'
+
 url = 'postgresql://postgres:postgres@localhost'
 file_name = 'test.csv'
 
+_names = ('table%d' % i for i in itertools.count())
+
 
 try:
-    engine = sqlalchemy.create_engine(url)
+    engine = sa.create_engine(url)
     name = 'tmpschema'
-    create = sqlalchemy.schema.CreateSchema(name)
+    create = sa.schema.CreateSchema(name)
     engine.execute(create)
-    metadata = sqlalchemy.MetaData()
+    metadata = sa.MetaData()
     metadata.reflect(engine, schema=name)
-    drop = sqlalchemy.schema.DropSchema(name)
+    drop = sa.schema.DropSchema(name)
     engine.execute(drop)
-except sqlalchemy.exc.OperationalError:
-    pytestmark = pytest.mark.skipif(True, reason="Can not connect to postgres")
+except sa.exc.OperationalError:
+    pytest.skip("Cannot connect to postgres")
+
+
+@pytest.fixture
+def tbl():
+    return next(_names)
 
 
 data = [(1, 2), (10, 20), (100, 200)]
 ds = dshape('var * {a: int32, b: int32}')
+
 
 def setup_function(function):
     with open(file_name, 'w') as f:
@@ -49,32 +59,30 @@ def setup_function(function):
         for row in data:
             csv_writer.writerow(row)
 
+
 def teardown_function(function):
     os.remove(file_name)
-    engine = sqlalchemy.create_engine(url)
-    metadata = sqlalchemy.MetaData()
+    engine = sa.create_engine(url)
+    metadata = sa.MetaData()
     metadata.reflect(engine)
 
     for t in metadata.tables:
-        if 'testtable' in t:
+        if re.match(r'^table\d+$', t) is not None:
             metadata.tables[t].drop(engine)
 
-def test_csv_postgres_load():
-    csv = CSV(file_name)
-    tbl = 'testtable'
 
-    engine = sqlalchemy.create_engine(url)
+def test_csv_postgres_load(tbl):
+    engine = sa.create_engine(url)
 
     if engine.has_table(tbl):
-        metadata = sqlalchemy.MetaData()
+        metadata = sa.MetaData()
         metadata.reflect(engine)
         t = metadata.tables[tbl]
         t.drop(engine)
 
-    create_from_datashape(engine, dshape('{testtable: %s}' % ds))
-    metadata = sqlalchemy.MetaData()
+    create_from_datashape(engine, dshape('{%s: %s}' % (tbl, ds)))
+    metadata = sa.MetaData()
     metadata.reflect(engine)
-    sql = metadata.tables[tbl]
     conn = engine.raw_connection()
 
     cursor = conn.cursor()
@@ -84,9 +92,7 @@ def test_csv_postgres_load():
     conn.commit()
 
 
-def test_simple_into():
-    tbl = 'testtable_into_2'
-
+def test_simple_into(tbl):
     csv = CSV(file_name)
     sql = resource(url, tbl, dshape=ds)
 
@@ -94,9 +100,8 @@ def test_simple_into():
 
     assert into(list, sql) == data
 
-def test_append():
-    tbl = 'testtable_into_append'
 
+def test_append(tbl):
     csv = CSV(file_name)
     sql = resource(url, tbl, dshape=ds)
 
@@ -107,31 +112,23 @@ def test_append():
     assert into(list, sql) == data + data
 
 
-def test_tryexcept_into():
-    tbl = 'testtable_into_2'
-
+def test_tryexcept_into(tbl):
     csv = CSV(file_name)
     sql = resource(url, tbl, dshape=ds)
 
-    into(sql, csv, quotechar="alpha") # uses multi-byte character and
-                                      # fails over to using sql.extend()
-
+    into(sql, csv, quotechar="alpha")  # uses multi-byte character
     assert into(list, sql) == data
 
 
-@pytest.mark.xfail(raises=KeyError)
-def test_failing_argument():
-    tbl = 'testtable_into_2'
-
+def test_failing_argument(tbl):
+    # this will start to fail if we ever restrict kwargs
     csv = CSV(file_name)
     sql = resource(url, tbl, dshape=ds)
 
-    into(sql, csv, skipinitialspace="alpha") # failing call
+    into(sql, csv, skipinitialspace="alpha")  # failing call
 
 
-def test_no_header_no_columns():
-    tbl = 'testtable_into_3'
-
+def test_no_header_no_columns(tbl):
     csv = CSV(file_name)
     sql = resource(url, tbl, dshape=ds)
 
@@ -140,13 +137,15 @@ def test_no_header_no_columns():
     assert into(list, sql) == data
 
 
-def test_complex_into():
+def test_complex_into(tbl):
     # data from: http://dummydata.me/generate
     this_dir = os.path.dirname(__file__)
     file_name = os.path.join(this_dir, 'dummydata.csv')
 
-    tbl = 'testtable_into_complex'
-    ds = dshape('var * {Name: string, RegistrationDate: date, ZipCode: int32, Consts: float64}')
+    ds = dshape("""
+    var * {
+        Name: string, RegistrationDate: date, ZipCode: int32, Consts: float64
+    }""")
 
     csv = CSV(file_name, has_header=True)
     sql = resource(url, tbl, dshape=ds)
