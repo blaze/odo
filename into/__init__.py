@@ -11,6 +11,7 @@ from .resource import resource
 from .directory import Directory
 from .into import into
 from .drop import drop
+from .temp import Temp
 from .chunks import chunks, Chunks
 from datashape import discover, dshape
 from collections import Iterator
