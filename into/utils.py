@@ -7,9 +7,13 @@ import inspect
 import datetime
 import tempfile
 import os
-import errno
 import numpy as np
 from .compatibility import unicode
+
+
+def ext(filename):
+    _, e = os.path.splitext(filename)
+    return e.lstrip(os.extsep)
 
 
 def raises(err, lamda):
