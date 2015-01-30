@@ -203,5 +203,13 @@ def tuples_to_records(ds, data):
     raise NotImplementedError()
 
 
+@contextmanager
+def ignoring(*exceptions):
+    try:
+        yield
+    except exceptions:
+        pass
+
+
 from multipledispatch import Dispatcher
 sample = Dispatcher('sample')
