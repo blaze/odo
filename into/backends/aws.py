@@ -14,15 +14,12 @@ import boto
 import pandas as pd
 
 from into import discover, CSV, resource, append, convert, drop
-from ..utils import tmpfile, ext
+from ..utils import tmpfile, ext, sample
 
 try:
     from urlparse import urlparse
 except ImportError:
     from urllib.parse import urlparse
-
-from multipledispatch import Dispatcher
-sample = Dispatcher('sample')
 
 
 @memoize
