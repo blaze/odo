@@ -71,19 +71,17 @@ _tmps = ('tmp%d' % i for i in itertools.count())
 @pytest.yield_fixture
 def s3_bucket(conn):
     key = next(_tmps)
-    yield 's3://%s/%s.csv' % (test_bucket_name, key)
-    obj = conn.get_bucket(test_bucket_name).get_key(key)
-    if obj is not None:
-        obj.delete()
+    b = 's3://%s/%s.csv' % (test_bucket_name, key)
+    yield b
+    drop(resource(b))
 
 
 @pytest.yield_fixture
 def gz_s3_bucket(conn):
     key = next(_tmps)
-    yield 's3://%s/%s.csv.gz' % (test_bucket_name, key)
-    obj = conn.get_bucket(test_bucket_name).get_key(key)
-    if obj is not None:
-        obj.delete()
+    b = 's3://%s/%s.csv.gz' % (test_bucket_name, key)
+    yield b
+    drop(resource(b))
 
 
 def test_s3_resource():
