@@ -232,7 +232,7 @@ def create_hive_statement(tbl_name, dshape, path=None, table_type='',
     assert isinstance(ds.measure, ct.Record)
     columns = [(name, dshape_to_hive(typ))
             for name, typ in zip(ds.measure.names, ds.measure.types)]
-    column_text = ',\n'.join('%20s  %s' % col for col in columns)[12:]
+    column_text = ',\n    '.join('%20s  %s' % col for col in columns).lstrip()
 
     statement = """
         CREATE {table_type} TABLE {db_name}{tbl_name} (
