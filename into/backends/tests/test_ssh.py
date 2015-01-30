@@ -1,4 +1,5 @@
-import paramiko
+import pytest
+pytest.importorskip('paramiko')
 
 from into.utils import tmpfile, filetext, filetexts, raises
 from into.directory import _Directory, Directory

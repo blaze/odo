@@ -26,6 +26,11 @@ test:
   requires:
     - pytest
     - coverage
+    - h5py
+    - pytables
+    - sqlalchemy
+    - bcolz
+    - pymongo
 
   commands:
     - python -c "import into; into.test()"
