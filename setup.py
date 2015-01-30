@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from os.path import exists
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(name='into',
       version='0.1.3',
