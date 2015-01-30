@@ -5,11 +5,14 @@ from contextlib import contextmanager
 from toolz import keyfilter, memoize, take
 from datashape import discover
 import re
-from ..directory import _Directory, Directory
+import uuid
 
+from ..directory import _Directory, Directory
 from ..utils import keywords, tmpfile, sample
 from ..resource import resource
 from ..append import append
+from ..convert import convert
+from ..temp import Temp
 from ..drop import drop
 
 
@@ -171,3 +174,10 @@ def append_sshX_to_X(target, source, **kwargs):
     with sftp(**source.auth) as conn:
         conn.get(source.path, target.path)
     return target
+
+
+@convert.register(Temp(SSH(CSV)), (Temp(CSV), CSV))
+def csv_to_temp_ssh_csv(data, **kwargs):
+    fn = '.%s.csv' % uuid.uuid1()
+    target = Temp(SSH(CSV))(fn, **kwargs)
+    return append(target, data, **kwargs)

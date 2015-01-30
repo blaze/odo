@@ -3,6 +3,7 @@ import paramiko
 from into.utils import tmpfile, filetext, filetexts, raises
 from into.directory import _Directory, Directory
 from into.backends.ssh import *
+from into.temp import _Temp, Temp
 from into import into
 import re
 import os
@@ -90,3 +91,12 @@ def test_drop():
             drop(scsv)
 
             assert not os.path.exists(target)
+
+
+def test_temp_ssh_files():
+    with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
+        csv = CSV(fn)
+        scsv = into(Temp(SSH(CSV)), csv, hostname='localhost')
+        assert discover(csv) == discover(scsv)
+
+        assert isinstance(scsv, _Temp)

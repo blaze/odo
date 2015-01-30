@@ -18,7 +18,7 @@ class _Temp(object):
 
 def Temp(cls):
     """ Parametrized Chunks Class """
-    return type('Temp(%s)' % cls.__name__, (_Temp, cls), {'subtype': cls})
+    return type('Temp(%s)' % cls.__name__, (_Temp, cls), {'persistent_type': cls})
 
 Temp.__doc__ = _Temp.__doc__
 
