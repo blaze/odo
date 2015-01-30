@@ -28,7 +28,7 @@ install:
   - source activate test-environment
 
   # Install PyMongo
-  - pip install pymongo pymysql paramiko sas7bdat psycopg2 pywebhdfs
+  - pip install pymongo pymysql paramiko sas7bdat psycopg2
 
   # Install DataShape
   - pip install --upgrade git+http://github.com/ContinuumIO/datashape
