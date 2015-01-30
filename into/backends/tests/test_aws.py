@@ -53,13 +53,18 @@ def conn():
     except boto.exception.S3ResponseError:
         pytest.skip('unable to connect to s3')
     else:
-        grants = conn.get_bucket(test_bucket_name).get_acl().acl.grants
-        if not any(g.permission == 'FULL_CONTROL' or
-                   g.permission == 'READ' for g in grants):
+        try:
+            grants = conn.get_bucket(test_bucket_name).get_acl().acl.grants
+        except boto.exception.S3ResponseError:
             pytest.skip('no permission to read on bucket %s' %
                         test_bucket_name)
         else:
-            return conn
+            if not any(g.permission == 'FULL_CONTROL' or
+                       g.permission == 'READ' for g in grants):
+                pytest.skip('no permission to read on bucket %s' %
+                            test_bucket_name)
+            else:
+                return conn
 
 
 test_bucket_name = 'into-redshift-csvs'
