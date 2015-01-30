@@ -1,5 +1,6 @@
 import pytest
 import os
+import itertools
 from into import into, resource, S3, discover, CSV, drop, append
 from into.utils import tmpfile
 import pandas as pd
@@ -34,8 +35,9 @@ def test_s3_to_local_csv():
 
 @pytest.fixture(scope='module')
 def conn():
+    # requires that you have a config file or envars defined for credentials
     try:
-        return boto.connect_s3()
+        conn = boto.connect_s3()
     except boto.exception.S3ResponseError:
         pytest.skip('unable to connect to s3')
     else:
@@ -44,6 +46,8 @@ def conn():
                    g.permission == 'READ' for g in grants):
             pytest.skip('no permission to read on bucket %s' %
                         test_bucket_name)
+        else:
+            return conn
 
 
 test_bucket_name = 'into-redshift-csvs'
@@ -54,6 +58,16 @@ test_key_name = 'tmp.csv'
 def s3_bucket(conn):
     yield 's3://%s/%s' % (test_bucket_name, test_key_name)
     conn.get_bucket(test_bucket_name).get_key(test_key_name).delete()
+
+
+_tmps = ('tmp%d.csv' % i for i in itertools.count())
+
+
+@pytest.yield_fixture
+def tmp_s3_bucket(conn):
+    key = next(_tmps)
+    yield 's3://%s/%s' % (test_bucket_name, key)
+    conn.get_bucket(test_bucket_name).get_key(key).delete()
 
 
 def test_csv_to_s3_append(s3_bucket):
@@ -85,16 +99,16 @@ def db():
         return key
 
 
-@pytest.mark.xfail(raises=IOError, reason='not implemented yet')
-def test_frame_to_s3():
+@pytest.mark.xfail(raises=(IOError, AttributeError),
+                   reason='No frame implementations yet')
+def test_frame_to_s3_to_frame(tmp_s3_bucket):
     df = pd.DataFrame({
         'a': list('abc'),
         'b': [1, 2, 3],
         'c': [1.0, 2.0, 3.0]
     })[['a', 'b', 'c']]
 
-    to_this = S3(CSV)('s3://nyqpug/test.csv')
-    s3_csv = into(to_this, df)
+    s3_csv = into(tmp_s3_bucket, df)
     result = into(pd.DataFrame, s3_csv)
     tm.assert_frame_equal(result, df)
 
