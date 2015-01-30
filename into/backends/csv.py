@@ -14,6 +14,7 @@ import pandas as pd
 import os
 import gzip
 import bz2
+import uuid
 
 from ..utils import keywords
 from ..append import append
@@ -240,6 +241,13 @@ def convert_glob_of_csvs_to_chunks_of_dataframes(csvs, **kwargs):
     def _():
         return concat(convert(chunks(pd.DataFrame), csv, **kwargs) for csv in csvs)
     return chunks(pd.DataFrame)(_)
+
+
+@convert.register(Temp(CSV), (pd.DataFrame, chunks(pd.DataFrame)))
+def convert_dataframes_to_temporary_csv(data, **kwargs):
+    fn = '.%s.csv' % uuid.uuid1()
+    csv = Temp(CSV)(fn, **kwargs)
+    return append(csv, data, **kwargs)
 
 
 @dispatch(CSV)

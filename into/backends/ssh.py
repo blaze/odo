@@ -159,7 +159,7 @@ def drop_ssh(data, **kwargs):
 @append.register(_SSH, object)
 def append_anything_to_ssh(target, source, **kwargs):
     if not isinstance(source, target.subtype):
-        raise NotImplementedError() # TODO: create local temp
+        source = convert(Temp(target.subtype), source, **kwargs)
     # TODO: handle overwrite case
     with sftp(**target.auth) as conn:
         conn.put(source.path, target.path)
