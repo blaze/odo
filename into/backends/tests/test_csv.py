@@ -263,3 +263,9 @@ def test_csv_separator_header():
     with filetext('a|b|c\n1|2|3\n4|5|6', extension='csv') as fn:
         csv = CSV(fn, delimiter='|', has_header=True)
         assert convert(list, csv) == [(1, 2, 3), (4, 5, 6)]
+
+
+def test_unicode_column_names():
+    with filetext('foo\xc4\x87,a\n1,2\n3,4', extension='csv') as fn:
+        csv = CSV(fn, has_header=True)
+        df = into(pd.DataFrame, csv)
