@@ -290,3 +290,9 @@ def test_convert_to_csv():
 
     assert into(list, csv) == into(list, df)
     assert isinstance(csv, _Temp)
+
+
+def test_unicode_column_names():
+    with filetext('foo\xc4\x87,a\n1,2\n3,4', extension='csv') as fn:
+        csv = CSV(fn, has_header=True)
+        df = into(pd.DataFrame, csv)
