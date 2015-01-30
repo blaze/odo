@@ -107,7 +107,8 @@ else:
                        ignore_header=int(kwargs.get('has_header',
                                                     csv.has_header)),
                        empty_as_null=True,
-                       blanks_as_null=False)
+                       blanks_as_null=False,
+                       compression={'gz': 'GZIP'}.get(ext(csv.path), ''))
 
         if schema_name is None:
             if tbl.schema is not None:
@@ -121,8 +122,7 @@ else:
                           access_key=aws_access_key_id,
                           secret_key=aws_secret_access_key,
                           options=options,
-                          format='CSV',
-                          compression={'gz': 'GZIP'}.get(ext(csv.path), ''))
+                          format='CSV')
         return re.sub(r'\s+(;)', r'\1', re.sub(r'\s+', ' ', str(cmd))).strip()
 
 
