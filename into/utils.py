@@ -205,3 +205,15 @@ def tuples_to_records(ds, data):
     if not isinstance(ds.measure, Record):
         return data
     raise NotImplementedError()
+
+
+@contextmanager
+def ignoring(*exceptions):
+    try:
+        yield
+    except exceptions:
+        pass
+
+
+from multipledispatch import Dispatcher
+sample = Dispatcher('sample')

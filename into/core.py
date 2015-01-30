@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import networkx as nx
 from datashape import discover
-from .utils import expand_tuples, cls_name
+from .utils import expand_tuples, cls_name, ignoring
 from contextlib import contextmanager
 
 
@@ -34,11 +34,9 @@ def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types,
     """ Transform source to target type using graph of transformations """
     x = source
     excluded_edges = excluded_edges or set()
-    try:
+    with ignoring(NotImplementedError):
         if 'dshape' not in kwargs:
             kwargs['dshape'] = discover(x)
-    except NotImplementedError:
-        pass
     pth = path(graph, type(source), target,
                excluded_edges=excluded_edges,
                ooc_types=ooc_types)

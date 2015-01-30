@@ -12,6 +12,7 @@ import os
 import gzip
 import bz2
 
+from ..compatibility import unicode
 from ..utils import keywords
 from ..append import append
 from ..convert import convert, ooc_types
@@ -198,7 +199,9 @@ def discover_csv(c, nrows=1000, **kwargs):
         df = csv_to_DataFrame(c, chunksize=50, has_header=False).get_chunk()
         df = coerce_datetimes(df)
 
-    df.columns = [str(col).strip() for col in df.columns]
+    columns = [str(c) if not isinstance(c, (str, unicode)) else c
+                for c in df.columns]
+    df.columns = [c.strip() for c in columns]
 
     # Replace np.nan with None.  Forces type string rather than flaot
     for col in df.columns:
@@ -242,38 +245,6 @@ def convert_glob_of_csvs_to_chunks_of_dataframes(csvs, **kwargs):
 @dispatch(CSV)
 def drop(c):
     os.unlink(c.path)
-
-
-"""
-@append.register(CSV, Iterator)
-def append_iterator_to_csv(c, seq, dshape=None, **kwargs):
-    f = open(c.path, mode='a')
-
-    # TODO: handle dict case
-    writer = csv.writer(f, **c.dialect)
-    writer.writerows(seq)
-    return c
-
-
-try:
-    from dynd import nd
-    @convert.register(Iterator, CSV)
-    def csv_to_iterator(c, chunksize=1024, dshape=None, **kwargs):
-        f = open(c.path)
-        reader = csv.reader(f, **c.dialect)
-        if c.header:
-            next(reader)
-
-        # Launder types through DyND
-        seq = pipe(reader, partition_all(chunksize),
-                           map(partial(nd.array, type=str(dshape.measure))),
-                           map(partial(nd.as_py, tuple=True)),
-                           concat)
-
-        return reader
-except ImportError:
-    pass
-"""
 
 
 ooc_types.add(CSV)
