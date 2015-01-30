@@ -8,3 +8,5 @@ sqlalchemy
 h5py
 pymongo
 bcolz
+sas7bdat
+paramiko

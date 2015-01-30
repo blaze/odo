@@ -14,7 +14,7 @@ from into import convert, append, resource, discover, into
 
 def test_resource():
     sql = resource('sqlite:///:memory:::mytable',
-                    dshape='var * {x: int, y: int}')
+                   dshape='var * {x: int, y: int}')
     assert isinstance(sql, sa.Table)
     assert sql.name == 'mytable'
     assert isinstance(sql.bind, sa.engine.base.Engine)
@@ -25,14 +25,19 @@ def test_append_and_convert_round_trip():
     engine = sa.create_engine('sqlite:///:memory:')
     metadata = sa.MetaData(engine)
     t = sa.Table('bank', metadata,
-                         sa.Column('name', sa.String, primary_key=True),
-                         sa.Column('balance', sa.Integer))
+                 sa.Column('name', sa.String, primary_key=True),
+                 sa.Column('balance', sa.Integer))
     t.create()
 
     data = [('Alice', 1), ('Bob', 2)]
     append(t, data)
 
     assert convert(list, t) == data
+
+
+def test_plus_must_have_text():
+    with pytest.raises(NotImplementedError):
+        resource('redshift+://user:pass@host:1234/db')
 
 
 def test_resource_on_file():
@@ -116,6 +121,10 @@ def test_select_to_iterator():
 
     assert convert(int, sel2, dshape=dshape('int')) == 300
 
+    sel3 = sa.select([t])
+
+    result = convert(list, sel3, dshape=discover(t))
+    assert type(result[0]) is tuple
 
 def test_discovery_engine():
     engine, t = single_table_engine()
@@ -241,3 +250,13 @@ def test_append_from_select(sqlite_file):
     result = into(list, t)
     expected = np.concatenate((raw, raw2)).tolist()
     assert result == expected
+
+
+def test_engine_metadata_caching():
+    with tmpfile('db') as fn:
+        engine = resource('sqlite:///' + fn)
+        a = resource('sqlite:///' + fn + '::a', dshape=dshape('var * {x: int}'))
+        b = resource('sqlite:///' + fn + '::b', dshape=dshape('var * {y: int}'))
+
+        assert a.metadata is b.metadata
+        assert engine is a.bind is b.bind

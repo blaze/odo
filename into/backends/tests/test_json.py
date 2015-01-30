@@ -4,6 +4,8 @@ from into import into
 from contextlib import contextmanager
 from datashape import dshape
 import datetime
+import gzip
+import os
 import json
 
 @contextmanager
@@ -130,3 +132,76 @@ def test_json_encoder():
                        default=json_dumps)
     assert result == '[1, "2000-01-01T12:30:00Z"]'
     assert json.loads(result) == [1, "2000-01-01T12:30:00Z"]
+
+
+def test_empty_line():
+    text = '{"a": 1}\n{"a": 2}\n\n'  # extra endline
+    with tmpfile('.json') as fn:
+        with open(fn, 'w') as f:
+            f.write(text)
+        j = JSONLines(fn)
+        assert len(convert(list, j)) == 2
+
+
+def test_multiple_jsonlines():
+    try:
+        with open('_test_a1.json', 'w') as f:
+            json.dump(dat, f)
+        with open('_test_a2.json', 'w') as f:
+            json.dump(dat, f)
+        r = resource('_test_a*.json')
+        result = convert(list, r)
+        assert len(result) == len(dat) * 2
+    finally:
+        os.remove('_test_a1.json')
+        os.remove('_test_a2.json')
+
+
+def test_read_gzip_lines():
+    with tmpfile('json.gz') as fn:
+        f = gzip.open(fn, 'wb')
+        for item in dat:
+            s = json.dumps(item).encode('utf-8')
+            f.write(s)
+            f.write(b'\n')
+        f.close()
+        js = JSONLines(fn)
+        assert convert(list, js) == dat
+
+
+def test_read_gzip():
+    with tmpfile('json.gz') as fn:
+        f = gzip.open(fn, 'wb')
+        s = json.dumps(dat).encode('utf-8')
+        f.write(s)
+        f.close()
+        js = JSON(fn)
+        assert convert(list, js) == dat
+
+
+def test_write_gzip_lines():
+    with tmpfile('json.gz') as fn:
+        j = JSONLines(fn)
+        append(j, dat)
+
+        f = gzip.open(fn)
+        line = next(f)
+        f.close()
+        assert line.decode('utf-8').strip() == str(json.dumps(dat[0]))
+
+def test_write_gzip():
+    with tmpfile('json.gz') as fn:
+        j = JSON(fn)
+        append(j, dat)
+
+        f = gzip.open(fn)
+        text = f.read()
+        f.close()
+        assert text.decode('utf-8').strip() == str(json.dumps(dat))
+
+
+def test_resource_gzip():
+    assert isinstance(resource('foo.json.gz'), (JSON, JSONLines))
+    assert isinstance(resource('json://foo.json.gz'), (JSON, JSONLines))
+    assert isinstance(resource('jsonlines://foo.json.gz'), (JSON, JSONLines))
+    assert isinstance(resource('jsonlines://foo.jsonlines.gz'), (JSON, JSONLines))

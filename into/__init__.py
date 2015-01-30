@@ -4,9 +4,11 @@ from multipledispatch import halt_ordering, restart_ordering
 
 halt_ordering() # Turn off multipledispatch ordering
 
+from .utils import ignoring
 from .convert import convert
 from .append import append
 from .resource import resource
+from .directory import Directory
 from .into import into
 from .drop import drop
 from .chunks import chunks, Chunks
@@ -14,54 +16,36 @@ from datashape import discover, dshape
 from collections import Iterator
 import numpy as np
 
-try:
+with ignoring(ImportError):
+     from .backends.sas import sas7bdat
+with ignoring(ImportError):
      from .backends.pandas import pd
-except:
-    pass
-try:
+with ignoring(ImportError):
      from .backends.bcolz import bcolz
-except:
-    pass
-try:
+with ignoring(ImportError):
      from .backends.h5py import h5py
-except:
-    pass
-try:
+with ignoring(ImportError):
      from .backends.hdfstore import HDFStore
-except:
-    pass
-try:
+with ignoring(ImportError):
      from .backends.pytables import tables
-except:
-    pass
-try:
+with ignoring(ImportError):
      from .backends.dynd import nd
-except:
-    pass
-try:
+with ignoring(ImportError):
      from .backends import sql
-except:
-    pass
-try:
+with ignoring(ImportError):
      from .backends import mongo
-except:
-    pass
-try:
+with ignoring(ImportError):
      from .backends.csv import CSV
-except:
-    pass
-try:
+with ignoring(ImportError):
      from .backends.json import JSON, JSONLines
-except:
-    pass
-try:
+with ignoring(ImportError):
+     from .backends.hdfs import HDFS
+with ignoring(ImportError):
+     from .backends.ssh import SSH
+with ignoring(ImportError):
      from .backends import sql_csv
-except:
-    pass
-try:
+with ignoring(ImportError):
      from .backends.bokeh import ColumnDataSource
-except:
-    pass
 
 
 restart_ordering() # Restart multipledispatch ordering and do ordering

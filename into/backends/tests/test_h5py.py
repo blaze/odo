@@ -1,15 +1,17 @@
 from __future__ import absolute_import, division, print_function
 
-from into.backends.h5py import (append, create, resource, discover, convert,
-        resource_h5py)
+import os
 from contextlib import contextmanager
+
+from into.backends.h5py import append, create, resource, discover, convert
+from into.backends.h5py import unicode_dtype
+
 from into.utils import tmpfile
 from into.chunks import chunks
-from into import into, append, convert, discover
+from into import into, append, convert, discover, drop
 import datashape
 import h5py
 import numpy as np
-import os
 
 
 @contextmanager
@@ -28,10 +30,58 @@ def file(x):
 x = np.ones((2, 3), dtype='i4')
 
 
+def test_drop_group():
+    with tmpfile('.hdf5') as fn:
+        f = h5py.File(fn)
+        try:
+            f.create_dataset('/group/data', data=x, chunks=True,
+                             maxshape=(None,) + x.shape[1:])
+            drop(f['/group'])
+            assert '/group' not in f.keys()
+        finally:
+            f.close()
+
+
+def test_drop_dataset():
+    with tmpfile('.hdf5') as fn:
+        f = h5py.File(fn)
+        try:
+            data = f.create_dataset('/data', data=x, chunks=True,
+                                    maxshape=(None,) + x.shape[1:])
+
+            drop(data)
+            assert '/data' not in f.keys()
+        finally:
+            f.close()
+
+
+def test_drop_file():
+    with file(x) as (fn, f, data):
+        drop(f)
+    assert not os.path.exists(fn)
+
+
 def test_discover():
     with file(x) as (fn, f, dset):
         assert str(discover(dset)) == str(discover(x))
         assert str(discover(f)) == str(discover({'data': x}))
+
+
+def test_discover_on_data_with_object_in_record_name():
+    data = np.array([(u'a', 1), (u'b', 2)], dtype=[('lrg_object',
+                                                    unicode_dtype),
+                                                   ('an_int', 'int64')])
+    with tmpfile('.hdf5') as fn:
+        f = h5py.File(fn)
+        try:
+            f.create_dataset('/data', data=data)
+        except:
+            raise
+        else:
+            assert (discover(f['data']) ==
+                    datashape.dshape('2 * {lrg_object: string, an_int: int64}'))
+        finally:
+            f.close()
 
 
 def eq(a, b):
@@ -49,7 +99,7 @@ def test_append():
 
 def test_into_resource():
     with tmpfile('.hdf5') as fn:
-        d = into(fn+'::/x', x)
+        d = into(fn + '::/x', x)
         assert d.shape == x.shape
         assert eq(d[:], x[:])
 

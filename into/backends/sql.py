@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import re
 import sqlalchemy as sa
 from itertools import chain
 from collections import Iterator
@@ -9,7 +10,7 @@ from datashape import discover
 from datashape.dispatch import dispatch
 from datetime import datetime, date
 import datashape
-from toolz import partition_all, keyfilter, first, pluck
+from toolz import partition_all, keyfilter, first, pluck, memoize, map
 
 from ..utils import keywords
 from ..convert import convert, ooc_types
@@ -89,23 +90,40 @@ def discover_sqlalchemy_table(t):
     return var * Record(list(sum([discover(c).parameters[0] for c in t.columns], ())))
 
 
+@memoize
+def metadata_of_engine(engine):
+    metadata = sa.MetaData(engine)
+    return metadata
+
+
+def create_engine(uri, *args, **kwargs):
+    if ':memory:' in uri:
+        return sa.create_engine(uri, *args, **kwargs)
+    else:
+        return memoized_create_engine(uri, *args, **kwargs)
+
+
+memoized_create_engine = memoize(sa.create_engine)
+
+
 @dispatch(sa.engine.base.Engine, str)
 def discover(engine, tablename):
-    metadata = sa.MetaData()
-    metadata.reflect(engine, views=True)
+    metadata = metadata_of_engine(engine)
+    if tablename not in metadata.tables:
+        metadata.reflect(engine, views=engine.dialect.supports_views)
     table = metadata.tables[tablename]
     return discover(table)
 
 
 @dispatch(sa.engine.base.Engine)
 def discover(engine):
-    metadata = sa.MetaData(engine)
+    metadata = metadata_of_engine(engine)
     return discover(metadata)
 
 
 @dispatch(sa.MetaData)
 def discover(metadata):
-    metadata.reflect(views=True)
+    metadata.reflect(views=metadata.bind.dialect.supports_views)
     pairs = []
     for name, table in sorted(metadata.tables.items(), key=first):
         try:
@@ -151,7 +169,7 @@ def create_from_datashape(o, ds, **kwargs):
 @dispatch(sa.engine.base.Engine, DataShape)
 def create_from_datashape(engine, ds, **kwargs):
     assert isrecord(ds)
-    metadata = sa.MetaData(engine)
+    metadata = metadata_of_engine(engine)
     for name, sub_ds in ds[0].dict.items():
         t = dshape_to_table(name, sub_ds, metadata=metadata)
         t.create()
@@ -222,6 +240,8 @@ def select_to_iterator(sel, dshape=None, **kwargs):
         result = conn.execute(sel)
         if dshape and isscalar(dshape.measure):
             result = pluck(0, result)
+        else:
+            result = map(tuple, result)  # Turn RowProxy into tuple
 
         for item in result:
             yield item
@@ -294,16 +314,15 @@ def append_select_statement_to_sql_Table(t, o, **kwargs):
     return t
 
 
-@resource.register('(.*sql.*|oracle)(\+\w*)?://.+')
+@resource.register('(.*sql.*|oracle|redshift)(\+\w+)?://.+')
 def resource_sql(uri, *args, **kwargs):
-    kwargs2 = keyfilter(keywords(sa.create_engine).__contains__,
-                       kwargs)
-    engine = sa.create_engine(uri, **kwargs2)
+    kwargs2 = keyfilter(keywords(sa.create_engine).__contains__, kwargs)
+    engine = create_engine(uri, **kwargs2)
     ds = kwargs.get('dshape')
     if args and isinstance(args[0], str):
         table_name, args = args[0], args[1:]
-        metadata = sa.MetaData(engine)
-        metadata.reflect(views=True)
+        metadata = metadata_of_engine(engine)
+        metadata.reflect(views=engine.dialect.supports_views)
         if table_name not in metadata.tables:
             if ds:
                 t = dshape_to_table(table_name, ds, metadata)
@@ -342,7 +361,24 @@ def resource_hive(uri, *args, **kwargs):
         import pyhive
     except ImportError:
         raise ImportError("Please install the `PyHive` library.")
-    return resource_sql(uri, *args, **kwargs)
+
+    pattern = 'hive://((?P<user>[a-zA-Z_]\w*)@)?(?P<host>[\w.]+)(:(?P<port>\d*))?(/(?P<database>\w*))?'
+    d = re.search(pattern, uri.split('::')[0]).groupdict()
+
+    defaults = {'port': '10000',
+                'user': 'hdfs',
+                'database': 'default'}
+    for k, v in d.items():
+        if not v:
+            d[k] = defaults[k]
+    if d['user']:
+        d['user'] = d['user'] + '@'
+
+    uri2 = 'hive://%(user)s%(host)s:%(port)s/%(database)s' % d
+    if '::' in uri:
+        uri2 = uri2 + '::' + uri.split('::')[1]
+
+    return resource_sql(uri2, *args, **kwargs)
 
 
 ooc_types.add(sa.Table)
