@@ -15,6 +15,7 @@ import os
 import gzip
 import bz2
 
+from ..compatibility import unicode
 from ..utils import keywords
 from ..append import append
 from ..convert import convert, ooc_types
@@ -200,7 +201,9 @@ def discover_csv(c, nrows=1000, **kwargs):
         df = csv_to_DataFrame(c, chunksize=50, has_header=False).get_chunk()
         df = coerce_datetimes(df)
 
-    df.columns = [str(c).strip() for c in df.columns]
+    columns = [str(c) if not isinstance(c, (str, unicode)) else c
+                for c in df.columns]
+    df.columns = [c.strip() for c in columns]
 
     # Replace np.nan with None.  Forces type string rather than flaot
     for col in df.columns:
