@@ -42,7 +42,7 @@ install:
 
   # aws things
   - pip install boto
-  - pip install redshift_sqlalchemy
+  - pip install git+git://github.com/cpcloud/redshift_sqlalchemy
 
   # redshift sqlalchemy dialect
   - pip install --upgrade git+git://github.com/binarydud/redshift_sqlalchemy
