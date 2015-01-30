@@ -1,6 +1,8 @@
 import pytest
 paramiko = pytest.importorskip('paramiko')
 
+import pandas as pd
+import numpy as np
 import re
 import os
 
@@ -8,7 +10,8 @@ from into.utils import tmpfile, filetext
 from into.directory import _Directory, Directory
 from into.backends.ssh import SSH, resource, ssh_pattern, sftp, drop
 from into.backends.csv import CSV
-from into import into, discover
+from into import into, discover, CSV, JSONLines, JSON
+from into.temp import _Temp, Temp
 
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -91,3 +94,33 @@ def test_drop():
             drop(scsv)
 
             assert not os.path.exists(target)
+
+
+def test_drop_of_csv_json_lines_use_ssh_version():
+    from into.backends.ssh import drop_ssh
+    for typ in [CSV, JSON, JSONLines]:
+        assert drop.dispatch(SSH(typ)) == drop_ssh
+
+
+def test_temp_ssh_files():
+    with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
+        csv = CSV(fn)
+        scsv = into(Temp(SSH(CSV)), csv, hostname='localhost')
+        assert discover(csv) == discover(scsv)
+
+        assert isinstance(scsv, _Temp)
+
+
+def test_convert_through_temporary_local_storage():
+    with filetext('name,quantity\nAlice,100\nBob,200', extension='csv') as fn:
+        csv = CSV(fn)
+        df = into(pd.DataFrame, csv)
+        scsv = into(Temp(SSH(CSV)), csv, hostname='localhost')
+
+        assert into(list, csv) == into(list, scsv)
+
+        scsv2 = into(Temp(SSH(CSV)), df, hostname='localhost')
+        assert into(list, scsv2) == into(list, df)
+
+        sjson = into(Temp(SSH(JSONLines)), df, hostname='localhost')
+        assert (into(np.ndarray, sjson) == into(np.ndarray, df)).all()
