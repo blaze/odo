@@ -1,9 +1,11 @@
 from into.backends.json import *
 from into.utils import tmpfile
 from into import into
+from into.temp import Temp, _Temp
 from contextlib import contextmanager
 from datashape import dshape
 import datetime
+import os
 import gzip
 import os
 import json
@@ -205,3 +207,21 @@ def test_resource_gzip():
     assert isinstance(resource('json://foo.json.gz'), (JSON, JSONLines))
     assert isinstance(resource('jsonlines://foo.json.gz'), (JSON, JSONLines))
     assert isinstance(resource('jsonlines://foo.jsonlines.gz'), (JSON, JSONLines))
+
+
+def test_convert_to_temp_json():
+    js = convert(Temp(JSON), [1, 2, 3])
+    assert isinstance(js, JSON)
+    assert isinstance(js, _Temp)
+
+    assert convert(list, js) == [1, 2, 3]
+
+
+def test_drop():
+    with tmpfile('json') as fn:
+        js = JSON(fn)
+        append(js, [1, 2, 3])
+
+        assert os.path.exists(fn)
+        drop(js)
+        assert not os.path.exists(fn)
