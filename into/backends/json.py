@@ -15,6 +15,7 @@ from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
 from ..chunks import chunks
+from ..temp import Temp
 from ..utils import tuples_to_records
 
 
@@ -90,12 +91,12 @@ def discover_jsonlines(j, n=10, encoding='utf-8', **kwargs):
 
 
 
-@convert.register(list, JSON)
+@convert.register(list, (JSON, Temp(JSON)))
 def json_to_list(j, dshape=None, **kwargs):
     return json_load(j.path, **kwargs)
 
 
-@convert.register(Iterator, JSONLines)
+@convert.register(Iterator, (JSONLines, Temp(JSONLines)))
 def json_lines_to_iterator(j, encoding='utf-8', **kwargs):
     with json_lines(j.path, encoding=encoding) as lines:
         for item in pipe(lines, filter(nonempty), map(json.loads)):
@@ -258,14 +259,14 @@ def json_dumps(dt):
     return dt.isoformat()
 
 
-@convert.register(chunks(list), chunks(JSON))
+@convert.register(chunks(list), (chunks(JSON), chunks(Temp(JSON))))
 def convert_glob_of_jsons_into_chunks_of_lists(jsons, **kwargs):
     def _():
         return concat(convert(chunks(list), js, **kwargs) for js in jsons)
     return chunks(list)(_)
 
 
-@convert.register(chunks(Iterator), chunks(JSONLines))
+@convert.register(chunks(Iterator), (chunks(JSONLines), chunks(Temp(JSONLines))))
 def convert_glob_of_jsons_into_chunks_of_lists(jsons, **kwargs):
     def _():
         return concat(convert(chunks(Iterator), js, **kwargs) for js in jsons)

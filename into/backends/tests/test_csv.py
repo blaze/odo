@@ -11,7 +11,7 @@ from collections import Iterator
 from into.backends.csv import (CSV, append, convert, resource,
         csv_to_DataFrame, CSV_to_chunks_of_dataframes)
 from into.utils import tmpfile, filetext, filetexts, raises
-from into import into, append, convert, resource, discover, dshape
+from into import into, append, convert, resource, discover, dshape, Temp
 from into.compatibility import unicode, skipif
 
 
@@ -263,3 +263,19 @@ def test_csv_separator_header():
     with filetext('a|b|c\n1|2|3\n4|5|6', extension='csv') as fn:
         csv = CSV(fn, delimiter='|', has_header=True)
         assert convert(list, csv) == [(1, 2, 3), (4, 5, 6)]
+
+
+def test_temp_csv():
+    df = pd.DataFrame([['Alice',   100],
+                       ['Bob',     200],
+                       ['Charlie', 300]],
+                      columns=['name', 'balance'])
+    csv = into(Temp(CSV)('_test_temp_csv.csv'), df)
+    assert isinstance(csv, CSV)
+
+    assert into(list, csv) == into(list, df)
+
+    del csv
+    import gc
+    gc.collect()
+    assert not os.path.exists('_test_temp_csv.csv')
