@@ -87,7 +87,7 @@ def S3(cls):
     return type('S3(%s)' % cls.__name__, (_S3, cls), {'subtype': cls})
 
 
-@resource.register('s3://.*\.csv', priority=18)
+@resource.register('s3://.*\.csv(\.gz)?', priority=18)
 def resource_s3_csv(uri, **kwargs):
     return S3(CSV)(uri, **kwargs)
 
@@ -193,8 +193,8 @@ def pmap(f, iterable):
     return result
 
 
-def write(triple, opener):
-    """Write a file using the input from `gentemp` using `opener` and return
+def write(triple, writer):
+    """Write a file using the input from `gentemp` using `writer` and return
     its index and filename.
 
     Parameters
@@ -211,7 +211,7 @@ def write(triple, opener):
         filename after splitting files.
     """
     i, filename, data = triple
-    with opener(filename, mode='wb') as f:
+    with writer(filename, mode='wb') as f:
         f.write(data)
     return i, filename
 
@@ -231,9 +231,23 @@ def gentemp(it, suffix=None):
         yield i, fn, data
 
 
-def split(filename, nbytes=_MIN_CHUNK_SIZE, suffix=None, compression=None):
+def split(filename, nbytes, suffix=None, writer=open):
+    """Split a file into chunks of size `nbytes` with each filename containing
+    a suffix specified by `suffix`. The file will be written with the ``write``
+    method of an instance of `writer`.
+
+    Parameters
+    ----------
+    filename : str
+        The file to split
+    nbytes : int
+        Split `filename` into chunks of this size
+    suffix : str, optional
+    writer : callable, optional
+        Callable object to use to write the chunks of `filename`
+    """
     with open(filename, mode='rb') as f:
-        return pmap(curry(write, compression=compression),
+        return pmap(curry(write, writer=writer),
                     gentemp(iter(curry(f.read, nbytes), ''), suffix=suffix))
 
 
@@ -247,15 +261,26 @@ def append_csv_to_s3(s3, csv,
         if chunksize < _MIN_CHUNK_SIZE:
             raise ValueError('multipart upload with chunksize < %d are not '
                              'allowed by AWS' % _MIN_CHUNK_SIZE)
-        opener = gzip.GzipFile if compression == 'gz' else open
+        if compression is None:
+            compression = ext(s3.path)
+        if compression == 'gz':
+            raise ValueError('gzip compression for multipart uploads not '
+                             'implemented')
+
+        # FIXME: implement this properly
+        # see http://stackoverflow.com/questions/15754610/how-to-gzip-while-uploading-into-s3-using-boto
+        # and https://github.com/wrobstory/pgshift/blob/master/pgshift/pgshift.py#L143
+        writer = gzip.GzipFile if compression == 'gz' else open
         with multipart_upload(s3.object) as mp:
             pipe(csv.path,
                  curry(split,
+                       nbytes=chunksize,
                        suffix=os.extsep + ext(csv.path),
-                       opener=opener),
+                       writer=writer),
                  curry(pmap, curry(upload_part, mp, s3.s3)),
                  map(os.remove))
     else:
+        # TODO: implement gzip single file uploads
         s3.object.set_contents_from_filename(csv.path)
     return s3
 
