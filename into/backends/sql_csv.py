@@ -7,6 +7,7 @@ import sqlalchemy
 from ..regex import RegexDispatcher
 from ..append import append
 from .csv import CSV
+from ..utils import ext
 
 copy_command = RegexDispatcher('copy_command')
 execute_copy = RegexDispatcher('execute_copy')
@@ -105,7 +106,8 @@ else:
                                             csv.dialect.get('delimiter', ',')),
                        ignore_header=int(kwargs.get('has_header',
                                                     csv.has_header)),
-                       empty_as_null=True, blanks_as_null=False)
+                       empty_as_null=True,
+                       blanks_as_null=False)
 
         if schema_name is None:
             if tbl.schema is not None:
@@ -118,7 +120,9 @@ else:
                           data_location=csv.path,
                           access_key=aws_access_key_id,
                           secret_key=aws_secret_access_key,
-                          options=options)
+                          options=options,
+                          format='CSV',
+                          compression={'gz': 'GZIP'}.get(ext(csv.path), ''))
         return re.sub(r'\s+(;)', r'\1', re.sub(r'\s+', ' ', str(cmd))).strip()
 
 
