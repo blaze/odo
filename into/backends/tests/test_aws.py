@@ -2,6 +2,7 @@ import pytest
 import os
 import itertools
 from into import into, resource, S3, discover, CSV, drop, append
+from into.backends.aws import urlparse
 from into.utils import tmpfile
 import pandas as pd
 import pandas.util.testing as tm
@@ -16,21 +17,32 @@ pytest.importorskip('redshift_sqlalchemy')
 tips_uri = 's3://nyqpug/tips.csv'
 
 
-def test_s3_resource():
-    csv = resource(tips_uri)
-    assert isinstance(csv, S3(CSV))
+@pytest.fixture
+def db():
+    key = os.environ.get('REDSHIFT_DB_URI', None)
+    if not key:
+        pytest.skip('Please define a non-empty environment variable called '
+                    'REDSHIFT_DB_URI to test redshift <- S3')
+    else:
+        return key
 
 
-def test_s3_discover():
-    csv = resource(tips_uri)
-    assert isinstance(discover(csv), datashape.DataShape)
+@pytest.fixture(scope='module')
+def large_file():
+    try:
+        filename = os.environ['LARGE_REDSHIFT_CSV']
+    except KeyError:
+        pytest.skip("no envar LARGE_REDSHIFT_CSV")
+    else:
+        if os.path.getsize(filename) < 100 * 1 << 20:
+            pytest.skip('file must be at least 100MB in size')
+        else:
+            return filename
 
 
-def test_s3_to_local_csv():
-    with tmpfile('.csv') as fn:
-        csv = into(fn, tips_uri)
-        path = os.path.abspath(csv.path)
-        assert os.path.exists(path)
+@pytest.fixture
+def temp_tb(db):
+    return '%s::%s' % (db, next(_tmps))
 
 
 @pytest.fixture(scope='module')
@@ -51,23 +63,44 @@ def conn():
 
 
 test_bucket_name = 'into-redshift-csvs'
-test_key_name = 'tmp.csv'
+
+
+_tmps = ('tmp%d' % i for i in itertools.count())
 
 
 @pytest.yield_fixture
 def s3_bucket(conn):
-    yield 's3://%s/%s' % (test_bucket_name, test_key_name)
-    conn.get_bucket(test_bucket_name).get_key(test_key_name).delete()
-
-
-_tmps = ('tmp%d.csv' % i for i in itertools.count())
+    key = next(_tmps)
+    yield 's3://%s/%s.csv' % (test_bucket_name, key)
+    obj = conn.get_bucket(test_bucket_name).get_key(key)
+    if obj is not None:
+        obj.delete()
 
 
 @pytest.yield_fixture
-def tmp_s3_bucket(conn):
+def gz_s3_bucket(conn):
     key = next(_tmps)
-    yield 's3://%s/%s' % (test_bucket_name, key)
-    conn.get_bucket(test_bucket_name).get_key(key).delete()
+    yield 's3://%s/%s.csv.gz' % (test_bucket_name, key)
+    obj = conn.get_bucket(test_bucket_name).get_key(key)
+    if obj is not None:
+        obj.delete()
+
+
+def test_s3_resource():
+    csv = resource(tips_uri)
+    assert isinstance(csv, S3(CSV))
+
+
+def test_s3_discover():
+    csv = resource(tips_uri)
+    assert isinstance(discover(csv), datashape.DataShape)
+
+
+def test_s3_to_local_csv():
+    with tmpfile('.csv') as fn:
+        csv = into(fn, tips_uri)
+        path = os.path.abspath(csv.path)
+        assert os.path.exists(path)
 
 
 def test_csv_to_s3_append(s3_bucket):
@@ -87,30 +120,6 @@ def test_csv_to_s3_into(s3_bucket):
         s3 = into(s3_bucket, CSV(fn))
     result = into(pd.DataFrame, s3)
     tm.assert_frame_equal(df, result)
-
-
-@pytest.fixture
-def db():
-    key = os.environ.get('REDSHIFT_DB_URI', None)
-    if not key:
-        pytest.skip('Please define a non-empty environment variable called '
-                    'REDSHIFT_DB_URI to test redshift <- S3')
-    else:
-        return key
-
-
-@pytest.mark.xfail(raises=(IOError, AttributeError),
-                   reason='No frame implementations yet')
-def test_frame_to_s3_to_frame(tmp_s3_bucket):
-    df = pd.DataFrame({
-        'a': list('abc'),
-        'b': [1, 2, 3],
-        'c': [1.0, 2.0, 3.0]
-    })[['a', 'b', 'c']]
-
-    s3_csv = into(tmp_s3_bucket, df)
-    result = into(pd.DataFrame, s3_csv)
-    tm.assert_frame_equal(result, df)
 
 
 def test_s3_to_redshift(db):
@@ -176,4 +185,36 @@ def test_redshift_getting_started(db):
         assert table.bind.execute("select count(*) from users;").scalar() == n
     finally:
         # don't hang around
+        drop(table)
+
+
+@pytest.mark.xfail(raises=(IOError, AttributeError),
+                   reason='No frame implementations yet')
+def test_frame_to_s3_to_frame(s3_bucket):
+    df = pd.DataFrame({
+        'a': list('abc'),
+        'b': [1, 2, 3],
+        'c': [1.0, 2.0, 3.0]
+    })[['a', 'b', 'c']]
+
+    s3_csv = into(s3_bucket, df)
+    result = into(pd.DataFrame, s3_csv)
+    tm.assert_frame_equal(result, df)
+
+
+@pytest.mark.xfail(raises=ValueError,
+                   reason='gzip not implemented for multipart uploads')
+def test_large_gzip_to_redshift(large_file, gz_s3_bucket, temp_tb):
+    s3 = into(gz_s3_bucket, large_file)
+    table = into(temp_tb, s3)
+    drop(table)
+
+
+def test_large_raw_to_redshift(large_file, s3_bucket, temp_tb):
+    s3 = into(s3_bucket, large_file)
+    table = into(temp_tb, s3)
+    try:
+        assert (table.bind.execute("select count(*) from %s;" %
+                temp_tb.split('::', 1)[1]).scalar() == 1 << 20)
+    finally:
         drop(table)
