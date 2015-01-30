@@ -96,6 +96,12 @@ def test_drop():
             assert not os.path.exists(target)
 
 
+def test_drop_of_csv_json_lines_use_ssh_version():
+    from into.backends.ssh import drop_ssh
+    for typ in [CSV, JSON, JSONLines]:
+        assert drop.dispatch(SSH(typ)) == drop_ssh
+
+
 def test_temp_ssh_files():
     with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
         csv = CSV(fn)

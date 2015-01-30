@@ -162,7 +162,7 @@ def discover_ssh_directory(data, **kwargs):
     return result
 
 
-@drop.register(_SSH)
+@drop.register((_SSH, SSH(CSV), SSH(JSON), SSH(JSONLines)))
 def drop_ssh(data, **kwargs):
     with sftp(**data.auth) as conn:
         conn.remove(data.path)
