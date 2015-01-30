@@ -5,6 +5,7 @@ from multipledispatch import Dispatcher
 from .convert import convert
 from .append import append
 from .resource import resource
+from .utils import ignoring
 from datashape import discover, var
 from datashape.dispatch import namespace
 from datashape.predicates import isdimension
@@ -18,11 +19,9 @@ into = namespace['into']
 
 @into.register(type, object)
 def into_type(a, b, **kwargs):
-    try:
+    with ignoring(NotImplementedError):
         if 'dshape' not in kwargs:
             kwargs['dshape'] = discover(b)
-    except NotImplementedError:
-        pass
     return convert(a, b, **kwargs)
 
 
@@ -55,11 +54,9 @@ def into_object(a, b, **kwargs):
     """
     if isinstance(b, (str, unicode)):
         b = resource(b, **kwargs)
-    try:
+    with ignoring(NotImplementedError):
         if 'dshape' not in kwargs:
             kwargs['dshape'] = discover(b)
-    except NotImplementedError:
-        pass
     return append(a, b, **kwargs)
 
 
