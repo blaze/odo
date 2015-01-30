@@ -26,7 +26,9 @@ sample = Dispatcher('sample')
 
 
 @memoize
-def get_s3_connection(aws_access_key_id, aws_secret_access_key, anon=False):
+def get_s3_connection(aws_access_key_id=None,
+                      aws_secret_access_key=None,
+                      anon=False):
     cfg = boto.Config()
 
     if aws_access_key_id is None:

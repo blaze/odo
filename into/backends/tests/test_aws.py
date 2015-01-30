@@ -2,7 +2,7 @@ import pytest
 import os
 import itertools
 from into import into, resource, S3, discover, CSV, drop, append
-from into.backends.aws import urlparse
+from into.backends.aws import get_s3_connection
 from into.utils import tmpfile
 import pandas as pd
 import pandas.util.testing as tm
@@ -49,7 +49,7 @@ def temp_tb(db):
 def conn():
     # requires that you have a config file or envars defined for credentials
     try:
-        conn = boto.connect_s3()
+        conn = get_s3_connection()
     except boto.exception.S3ResponseError:
         pytest.skip('unable to connect to s3')
     else:
