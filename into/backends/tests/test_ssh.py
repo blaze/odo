@@ -7,6 +7,7 @@ from into import CSV, JSONLines
 from into.backends.ssh import *
 from into.temp import _Temp, Temp
 from into import into
+import numpy as np
 import re
 import os
 
@@ -105,7 +106,7 @@ def test_temp_ssh_files():
 
 
 def test_convert_through_temporary_local_storage():
-    with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
+    with filetext('name,quantity\nAlice,100\nBob,200', extension='csv') as fn:
         csv = CSV(fn)
         df = into(pd.DataFrame, csv)
         scsv = into(Temp(SSH(CSV)), csv, hostname='localhost')
@@ -116,4 +117,4 @@ def test_convert_through_temporary_local_storage():
         assert into(list, scsv2) == into(list, df)
 
         sjson = into(Temp(SSH(JSONLines)), df, hostname='localhost')
-        assert into(list, sjson) == into(list, df)
+        assert (into(np.ndarray, sjson) == into(np.ndarray, df)).all()
