@@ -8,6 +8,7 @@ from .resource import resource
 from datashape import discover, var
 from datashape.dispatch import namespace
 from datashape.predicates import isdimension
+from .compatibility import unicode
 
 
 if 'into' not in namespace:
@@ -52,6 +53,8 @@ def into_object(a, b, **kwargs):
     into.append.append      - Add things onto existing things
     into.resource.resource  - Specify things with strings
     """
+    if isinstance(b, (str, unicode)):
+        b = resource(b, **kwargs)
     try:
         if 'dshape' not in kwargs:
             kwargs['dshape'] = discover(b)

@@ -1,5 +1,6 @@
 from into.into import into
 from into.utils import tmpfile, filetext
+from into.backends.csv import CSV
 
 def test_into_convert():
     assert into(list, (1, 2, 3)) == [1, 2, 3]
@@ -19,7 +20,6 @@ def test_into_curry():
 
 
 def test_into_double_string():
-    from into.backends.csv import CSV
     with filetext('alice,1\nbob,2', extension='.csv') as source:
         assert into(list, source) == [('alice', 1), ('bob', 2)]
 
@@ -28,3 +28,8 @@ def test_into_double_string():
             assert isinstance(csv, CSV)
             with open(target) as f:
                 assert 'alice' in f.read()
+
+
+def test_into_string_on_right():
+    with filetext('alice,1\nbob,2', extension='.csv') as source:
+        assert into([], source) == [('alice', 1), ('bob', 2)]

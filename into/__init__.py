@@ -7,6 +7,7 @@ halt_ordering() # Turn off multipledispatch ordering
 from .convert import convert
 from .append import append
 from .resource import resource
+from .directory import Directory
 from .into import into
 from .drop import drop
 from .chunks import chunks, Chunks
@@ -56,6 +57,14 @@ except:
     pass
 try:
      from .backends.json import JSON, JSONLines
+except:
+    pass
+try:
+     from .backends.hdfs import HDFS
+except:
+    pass
+try:
+     from .backends.ssh import SSH
 except:
     pass
 try:

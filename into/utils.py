@@ -203,3 +203,5 @@ def tuples_to_records(ds, data):
     raise NotImplementedError()
 
 
+from multipledispatch import Dispatcher
+sample = Dispatcher('sample')
