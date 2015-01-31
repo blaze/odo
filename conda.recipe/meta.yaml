@@ -30,10 +30,9 @@ test:
     - pytables
     - sqlalchemy
     - bcolz
-    - pymongo
 
   commands:
-    - python -c "import into; into.test()"
+    - python -c "import into; into.test(exit=True)"
 
 about:
   home: http://github.com/ContinuumIO/into/

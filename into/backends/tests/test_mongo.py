@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-import pymongo
+import pytest
+pymongo = pytest.importorskip('pymongo')
+
 from contextlib import contextmanager
 import datashape
 from into import discover, convert, append, resource, dshape
