@@ -1,8 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
 from datashape import dshape, Record
-from toolz import pluck, get
+from toolz import pluck, get, curry
 from contextlib import contextmanager
+from multiprocessing.pool import ThreadPool
 import inspect
 import datetime
 import tempfile
@@ -41,6 +42,7 @@ def expand_tuples(L):
     else:
         rest = expand_tuples(L[1:])
         return [(item,) + t for t in rest for item in L[0]]
+
 
 @contextmanager
 def tmpfile(extension=''):
@@ -143,7 +145,6 @@ def assert_allclose(lhs, rhs):
             assert left == right
 
 
-
 def records_to_tuples(ds, data):
     """ Transform records into tuples
 
@@ -217,3 +218,82 @@ def ignoring(*exceptions):
 
 from multipledispatch import Dispatcher
 sample = Dispatcher('sample')
+
+
+@curry
+def pmap(f, iterable):
+    """Map `f` over `iterable` in parallel using a ``ThreadPool``.
+    """
+    p = ThreadPool()
+    try:
+        result = p.map(f, iterable)
+    finally:
+        p.terminate()
+    return result
+
+
+@curry
+def write(triple, writer):
+    """Write a file using the input from `gentemp` using `writer` and return
+    its index and filename.
+
+    Parameters
+    ----------
+    triple : tuple of int, str, str
+        The first element is the index in the set of chunks of a file, the
+        second element is the path to write to, the third element is the data
+        to write.
+
+    Returns
+    -------
+    i, filename : int, str
+        File's index and filename. This is used to return the index and
+        filename after splitting files.
+
+    Notes
+    -----
+    This could be adapted to write to an already open handle, which would
+    allow, e.g., multipart gzip uploads. Currently we open write a new file
+    every time.
+    """
+    i, filename, data = triple
+    with writer(filename, mode='wb') as f:
+        f.write(data)
+    return i, filename
+
+
+def gentemp(it, suffix=None, start=0):
+    """Generate an index, a temporary file, and return data for each element
+    in `it
+
+    Parameters
+    ----------
+    it : iterable
+    suffix : str
+        Suffix to add to each temporary file's name
+    """
+    for i, data in enumerate(it, start=start):  # aws needs parts to start at 1
+        _, fn = tempfile.mkstemp(suffix=suffix)
+        yield i, fn, data
+
+
+@curry
+def split(filename, nbytes, suffix=None, writer=open, start=0):
+    """Split a file into chunks of size `nbytes` with each filename containing
+    a suffix specified by `suffix`. The file will be written with the ``write``
+    method of an instance of `writer`.
+
+    Parameters
+    ----------
+    filename : str
+        The file to split
+    nbytes : int
+        Split `filename` into chunks of this size
+    suffix : str, optional
+    writer : callable, optional
+        Callable object to use to write the chunks of `filename`
+    """
+    with open(filename, mode='rb') as f:
+        byte_chunks = iter(curry(f.read, nbytes), '')
+        return pmap(write(writer=writer),
+                    gentemp(byte_chunks, suffix=suffix, start=start))
