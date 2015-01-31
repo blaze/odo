@@ -81,14 +81,6 @@ def s3_bucket(conn):
     drop(resource(b))
 
 
-@pytest.yield_fixture
-def gz_s3_bucket(conn):
-    key = next(_tmps)
-    b = 's3://%s/%s.csv.gz' % (test_bucket_name, key)
-    yield b
-    drop(resource(b))
-
-
 def test_s3_resource():
     csv = resource(tips_uri)
     assert isinstance(csv, S3(CSV))
@@ -177,7 +169,7 @@ def test_redshift_getting_started(db):
     }""")
 
     redshift_uri = '%s::users' % db
-    csv = S3(CSV)('s3://awssampledb/tickit/allusers_pipe.txt')
+    csv = 's3://awssampledb/tickit/allusers_pipe.txt'
     table = into(redshift_uri, csv, dshape=dshape, delimiter='|')
     n = 49989
     try:
@@ -191,33 +183,37 @@ def test_redshift_getting_started(db):
         drop(table)
 
 
-@pytest.mark.xfail(raises=(IOError, AttributeError),
-                   reason='No frame implementations yet')
-def test_frame_to_s3_to_frame(s3_bucket):
-    df = pd.DataFrame({
+@pytest.fixture
+def df():
+    return pd.DataFrame({
         'a': list('abc'),
         'b': [1, 2, 3],
         'c': [1.0, 2.0, 3.0]
     })[['a', 'b', 'c']]
+
+
+
+# @pytest.mark.xfail(raises=(IOError, AttributeError),
+#                    reason='No frame implementations yet')
+def test_frame_to_s3_to_frame(s3_bucket, df):
 
     s3_csv = into(s3_bucket, df)
     result = into(pd.DataFrame, s3_csv)
     tm.assert_frame_equal(result, df)
 
 
-@pytest.mark.xfail(raises=ValueError,
-                   reason='gzip not implemented for multipart uploads')
-def test_large_gzip_to_redshift(large_file, gz_s3_bucket, temp_tb):
-    s3 = into(gz_s3_bucket, large_file)
-    table = into(temp_tb, s3)
-    drop(table)
-
-
 def test_large_raw_to_redshift(large_file, s3_bucket, temp_tb):
-    s3 = into(s3_bucket, large_file)
-    table = into(temp_tb, s3)
+    table = into(temp_tb, large_file)
     try:
         assert (table.bind.execute("select count(*) from %s;" %
                 temp_tb.split('::', 1)[1]).scalar() == 1 << 20)
     finally:
         drop(table)
+
+
+def test_frame_to_redshift(temp_tb, df):
+    tb = into(temp_tb, df)
+    try:
+        tm.assert_frame_equal(into(pd.DataFrame, tb), df)
+    finally:
+        drop(tb)
