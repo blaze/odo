@@ -14,7 +14,7 @@ import bz2
 import uuid
 
 from ..compatibility import unicode
-from ..utils import keywords
+from ..utils import keywords, ext
 from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
@@ -98,11 +98,6 @@ def append_iterator_to_csv(c, cs, **kwargs):
     for chunk in cs:
         append(c, chunk, **kwargs)
     return c
-
-
-def ext(path):
-    _, e = os.path.splitext(path)
-    return e.lstrip('.')
 
 
 @convert.register(pd.DataFrame, (Temp(CSV), CSV), cost=20.0)
