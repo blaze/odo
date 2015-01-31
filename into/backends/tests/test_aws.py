@@ -14,7 +14,16 @@ pytest.importorskip('psycopg2')
 pytest.importorskip('redshift_sqlalchemy')
 
 
+from boto.exception import S3ResponseError
+
+
 tips_uri = 's3://nyqpug/tips.csv'
+
+df = pd.DataFrame({
+    'a': list('abc'),
+    'b': [1, 2, 3],
+    'c': [1.0, 2.0, 3.0]
+})[['a', 'b', 'c']]
 
 
 @pytest.fixture
@@ -48,14 +57,15 @@ def temp_tb(db):
 @pytest.fixture(scope='module')
 def conn():
     # requires that you have a config file or envars defined for credentials
+    # this code makes me hate exceptions
     try:
         conn = get_s3_connection()
-    except boto.exception.S3ResponseError:
+    except S3ResponseError:
         pytest.skip('unable to connect to s3')
     else:
         try:
             grants = conn.get_bucket(test_bucket_name).get_acl().acl.grants
-        except boto.exception.S3ResponseError:
+        except S3ResponseError:
             pytest.skip('no permission to read on bucket %s' %
                         test_bucket_name)
         else:
@@ -183,19 +193,7 @@ def test_redshift_getting_started(db):
         drop(table)
 
 
-@pytest.fixture
-def df():
-    return pd.DataFrame({
-        'a': list('abc'),
-        'b': [1, 2, 3],
-        'c': [1.0, 2.0, 3.0]
-    })[['a', 'b', 'c']]
-
-
-
-# @pytest.mark.xfail(raises=(IOError, AttributeError),
-#                    reason='No frame implementations yet')
-def test_frame_to_s3_to_frame(s3_bucket, df):
+def test_frame_to_s3_to_frame(s3_bucket):
 
     s3_csv = into(s3_bucket, df)
     result = into(pd.DataFrame, s3_csv)
@@ -211,9 +209,9 @@ def test_large_raw_to_redshift(large_file, s3_bucket, temp_tb):
         drop(table)
 
 
-def test_frame_to_redshift(temp_tb, df):
+def test_frame_to_redshift(temp_tb):
     tb = into(temp_tb, df)
     try:
-        tm.assert_frame_equal(into(pd.DataFrame, tb), df)
+        assert into(set, tb) == into(set, df)
     finally:
         drop(tb)
