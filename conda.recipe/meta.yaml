@@ -30,7 +30,6 @@ test:
     - pytables
     - sqlalchemy
     - bcolz
-    - pymongo
 
   commands:
     - python -c "import into; into.test(exit=True)"
