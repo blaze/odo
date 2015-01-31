@@ -15,8 +15,9 @@ from toolz import memoize, curry, pipe
 
 import boto
 
-from into import discover, CSV, resource, append, convert, drop, Temp, JSON, _Temp
+from into import discover, CSV, resource, append, convert, drop, Temp, JSON
 from into import JSONLines
+from into.backends.temp import _Temp
 from ..utils import tmpfile, ext, sample
 from ..utils import pmap, split
 
