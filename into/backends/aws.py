@@ -2,7 +2,6 @@ from __future__ import print_function, division, absolute_import
 
 import os
 import uuid
-import atexit
 
 from contextlib import contextmanager
 
@@ -11,13 +10,15 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
+import pandas as pd
 from toolz import memoize, curry, pipe
+from toolz.curried import map
 
 import boto
 
 from into import discover, CSV, resource, append, convert, drop, Temp, JSON
-from into import JSONLines
-from into.backends.temp import _Temp
+from into import JSONLines, SSH, into
+
 from ..utils import tmpfile, ext, sample
 from ..utils import pmap, split
 
@@ -136,104 +137,57 @@ def discover_s3_csv(c, length=8192, **kwargs):
         return discover(CSV(fn, **kwargs), **kwargs)
 
 
-@resource.register('s3://.*\.(csv|json)?', priority=18)
+@resource.register('s3://.*\.(csv|txt)', priority=18)
 def resource_s3_csv(uri, **kwargs):
     return S3(CSV)(uri, **kwargs)
 
 
-@drop.register(S3(CSV))
+@resource.register('s3://.*\.json', priority=18)
+def resource_s3_csv(uri, **kwargs):
+    return S3(JSON)(uri, **kwargs)
+
+
+@drop.register((S3(CSV), S3(JSON), S3(JSONLines)))
 def drop_s3_csv(s3):
     s3.object.delete()
 
 
-# @append.register(CSV, S3(CSV))
-# def append_s3_to_csv(csv, s3csv, **kwargs):
-#     """Download an S3 CSV to a local CSV file."""
-#     s3csv.object.get_contents_to_filename(csv.path)
-#     return append(csv, CSV(csv.path, **kwargs))
-
-
-@convert.register(Temp(_S3), (JSONLines, JSON, CSV))
-def s3_text_data_to_temp_csv(data, **kwargs):
-    return Temp(S3(type(data)))('s3://%s/%s.%s' %
-                                (tmpbucket, uuid.uuid1(), ext(data.path)))
-
-
-@convert.register(_Temp, _S3)
+@convert.register(Temp(CSV), (Temp(S3(CSV)), S3(CSV)))
+@convert.register(Temp(JSON), (Temp(S3(JSON)), S3(JSON)))
+@convert.register(Temp(JSONLines), (Temp(S3(JSONLines)), S3(JSONLines)))
 def s3_csv_to_temp_csv(s3, **kwargs):
     tmp_filename = '.%s.%s' % (uuid.uuid1(), ext(s3.path))
     s3.object.get_contents_to_filename(tmp_filename)
-    return Temp(s3.subtype)(tmp_filename)
+    return Temp(s3.subtype)(tmp_filename, **kwargs)
 
 
-_MIN_CHUNK_SIZE = 15 * 1 << 20
+@convert.register(Temp(S3(CSV)), CSV)
+@convert.register(Temp(S3(JSON)), JSON)
+@convert.register(Temp(S3(JSONLines)), JSONLines)
+def text_data_to_temp_s3_text_data(data, **kwargs):
+    subtype = type(data)
+    uri = 's3://%s/%s.%s' % (uuid.uuid1(), uuid.uuid1(), ext(data.path))
+    into(uri, data)
+    return Temp(S3(subtype))(uri, **kwargs)
 
 
-@append.register(_S3, (JSONLines, JSON, CSV))
-def append_csv_to_s3(s3, csv,
-                     cutoff=100 * 1 << 20,
-                     chunksize=_MIN_CHUNK_SIZE,
-                     **kwargs):
-    if os.path.getsize(csv.path) >= cutoff:  # defaults to 100MB
-        if chunksize < _MIN_CHUNK_SIZE:
-            raise ValueError('multipart upload with chunksize < %d are not '
-                             'allowed by AWS' % _MIN_CHUNK_SIZE)
-        # TODO: implement gzip
-        with multipart_upload(s3.object) as mp:
-            pipe(csv.path,
-                 split(nbytes=chunksize, suffix=os.extsep + ext(csv.path),
-                       start=1),
-                 pmap(upload_part(mp)),
-                 pmap(os.remove))
-    else:
-        # TODO: implement gzip single file uploads
-        s3.object.set_contents_from_filename(csv.path)
+@append.register(S3(CSV), pd.DataFrame)
+def frame_to_s3_csv(s3, df, **kwargs):
+    return into(s3, into(Temp(CSV), df, **kwargs), **kwargs)
+
+
+@append.register(S3(JSONLines), (JSONLines, Temp(JSONLines)))
+@append.register(S3(JSON), (JSON, Temp(JSON)))
+@append.register(S3(CSV), (CSV, Temp(CSV)))
+def append_csv_to_s3(s3, data, **kwargs):
+    s3.object.set_contents_from_filename(data.path)
     return s3
 
 
-@curry
-def upload_part(mp, pair):
-    """Upload part of a file to S3
-
-    Parameters
-    ----------
-    mp : MultiPartUpload
-    conn : boto.s3.connection.S3Connection
-    pair : tuple of int, string
-        The index and filename of the part of the file to upload
-    """
-    i, filename = pair
-    with open(filename, mode='rb') as f:
-        mp.upload_part_from_file(f, i)
-    return filename
-
-
-@contextmanager
-def multipart_upload(key):
-    """Context manager to yield a multipart upload object for use in uploading
-    large files to S3
-
-    Parameters
-    ----------
-    key : boto.s3.key.Key
-        Key object to upload in multiple parts
-    """
-    mp = key.bucket.initiate_multipart_upload(key.name)
-    yield mp
-    mp.complete_upload()
-
-
-# make a temporary bucket for this interpreter instance
-tmpbucket = str(uuid.uuid1())
-
-
-@atexit.register
-def delete_global_tmpbucket():
-    try:
-        conn = get_s3_connection()
-    except Exception as e:
-        print(e)
-    else:
-        bucket = conn.lookup(tmpbucket)
-        if bucket is not None:
-            bucket.delete()
+@append.register(S3(JSON), SSH(JSON))
+@append.register(S3(JSONLines), SSH(JSONLines))
+@append.register(S3(CSV), SSH(CSV))
+def ssh_text_to_s3_text(a, b, **kwargs):
+    # TODO: might be able to do this without a temporary local file
+    # the host would need to have
+    return into(a, into(Temp(b.subtype), b, **kwargs), **kwargs)
