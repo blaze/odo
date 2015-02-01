@@ -16,7 +16,6 @@ from toolz import memoize
 import boto
 
 from into import discover, CSV, resource, append, convert, drop, Temp, JSON
-from into import JSONLines, SSH, into
 from into import JSONLines, SSH, into, chunks
 
 from ..utils import tmpfile, ext, sample
@@ -166,9 +165,11 @@ def s3_csv_to_temp_csv(s3, **kwargs):
     return Temp(s3.subtype)(tmp_filename, **kwargs)
 
 
-@convert.register(Temp(S3(CSV)), CSV)
-@convert.register(Temp(S3(JSON)), JSON)
-@convert.register(Temp(S3(JSONLines)), JSONLines)
+@append.register(CSV, S3(CSV))
+def s3_csv_to_csv(csv, s3, **kwargs):
+    return append(csv, into(Temp(CSV), s3, **kwargs), **kwargs)
+
+
 @append.register((S3(CSV), Temp(S3(CSV))), (S3(CSV), Temp(S3(CSV))))
 def s3_csv_to_s3_csv(a, b, **kwargs):
     a.object.bucket.copy_key(b.object.name, a.object.bucket.name,
