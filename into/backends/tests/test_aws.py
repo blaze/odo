@@ -1,7 +1,7 @@
 import pytest
 import os
 import itertools
-from into import into, resource, S3, discover, CSV, drop, append
+from into import into, resource, S3, discover, CSV, drop, append, Temp
 from into.backends.aws import get_s3_connection
 from into.utils import tmpfile
 import pandas as pd
@@ -12,7 +12,6 @@ sa = pytest.importorskip('sqlalchemy')
 boto = pytest.importorskip('boto')
 pytest.importorskip('psycopg2')
 pytest.importorskip('redshift_sqlalchemy')
-
 
 from boto.exception import S3ResponseError
 
@@ -36,22 +35,17 @@ def db():
         return key
 
 
-@pytest.fixture(scope='module')
-def large_file():
-    try:
-        filename = os.environ['LARGE_REDSHIFT_CSV']
-    except KeyError:
-        pytest.skip("no envar LARGE_REDSHIFT_CSV")
-    else:
-        if os.path.getsize(filename) < 100 * 1 << 20:
-            pytest.skip('file must be at least 100MB in size')
-        else:
-            return filename
-
-
 @pytest.fixture
 def temp_tb(db):
     return '%s::%s' % (db, next(_tmps))
+
+
+@pytest.yield_fixture
+def tmpcsv():
+    with tmpfile('.csv') as fn:
+        with open(fn, mode='wb') as f:
+            df.to_csv(f, index=False)
+        yield fn
 
 
 @pytest.fixture(scope='module')
@@ -199,12 +193,11 @@ def test_frame_to_s3_to_frame(s3_bucket):
     tm.assert_frame_equal(result, df)
 
 
-@pytest.mark.xfail
-def test_large_raw_to_redshift(large_file, s3_bucket, temp_tb):
-    table = into(temp_tb, large_file)
+def test_csv_to_redshift(tmpcsv, temp_tb):
+    table = into(temp_tb, into(Temp(S3(CSV)), tmpcsv))
     try:
         assert (table.bind.execute("select count(*) from %s;" %
-                temp_tb.split('::', 1)[1]).scalar() == 1 << 20)
+                temp_tb.split('::', 1)[1]).scalar() == 3)
     finally:
         drop(table)
 
