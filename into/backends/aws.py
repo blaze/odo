@@ -147,8 +147,14 @@ def resource_s3_csv(uri, **kwargs):
 
 
 @drop.register((S3(CSV), S3(JSON), S3(JSONLines)))
-def drop_s3_csv(s3):
+def drop_s3(s3):
     s3.object.delete()
+
+
+@drop.register((Temp(S3(CSV)), Temp(S3(JSON)), Temp(S3(JSONLines))))
+def drop_temp_s3(s3):
+    s3.object.delete()
+    s3.object.bucket.delete()
 
 
 @convert.register(Temp(CSV), (Temp(S3(CSV)), S3(CSV)))
