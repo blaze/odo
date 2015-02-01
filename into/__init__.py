@@ -12,6 +12,7 @@ from .directory import Directory
 from .into import into
 from .drop import drop
 from .temp import Temp
+from .backends.text import TextFile
 from .chunks import chunks, Chunks
 from datashape import discover, dshape
 from collections import Iterator
