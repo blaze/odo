@@ -17,6 +17,7 @@ import boto
 
 from into import discover, CSV, resource, append, convert, drop, Temp, JSON
 from into import JSONLines, SSH, into
+from into import JSONLines, SSH, into, chunks
 
 from ..utils import tmpfile, ext, sample
 
@@ -169,9 +170,9 @@ def text_data_to_temp_s3_text_data(data, **kwargs):
     return Temp(S3(subtype))(uri, **kwargs)
 
 
-@append.register(S3(CSV), pd.DataFrame)
-def frame_to_s3_csv(s3, df, **kwargs):
-    return into(s3, into(Temp(CSV), df, **kwargs), **kwargs)
+@append.register(S3(CSV), (pd.DataFrame, chunks(pd.DataFrame), object))
+def anything_to_s3_csv(s3, o, **kwargs):
+    return into(s3, into(Temp(CSV), o, **kwargs), **kwargs)
 
 
 @append.register(S3(JSONLines), (JSONLines, Temp(JSONLines)))
@@ -186,6 +187,4 @@ def append_csv_to_s3(s3, data, **kwargs):
 @append.register(S3(JSONLines), SSH(JSONLines))
 @append.register(S3(CSV), SSH(CSV))
 def ssh_text_to_s3_text(a, b, **kwargs):
-    # TODO: might be able to do this without a temporary local file
-    # the host would need to have
     return into(a, into(Temp(b.subtype), b, **kwargs), **kwargs)
