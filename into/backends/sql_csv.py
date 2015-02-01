@@ -107,8 +107,7 @@ else:
                        ignore_header=int(kwargs.get('has_header',
                                                     csv.has_header)),
                        empty_as_null=True,
-                       blanks_as_null=False,
-                       compression={'gz': 'GZIP'}.get(ext(csv.path), ''))
+                       blanks_as_null=False)
 
         if schema_name is None:
             if tbl.schema is not None:
