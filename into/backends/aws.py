@@ -163,6 +163,13 @@ def s3_csv_to_temp_csv(s3, **kwargs):
 @convert.register(Temp(S3(CSV)), CSV)
 @convert.register(Temp(S3(JSON)), JSON)
 @convert.register(Temp(S3(JSONLines)), JSONLines)
+@append.register((S3(CSV), Temp(S3(CSV))), (S3(CSV), Temp(S3(CSV))))
+def s3_csv_to_s3_csv(a, b, **kwargs):
+    a.object.bucket.copy_key(b.object.name, a.object.bucket.name,
+                             b.object.name)
+    return a
+
+
 def text_data_to_temp_s3_text_data(data, **kwargs):
     subtype = type(data)
     uri = 's3://%s/%s.%s' % (uuid.uuid1(), uuid.uuid1(), ext(data.path))
