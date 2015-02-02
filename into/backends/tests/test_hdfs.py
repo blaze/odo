@@ -6,7 +6,7 @@ except ImportError:
 
 from into.backends.hdfs import (discover, HDFS, CSV, TableProxy, SSH)
 from into.backends.sql import resource
-from into import into, drop
+from into import into, drop, JSONLines
 import sqlalchemy as sa
 from datashape import dshape
 from into.directory import Directory
@@ -105,3 +105,19 @@ def test_hive_resource():
     db = resource('hive://%s/' % host)
     assert isinstance(db, sa.engine.Engine)
     assert str(db.url) == 'hive://hdfs@%s:10000/default' % host
+
+
+def test_hdfs_resource():
+    r = resource('hdfs://user@hostname:1234:/path/to/myfile.json')
+    assert isinstance(r, HDFS(JSONLines))
+    assert r.hdfs.user_name == 'user'
+    assert r.hdfs.host == 'hostname'
+    assert r.hdfs.port == '1234'
+    assert r.path == '/path/to/myfile.json'
+
+    assert isinstance(resource('hdfs://path/to/myfile.csv',
+                                host='host', user='user', port=1234),
+                      HDFS(CSV))
+    assert isinstance(resource('hdfs://path/to/*.csv',
+                                host='host', user='user', port=1234),
+                      HDFS(Directory(CSV)))
