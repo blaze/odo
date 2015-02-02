@@ -313,10 +313,8 @@ def test_dates(t, q, df, attr):
 
 def test_dates_date(t, q, df):
     expr = t.when.date
-    result = compute(expr, q)
-    expected = compute(expr, df)
-    expected = pd.to_datetime(expected)  # pandas returns objects here so coerce
-    tm.assert_series_equal(result, expected, check_dtype=False)
+    expected = pd.to_datetime(compute(expr, df))
+    tm.assert_series_equal(compute(expr, q), expected, check_dtype=False)
 
 
 def test_by_with_where(t, q, df):
