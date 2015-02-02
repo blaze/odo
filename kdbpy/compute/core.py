@@ -519,26 +519,7 @@ def compute_down(expr, data, **kwargs):
 
 
 def compile(expr):
-    """Return the q expression from a blaze object
-
-    Examples
-    --------
-    >>> from blaze import Data, by
-    >>> from kdbpy.exampleutils import example_data
-    >>> kq = KQ(start=True)
-    >>> kq.read_kdb(example_data('start/db'))
-    >>> d = Data(kq)
-    >>> compile(d.daily.open + 1)
-    (+; `daily.open; 1)
-    >>> compile(d.daily.open.mean() + 1)
-    (+; (avg; `daily.open); 1)
-    >>> compile(by(d.daily.sym, open=d.daily.open.mean()))
-    (?; `daily; (,:[()]); (,:[`sym])!(,:[`sym]); (,:[`open])!(,:[(avg; `open)]))
-    >>> compile(d.trade.price.sum())
-    (*:; (?; (?; `trade; (); 0b; (,:[`price])!(,:[(sum; `price)])); (); (); (,:[`price])))
-    >>> compile(d.trade.price.sum() + 2)  # this is incorrect and will break if we fix it
-    (+; (sum; `trade.price); 2)
-    """
+    """ Compile a blaze expression to a q expression"""
     expr, data = swap_resources_into_scope(expr, {})
     leaf, = expr._leaves()
     if not isinstance(data[leaf], KQ):

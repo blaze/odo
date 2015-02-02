@@ -399,3 +399,16 @@ def test_compile_query_from_db(db):
 def test_edge_case_compile_just_db_fails(db):
     with pytest.raises(ValueError):
         assert compile(db)
+
+
+def test_compile(par):
+    assert str(compile(par.daily.open + 1)) == '(+; `daily.open; 1)'
+    assert str(compile(par.daily.open.mean() + 1)) == '(+; (avg; `daily.open); 1)'
+    assert str(compile(by(par.daily.sym, open=par.daily.open.mean()))) == \
+        '(?; `daily; (,:[()]); (,:[`sym])!(,:[`sym]); (,:[`open])!(,:[(avg; `open)]))'
+    assert str(compile(par.trade.price.sum())) == \
+        '(*:; (?; (?; `trade; (); 0b; (,:[`price])!(,:[(sum; `price)])); (); (); (,:[`price])))'
+
+    # this is incorrect and will break if we fix it
+    assert str(compile(par.trade.price.sum() + 2)) == \
+        '(+; (sum; `trade.price); 2)'
