@@ -2,8 +2,10 @@ from __future__ import absolute_import, division, print_function
 
 from toolz import memoize, merge
 from functools import wraps
+import re
 
 from .csv import CSV
+from .json import JSON, JSONLines
 import datashape
 import sqlalchemy as sa
 from datashape import discover, dshape
@@ -382,3 +384,30 @@ def dialect_of(data, **kwargs):
     d = dict((k, v) for k, v in d.items() if k in keys)
 
     return d
+
+
+
+types_by_extension = {'csv': CSV, 'json': JSONLines}
+
+hdfs_pattern = '(((?P<user>[a-zA-Z]\w*)@)?(?P<host>[\w.-]*)?(:(?P<port>\d+))?:)?(?P<path>[/\w.*-]+)'
+
+@resource.register('hdfs://.*', priority=16)
+def resource_hdfs(uri, **kwargs):
+    if 'hdfs://' in uri:
+        uri = uri[len('hdfs://'):]
+
+    d = re.match(hdfs_pattern, uri).groupdict()
+    d = dict((k, v) for k, v in d.items() if v is not None)
+    path = d.pop('path')
+
+    kwargs.update(d)
+
+    try:
+        subtype = types_by_extension[path.split('.')[-1]]
+        if '*' in path:
+            subtype = Directory(subtype)
+            path = path.rsplit('/', 1)[0] + '/'
+    except KeyError:
+        subtype = type(resource(path))
+
+    return HDFS(subtype)(path, **kwargs)
