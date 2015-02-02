@@ -13,14 +13,6 @@ from into.backends.csv import CSV
 from into import into, discover, CSV, JSONLines, JSON
 from into.temp import _Temp, Temp
 
-ssh = paramiko.SSHClient()
-ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-try:
-    ssh.connect('localhost')
-except:
-    pytest.skip('could not connect to localhost')
-
 
 def test_resource():
     r = resource('ssh://joe@localhost:/path/to/myfile.csv')
