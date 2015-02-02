@@ -1,6 +1,6 @@
 package:
   name: kdbpy
-  version: 0.1.3
+  version: 0.1.4
 
 build:
     number: {{environ.get('BINSTAR_BUILD', 1)}}
