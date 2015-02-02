@@ -6,6 +6,7 @@ from collections import Iterator
 import os
 
 from ..compatibility import unicode
+from ..drop import drop
 from ..append import append
 from ..convert import convert
 from ..resource import resource
@@ -50,3 +51,8 @@ def append_anything_to_textfile(target, source, **kwargs):
 @resource.register('.+\.(txt|log)')
 def resource_sas(uri, **kwargs):
     return TextFile(uri)
+
+
+@drop.register(TextFile)
+def drop_textfile(data, **kwargs):
+    os.remove(data.path)

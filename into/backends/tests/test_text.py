@@ -1,4 +1,5 @@
-from into.backends.text import TextFile, resource, convert, discover, append
+from into.backends.text import (TextFile, resource, convert, discover, append,
+        drop)
 from into.utils import tmpfile, filetext
 from datashape import dshape
 import os
@@ -26,3 +27,11 @@ def test_append():
 
 def test_discover():
     assert discover(TextFile('')) == dshape('var * string')
+
+
+def test_drop():
+    with filetext('hello\nworld') as fn:
+        t = TextFile(fn)
+        assert os.path.exists(fn)
+        drop(t)
+        assert not os.path.exists(fn)
