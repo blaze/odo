@@ -4,7 +4,7 @@ from os.path import exists
 from setuptools import setup, find_packages
 
 setup(name='into',
-      version='0.1.3',
+      version='0.1.4',
       description='Data migration utilities',
       url='http://github.com/ContinuumIO/into/',
       author='Matthew Rocklin',
