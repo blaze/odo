@@ -17,24 +17,20 @@ from ..drop import drop
 from .csv import CSV
 from .json import JSON, JSONLines
 
-@contextmanager
+connection_pool = dict()
+
+@memoize(key=lambda args, kwargs: tuple(sorted(kwargs.items())))
 def connect(**auth):
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ssh.connect(**auth)
-
-    try:
-        yield ssh
-    finally:
-        ssh.close()
+    return ssh
 
 
-@contextmanager
+@memoize(key=lambda args, kwargs: tuple(sorted(kwargs.items())))
 def sftp(**auth):
-    with connect(**auth) as ssh:
-        sftp = ssh.open_sftp()
-
-        yield sftp
+    ssh = connect(**auth)
+    return ssh.open_sftp()
 
 
 class _SSH(object):
@@ -62,9 +58,8 @@ class _SSH(object):
         self.subtype.__init__(self, *args, **kwargs)
 
     def lines(self):
-        with sftp(**self.auth) as conn:
-            for line in conn.file(self.path, 'r'):
-                yield line
+        conn = sftp(**self.auth)
+        return conn.file(self.path, 'r')
 
 
 def SSH(cls):
@@ -121,11 +116,11 @@ def sample_ssh(data, lines=500):
 @contextmanager
 def sample_ssh(data, **kwargs):
     """ Grab a few lines from a file in a remote directory """
-    with sftp(**data.auth) as conn:
-        fn = data.path + '/' + conn.listdir(data.path)[0]
-        one_file = SSH(data.container)(fn, **data.auth)
-        with sample(one_file, **kwargs) as result:
-            yield result
+    conn = sftp(**data.auth)
+    fn = data.path + '/' + conn.listdir(data.path)[0]
+    one_file = SSH(data.container)(fn, **data.auth)
+    with sample(one_file, **kwargs) as result:
+        yield result
 
 
 @discover.register(_SSH)
@@ -155,17 +150,17 @@ def discover_ssh_json(data, **kwargs):
                     SSH(Directory(JSON)),
                     SSH(Directory(JSONLines))))
 def discover_ssh_directory(data, **kwargs):
-    with sftp(**data.auth) as conn:
-        fn = data.path + '/' + conn.listdir(data.path)[0]
-        one_file = SSH(data.container)(fn, **data.auth)
-        result = discover(one_file)
+    conn = sftp(**data.auth)
+    fn = data.path + '/' + conn.listdir(data.path)[0]
+    one_file = SSH(data.container)(fn, **data.auth)
+    result = discover(one_file)
     return result
 
 
 @drop.register((_SSH, SSH(CSV), SSH(JSON), SSH(JSONLines)))
 def drop_ssh(data, **kwargs):
-    with sftp(**data.auth) as conn:
-        conn.remove(data.path)
+    conn = sftp(**data.auth)
+    conn.remove(data.path)
 
 
 @append.register(_SSH, object)
@@ -173,8 +168,8 @@ def append_anything_to_ssh(target, source, **kwargs):
     if not isinstance(source, target.subtype):
         source = convert(Temp(target.subtype), source, **kwargs)
     # TODO: handle overwrite case
-    with sftp(**target.auth) as conn:
-        conn.put(source.path, target.path)
+    conn = sftp(**target.auth)
+    conn.put(source.path, target.path)
     return target
 
 
@@ -183,8 +178,8 @@ def append_anything_to_ssh(target, source, **kwargs):
 @append.register(CSV, SSH(CSV))
 def append_sshX_to_X(target, source, **kwargs):
     # TODO: handle overwrite case
-    with sftp(**source.auth) as conn:
-        conn.get(source.path, target.path)
+    conn = sftp(**source.auth)
+    conn.get(source.path, target.path)
     return target
 
 

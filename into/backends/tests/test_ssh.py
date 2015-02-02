@@ -78,8 +78,8 @@ def test_drop():
 
             assert not os.path.exists(target)
 
-            with sftp(**scsv.auth) as conn:
-                conn.put(fn, target)
+            conn = sftp(**scsv.auth)
+            conn.put(fn, target)
 
             assert os.path.exists(target)
 
