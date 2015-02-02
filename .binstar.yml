@@ -24,4 +24,4 @@ build_targets: conda
 
 notifications:
   email:
-    recipients: ['phillip.cloud@continuum.io','jeff.reback@continuum.io']
+    recipients: ['phillip.cloud@continuum.io', 'jeff.reback@continuum.io']
