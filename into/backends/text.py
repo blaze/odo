@@ -55,7 +55,7 @@ def append_anything_to_textfile(target, source, **kwargs):
     return append(target, convert(Iterator, source, **kwargs), **kwargs)
 
 
-@resource.register('.+\.(txt|log)')
+@resource.register('.+\.(txt|log)(.gz)?')
 def resource_sas(uri, **kwargs):
     return TextFile(uri)
 

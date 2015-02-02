@@ -2,12 +2,19 @@ from into.backends.text import (TextFile, resource, convert, discover, append,
         drop, chunks)
 from into.utils import tmpfile, filetexts, filetext
 from datashape import dshape
+import gzip
 import os
 
 
 def test_resource():
     assert isinstance(resource('foo.txt'), TextFile)
+    assert isinstance(resource('foo.log.gz'), TextFile)
     assert isinstance(resource('/path/to/foo.log'), TextFile)
+
+
+def test_open():
+    r = resource('foo.log.gz')
+    assert r.open == gzip.open
 
 
 def test_convert():
