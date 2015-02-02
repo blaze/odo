@@ -23,22 +23,16 @@ requirements:
     - networkx
 
 test:
-  # Python imports
-  imports:
-    - into
-    - into.backends
+  requires:
+    - pytest
+    - coverage
+    - h5py
+    - pytables
+    - sqlalchemy
+    - bcolz
 
-  # commands:
-    # You can put test commands to be run here.  Use this to test that the
-    # entry points work.
-
-
-  # You can also put a file called run_test.py in the recipe that will be run
-  # at test time.
-
-  # requires:
-    # Put any additional test requirements here.  For example
-    # - nose
+  commands:
+    - python -c "import into; into.test(exit=True)"
 
 about:
   home: http://github.com/ContinuumIO/into/

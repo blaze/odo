@@ -5,13 +5,17 @@ from contextlib import contextmanager
 from toolz import keyfilter, memoize, take
 from datashape import discover
 import re
-from ..directory import _Directory, Directory
+import uuid
 
+from ..directory import _Directory, Directory
 from ..utils import keywords, tmpfile, sample
 from ..resource import resource
 from ..append import append
+from ..convert import convert
+from ..temp import Temp
 from ..drop import drop
-
+from .csv import CSV
+from .json import JSON, JSONLines
 
 @contextmanager
 def connect(**auth):
@@ -71,8 +75,6 @@ SSH.__doc__ = _SSH.__doc__
 SSH = memoize(SSH)
 
 
-from .csv import CSV
-from .json import JSON, JSONLines
 types_by_extension = {'csv': CSV, 'json': JSONLines}
 
 ssh_pattern = '((?P<username>[a-zA-Z]\w*)@)?(?P<hostname>[\w.-]*)(:(?P<port>\d+))?:(?P<path>[/\w.*-]+)'
@@ -99,11 +101,13 @@ def resource_ssh(uri, **kwargs):
     return SSH(subtype)(path, **kwargs)
 
 
-@sample.register(SSH(CSV))
+@sample.register((SSH(CSV),
+                  SSH(JSON),
+                  SSH(JSONLines)))
 @contextmanager
 def sample_ssh(data, lines=500):
     """ Grab a few lines from the remote file """
-    with tmpfile('csv') as fn:
+    with tmpfile() as fn:
         with open(fn, 'w') as f:
             for line in take(lines, data.lines()):
                 f.write(line)
@@ -111,7 +115,9 @@ def sample_ssh(data, lines=500):
         yield fn
 
 
-@sample.register(SSH(Directory(CSV)))
+@sample.register((SSH(Directory(CSV)),
+                  SSH(Directory(JSON)),
+                  SSH(Directory(JSONLines))))
 @contextmanager
 def sample_ssh(data, **kwargs):
     """ Grab a few lines from a file in a remote directory """
@@ -138,7 +144,16 @@ def discover_ssh_csv(data, **kwargs):
     return result
 
 
-@discover.register(SSH(Directory(CSV)))
+@discover.register((SSH(JSON), SSH(JSONLines)))
+def discover_ssh_json(data, **kwargs):
+    with sample(data) as fn:
+        result = discover(data.subtype(fn))
+    return result
+
+
+@discover.register((SSH(Directory(CSV)),
+                    SSH(Directory(JSON)),
+                    SSH(Directory(JSONLines))))
 def discover_ssh_directory(data, **kwargs):
     with sftp(**data.auth) as conn:
         fn = data.path + '/' + conn.listdir(data.path)[0]
@@ -147,7 +162,7 @@ def discover_ssh_directory(data, **kwargs):
     return result
 
 
-@drop.register(_SSH)
+@drop.register((_SSH, SSH(CSV), SSH(JSON), SSH(JSONLines)))
 def drop_ssh(data, **kwargs):
     with sftp(**data.auth) as conn:
         conn.remove(data.path)
@@ -156,7 +171,7 @@ def drop_ssh(data, **kwargs):
 @append.register(_SSH, object)
 def append_anything_to_ssh(target, source, **kwargs):
     if not isinstance(source, target.subtype):
-        raise NotImplementedError() # TODO: create local temp
+        source = convert(Temp(target.subtype), source, **kwargs)
     # TODO: handle overwrite case
     with sftp(**target.auth) as conn:
         conn.put(source.path, target.path)
@@ -171,3 +186,31 @@ def append_sshX_to_X(target, source, **kwargs):
     with sftp(**source.auth) as conn:
         conn.get(source.path, target.path)
     return target
+
+
+@convert.register(Temp(SSH(JSONLines)), (Temp(JSONLines), JSONLines))
+def csv_to_temp_ssh_jsonlines(data, **kwargs):
+    fn = '.%s.json' % uuid.uuid1()
+    target = Temp(SSH(JSONLines))(fn, **kwargs)
+    return append(target, data, **kwargs)
+
+@convert.register(Temp(SSH(JSON)), (Temp(JSON), JSON))
+def csv_to_temp_ssh_json(data, **kwargs):
+    fn = '.%s.json' % uuid.uuid1()
+    target = Temp(SSH(JSON))(fn, **kwargs)
+    return append(target, data, **kwargs)
+
+@convert.register(Temp(SSH(CSV)), (Temp(CSV), CSV))
+def csv_to_temp_ssh_csv(data, **kwargs):
+    fn = '.%s.csv' % uuid.uuid1()
+    target = Temp(SSH(CSV))(fn, **kwargs)
+    return append(target, data, **kwargs)
+
+
+@convert.register(Temp(JSON), (Temp(SSH(JSON)), SSH(JSON)))
+@convert.register(Temp(JSONLines), (Temp(SSH(JSONLines)), SSH(JSONLines)))
+@convert.register(Temp(CSV), (Temp(SSH(CSV)), SSH(CSV)))
+def ssh_csv_to_temp_csv(data, **kwargs):
+    fn = '.%s' % uuid.uuid1()
+    target = Temp(data.subtype)(fn, **kwargs)
+    return append(target, data, **kwargs)

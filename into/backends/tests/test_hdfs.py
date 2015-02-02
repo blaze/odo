@@ -43,8 +43,8 @@ auth = {'hostname': host,
         'key_filename': os.path.expanduser('~/.ssh/cdh_testing.key'),
         'username': 'ubuntu'}
 
-ssh_csv= SSH(CSV)('/home/ubuntu/accounts.csv', **auth)
-ssh_directory = SSH(Directory(CSV))('/home/ubuntu/mrocklin/', **auth)
+ssh_csv= SSH(CSV)('/home/ubuntu/into-testing/accounts1.csv', **auth)
+ssh_directory = SSH(Directory(CSV))('/home/ubuntu/into-testing/', **auth)
 
 
 def test_hdfs_hive_creation():
@@ -68,7 +68,6 @@ def test_ssh_hive_creation():
         drop(t)
 
 
-
 def test_ssh_directory_hive_creation():
     uri = 'hive://hdfs@%s:10000/default::ssh_2' % host
     try:
@@ -84,14 +83,14 @@ def test_ssh_hive_creation_with_full_urls():
     uri = 'hive://hdfs@%s:10000/default::ssh_3' % host
     try:
         t = into(uri, 'ssh://ubuntu@%s:accounts.csv' % host,
-                 key_filename='/home/mrocklin/.ssh/cdh_testing.key')
+                 key_filename=os.path.expanduser('~/.ssh/cdh_testing.key'))
         assert isinstance(t, sa.Table)
         n = len(into(list, t))
         assert n > 0
 
         # Load it again
         into(t, 'ssh://ubuntu@%s:accounts.csv' % host,
-             key_filename='/home/mrocklin/.ssh/cdh_testing.key')
+             key_filename=os.path.expanduser('~/.ssh/cdh_testing.key'))
 
         # Doubles length
         assert len(into(list, t)) == 2 * n

@@ -14,12 +14,15 @@ import pandas as pd
 import os
 import gzip
 import bz2
+import uuid
 
+from ..compatibility import unicode
 from ..utils import keywords
 from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
 from ..chunks import chunks
+from ..temp import Temp
 from ..numpy_dtype import dshape_to_pandas
 from .pandas import coerce_datetimes
 
@@ -104,7 +107,7 @@ def ext(path):
     return e.lstrip('.')
 
 
-@convert.register(pd.DataFrame, CSV, cost=20.0)
+@convert.register(pd.DataFrame, (Temp(CSV), CSV), cost=20.0)
 def csv_to_DataFrame(c, dshape=None, chunksize=None, nrows=None, **kwargs):
     try:
         return _csv_to_DataFrame(c, dshape=dshape,
@@ -174,7 +177,7 @@ def _csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
                              **kwargs2)
 
 
-@convert.register(chunks(pd.DataFrame), CSV, cost=10.0)
+@convert.register(chunks(pd.DataFrame), (Temp(CSV), CSV), cost=10.0)
 def CSV_to_chunks_of_dataframes(c, chunksize=2**20, **kwargs):
     # Load a small 1000 line DF to start
     # This helps with rapid viewing of a large CSV file
@@ -200,7 +203,9 @@ def discover_csv(c, nrows=1000, **kwargs):
         df = csv_to_DataFrame(c, chunksize=50, has_header=False).get_chunk()
         df = coerce_datetimes(df)
 
-    df.columns = [str(c).strip() for c in df.columns]
+    columns = [str(c) if not isinstance(c, (str, unicode)) else c
+                for c in df.columns]
+    df.columns = [c.strip() for c in columns]
 
     # Replace np.nan with None.  Forces type string rather than flaot
     for col in df.columns:
@@ -234,11 +239,18 @@ def resource_glob(uri, **kwargs):
     return chunks(type(r))(_)
 
 
-@convert.register(chunks(pd.DataFrame), chunks(CSV), cost=10.0)
+@convert.register(chunks(pd.DataFrame), (chunks(CSV), chunks(Temp(CSV))), cost=10.0)
 def convert_glob_of_csvs_to_chunks_of_dataframes(csvs, **kwargs):
     def _():
         return concat(convert(chunks(pd.DataFrame), csv, **kwargs) for csv in csvs)
     return chunks(pd.DataFrame)(_)
+
+
+@convert.register(Temp(CSV), (pd.DataFrame, chunks(pd.DataFrame)))
+def convert_dataframes_to_temporary_csv(data, **kwargs):
+    fn = '.%s.csv' % uuid.uuid1()
+    csv = Temp(CSV)(fn, **kwargs)
+    return append(csv, data, **kwargs)
 
 
 @dispatch(CSV)
