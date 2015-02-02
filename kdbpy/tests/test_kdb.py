@@ -19,7 +19,8 @@ from blaze import CSV, Data, discover, Expr
 from qpython.qwriter import QWriterException
 
 from kdbpy import kdb as k
-from kdbpy.kdb import which, Credentials, PortInUse, PortIsFixed, DEFAULT_START_PORT_NUMBER
+from kdbpy.kdb import (which, Credentials, PortInUse, PortIsFixed,
+                       DEFAULT_START_PORT_NUMBER)
 from kdbpy.exampleutils import example_data
 
 try:
@@ -27,17 +28,20 @@ try:
 except ImportError:  # pragma: no cover
     from io import StringIO
 
+
 @pytest.yield_fixture(scope='module')
 def qproc(creds):
     q = k.Q(creds).start()
     yield q
     q.stop()
 
+
 @pytest.yield_fixture(scope='module')
 def qproc2(creds2):
     q = k.Q(creds2).start()
     yield q
     q.stop()
+
 
 @pytest.yield_fixture()
 def qproc3(creds):
@@ -53,7 +57,7 @@ def check_process_table_ok(starting):
 
     """
 
-    tm.assert_almost_equal(starting, k.Q.processes.keys())
+    assert starting == k.Q.processes.keys()
 
 
 def test_basic():
@@ -80,6 +84,7 @@ def test_basic():
 
     check_process_table_ok(starting)
 
+
 def test_basic_inuse():
 
     starting = k.Q.processes.keys()
@@ -99,6 +104,7 @@ def test_basic_inuse():
 
     check_process_table_ok(starting)
 
+
 def test_basic_inuse2():
 
     starting = k.Q.processes.keys()
@@ -109,7 +115,7 @@ def test_basic_inuse2():
     creds2 = copy.copy(creds)
     creds3 = copy.copy(creds)
 
-    ports = count(DEFAULT_START_PORT_NUMBER+10)
+    ports = count(DEFAULT_START_PORT_NUMBER + 10)
     creds.port = next(ports)
     creds2.port = next(ports)
     creds3.port = next(ports)
@@ -128,12 +134,13 @@ def test_basic_inuse2():
     kq3.stop()
     check_process_table_ok(starting)
 
+
 def test_basic_fixed():
 
     starting = k.Q.processes.keys()
 
     creds = Credentials(port=47001)
-    kq = k.KQ(creds,start=True)
+    kq = k.KQ(creds, start=True)
 
     # force a PortIsFixed exception
     creds2 = Credentials(port=47001)
@@ -142,6 +149,7 @@ def test_basic_fixed():
 
     kq.stop()
     check_process_table_ok(starting)
+
 
 def test_context():
     # test the context manager
@@ -154,10 +162,11 @@ def test_context():
     with k.KQ(start=True) as kq:
         assert kq.is_started
 
-    with k.KQ(Credentials(port=47500),start=True) as kq:
+    with k.KQ(Credentials(port=47500), start=True) as kq:
         assert kq.is_started
 
     check_process_table_ok(starting)
+
 
 def test_kq_repr():
     with k.KQ() as kq:
@@ -197,7 +206,9 @@ def test_q_process():
 
     check_process_table_ok(starting)
 
-@pytest.mark.xfail(raises=PortInUse,
+
+@pytest.mark.xfail(sys.platform == 'win32',
+                   raises=PortInUse,
                    reason='fails with fixed port at times')
 def test_fixed_port_restart():
 
@@ -216,8 +227,10 @@ def test_fixed_port_restart():
 
     check_process_table_ok(starting)
 
+
 def test_q_multi_process(qproc, qproc2):
     assert qproc.pid != qproc2.pid
+
 
 def test_construction(qproc3, creds):
 
@@ -237,7 +250,7 @@ def test_construction(qproc3, creds):
 
 
 def test_init():
-    # require initilization
+    # require initialization
     cred = k.Credentials(port=0)
     kdb = k.KDB(credentials=cred)
     with pytest.raises(ValueError):
@@ -260,7 +273,8 @@ def test_getitem_compat(kdbpar):
                 engine=kdbpar)
 
     data2 = kdbpar['trade']
-    assert data2.dshape==data.dshape
+    assert data2.dshape == data.dshape
+
 
 def test_get_set_timestamp(kdb, gensym):
     ts = pd.Timestamp('2001-01-01 09:30:00.123')
@@ -480,6 +494,7 @@ def test_verbose_mode(kdb):
     finally:
         sys.stdout = oldstdout
         kdb.verbose = False
+
 
 def test_cache(kdb):
 
