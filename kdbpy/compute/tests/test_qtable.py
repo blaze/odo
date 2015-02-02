@@ -10,7 +10,7 @@ def test_columns(q):
 def test_repr(q):
     expected = """
 QTable(tablename='t',
-       dshape='var * {name: string, id: int64, amount: float64, when: datetime, on: date}')"""
+       dshape=\"\"\"var * {name: string, id: int64, amount: float64, when: datetime, on: date}\"\"\")"""
     assert repr(q) == expected.strip()
 
 
@@ -51,10 +51,6 @@ def test_discover_kq(kq, ktq, rq, sq, q):
   st: var * {name: string, jobcode: int64, tree: string, alias: string},
   t: var * {name: string, id: int64, amount: float64, when: datetime, on: date}
 }""")
-    assert_db_subset(expected, result)
-
-
-def assert_db_subset(subset, db):
-    inside = set(zip(subset.measure.names, subset.measure.types))
-    dbset = set(zip(db.measure.names, db.measure.types))
+    inside = set(zip(expected.measure.names, expected.measure.types))
+    dbset = set(zip(result.measure.names, result.measure.types))
     assert inside < dbset
