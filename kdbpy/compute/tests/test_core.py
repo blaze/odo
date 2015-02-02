@@ -15,6 +15,7 @@ from blaze import compute, into, by, discover, dshape, summary, Data
 from kdbpy.compute.qtable import qtypes
 from kdbpy.tests import assert_series_equal
 from kdbpy.compute.core import compile
+from kdbpy import q as qs
 
 
 def test_projection(t, q, df):
@@ -384,12 +385,17 @@ def test_empty_all_types(rstring, kdb):
     assert discover(d) == dshape('var * {%s}' % expected)
 
 
+@pytest.mark.xfail(raises=TypeError,
+                   reason='No support for compiling directory from qtables')
 def test_compile_query(q):
     t = bz.Data(q)
-    from kdbpy import q
-    assert compile(t.amount + 1) == q.add(q.Symbol('t')['amount'], 1)
+    assert compile(t.amount + 1) == qs.add(qs.Symbol('t')['amount'], 1)
 
 
 def test_compile_query_from_db(db):
-    from kdbpy import q
-    assert compile(db.t.amount * 2) == q.mul(q.Symbol('t')['amount'], 2)
+    assert compile(db.t.amount * 2) == qs.mul(qs.Symbol('t')['amount'], 2)
+
+
+def test_edge_case_compile_just_db_fails(db):
+    with pytest.raises(ValueError):
+        assert compile(db)

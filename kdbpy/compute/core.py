@@ -8,7 +8,7 @@ import numbers
 import datetime
 import itertools
 
-from operator import attrgetter, and_
+from operator import and_
 
 from functools import partial
 from contextlib import contextmanager
@@ -18,6 +18,8 @@ import pandas as pd
 
 from toolz.compatibility import zip
 from toolz import map, first, second, compose
+
+from datashape.predicates import isrecord
 
 from into import resource, convert, into, append
 from blaze import compute, symbol
@@ -516,13 +518,36 @@ def compute_down(expr, data, **kwargs):
     return result
 
 
-def compile(data):
-    expr, data = swap_resources_into_scope(data, data._resources())
-    leaves = expr._leaves()
-    import ipdb; ipdb.set_trace()
-    data_leaves = map(compose(attrgetter('_qsymbol'), data.__getitem__),
-                      leaves)
-    return compute(expr, dict(zip(leaves, data_leaves)))
+def compile(expr):
+    """Return the q expression from a blaze object
+
+    Examples
+    --------
+    >>> from blaze import Data
+    >>> from kdbpy.exampleutils import example_data
+    >>> kq = KQ(start=True)
+    >>> kq.read_kdb(example_data('start/db'))
+    >>> d = Data(kq)
+    >>> compile(d.daily.open.sum() + 1)
+    (+; (sum; `daily.open); 1)
+    >>> compile(d.trade.price.sum() + 2)
+    (+; (*:; (?; (?; `trade; 0b; (,:[`price])!(,:[(sum; `price)])); (); (); (,:[`price])); 2)
+    """
+    expr, data = swap_resources_into_scope(expr, {})
+    leaf, = expr._leaves()
+    if not isinstance(data[leaf], KQ):
+        raise TypeError('must compile from a single root database')
+    tables = [x for x in expr._subterms()
+              if isinstance(x, Field) and isrecord(x.dshape.measure)]
+
+    if not tables:
+        raise ValueError('Expressions not referencing a table cannot be '
+                         'compiled')
+    new_leaves = [symbol(t._name, t.dshape) for t in tables]
+    expr = expr._subs(dict(zip(tables, new_leaves)))
+    qsymbols = map(lambda x: x._qsymbol, (compute(t, data) for t in tables))
+    scope = dict(zip(new_leaves, qsymbols))
+    return compute(expr, scope)
 
 
 @dispatch(Field, KQ)
@@ -537,7 +562,7 @@ def resource_kdb(uri, engine=None, **kwargs):
     return engine
 
 
-@convert.register(pd.DataFrame, QTable, cost=5.0)
+@convert.register(pd.DataFrame, QTable, cost=10.0)
 def qtable_to_frame(t, **kwargs):
     return t.engine.eval(t.tablename)
 
