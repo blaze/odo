@@ -9,6 +9,7 @@ import datetime
 import itertools
 
 from operator import and_
+
 from functools import partial
 from contextlib import contextmanager
 
@@ -18,12 +19,14 @@ import pandas as pd
 from toolz.compatibility import zip
 from toolz import map, first, second, compose
 
+from datashape.predicates import isrecord
+
 from into import resource, convert, into, append
 from blaze import compute, symbol
 
 from blaze.dispatch import dispatch
 
-from blaze.compute.core import compute
+from blaze.compute.core import compute, swap_resources_into_scope
 from blaze.expr import Symbol, Projection, Selection, Field, Relational
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
 from blaze.expr import Slice, Distinct, Summary, std, var
@@ -515,6 +518,26 @@ def compute_down(expr, data, **kwargs):
     return result
 
 
+def compile(expr):
+    """ Compile a blaze expression to a q expression"""
+    expr, data = swap_resources_into_scope(expr, {})
+    leaf, = expr._leaves()
+    if not isinstance(data[leaf], KQ):
+        raise TypeError('must compile from a single root database')
+    tables = [x for x in expr._subterms()
+              if isinstance(x, Field) and isrecord(x.dshape.measure)]
+
+    if not tables:
+        raise ValueError('Expressions not referencing a table cannot be '
+                         'compiled')
+    new_leaves = [symbol(t._name, t.dshape) for t in tables]
+    expr = expr._subs(dict(zip(tables, new_leaves)))
+    qtables = [compute(t, data) for t in tables]
+    qsymbols = [qt._qsymbol for qt in qtables]
+    scope = dict(zip(new_leaves, qsymbols))
+    return compute(expr, scope)
+
+
 @dispatch(Field, KQ)
 def compute_up(expr, data, **kwargs):
     return QTable(tablename=expr._name, engine=data)
@@ -527,7 +550,7 @@ def resource_kdb(uri, engine=None, **kwargs):
     return engine
 
 
-@convert.register(pd.DataFrame, QTable, cost=5.0)
+@convert.register(pd.DataFrame, QTable, cost=10.0)
 def qtable_to_frame(t, **kwargs):
     return t.engine.eval(t.tablename)
 

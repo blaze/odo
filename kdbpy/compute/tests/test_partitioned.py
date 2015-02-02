@@ -183,3 +183,12 @@ def test_append_frame_to_partitioned(par):
     expected = pd.concat([df, df], ignore_index=True)
     result = into(pd.DataFrame, into(par.trade, df))
     tm.assert_frame_equal(result, expected)
+
+
+@xfail(raises=QException, reason='Not generating the correct expression')
+def test_arith_on_reduction(par):
+    expr = par.trade.price.sum() + 2
+    qs = '2 + first exec price from select sum price from trade'
+    expected = par.data.eval(qs)
+    result = compute(expr)
+    assert result == expected

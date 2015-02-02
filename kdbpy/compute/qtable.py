@@ -94,13 +94,15 @@ class QTable(PrettyMixin):
     def _repr_pretty_(self, p, cycle):
         assert not cycle, 'cycles not allowed'
         name = type(self).__name__
+        extra_indent = len(type(self).__name__)
+        spaces = ' ' * extra_indent
         with p.group(len(name) + 1, '%s(' % name, ')'):
-            p.text('tablename=')
-            p.pretty(self.tablename)
+            p.text('tablename=%r' % self.tablename)
             p.text(',')
             p.breakable()
-            p.text('dshape=')
-            p.pretty(str(self.dshape))
+            s = str(self.dshape)
+            s = s.replace('\n', '\n' + spaces)
+            p.text('dshape="""%s"""' % s)
 
     @property
     def _qsymbol(self):

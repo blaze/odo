@@ -14,7 +14,8 @@ import blaze as bz
 from blaze import compute, into, by, discover, dshape, summary, Data
 from kdbpy.compute.qtable import qtypes
 from kdbpy.tests import assert_series_equal
-from into import into
+from kdbpy.compute.core import compile
+from kdbpy import q as qs
 
 
 def test_projection(t, q, df):
@@ -313,10 +314,8 @@ def test_dates(t, q, df, attr):
 
 def test_dates_date(t, q, df):
     expr = t.when.date
-    result = compute(expr, q)
-    expected = compute(expr, df)
-    expected = pd.to_datetime(expected)  # pandas returns objects here so coerce
-    tm.assert_series_equal(result, expected, check_dtype=False)
+    expected = pd.to_datetime(compute(expr, df))
+    tm.assert_series_equal(compute(expr, q), expected, check_dtype=False)
 
 
 def test_by_with_where(t, q, df):
@@ -384,3 +383,32 @@ def test_empty_all_types(rstring, kdb):
     expected = ', '.join(s.format(name=name, type=qtypes[t])
                          for name, t in zip(names, types))
     assert discover(d) == dshape('var * {%s}' % expected)
+
+
+@pytest.mark.xfail(raises=TypeError,
+                   reason='No support for compiling directory from qtables')
+def test_compile_query(q):
+    t = bz.Data(q)
+    assert compile(t.amount + 1) == qs.add(qs.Symbol('t')['amount'], 1)
+
+
+def test_compile_query_from_db(db):
+    assert compile(db.t.amount * 2) == qs.mul(qs.Symbol('t')['amount'], 2)
+
+
+def test_edge_case_compile_just_db_fails(db):
+    with pytest.raises(ValueError):
+        assert compile(db)
+
+
+def test_compile(par):
+    assert str(compile(par.daily.open + 1)) == '(+; `daily.open; 1)'
+    assert str(compile(par.daily.open.mean() + 1)) == '(+; (avg; `daily.open); 1)'
+    assert str(compile(by(par.daily.sym, open=par.daily.open.mean()))) == \
+        '(?; `daily; (,:[()]); (,:[`sym])!(,:[`sym]); (,:[`open])!(,:[(avg; `open)]))'
+    assert str(compile(par.trade.price.sum())) == \
+        '(*:; (?; (?; `trade; (); 0b; (,:[`price])!(,:[(sum; `price)])); (); (); (,:[`price])))'
+
+    # this is incorrect and will break if we fix it
+    assert str(compile(par.trade.price.sum() + 2)) == \
+        '(+; (sum; `trade.price); 2)'
