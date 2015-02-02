@@ -523,15 +523,21 @@ def compile(expr):
 
     Examples
     --------
-    >>> from blaze import Data
+    >>> from blaze import Data, by
     >>> from kdbpy.exampleutils import example_data
     >>> kq = KQ(start=True)
     >>> kq.read_kdb(example_data('start/db'))
     >>> d = Data(kq)
-    >>> compile(d.daily.open.sum() + 1)
-    (+; (sum; `daily.open); 1)
-    >>> compile(d.trade.price.sum() + 2)
-    (+; (*:; (?; (?; `trade; 0b; (,:[`price])!(,:[(sum; `price)])); (); (); (,:[`price])); 2)
+    >>> compile(d.daily.open + 1)
+    (+; `daily.open; 1)
+    >>> compile(d.daily.open.mean() + 1)
+    (+; (avg; `daily.open); 1)
+    >>> compile(by(d.daily.sym, open=d.daily.open.mean()))
+    (?; `daily; (,:[()]); (,:[`sym])!(,:[`sym]); (,:[`open])!(,:[(avg; `open)]))
+    >>> compile(d.trade.price.sum())
+    (*:; (?; (?; `trade; (); 0b; (,:[`price])!(,:[(sum; `price)])); (); (); (,:[`price])))
+    >>> compile(d.trade.price.sum() + 2)  # this is incorrect and will break if we fix it
+    (+; (sum; `trade.price); 2)
     """
     expr, data = swap_resources_into_scope(expr, {})
     leaf, = expr._leaves()
@@ -545,7 +551,8 @@ def compile(expr):
                          'compiled')
     new_leaves = [symbol(t._name, t.dshape) for t in tables]
     expr = expr._subs(dict(zip(tables, new_leaves)))
-    qsymbols = map(lambda x: x._qsymbol, (compute(t, data) for t in tables))
+    qtables = [compute(t, data) for t in tables]
+    qsymbols = [qt._qsymbol for qt in qtables]
     scope = dict(zip(new_leaves, qsymbols))
     return compute(expr, scope)
 
