@@ -3,9 +3,11 @@ from __future__ import absolute_import, division, print_function
 import gzip
 from datashape import discover, dshape
 from collections import Iterator
+from toolz import partial, concat
 import os
 
 from ..compatibility import unicode
+from ..chunks import chunks
 from ..drop import drop
 from ..append import append
 from ..convert import convert
@@ -28,6 +30,11 @@ def textfile_to_iterator(data, **kwargs):
     with data.open(data.path) as f:
         for line in f:
             yield line
+
+
+@convert.register(Iterator, chunks(TextFile), cost=0.1)
+def chunks_textfile_to_iterator(data, **kwargs):
+    return concat(map(partial(convert, Iterator), data))
 
 
 @discover.register(TextFile)

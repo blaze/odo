@@ -1,6 +1,6 @@
 from into.backends.text import (TextFile, resource, convert, discover, append,
-        drop)
-from into.utils import tmpfile, filetext
+        drop, chunks)
+from into.utils import tmpfile, filetexts, filetext
 from datashape import dshape
 import os
 
@@ -35,3 +35,10 @@ def test_drop():
         assert os.path.exists(fn)
         drop(t)
         assert not os.path.exists(fn)
+
+
+def test_chunks_textfile():
+    with filetexts({'a1.log': 'Hello\nWorld', 'a2.log': 'Hola\nMundo'}) as fns:
+        logs = chunks(TextFile)(list(map(TextFile, fns)))
+        assert set(map(str.strip, convert(list, logs))) == \
+                set(['Hello', 'World', 'Hola', 'Mundo'])
