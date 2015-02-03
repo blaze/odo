@@ -339,11 +339,11 @@ def append_local_file_to_hdfs(target, source, **kwargs):
         target.hdfs.list_dir(target.path.lstrip('/'))
         with open(source.path) as f:
             # TODO: handle large files
-            target.hdfs.append_file(target.path.lstrip('/'), f.read())
+            target.hdfs.append_file(target.path.lstrip('/'), f)
     except FileNotFound:
         with open(source.path) as f:
             # TODO: handle large files
-            target.hdfs.create_file(target.path.lstrip('/'), f.read())
+            target.hdfs.create_file(target.path.lstrip('/'), f)
 
     return target
 
