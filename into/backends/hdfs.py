@@ -6,6 +6,7 @@ import re
 
 from .csv import CSV
 from .json import JSON, JSONLines
+from .text import TextFile
 import datashape
 import sqlalchemy as sa
 from datashape import discover, dshape
@@ -348,6 +349,7 @@ def append_remote_csv_to_table(tbl, csv, **kwargs):
     return tbl
 
 
+@append.register(HDFS(TextFile), TextFile)
 @append.register(HDFS(JSONLines), JSONLines)
 @append.register(HDFS(JSON), JSON)
 @append.register(HDFS(CSV), CSV)
@@ -404,7 +406,8 @@ def dialect_of(data, **kwargs):
 
 
 
-types_by_extension = {'csv': CSV, 'json': JSONLines}
+types_by_extension = {'csv': CSV, 'json': JSONLines, 'txt': TextFile,
+                      'log': TextFile}
 
 hdfs_pattern = '(((?P<user>[a-zA-Z]\w*)@)?(?P<host>[\w.-]*)?(:(?P<port>\d+))?:)?(?P<path>[/\w.*-]+)'
 
