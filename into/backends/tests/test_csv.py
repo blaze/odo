@@ -133,7 +133,7 @@ def test_pandas_write_gzip():
 def test_pandas_loads_in_datetimes_naively():
     with filetext('name,when\nAlice,2014-01-01\nBob,2014-02-02') as fn:
         csv = CSV(fn, has_header=True)
-        ds = datashape.dshape('var * {name: string, when: datetime}')
+        ds = datashape.dshape('var * {name: ?string, when: ?datetime}')
         assert discover(csv) == ds
 
         df = convert(pd.DataFrame, csv)
@@ -144,7 +144,7 @@ def test_pandas_discover_on_gzipped_files():
     with filetext('name,when\nAlice,2014-01-01\nBob,2014-02-02',
             open=gzip.open, extension='.csv.gz') as fn:
         csv = CSV(fn, has_header=True)
-        ds = datashape.dshape('var * {name: string, when: datetime}')
+        ds = datashape.dshape('var * {name: ?string, when: ?datetime}')
         assert discover(csv) == ds
 
 

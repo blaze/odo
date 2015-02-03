@@ -113,7 +113,7 @@ def test_append_other():
     with tmpfile('.hdf5') as fn:
         x = into(np.ndarray, df)
         dset = into('hdfstore://'+fn+'::/data', x)
-        assert discover(dset) == discover(x)
+        assert discover(dset) == discover(df)
 
 
 def test_fixed_shape():
