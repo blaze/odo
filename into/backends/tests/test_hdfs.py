@@ -29,12 +29,12 @@ engine = resource('hive://hdfs@%s:10000/default' % host)
 
 
 def test_discover():
-    assert discover(hdfs_csv) == \
-            dshape('var * {id: int64, name: string, amount: int64}')
+    assert str(discover(hdfs_csv)).replace('?', '') == \
+            'var * {id: int64, name: string, amount: int64}'
 
 def test_discover_hdfs_directory():
-    assert discover(hdfs_directory) == \
-            dshape('var * {id: int64, name: string, amount: int64}')
+    assert str(discover(hdfs_directory)).replace('?', '') == \
+            'var * {id: int64, name: string, amount: int64}'
 
 
 def normalize(s):
