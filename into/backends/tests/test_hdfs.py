@@ -91,7 +91,7 @@ def test_copy_local_files_to_hdfs():
         with filetext('name,amount\nAlice,100\nBob,200') as source:
             csv = CSV(source)
             scsv = HDFS(CSV)(target, hdfs=hdfs)
-            into(scsv, csv)
+            into(scsv, csv, blocksize=10)  # 10 bytes per message
 
             assert discover(scsv) == discover(csv)
 

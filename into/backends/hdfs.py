@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from toolz import memoize, merge
+from toolz import memoize, merge, partition_all
 from functools import wraps
 import re
 
@@ -351,16 +351,15 @@ def append_remote_csv_to_table(tbl, csv, **kwargs):
 @append.register(HDFS(JSONLines), JSONLines)
 @append.register(HDFS(JSON), JSON)
 @append.register(HDFS(CSV), CSV)
-def append_local_file_to_hdfs(target, source, blocksize=2**23, **kwargs):
+def append_local_file_to_hdfs(target, source, blocksize=100000, **kwargs):
     if raises(FileNotFound,
               lambda: target.hdfs.list_dir(target.path.lstrip('/'))):
         target.hdfs.create_file(target.path.lstrip('/'), '')
 
-    with open(source.path, 'rb') as f:
-        data = f.read(blocksize)
-        while data:
-            target.hdfs.append_file(target.path.lstrip('/'), data)
-            data = f.read(blocksize)
+    with open(source.path, 'r') as f:
+        blocks = partition_all(blocksize, f)
+        for block in blocks:
+            target.hdfs.append_file(target.path.lstrip('/'), ''.join(block))
 
     return target
 
