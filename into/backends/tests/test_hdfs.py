@@ -10,7 +10,7 @@ import uuid
 from into.backends.hdfs import (discover, HDFS, CSV, TableProxy, SSH)
 from into.backends.sql import resource
 from into import into, drop, JSONLines
-from into.utils import filetext
+from into.utils import filetext, ignoring
 import sqlalchemy as sa
 from datashape import dshape
 from into.directory import Directory
@@ -52,41 +52,43 @@ ssh_csv= SSH(CSV)('/home/ubuntu/into-testing/accounts1.csv', **auth)
 ssh_directory = SSH(Directory(CSV))('/home/ubuntu/into-testing/', **auth)
 
 
-def test_hdfs_hive_creation():
-    uri = 'hive://hdfs@%s:10000/default::hdfs_directory_1' % host
+@contextmanager
+def hive_table(host):
+    name = ('temp' + str(uuid.uuid1()).replace('-', ''))[:30]
+    uri = 'hive://hdfs@%s:10000/default::%s' % (host, name)
+
     try:
+        yield uri
+    finally:
+        with ignoring(Exception):
+            drop(uri)
+
+
+def test_hdfs_hive_creation():
+    with hive_table(host) as uri:
         t = into(uri, hdfs_directory)
         assert isinstance(t, sa.Table)
         assert len(into(list, t)) > 0
         assert discover(t) == ds
-    finally:
-        drop(t)
 
 
 def test_ssh_hive_creation():
-    uri = 'hive://hdfs@%s:10000/default::ssh_1' % host
-    try:
+    with hive_table(host) as uri:
         t = into(uri, ssh_csv)
         assert isinstance(t, sa.Table)
         assert len(into(list, t)) > 0
-    finally:
-        drop(t)
 
 
 def test_ssh_directory_hive_creation():
-    uri = 'hive://hdfs@%s:10000/default::ssh_2' % host
-    try:
+    with hive_table(host) as uri:
         t = into(uri, ssh_directory)
         assert isinstance(t, sa.Table)
         assert discover(t) == ds
         assert len(into(list, t)) > 0
-    finally:
-        drop(t)
 
 
 def test_ssh_hive_creation_with_full_urls():
-    uri = 'hive://hdfs@%s:10000/default::ssh_3' % host
-    try:
+    with hive_table(host) as uri:
         t = into(uri, 'ssh://ubuntu@%s:accounts.csv' % host,
                  key_filename=os.path.expanduser('~/.ssh/cdh_testing.key'))
         assert isinstance(t, sa.Table)
@@ -99,8 +101,6 @@ def test_ssh_hive_creation_with_full_urls():
 
         # Doubles length
         assert len(into(list, t)) == 2 * n
-    finally:
-        drop(t)
 
 
 def test_hive_resource():
