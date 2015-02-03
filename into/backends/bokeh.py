@@ -2,7 +2,10 @@ from __future__ import absolute_import, division, print_function
 
 from ..convert import convert
 import pandas as pd
-from bokeh.models import ColumnDataSource
+try:
+    from bokeh.models import ColumnDataSource
+except ImportError:
+    ColumnDataSource = type(None)
 
 @convert.register(pd.DataFrame, ColumnDataSource)
 def columndatasource_to_dataframe(cds, **kwargs):
