@@ -10,8 +10,6 @@ from ..chunks import chunks, Chunks
 from ..resource import resource
 
 
-HDFDataset = (pd.io.pytables.AppendableFrameTable, pd.io.pytables.FrameFixed)
-
 @discover.register(pd.HDFStore)
 def discover_hdfstore(f):
     d = dict()
@@ -94,4 +92,4 @@ def append_object_to_hdfstore(store, o, **kwargs):
     return append(store, convert(chunks(pd.DataFrame), o, **kwargs), **kwargs)
 
 
-ooc_types |= set(HDFDataset)
+ooc_types.add(pd.io.pytables.AppendableFrameTable)

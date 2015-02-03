@@ -11,7 +11,8 @@ from collections import Iterator
 from into.backends.csv import (CSV, append, convert, resource,
         csv_to_DataFrame, CSV_to_chunks_of_dataframes)
 from into.utils import tmpfile, filetext, filetexts, raises
-from into import into, append, convert, resource, discover, dshape
+from into import into, append, convert, resource, discover, dshape, Temp
+from into.temp import _Temp
 from into.compatibility import unicode, skipif
 
 
@@ -132,7 +133,7 @@ def test_pandas_write_gzip():
 def test_pandas_loads_in_datetimes_naively():
     with filetext('name,when\nAlice,2014-01-01\nBob,2014-02-02') as fn:
         csv = CSV(fn, has_header=True)
-        ds = datashape.dshape('var * {name: string, when: datetime}')
+        ds = datashape.dshape('var * {name: ?string, when: ?datetime}')
         assert discover(csv) == ds
 
         df = convert(pd.DataFrame, csv)
@@ -143,7 +144,7 @@ def test_pandas_discover_on_gzipped_files():
     with filetext('name,when\nAlice,2014-01-01\nBob,2014-02-02',
             open=gzip.open, extension='.csv.gz') as fn:
         csv = CSV(fn, has_header=True)
-        ds = datashape.dshape('var * {name: string, when: datetime}')
+        ds = datashape.dshape('var * {name: ?string, when: ?datetime}')
         assert discover(csv) == ds
 
 
@@ -263,3 +264,35 @@ def test_csv_separator_header():
     with filetext('a|b|c\n1|2|3\n4|5|6', extension='csv') as fn:
         csv = CSV(fn, delimiter='|', has_header=True)
         assert convert(list, csv) == [(1, 2, 3), (4, 5, 6)]
+
+
+df = pd.DataFrame([['Alice',   100],
+                   ['Bob',     200],
+                   ['Charlie', 300]],
+                  columns=['name', 'balance'])
+
+
+def test_temp_csv():
+    csv = into(Temp(CSV)('_test_temp_csv.csv'), df)
+    assert isinstance(csv, CSV)
+
+    assert into(list, csv) == into(list, df)
+
+    del csv
+    import gc
+    gc.collect()
+    assert not os.path.exists('_test_temp_csv.csv')
+
+
+def test_convert_to_csv():
+    csv = into(Temp(CSV), df)
+    assert isinstance(csv, CSV)
+
+    assert into(list, csv) == into(list, df)
+    assert isinstance(csv, _Temp)
+
+
+def test_unicode_column_names():
+    with filetext('foo\xc4\x87,a\n1,2\n3,4', extension='csv') as fn:
+        csv = CSV(fn, has_header=True)
+        df = into(pd.DataFrame, csv)

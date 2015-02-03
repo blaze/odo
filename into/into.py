@@ -26,38 +26,78 @@ def into_type(a, b, **kwargs):
 
 
 @into.register(object, object)
-def into_object(a, b, **kwargs):
+def into_object(target, source, **kwargs):
     """ Push one dataset into another
+
+    Parameters
+    ----------
+
+    source: object or string
+        The source of your data.  Either an object (e.g. DataFrame),
+    target: object or string or type
+        The target for where you want your data to go.
+        Either an object, (e.g. []), a type, (e.g. list)
+        or a string (e.g. 'postgresql://hostname::tablename'
+    raise_on_errors: bool (optional, defaults to False)
+        Raise exceptions rather than reroute around them
+    **kwargs:
+        keyword arguments to pass through to conversion functions.
 
     Examples
     --------
 
-    >>> # Convert things into new things
-    >>> L = into(list, (1, 2, 3))
+    >>> L = into(list, (1, 2, 3))  # Convert things into new things
     >>> L
     [1, 2, 3]
 
-    >>> # Add things onto existing things
-    >>> _ = into(L, (4, 5, 6))
+    >>> _ = into(L, (4, 5, 6))  # Append things onto existing things
     >>> L
     [1, 2, 3, 4, 5, 6]
 
-    >>> # Specify things with strings
     >>> into('myfile.csv', [('Alice', 1), ('Bob', 2)])  # doctest: +SKIP
+
+    Explanation
+    -----------
+
+    We can specify data with a Python object like a ``list``, ``DataFrame``,
+    ``sqlalchemy.Table``, ``h5py.Dataset``, etc..
+
+    We can specify data with a string URI like ``'myfile.csv'``,
+    ``'myfiles.*.json'`` or ``'sqlite:///data.db::tablename'``.  These are
+    matched by regular expression.  See the ``resource`` function for more
+    details on string URIs.
+
+    We can optionally specify datatypes with the ``dshape=`` keyword, providing
+    a datashape.  This allows us to be explicit about types when mismatches
+    occur or when our data doesn't hold the whole picture.  See the
+    ``discover`` function for more information on ``dshape``.
+
+    >>> ds = 'var * {name: string, balance: float64}'
+    >>> into('accounts.json', [('Alice', 100), ('Bob', 200)], dshape=ds)  # doctest: +SKIP
+
+    We can optionally specify keyword arguments to pass down to relevant
+    conversion functions.  For example, when converting a CSV file we might
+    want to specify delimiter
+
+    >>> into(list, 'accounts.csv', has_header=True, delimiter=';')  # doctest: +SKIP
+
+    These keyword arguments trickle down to whatever function ``into`` uses
+    convert this particular format, functions like ``pandas.read_csv``.
 
     See Also
     --------
 
+    into.resource.resource  - Specify things with strings
+    datashape.discover      - Get datashape of data
     into.convert.convert    - Convert things into new things
     into.append.append      - Add things onto existing things
-    into.resource.resource  - Specify things with strings
     """
-    if isinstance(b, (str, unicode)):
-        b = resource(b, **kwargs)
+    if isinstance(source, (str, unicode)):
+        source = resource(source, **kwargs)
     with ignoring(NotImplementedError):
         if 'dshape' not in kwargs:
-            kwargs['dshape'] = discover(b)
-    return append(a, b, **kwargs)
+            kwargs['dshape'] = discover(source)
+    return append(target, source, **kwargs)
 
 
 @into.register(str, object)

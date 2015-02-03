@@ -1,20 +1,17 @@
-import paramiko
+import pytest
+paramiko = pytest.importorskip('paramiko')
 
-from into.utils import tmpfile, filetext, filetexts, raises
-from into.directory import _Directory, Directory
-from into.backends.ssh import *
-from into import into
+import pandas as pd
+import numpy as np
 import re
 import os
 
-
-try:
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(hostname='localhost')
-except:
-    import pytest
-    pytest.importorskip('a_library_that_does_not_exist')  # Punt on testing
+from into.utils import tmpfile, filetext
+from into.directory import _Directory, Directory
+from into.backends.ssh import SSH, resource, ssh_pattern, sftp, drop, connect
+from into.backends.csv import CSV
+from into import into, discover, CSV, JSONLines, JSON
+from into.temp import _Temp, Temp
 
 
 def test_resource():
@@ -23,6 +20,18 @@ def test_resource():
     assert r.path == '/path/to/myfile.csv'
     assert r.auth['hostname'] == 'localhost'
     assert r.auth['username'] == 'joe'
+
+
+def test_connect():
+    a = connect(hostname='localhost')
+    b = connect(hostname='localhost')
+    assert a is b
+
+    a.close()
+
+    c = connect(hostname='localhost')
+    assert a is c
+    assert c.get_transport() and c.get_transport().is_active()
 
 
 def test_resource_directory():
@@ -62,12 +71,12 @@ def test_ssh_pattern():
 
 def test_copy_remote_csv():
     with tmpfile('csv') as target:
-        with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
+        with filetext('name,balance\nAlice,100\nBob,200',
+                      extension='csv') as fn:
             csv = resource(fn)
             scsv = into('ssh://localhost:foo.csv', csv)
             assert isinstance(scsv, SSH(CSV))
             assert discover(scsv) == discover(csv)
-
 
             # Round trip
             csv2 = into(target, scsv)
@@ -77,16 +86,45 @@ def test_copy_remote_csv():
 def test_drop():
     with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
         with tmpfile('csv') as target:
-            csv = CSV(fn)
             scsv = SSH(CSV)(target, hostname='localhost')
 
             assert not os.path.exists(target)
 
-            with sftp(**scsv.auth) as conn:
-                conn.put(fn, target)
+            conn = sftp(**scsv.auth)
+            conn.put(fn, target)
 
             assert os.path.exists(target)
 
             drop(scsv)
 
             assert not os.path.exists(target)
+
+
+def test_drop_of_csv_json_lines_use_ssh_version():
+    from into.backends.ssh import drop_ssh
+    for typ in [CSV, JSON, JSONLines]:
+        assert drop.dispatch(SSH(typ)) == drop_ssh
+
+
+def test_temp_ssh_files():
+    with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
+        csv = CSV(fn)
+        scsv = into(Temp(SSH(CSV)), csv, hostname='localhost')
+        assert discover(csv) == discover(scsv)
+
+        assert isinstance(scsv, _Temp)
+
+
+def test_convert_through_temporary_local_storage():
+    with filetext('name,quantity\nAlice,100\nBob,200', extension='csv') as fn:
+        csv = CSV(fn)
+        df = into(pd.DataFrame, csv)
+        scsv = into(Temp(SSH(CSV)), csv, hostname='localhost')
+
+        assert into(list, csv) == into(list, scsv)
+
+        scsv2 = into(Temp(SSH(CSV)), df, hostname='localhost')
+        assert into(list, scsv2) == into(list, df)
+
+        sjson = into(Temp(SSH(JSONLines)), df, hostname='localhost')
+        assert (into(np.ndarray, sjson) == into(np.ndarray, df)).all()

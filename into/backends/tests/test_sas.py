@@ -43,7 +43,7 @@ def test_convert_sas_to_dataframe():
     # pandas doesn't support date
     expected = str(ds.measure).replace('date', 'datetime')
 
-    assert str(discover(df).measure) == expected
+    assert str(discover(df).measure).replace('?', '') == expected
 
 
 def test_convert_sas_to_list():
