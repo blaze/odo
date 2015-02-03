@@ -15,6 +15,7 @@ from .directory import Directory
 from .into import into
 from .drop import drop
 from .temp import Temp
+from .backends.text import TextFile
 from .chunks import chunks, Chunks
 from datashape import discover, dshape
 import numpy as np
@@ -53,7 +54,7 @@ with ignoring(ImportError):
 
 restart_ordering()  # Restart multipledispatch ordering and do ordering
 
-__version__ = '0.1.3'
+__version__ = '0.1.4'
 
 
 def test(verbose=False, junitfile=None, exit=False):
