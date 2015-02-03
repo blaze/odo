@@ -1,5 +1,5 @@
 from into.backends.json import *
-from into.utils import tmpfile
+from into.utils import tmpfile, ignoring
 from into import into
 from into.temp import Temp, _Temp
 from contextlib import contextmanager
@@ -52,11 +52,12 @@ def test_discover_json_only_includes_datetimes_not_dates():
 
 
 def test_resource():
-    assert isinstance(resource('jsonlines://foo.json'), JSONLines)
-    assert isinstance(resource('json://foo.json'), JSON)
+    with tmpfile('json') as fn:
+        assert isinstance(resource('jsonlines://' + fn), JSONLines)
+        assert isinstance(resource('json://' + fn), JSON)
 
-    assert isinstance(resource('foo.json', expected_dshape=dshape('var * {a: int}')),
-                      JSONLines)
+        assert isinstance(resource(fn, expected_dshape=dshape('var * {a: int}')),
+                          JSONLines)
 
 def test_resource_guessing():
     with json_file(dat) as fn:
@@ -146,17 +147,24 @@ def test_empty_line():
 
 
 def test_multiple_jsonlines():
+    a, b = '_test_a1.json', '_test_a2.json'
     try:
-        with open('_test_a1.json', 'w') as f:
+        with ignoring(OSError):
+            os.remove(a)
+        with ignoring(OSError):
+            os.remove(b)
+        with open(a, 'w') as f:
             json.dump(dat, f)
-        with open('_test_a2.json', 'w') as f:
+        with open(b'_test_a2.json', 'w') as f:
             json.dump(dat, f)
         r = resource('_test_a*.json')
         result = convert(list, r)
         assert len(result) == len(dat) * 2
     finally:
-        os.remove('_test_a1.json')
-        os.remove('_test_a2.json')
+        with ignoring(OSError):
+            os.remove(a)
+        with ignoring(OSError):
+            os.remove(b)
 
 
 def test_read_gzip_lines():
@@ -203,10 +211,14 @@ def test_write_gzip():
 
 
 def test_resource_gzip():
-    assert isinstance(resource('foo.json.gz'), (JSON, JSONLines))
-    assert isinstance(resource('json://foo.json.gz'), (JSON, JSONLines))
-    assert isinstance(resource('jsonlines://foo.json.gz'), (JSON, JSONLines))
-    assert isinstance(resource('jsonlines://foo.jsonlines.gz'), (JSON, JSONLines))
+    with tmpfile('json.gz') as fn:
+        assert isinstance(resource(fn), (JSON, JSONLines))
+        assert isinstance(resource('json://' + fn), (JSON, JSONLines))
+        assert isinstance(resource('jsonlines://' + fn), (JSON, JSONLines))
+
+
+    with tmpfile('jsonlines.gz'):
+        assert isinstance(resource('jsonlines://' + fn), (JSON, JSONLines))
 
 
 def test_convert_to_temp_json():
