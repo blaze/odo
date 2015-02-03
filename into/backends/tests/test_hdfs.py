@@ -6,12 +6,15 @@ except ImportError:
     import pytest
     pytest.importorskip('does_not_exist')
 
+import uuid
 from into.backends.hdfs import (discover, HDFS, CSV, TableProxy, SSH)
 from into.backends.sql import resource
 from into import into, drop, JSONLines
+from into.utils import filetext
 import sqlalchemy as sa
 from datashape import dshape
 from into.directory import Directory
+from contextlib import contextmanager
 import os
 
 host = '' or os.environ.get('HDFS_TEST_HOST')
@@ -123,3 +126,25 @@ def test_hdfs_resource():
     assert isinstance(resource('hdfs://path/to/*.csv',
                                 host='host', user='user', port=1234),
                       HDFS(Directory(CSV)))
+
+
+@contextmanager
+def tmpfile_hdfs(ext=''):
+    fn = str(uuid.uuid1())
+    if ext:
+        fn = fn + '.' + ext
+
+    try:
+        yield fn
+    finally:
+        hdfs.delete_file_dir(fn)
+
+
+def test_copy_local_files_to_hdfs():
+    with tmpfile_hdfs() as target:
+        with filetext('name,amount\nAlice,100\nBob,200') as source:
+            csv = CSV(source)
+            scsv = HDFS(CSV)(target, hdfs=hdfs)
+            into(scsv, csv)
+
+            assert discover(scsv) == discover(csv)

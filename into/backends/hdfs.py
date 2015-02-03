@@ -23,6 +23,7 @@ from ..compatibility import unicode
 
 with ignoring(ImportError):
     from pywebhdfs.webhdfs import PyWebHdfsClient
+    from pywebhdfs.errors import FileNotFound
 
 
 class _HDFS(object):
@@ -327,24 +328,24 @@ def append_remote_csv_to_new_table(tbl, data, dshape=None, **kwargs):
     return append(tbl2, data, **kwargs)
 
 
-@append.register(sa.Table, (SSH(CSV), SSH(Directory(CSV))))
-def append_remote_csv_to_table(tbl, csv, **kwargs):
+@append.register(HDFS(JSONLines), JSONLines)
+@append.register(HDFS(JSON), JSON)
+@append.register(HDFS(CSV), CSV)
+def append_local_file_to_hdfs(target, source, **kwargs):
     """
     Load Remote data into existing Hive table
     """
-    path = csv.path
-    if path[0] != '/':
-        path = '/home/%s/%s' % (csv.auth['username'], csv.path)
+    try:
+        target.hdfs.list_dir(target.path.lstrip('/'))
+        with open(source.path) as f:
+            # TODO: handle large files
+            target.hdfs.append_file(target.path.lstrip('/'), f.read())
+    except FileNotFound:
+        with open(source.path) as f:
+            # TODO: handle large files
+            target.hdfs.create_file(target.path.lstrip('/'), f.read())
 
-    if tbl.bind.dialect.name == 'hive':
-        statement = ('LOAD DATA LOCAL INPATH "%(path)s" INTO TABLE %(tablename)s' %
-                {'path': path, 'tablename': tbl.name})
-    else:
-        raise NotImplementedError("Don't know how to migrate csvs on remote "
-                "disk to database of dialect %s" % tbl.engine.dialect.name)
-    with tbl.bind.connect() as conn:
-        conn.execute(statement)
-    return tbl
+    return target
 
 
 import csv
