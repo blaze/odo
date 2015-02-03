@@ -19,15 +19,20 @@ from .json import JSON, JSONLines
 
 connection_pool = dict()
 
-@memoize(key=lambda args, kwargs: tuple(sorted(kwargs.items())))
 def connect(**auth):
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(**auth)
+    key = tuple(sorted(auth.items()))
+    if key in connection_pool:
+        ssh = connection_pool[key]
+        if not ssh.get_transport() or not ssh.get_transport().is_active():
+            ssh.connect(**auth)
+    else:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(**auth)
+        connection_pool[key] = ssh
     return ssh
 
 
-@memoize(key=lambda args, kwargs: tuple(sorted(kwargs.items())))
 def sftp(**auth):
     ssh = connect(**auth)
     return ssh.open_sftp()
