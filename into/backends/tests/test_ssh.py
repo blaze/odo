@@ -8,7 +8,7 @@ import os
 
 from into.utils import tmpfile, filetext
 from into.directory import _Directory, Directory
-from into.backends.ssh import SSH, resource, ssh_pattern, sftp, drop
+from into.backends.ssh import SSH, resource, ssh_pattern, sftp, drop, connect
 from into.backends.csv import CSV
 from into import into, discover, CSV, JSONLines, JSON
 from into.temp import _Temp, Temp
@@ -20,6 +20,18 @@ def test_resource():
     assert r.path == '/path/to/myfile.csv'
     assert r.auth['hostname'] == 'localhost'
     assert r.auth['username'] == 'joe'
+
+
+def test_connect():
+    a = connect(hostname='localhost')
+    b = connect(hostname='localhost')
+    assert a is b
+
+    a.close()
+
+    c = connect(hostname='localhost')
+    assert a is c
+    assert c.get_transport() and c.get_transport().is_active()
 
 
 def test_resource_directory():
@@ -78,8 +90,8 @@ def test_drop():
 
             assert not os.path.exists(target)
 
-            with sftp(**scsv.auth) as conn:
-                conn.put(fn, target)
+            conn = sftp(**scsv.auth)
+            conn.put(fn, target)
 
             assert os.path.exists(target)
 
