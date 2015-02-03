@@ -25,19 +25,100 @@ if not host:
 
 
 hdfs = PyWebHdfsClient(host=host, port='14000', user_name='hdfs')
-hdfs_csv= HDFS(CSV)('/user/hive/mrocklin/accounts/accounts.csv', hdfs=hdfs)
-hdfs_directory = HDFS(Directory(CSV))('/user/hive/mrocklin/accounts/', hdfs=hdfs)
 ds = dshape('var * {id: ?int64, name: ?string, amount: ?int64}')
 engine = resource('hive://hdfs@%s:10000/default' % host)
 
 
-def test_discover():
-    assert str(discover(hdfs_csv)).replace('?', '') == \
-            'var * {id: int64, name: string, amount: int64}'
+accounts_1_csv = """
+id,name,amount
+1,Alice,100
+2,Bob,200
+3,Charlie,300
+4,Dan,400
+5,Edith,500""".strip()
 
-def test_discover_hdfs_directory():
-    assert str(discover(hdfs_directory)).replace('?', '') == \
-            'var * {id: int64, name: string, amount: int64}'
+accounts_2_csv = """
+id,name,amount
+6,Frank,600
+7,George,700
+8,Hannah,800
+""".strip()
+
+
+@contextmanager
+def accounts_data():
+    a = '/user/hive/test/accounts/accounts.1.csv'
+    b = '/user/hive/test/accounts/accounts.2.csv'
+    hdfs.make_dir('user/hive/test/accounts')
+    hdfs.create_file(a.lstrip('/'), accounts_1_csv)
+    hdfs.create_file(b.lstrip('/'), accounts_2_csv)
+
+    A = HDFS(CSV)(a, hdfs=hdfs)
+    B = HDFS(CSV)(b, hdfs=hdfs)
+    directory = HDFS(Directory(CSV))('/user/hive/test/accounts/', hdfs=hdfs)
+
+    try:
+        yield (directory, (A, B))
+    finally:
+        hdfs.delete_file_dir(a)
+        hdfs.delete_file_dir(b)
+
+
+
+def test_discover():
+    with accounts_data() as (directory, (a, b)):
+        assert str(discover(a)).replace('?', '') == \
+                'var * {id: int64, name: string, amount: int64}'
+
+        assert str(discover(directory)).replace('?', '') == \
+                'var * {id: int64, name: string, amount: int64}'
+
+
+@contextmanager
+def tmpfile_hdfs(ext=''):
+    fn = str(uuid.uuid1())
+    if ext:
+        fn = fn + '.' + ext
+
+    try:
+        yield fn
+    finally:
+        hdfs.delete_file_dir(fn)
+
+
+def test_copy_local_files_to_hdfs():
+    with tmpfile_hdfs() as target:
+        with filetext('name,amount\nAlice,100\nBob,200') as source:
+            csv = CSV(source)
+            scsv = HDFS(CSV)(target, hdfs=hdfs)
+            into(scsv, csv)
+
+            assert discover(scsv) == discover(csv)
+
+
+def test_hdfs_resource():
+    r = resource('hdfs://user@hostname:1234:/path/to/myfile.json')
+    assert isinstance(r, HDFS(JSONLines))
+    assert r.hdfs.user_name == 'user'
+    assert r.hdfs.host == 'hostname'
+    assert r.hdfs.port == '1234'
+    assert r.path == '/path/to/myfile.json'
+
+    assert isinstance(resource('hdfs://path/to/myfile.csv',
+                                host='host', user='user', port=1234),
+                      HDFS(CSV))
+    assert isinstance(resource('hdfs://path/to/*.csv',
+                                host='host', user='user', port=1234),
+                      HDFS(Directory(CSV)))
+
+
+def test_hdfs_hive_creation():
+    with accounts_data() as (hdfs_directory, _):
+        with hive_table(host) as uri:
+            t = into(uri, hdfs_directory)
+            assert isinstance(t, sa.Table)
+            assert len(into(list, t)) > 0
+            assert discover(t) == ds
 
 
 def normalize(s):
@@ -64,17 +145,9 @@ def hive_table(host):
             drop(uri)
 
 
-def test_hdfs_hive_creation():
-    with hive_table(host) as uri:
-        t = into(uri, hdfs_directory)
-        assert isinstance(t, sa.Table)
-        assert len(into(list, t)) > 0
-        assert discover(t) == ds
-
-
 def test_ssh_hive_creation():
     with hive_table(host) as uri:
-        t = into(uri, ssh_csv)
+        t = into(uri, ssh_csv, raise_on_errors=True)
         assert isinstance(t, sa.Table)
         assert len(into(list, t)) > 0
 
@@ -110,41 +183,3 @@ def test_hive_resource():
     db = resource('hive://%s/' % host)
     assert isinstance(db, sa.engine.Engine)
     assert str(db.url) == 'hive://hdfs@%s:10000/default' % host
-
-
-def test_hdfs_resource():
-    r = resource('hdfs://user@hostname:1234:/path/to/myfile.json')
-    assert isinstance(r, HDFS(JSONLines))
-    assert r.hdfs.user_name == 'user'
-    assert r.hdfs.host == 'hostname'
-    assert r.hdfs.port == '1234'
-    assert r.path == '/path/to/myfile.json'
-
-    assert isinstance(resource('hdfs://path/to/myfile.csv',
-                                host='host', user='user', port=1234),
-                      HDFS(CSV))
-    assert isinstance(resource('hdfs://path/to/*.csv',
-                                host='host', user='user', port=1234),
-                      HDFS(Directory(CSV)))
-
-
-@contextmanager
-def tmpfile_hdfs(ext=''):
-    fn = str(uuid.uuid1())
-    if ext:
-        fn = fn + '.' + ext
-
-    try:
-        yield fn
-    finally:
-        hdfs.delete_file_dir(fn)
-
-
-def test_copy_local_files_to_hdfs():
-    with tmpfile_hdfs() as target:
-        with filetext('name,amount\nAlice,100\nBob,200') as source:
-            csv = CSV(source)
-            scsv = HDFS(CSV)(target, hdfs=hdfs)
-            into(scsv, csv)
-
-            assert discover(scsv) == discover(csv)

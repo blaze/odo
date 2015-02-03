@@ -14,7 +14,7 @@ from collections import namedtuple
 from contextlib import contextmanager
 from .ssh import SSH, _SSH
 from .sql import metadata_of_engine, sa
-from ..utils import tmpfile, sample, ignoring
+from ..utils import tmpfile, sample, ignoring, raises
 from ..append import append
 from ..resource import resource
 from ..directory import _Directory, Directory
@@ -328,22 +328,39 @@ def append_remote_csv_to_new_table(tbl, data, dshape=None, **kwargs):
     return append(tbl2, data, **kwargs)
 
 
-@append.register(HDFS(JSONLines), JSONLines)
-@append.register(HDFS(JSON), JSON)
-@append.register(HDFS(CSV), CSV)
-def append_local_file_to_hdfs(target, source, **kwargs):
+@append.register(sa.Table, (SSH(CSV), SSH(Directory(CSV))))
+def append_remote_csv_to_table(tbl, csv, **kwargs):
     """
     Load Remote data into existing Hive table
     """
-    try:
-        target.hdfs.list_dir(target.path.lstrip('/'))
-        with open(source.path) as f:
-            # TODO: handle large files
-            target.hdfs.append_file(target.path.lstrip('/'), f)
-    except FileNotFound:
-        with open(source.path) as f:
-            # TODO: handle large files
-            target.hdfs.create_file(target.path.lstrip('/'), f)
+    path = csv.path
+    if path[0] != '/':
+        path = '/home/%s/%s' % (csv.auth['username'], csv.path)
+
+    if tbl.bind.dialect.name == 'hive':
+        statement =('LOAD DATA LOCAL INPATH "%(path)s" INTO TABLE %(tablename)s'
+                     % {'path': path, 'tablename': tbl.name})
+    else:
+        raise NotImplementedError("Don't know how to migrate csvs on remote "
+                  "disk to database of dialect %s" % tbl.engine.dialect.name)
+    with tbl.bind.connect() as conn:
+        conn.execute(statement)
+    return tbl
+
+
+@append.register(HDFS(JSONLines), JSONLines)
+@append.register(HDFS(JSON), JSON)
+@append.register(HDFS(CSV), CSV)
+def append_local_file_to_hdfs(target, source, blocksize=2**23, **kwargs):
+    if raises(FileNotFound,
+              lambda: target.hdfs.list_dir(target.path.lstrip('/'))):
+        target.hdfs.create_file(target.path.lstrip('/'), '')
+
+    with open(source.path, 'rb') as f:
+        data = f.read(blocksize)
+        while data:
+            target.hdfs.append_file(target.path.lstrip('/'), data)
+            data = f.read(blocksize)
 
     return target
 
