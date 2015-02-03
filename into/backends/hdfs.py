@@ -349,6 +349,17 @@ def append_remote_csv_to_table(tbl, csv, **kwargs):
     return tbl
 
 
+@append.register(TextFile, HDFS(TextFile))
+@append.register(JSONLines, HDFS(JSONLines))
+@append.register(JSON, HDFS(JSON))
+@append.register(CSV, HDFS(CSV))
+def append_hdfs_file_to_local(target, source, **kwargs):
+    text = source.hdfs.read_file(source.path.lstrip('/'), **kwargs)
+    with open(target.path, 'w') as f:
+        f.write(text)
+    return target
+
+
 @append.register(HDFS(TextFile), TextFile)
 @append.register(HDFS(JSONLines), JSONLines)
 @append.register(HDFS(JSON), JSON)

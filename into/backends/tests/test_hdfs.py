@@ -10,7 +10,7 @@ import uuid
 from into.backends.hdfs import (discover, HDFS, CSV, TableProxy, SSH)
 from into.backends.sql import resource
 from into import into, drop, JSONLines
-from into.utils import filetext, ignoring
+from into.utils import filetext, ignoring, tmpfile
 import sqlalchemy as sa
 from datashape import dshape
 from into.directory import Directory
@@ -94,6 +94,14 @@ def test_copy_local_files_to_hdfs():
             into(scsv, csv, blocksize=10)  # 10 bytes per message
 
             assert discover(scsv) == discover(csv)
+
+
+def test_copy_hdfs_files_locally():
+    with tmpfile('csv') as target:
+        with accounts_data() as (d, (a, b)):
+            csv = into(target, a)
+            with open(csv.path) as f:
+                assert f.read().strip() == accounts_1_csv
 
 
 def test_hdfs_resource():
