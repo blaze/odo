@@ -32,10 +32,18 @@ def connect(**auth):
         connection_pool[key] = ssh
     return ssh
 
+sftp_pool = dict()
 
 def sftp(**auth):
-    ssh = connect(**auth)
-    return ssh.open_sftp()
+    ssh = connect(**auth)  # Need to call this explicitly (can't memoize)
+    key = tuple(sorted(auth.items()))
+    if key in sftp_pool:
+        conn = sftp_pool[key]
+    else:
+        conn = ssh.open_sftp()
+        sftp_pool[key] = conn
+
+    return conn
 
 
 class _SSH(object):
