@@ -43,6 +43,8 @@ def sftp(**auth):
         conn = ssh.open_sftp()
         sftp_pool[key] = conn
 
+    conn.sock.setblocking(True)
+
     return conn
 
 
