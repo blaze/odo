@@ -11,6 +11,10 @@ def normalize(s):
 
 
 fn = os.path.abspath('myfile.csv')
+if os.name == 'nt':
+    escaped_fn = fn.replace('\\', '\\\\')
+else:
+    escaped_fn = fn
 
 csv = CSV(fn, delimiter=',', has_header=True)
 ds = datashape.dshape('var * {name: string, amount: int}')
@@ -27,13 +31,13 @@ def test_postgres_load():
          ESCAPE '\\',
          HEADER True,
          ENCODING 'utf-8');
-    """ % fn)
+    """ % escaped_fn)
 
 
 def test_sqlite_load():
     assert normalize(copy_command('sqlite', tbl, csv)) == normalize("""
      (echo '.mode csv'; echo '.import %s my_table';) | sqlite3 :memory:
-     """ % fn)
+     """ % escaped_fn)
 
 
 def test_mysql_load():
@@ -46,7 +50,7 @@ def test_mysql_load():
                 ENCLOSED BY '"'
                 ESCAPED BY '\\'
             LINES TERMINATED BY '\\n\\r'
-            IGNORE 1 LINES;""" % fn)
+            IGNORE 1 LINES;""" % escaped_fn)
 
 
 def test_into_sqlite():

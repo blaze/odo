@@ -13,6 +13,8 @@ execute_copy = RegexDispatcher('execute_copy')
 @copy_command.register('.*sqlite')
 def copy_sqlite(dialect, tbl, csv):
     abspath = os.path.abspath(csv.path)
+    if os.name == 'nt':
+        abspath = abspath.replace('\\', '\\\\')
     tblname = tbl.name
     dbpath = str(tbl.bind.url).split('///')[-1]
 
@@ -33,6 +35,8 @@ def execute_copy_sqlite(dialect, engine, statement):
 @copy_command.register('postgresql')
 def copy_postgres(dialect, tbl, csv):
     abspath = os.path.abspath(csv.path)
+    if os.name == 'nt':
+        abspath = abspath.replace('\\', '\\\\')
     tblname = tbl.name
     format_str = 'csv'
     delimiter = csv.dialect.get('delimiter', ',')
@@ -60,6 +64,8 @@ def copy_postgres(dialect, tbl, csv):
 def copy_mysql(dialect, tbl, csv):
     mysql_local = ''
     abspath = os.path.abspath(csv.path)
+    if os.name == 'nt':
+        abspath = abspath.replace('\\', '\\\\')
     tblname = tbl.name
     delimiter = csv.dialect.get('delimiter', ',')
     quotechar = csv.dialect.get('quotechar', '"')
