@@ -43,4 +43,6 @@ def test_resource_directory():
 
 
 def test_resource_directory():
-    assert isinstance(resource('/a/directory/that/doesnt/exist/'), _Directory)
+    assert isinstance(resource(os.path.join('a', 'nonexistent', 'directory') +
+                               os.path.sep),
+                      _Directory)

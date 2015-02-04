@@ -252,7 +252,9 @@ def drop(h):
 
 @dispatch(h5py.File)
 def drop(h):
-    os.remove(h.filename)
+    fn = h.filename
+    h.close()
+    os.remove(fn)
 
 
 ooc_types.add(h5py.Dataset)

@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from into.backends.h5py import append, create, resource, discover, convert
 from into.backends.h5py import unicode_dtype
 
-from into.utils import tmpfile
+from into.utils import tmpfile, ignoring
 from into.chunks import chunks
 from into import into, append, convert, discover, drop
 import datashape
@@ -24,7 +24,8 @@ def file(x):
         try:
             yield fn, f, data
         finally:
-            f.close()
+            with ignoring(Exception):
+                f.close()
 
 
 x = np.ones((2, 3), dtype='i4')
@@ -39,7 +40,8 @@ def test_drop_group():
             drop(f['/group'])
             assert '/group' not in f.keys()
         finally:
-            f.close()
+            with ignoring(Exception):
+                f.close()
 
 
 def test_drop_dataset():
@@ -52,7 +54,8 @@ def test_drop_dataset():
             drop(data)
             assert '/data' not in f.keys()
         finally:
-            f.close()
+            with ignoring(Exception):
+                f.close()
 
 
 def test_drop_file():
@@ -81,7 +84,8 @@ def test_discover_on_data_with_object_in_record_name():
             assert (discover(f['data']) ==
                     datashape.dshape('2 * {lrg_object: string, an_int: int64}'))
         finally:
-            f.close()
+            with ignoring(Exception):
+                f.close()
 
 
 def eq(a, b):
@@ -100,8 +104,11 @@ def test_append():
 def test_into_resource():
     with tmpfile('.hdf5') as fn:
         d = into(fn + '::/x', x)
-        assert d.shape == x.shape
-        assert eq(d[:], x[:])
+        try:
+            assert d.shape == x.shape
+            assert eq(d[:], x[:])
+        finally:
+            d.file.close()
 
 
 def test_numpy():
@@ -126,9 +133,12 @@ def test_create():
     with tmpfile('.hdf5') as fn:
         ds = datashape.dshape('{x: int32, y: {z: 3 * int32}}')
         f = create(h5py.File, dshape='{x: int32, y: {z: 3 * int32}}', path=fn)
-        assert isinstance(f, h5py.File)
-        assert f.filename == fn
-        assert discover(f) == ds
+        try:
+            assert isinstance(f, h5py.File)
+            assert f.filename == fn
+            assert discover(f) == ds
+        finally:
+            f.close()
 
 
 def test_create_partially_present_dataset():
@@ -139,21 +149,29 @@ def test_create_partially_present_dataset():
         ds2 = datashape.dshape('{x: int32, y: 5 * int32}')
         f2 = create(h5py.File, dshape=ds2, path=fn)
 
-        assert f.filename == f2.filename
-        assert list(f.keys()) == list(f2.keys())
-        assert f['y'].dtype == 'i4'
+        try:
+            assert f.filename == f2.filename
+            assert list(f.keys()) == list(f2.keys())
+            assert f['y'].dtype == 'i4'
+        finally:
+            f.close()
+            f2.close()
+
 
 
 def test_resource():
     with tmpfile('.hdf5') as fn:
         ds = datashape.dshape('{x: int32, y: 3 * int32}')
         r = resource(fn, dshape=ds)
-
-        assert isinstance(r, h5py.File)
-        assert discover(r) == ds
-
         r2 = resource(fn + '::/x')
-        assert isinstance(r2, h5py.Dataset)
+
+        try:
+            assert isinstance(r, h5py.File)
+            assert discover(r) == ds
+            assert isinstance(r2, h5py.Dataset)
+        finally:
+            r.close()
+            r2.file.close()
 
 
 def test_resource_with_datapath():
@@ -161,25 +179,33 @@ def test_resource_with_datapath():
         ds = datashape.dshape('3 * 4 * int32')
         r = resource(fn + '::/data', dshape=ds)
 
-        assert isinstance(r, h5py.Dataset)
-        assert discover(r) == ds
-        assert r.file.filename == fn
-        assert r.file['/data'] == r
+        try:
+            assert isinstance(r, h5py.Dataset)
+            assert discover(r) == ds
+            assert r.file.filename == fn
+            assert r.file['/data'] == r
+        finally:
+            r.file.close()
 
 
 def test_resource_with_variable_length():
     with tmpfile('.hdf5') as fn:
         ds = datashape.dshape('var * 4 * int32')
         r = resource(fn + '::/data', dshape=ds)
-
-        assert r.shape == (0, 4)
+        try:
+            assert r.shape == (0, 4)
+        finally:
+            r.file.close()
 
 
 def test_copy_with_into():
     with tmpfile('.hdf5') as fn:
         dset = into(fn + '::/data', [1, 2, 3])
-        assert dset.shape == (3,)
-        assert eq(dset[:], [1, 2, 3])
+        try:
+            assert dset.shape == (3,)
+            assert eq(dset[:], [1, 2, 3])
+        finally:
+            dset.file.close()
 
 
 def test_varlen_dtypes():
@@ -187,14 +213,22 @@ def test_varlen_dtypes():
                 dtype=[('name', 'O'), ('amount', 'i4')])
     with tmpfile('.hdf5') as fn:
         dset = into(fn + '::/data', y)
-
-        assert into(list, dset) == into(list, dset)
+        try:
+            assert into(list, dset) == into(list, dset)
+        finally:
+            dset.file.close()
 
 
 def test_resource_shape():
     with tmpfile('.hdf5') as fn:
-        assert resource(fn+'::/data', dshape='10 * int').shape == (10,)
+        r = resource(fn+'::/data', dshape='10 * int')
+        assert r.shape == (10,)
+        r.file.close()
     with tmpfile('.hdf5') as fn:
-        assert resource(fn+'::/data', dshape='10 * 10 * int').shape == (10, 10)
+        r = resource(fn+'::/data', dshape='10 * 10 * int')
+        assert r.shape == (10, 10)
+        r.file.close()
     with tmpfile('.hdf5') as fn:
-        assert resource(fn+'::/data', dshape='var * 10 * int').shape == (0, 10)
+        r = resource(fn+'::/data', dshape='var * 10 * int')
+        assert r.shape == (0, 10)
+        r.file.close()

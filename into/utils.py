@@ -46,16 +46,8 @@ def tmpfile(extension=''):
 
     yield filename
 
-    try:
-        if os.path.exists(filename):
-            os.remove(filename)
-    except OSError:  # Sometimes Windows can't close files
-        if os.name == 'nt':
-            os.close(handle)
-            try:
-                os.remove(filename)
-            except OSError:  # finally give up
-                pass
+    if os.path.exists(filename):
+        os.remove(filename)
 
 
 def keywords(func):
@@ -80,7 +72,7 @@ def cls_name(cls):
 
 
 @contextmanager
-def filetext(text, extension='', open=open, mode='wt'):
+def filetext(text, extension='', open=open, mode='w'):
     with tmpfile(extension=extension) as filename:
         f = open(filename, mode=mode)
         try:
