@@ -80,7 +80,7 @@ def cls_name(cls):
 
 
 @contextmanager
-def filetext(text, extension='', open=open, mode='wt'):
+def filetext(text, extension='', open=open, mode='w'):
     with tmpfile(extension=extension) as filename:
         f = open(filename, mode=mode)
         try:
