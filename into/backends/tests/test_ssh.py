@@ -12,6 +12,12 @@ from into.backends.ssh import SSH, resource, ssh_pattern, sftp, drop, connect
 from into.backends.csv import CSV
 from into import into, discover, CSV, JSONLines, JSON
 from into.temp import _Temp, Temp
+import socket
+
+try:
+    ssh = connect(hostname='localhost')
+except socket.error:
+    pytest.importorskip('does_not_exist')
 
 
 def test_resource():
