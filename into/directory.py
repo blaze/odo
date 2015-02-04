@@ -15,12 +15,12 @@ class _Directory(Chunks):
     parametrized Directory classes.
 
     >>> from into import CSV
-    >>> c = Directory(CSV)('path/to/data/')
+    >>> c = Directory(CSV)('path/to/data/')  # doctest: +SKIP
 
     Normal use through resource strings
 
-    >>> r = resource('path/to/data/*.csv')
-    >>> r = resource('path/to/data/')
+    >>> r = resource('path/to/data/*.csv')  # doctest: +SKIP
+    >>> r = resource('path/to/data/')  # doctest: +SKIP
 
 
     """
