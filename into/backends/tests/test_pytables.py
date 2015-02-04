@@ -142,3 +142,4 @@ class TestPyTablesLight(object):
                                           amount: float64,
                                           date: float64}}""")
         assert result == expected.measure
+        root._v_file.close()
