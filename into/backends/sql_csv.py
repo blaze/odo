@@ -98,6 +98,7 @@ def execute_copy_all(dialect, engine, statement):
     cursor = conn.cursor()
     cursor.execute(statement)
     conn.commit()
+    conn.close()
 
 
 @append.register(sqlalchemy.Table, CSV)
