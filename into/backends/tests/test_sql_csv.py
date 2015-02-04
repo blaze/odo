@@ -9,14 +9,14 @@ def normalize(s):
     return s2
 
 
-csv = CSV('/var/tmp/myfile.csv', delimiter=',', has_header=True)
+csv = CSV('myfile.csv', delimiter=',', has_header=True)
 ds = datashape.dshape('var * {name: string, amount: int}')
 tbl = resource('sqlite:///:memory:::my_table', dshape=ds)
 
 
 def test_postgres_load():
     assert normalize(copy_command('postgresql', tbl, csv)) == normalize(r"""
-    COPY my_table from '/var/tmp/myfile.csv'
+    COPY my_table from 'myfile.csv'
         (FORMAT csv,
          DELIMITER E',',
          NULL '',
@@ -29,13 +29,13 @@ def test_postgres_load():
 
 def test_sqlite_load():
     assert normalize(copy_command('sqlite', tbl, csv)) == normalize("""
-     (echo '.mode csv'; echo '.import /var/tmp/myfile.csv my_table';) | sqlite3 :memory:
+     (echo '.mode csv'; echo '.import myfile.csv my_table';) | sqlite3 :memory:
      """)
 
 
 def test_mysql_load():
     assert normalize(copy_command('mysql', tbl, csv)) == normalize(r"""
-            LOAD DATA  INFILE '/var/tmp/myfile.csv'
+            LOAD DATA  INFILE 'myfile.csv'
             INTO TABLE my_table
             CHARACTER SET utf-8
             FIELDS
