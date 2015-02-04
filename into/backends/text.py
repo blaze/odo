@@ -14,6 +14,8 @@ from ..convert import convert
 from ..resource import resource
 
 class TextFile(object):
+    canonical_extension = 'txt'
+
     def __init__(self, path):
         self.path = path
 

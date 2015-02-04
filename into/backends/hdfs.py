@@ -442,3 +442,27 @@ def resource_hdfs(uri, **kwargs):
         subtype = type(resource(path))
 
     return HDFS(subtype)(path, **kwargs)
+
+
+@append.register(HDFS(TextFile), SSH(TextFile))
+@append.register(HDFS(JSONLines), SSH(JSONLines))
+@append.register(HDFS(JSON), SSH(JSON))
+@append.register(HDFS(CSV), SSH(CSV))
+def append_remote_file_to_hdfs(target, source, **kwargs):
+    raise NotImplementedError()
+
+
+@append.register(HDFS(TextFile), HDFS(TextFile))
+@append.register(HDFS(JSONLines), HDFS(JSONLines))
+@append.register(HDFS(JSON), HDFS(JSON))
+@append.register(HDFS(CSV), HDFS(CSV))
+def append_hdfs_file_to_hdfs_file(target, source, **kwargs):
+    raise NotImplementedError()
+
+
+@append.register(SSH(TextFile), HDFS(TextFile))
+@append.register(SSH(JSONLines), HDFS(JSONLines))
+@append.register(SSH(JSON), HDFS(JSON))
+@append.register(SSH(CSV), HDFS(CSV))
+def append_hdfs_file_to_remote(target, source, **kwargs):
+    raise NotImplementedError()

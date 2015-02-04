@@ -44,6 +44,8 @@ class CSV(object):
     kwargs : other...
         Various choices about dialect
     """
+    canonical_extension = 'csv'
+
     def __init__(self, path, has_header='no-input', encoding='utf-8', **kwargs):
         self.path = path
         if has_header == 'no-input':
