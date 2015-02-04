@@ -104,6 +104,7 @@ def resource_bcolz(uri, dshape=None, expected_dshape=None, **kwargs):
 
 @drop.register((carray, ctable))
 def drop_bcolz(b, **kwargs):
+    b.flush()
     shutil.rmtree(b.rootdir)
 
 
