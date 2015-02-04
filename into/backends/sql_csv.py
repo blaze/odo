@@ -2,6 +2,7 @@
 from ..regex import RegexDispatcher
 from ..append import append
 from .csv import CSV
+from multipledispatch import MDNotImplementedError
 import os
 import datashape
 import sqlalchemy
@@ -27,6 +28,8 @@ def copy_sqlite(dialect, tbl, csv):
 
 @execute_copy.register('sqlite')
 def execute_copy_sqlite(dialect, engine, statement):
+    if os.name == 'nt':
+        raise MDNotImplementedError()
     ps = subprocess.Popen(statement, shell=True, stdout=subprocess.PIPE)
     return ps.stdout.read()
 

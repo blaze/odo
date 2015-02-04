@@ -2,6 +2,7 @@ from into.backends.sql_csv import *
 from into import resource, into
 import datashape
 from into.utils import tmpfile
+from into.compatibility import skipif
 import os
 
 
@@ -53,6 +54,7 @@ def test_mysql_load():
             IGNORE 1 LINES;""" % escaped_fn)
 
 
+@skipif(os.name == 'nt')
 def test_into_sqlite():
     data = [('Alice', 100), ('Bob', 200)]
     ds = datashape.dshape('var * {name: string, amount: int}')
