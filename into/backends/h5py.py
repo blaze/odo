@@ -252,6 +252,7 @@ def drop(h):
 
 @dispatch(h5py.File)
 def drop(h):
+    h.close()
     os.remove(h.filename)
 
 
