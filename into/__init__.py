@@ -46,6 +46,8 @@ with ignoring(ImportError):
      from .backends.ssh import SSH
 with ignoring(ImportError):
      from .backends import sql_csv
+with ignoring(ImportError):
+     from .backends.bokeh import ColumnDataSource
 
 
 restart_ordering() # Restart multipledispatch ordering and do ordering
