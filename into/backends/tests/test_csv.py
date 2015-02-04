@@ -68,6 +68,7 @@ def test_pandas_read_supports_missing_integers():
         assert df.dtypes['val'] == 'f4'
 
 
+@skipif(os.name == 'nt')
 def test_pandas_read_supports_gzip():
     with filetext('Alice,1\nBob,2', open=gzip.open,
                   mode='wt', extension='.csv.gz') as fn:
@@ -141,6 +142,7 @@ def test_pandas_loads_in_datetimes_naively():
         assert df.dtypes['when'] == 'M8[ns]'
 
 
+@skipif(os.name == 'nt')
 def test_pandas_discover_on_gzipped_files():
     with filetext('name,when\nAlice,2014-01-01\nBob,2014-02-02',
                   open=gzip.open, mode='wt', extension='.csv.gz') as fn:
