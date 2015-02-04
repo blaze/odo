@@ -46,16 +46,8 @@ def tmpfile(extension=''):
 
     yield filename
 
-    try:
-        if os.path.exists(filename):
-            os.remove(filename)
-    except OSError:  # Sometimes Windows can't close files
-        if os.name == 'nt':
-            os.close(handle)
-            try:
-                os.remove(filename)
-            except OSError:  # finally give up
-                pass
+    if os.path.exists(filename):
+        os.remove(filename)
 
 
 def keywords(func):
