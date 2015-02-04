@@ -175,7 +175,8 @@ def discover_ssh_directory(data, **kwargs):
 @drop.register((_SSH, SSH(CSV), SSH(JSON), SSH(JSONLines)))
 def drop_ssh(data, **kwargs):
     conn = sftp(**data.auth)
-    conn.remove(data.path)
+    with ignoring(IOError):
+        conn.remove(data.path)
 
 
 @append.register(_SSH, object)

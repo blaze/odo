@@ -104,6 +104,7 @@ def test_drop():
             assert os.path.exists(target)
 
             drop(scsv)
+            drop(scsv)
 
             assert not os.path.exists(target)
 
