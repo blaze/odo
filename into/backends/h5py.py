@@ -233,6 +233,7 @@ def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
                 datapath, name = datapath.rsplit('/', 1)
                 ds = Record([[name, ds]])
             ds = datashape.dshape(ds)
+        f.close()
         f = create(h5py.File, path=uri, dshape=ds, **kwargs)
     if olddatapath:
         return f[olddatapath]
