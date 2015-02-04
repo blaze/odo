@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from into.backends.h5py import append, create, resource, discover, convert
 from into.backends.h5py import unicode_dtype
 
-from into.utils import tmpfile
+from into.utils import tmpfile, ignoring
 from into.chunks import chunks
 from into import into, append, convert, discover, drop
 import datashape
@@ -24,7 +24,8 @@ def file(x):
         try:
             yield fn, f, data
         finally:
-            f.close()
+            with ignoring(Exception):
+                f.close()
 
 
 x = np.ones((2, 3), dtype='i4')
@@ -39,7 +40,8 @@ def test_drop_group():
             drop(f['/group'])
             assert '/group' not in f.keys()
         finally:
-            f.close()
+            with ignoring(Exception):
+                f.close()
 
 
 def test_drop_dataset():
@@ -52,7 +54,8 @@ def test_drop_dataset():
             drop(data)
             assert '/data' not in f.keys()
         finally:
-            f.close()
+            with ignoring(Exception):
+                f.close()
 
 
 def test_drop_file():
@@ -81,7 +84,8 @@ def test_discover_on_data_with_object_in_record_name():
             assert (discover(f['data']) ==
                     datashape.dshape('2 * {lrg_object: string, an_int: int64}'))
         finally:
-            f.close()
+            with ignoring(Exception):
+                f.close()
 
 
 def eq(a, b):
