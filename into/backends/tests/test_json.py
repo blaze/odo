@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function
+
 from into.backends.json import *
 from into.utils import tmpfile, ignoring
 from into import into

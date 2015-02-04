@@ -1,6 +1,9 @@
+from __future__ import absolute_import, division, print_function
+
 import os
 from into.resource import resource
 from into.utils import raises
+
 
 def test_raises_not_implemented_error():
     assert raises(NotImplementedError,
