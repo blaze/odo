@@ -5,7 +5,7 @@ from into.backends.bcolz import (append, convert, ctable, carray, resource,
 from into.chunks import chunks
 from into import append, convert, discover, into
 import numpy as np
-from into.utils import tmpfile
+from into.utils import tmpfile, ignoring
 from contextlib import contextmanager
 import shutil
 import os
@@ -20,6 +20,8 @@ def tmpbcolz(*args, **kwargs):
     try:
         yield r
     finally:
+        with ignoring(Exception):
+            r.flush()
         if os.path.exists(fn):
             shutil.rmtree(fn)
 
