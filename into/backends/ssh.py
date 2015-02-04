@@ -8,7 +8,7 @@ import re
 import uuid
 
 from ..directory import _Directory, Directory
-from ..utils import keywords, tmpfile, sample
+from ..utils import keywords, tmpfile, sample, ignoring
 from ..resource import resource
 from ..append import append
 from ..convert import convert
