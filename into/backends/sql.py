@@ -228,6 +228,7 @@ def sql_to_iterator(t, **kwargs):
     engine = t.bind
     with engine.connect() as conn:
         result = conn.execute(sa.sql.select([t]))
+        result = map(tuple, result)  # Turn RowProxy into tuple
         for item in result:
             yield item
 
