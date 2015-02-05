@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function
+
 from into.append import append
 
 def test_append_list():

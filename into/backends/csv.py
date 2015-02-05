@@ -42,6 +42,8 @@ class CSV(object):
     kwargs : other...
         Various choices about dialect
     """
+    canonical_extension = 'csv'
+
     def __init__(self, path, has_header='no-input', encoding='utf-8', **kwargs):
         self.path = path
         if has_header == 'no-input':
@@ -208,7 +210,9 @@ def discover_csv(c, nrows=1000, **kwargs):
     measure = discover(df).measure
 
     # Use Series.notnull to determine Option-ness
-    measure2 = Record([[name, Option(typ) if (~df[name].notnull()).any() else typ]
+    measure2 = Record([[name, Option(typ)
+                              if (~df[name].notnull()).any()
+                              and not isinstance(typ, Option) else typ]
                       for name, typ in zip(measure.names, measure.types)])
 
     return datashape.var * measure2

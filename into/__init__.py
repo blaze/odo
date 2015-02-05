@@ -1,8 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
-__all__ = """convert append resource into drop chunks Chunks discover dshape
-             CSV JSON JSONLines S3""".split()
-
+try:
+    import h5py  #  h5py has precedence over pytables
+except:
+    pass
 from multipledispatch import halt_ordering, restart_ordering
 
 halt_ordering()  # Turn off multipledispatch ordering
@@ -50,6 +51,10 @@ with ignoring(ImportError):
     from .backends import sql_csv
 with ignoring(ImportError):
     from .backends.aws import S3
+with ignoring(ImportError):
+    from .backends import sql_csv
+with ignoring(ImportError):
+    from .backends.bokeh import ColumnDataSource
 
 
 restart_ordering()  # Restart multipledispatch ordering and do ordering

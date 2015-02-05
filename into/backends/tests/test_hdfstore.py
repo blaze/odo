@@ -1,3 +1,4 @@
+from __future__ import absolute_import, division, print_function
 
 from into.backends.hdfstore import discover
 from contextlib import contextmanager
@@ -9,6 +10,13 @@ import pandas as pd
 from datetime import datetime
 import numpy as np
 import os
+
+try:
+    f = pd.HDFStore('foo')
+    f.close()
+except (RuntimeError, ImportError):
+    import pytest
+    pytest.importorskip('oshfshffhf')
 
 df = pd.DataFrame([['a', 1, 10., datetime(2000, 1, 1)],
                    ['ab', 2, 20., datetime(2000, 2, 2)],
@@ -43,8 +51,11 @@ def test_discover():
 
         hdf = pd.HDFStore(fn)
 
-        assert discover(hdf) == discover({'a': {'b': {'data': df, 'data2': df},
-                                                'data': df}})
+        try:
+            assert discover(hdf) == discover({'a': {'b': {'data': df, 'data2': df},
+                                                    'data': df}})
+        finally:
+            hdf.close()
 
 
 def eq(a, b):
@@ -66,7 +77,9 @@ def test_chunks():
 
 def test_resource_no_info():
     with tmpfile('.hdf5') as fn:
-        assert isinstance(resource('hdfstore://' + fn), pd.HDFStore)
+        r = resource('hdfstore://' + fn)
+        assert isinstance(r, pd.HDFStore)
+        r.close()
 
 
 def test_resource_of_dataset():
@@ -74,6 +87,7 @@ def test_resource_of_dataset():
         ds = datashape.dshape('{x: int32, y: 3 * int32}')
         r = resource('hdfstore://'+fn+'::/x', dshape=ds)
         assert r
+        r.parent.close()
 
 
 def test_append():
@@ -88,6 +102,7 @@ def test_into_resource():
         d = into('hdfstore://' + fn + '::/x', df)
         assert discover(d) == discover(df)
         assert eq(into(pd.DataFrame, d), df)
+        d.parent.close()
 
 
 def test_convert_pandas():
@@ -113,7 +128,8 @@ def test_append_other():
     with tmpfile('.hdf5') as fn:
         x = into(np.ndarray, df)
         dset = into('hdfstore://'+fn+'::/data', x)
-        assert discover(dset) == discover(x)
+        assert discover(dset) == discover(df)
+        dset.parent.close()
 
 
 def test_fixed_shape():
@@ -122,6 +138,7 @@ def test_fixed_shape():
         r = resource('hdfstore://'+fn+'::/foo')
         assert isinstance(r.shape, list)
         assert discover(r).shape == (len(df),)
+        r.parent.close()
 
 
 def test_fixed_convert():
@@ -129,3 +146,4 @@ def test_fixed_convert():
         df.to_hdf(fn, 'foo')
         r = resource('hdfstore://'+fn+'::/foo')
         assert eq(convert(pd.DataFrame, r), df)
+        r.parent.close()

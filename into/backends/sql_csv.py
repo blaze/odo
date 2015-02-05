@@ -1,13 +1,13 @@
-import os
-import re
-import subprocess
-
-import sqlalchemy
+from __future__ import absolute_import, division, print_function
 
 from ..regex import RegexDispatcher
 from ..append import append
 from .csv import CSV
-from ..utils import ext
+from multipledispatch import MDNotImplementedError
+import os
+import re
+import sqlalchemy
+import subprocess
 
 copy_command = RegexDispatcher('copy_command')
 execute_copy = RegexDispatcher('execute_copy')
@@ -16,6 +16,8 @@ execute_copy = RegexDispatcher('execute_copy')
 @copy_command.register('.*sqlite')
 def copy_sqlite(dialect, tbl, csv, **kwargs):
     abspath = os.path.abspath(csv.path)
+    if os.name == 'nt':
+        abspath = abspath.replace('\\', '\\\\')
     tblname = tbl.name
     dbpath = str(tbl.bind.url).split('///')[-1]
 
@@ -28,6 +30,8 @@ def copy_sqlite(dialect, tbl, csv, **kwargs):
 
 @execute_copy.register('sqlite')
 def execute_copy_sqlite(dialect, engine, statement):
+    if os.name == 'nt':
+        raise MDNotImplementedError()
     ps = subprocess.Popen(statement, shell=True, stdout=subprocess.PIPE)
     return ps.stdout.read()
 
@@ -35,6 +39,8 @@ def execute_copy_sqlite(dialect, engine, statement):
 @copy_command.register('postgresql')
 def copy_postgres(dialect, tbl, csv, **kwargs):
     abspath = os.path.abspath(csv.path)
+    if os.name == 'nt':
+        abspath = abspath.replace('\\', '\\\\')
     tblname = tbl.name
     format_str = 'csv'
     delimiter = csv.dialect.get('delimiter', ',')
@@ -61,11 +67,13 @@ def copy_postgres(dialect, tbl, csv, **kwargs):
 def copy_mysql(dialect, tbl, csv, **kwargs):
     mysql_local = ''
     abspath = os.path.abspath(csv.path)
+    if os.name == 'nt':
+        abspath = abspath.replace('\\', '\\\\')
     tblname = tbl.name
     delimiter = csv.dialect.get('delimiter', ',')
     quotechar = csv.dialect.get('quotechar', '"')
     escapechar = csv.dialect.get('escapechar', '\\')
-    lineterminator = csv.dialect.get('lineterminator', r'\n\r')
+    lineterminator = csv.dialect.get('lineterminator', '\\n\\r')
     skiprows = 1 if csv.has_header else 0
     encoding = csv.encoding or 'utf-8'
 
@@ -131,6 +139,7 @@ def execute_copy_all(dialect, engine, statement):
     cursor = conn.cursor()
     cursor.execute(statement)
     conn.commit()
+    conn.close()
 
 
 @append.register(sqlalchemy.Table, CSV)

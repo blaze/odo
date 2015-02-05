@@ -37,6 +37,7 @@ def test_simple_into(csv):
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' and name='{0}';".format(tbl))
 
         sqlite_tbl_names = cursor.fetchall()
-        assert sqlite_tbl_names[0][0] == tbl
+        conn.close()
 
+        assert sqlite_tbl_names[0][0] == tbl
         assert into(list, t) == data

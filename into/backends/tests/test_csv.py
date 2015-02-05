@@ -68,8 +68,10 @@ def test_pandas_read_supports_missing_integers():
         assert df.dtypes['val'] == 'f4'
 
 
+@skipif(os.name == 'nt')
 def test_pandas_read_supports_gzip():
-    with filetext('Alice,1\nBob,2', open=gzip.open, extension='.csv.gz') as fn:
+    with filetext('Alice,1\nBob,2', open=gzip.open,
+                  mode='wt', extension='.csv.gz') as fn:
         ds = datashape.dshape('var * {name: string, amount: int}')
         csv = CSV(fn)
         df = csv_to_DataFrame(csv, dshape=ds)
@@ -133,18 +135,19 @@ def test_pandas_write_gzip():
 def test_pandas_loads_in_datetimes_naively():
     with filetext('name,when\nAlice,2014-01-01\nBob,2014-02-02') as fn:
         csv = CSV(fn, has_header=True)
-        ds = datashape.dshape('var * {name: string, when: datetime}')
+        ds = datashape.dshape('var * {name: ?string, when: ?datetime}')
         assert discover(csv) == ds
 
         df = convert(pd.DataFrame, csv)
         assert df.dtypes['when'] == 'M8[ns]'
 
 
+@skipif(os.name == 'nt')
 def test_pandas_discover_on_gzipped_files():
     with filetext('name,when\nAlice,2014-01-01\nBob,2014-02-02',
-            open=gzip.open, extension='.csv.gz') as fn:
+                  open=gzip.open, mode='wt', extension='.csv.gz') as fn:
         csv = CSV(fn, has_header=True)
-        ds = datashape.dshape('var * {name: string, when: datetime}')
+        ds = datashape.dshape('var * {name: ?string, when: ?datetime}')
         assert discover(csv) == ds
 
 
@@ -292,6 +295,7 @@ def test_convert_to_csv():
     assert isinstance(csv, _Temp)
 
 
+@skipif(os.name == 'nt')
 def test_unicode_column_names():
     with filetext('foo\xc4\x87,a\n1,2\n3,4', extension='csv') as fn:
         csv = CSV(fn, has_header=True)

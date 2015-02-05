@@ -5,8 +5,26 @@ from into.backends.bcolz import (append, convert, ctable, carray, resource,
 from into.chunks import chunks
 from into import append, convert, discover, into
 import numpy as np
-from into.utils import tmpfile
+from into.utils import tmpfile, ignoring
+from contextlib import contextmanager
+import shutil
 import os
+import uuid
+
+
+@contextmanager
+def tmpbcolz(*args, **kwargs):
+    fn = '.%s.bcolz' % str(uuid.uuid1())
+    r = resource(fn, *args, **kwargs)
+
+    try:
+        yield r
+    finally:
+        with ignoring(Exception):
+            r.flush()
+        if os.path.exists(fn):
+            shutil.rmtree(fn)
+
 
 
 def eq(a, b):
@@ -52,10 +70,7 @@ def test_append_other():
 
 
 def test_resource_ctable():
-    with tmpfile('.bcolz') as fn:
-        r = resource(fn,
-                     dshape='var * {name: string[5, "ascii"], balance: int32}')
-
+    with tmpbcolz(dshape='var * {name: string[5, "ascii"], balance: int32}') as r:
         assert isinstance(r, ctable)
         assert r.dtype == [('name', 'S5'), ('balance', 'i4')]
 
@@ -66,48 +81,37 @@ def get_expectedlen(x):
 
 
 def test_resource_ctable_overrides_expectedlen():
-    with tmpfile('.bcolz') as fn:
-        r = resource(fn,
-                     dshape='100 * {name: string[5, "ascii"], balance: int32}',
-                     expectedlen=200)
-
+    with tmpbcolz(dshape='100 * {name: string[5, "ascii"], balance: int32}',
+                  expectedlen=200) as r:
         assert isinstance(r, ctable)
         assert r.dtype == [('name', 'S5'), ('balance', 'i4')]
         assert all(get_expectedlen(r[c]) == 200 for c in r.names)
 
 
 def test_resource_ctable_correctly_infers_length():
-    with tmpfile('.bcolz') as fn:
-        r = resource(fn,
-                     dshape='100 * {name: string[5, "ascii"], balance: int32}')
-
+    with tmpbcolz(dshape='100 * {name: string[5, "ascii"], balance: int32}') as r:
         assert isinstance(r, ctable)
         assert r.dtype == [('name', 'S5'), ('balance', 'i4')]
         assert all(get_expectedlen(r[c]) == 100 for c in r.names)
 
 
 def test_resource_carray():
-    with tmpfile('.bcolz') as fn:
-        r = resource(fn, dshape='var * int32')
-
+    with tmpbcolz(dshape='var * int32') as r:
         assert isinstance(r, carray)
         assert r.dtype == 'i4'
         assert r.shape == (0,)
 
 
 def test_resource_existing_carray():
-    with tmpfile('.bcolz') as fn:
-        r = resource(fn, dshape='var * int32')
+    with tmpbcolz(dshape='var * int32') as r:
         append(r, [1, 2, 3])
         r.flush()
-        newr = resource(fn)
+        newr = resource(r.rootdir)
         assert isinstance(newr, carray)
 
 
 def test_resource_carray_overrides_expectedlen():
-    with tmpfile('.bcolz') as fn:
-        r = resource(fn, dshape='100 * int32', expectedlen=200)
-
+    with tmpbcolz(dshape='100 * int32', expectedlen=200) as r:
         assert isinstance(r, carray)
         assert r.dtype == 'i4'
         assert r.shape == (100,)
@@ -115,9 +119,7 @@ def test_resource_carray_overrides_expectedlen():
 
 
 def test_resource_ctable_correctly_infers_length():
-    with tmpfile('.bcolz') as fn:
-        r = resource(fn, dshape='100 * int32')
-
+    with tmpbcolz(dshape='100 * int32') as r:
         assert isinstance(r, carray)
         assert r.dtype == 'i4'
         assert get_expectedlen(r) == 100
@@ -128,12 +130,11 @@ def test_into_respects_expected_len_during_append():
         b = into(fn, [1, 2, 3])
         assert get_expectedlen(b) == 3
         assert len(b) == 3
+        shutil.rmtree(fn)
 
 
 def test_resource_nd_carray():
-    with tmpfile('.bcolz') as fn:
-        r = resource(fn, dshape='10 * 10 * 10 * int32')
-
+    with tmpbcolz(dshape='10 * 10 * 10 * int32') as r:
         assert isinstance(r, carray)
         assert r.dtype == 'i4'
         assert r.shape == (10, 10, 10)
@@ -156,20 +157,20 @@ def test_resource_existing_ctable():
         r2 = resource(fn)
         assert eq(r2[:], y)
 
+        shutil.rmtree(fn)
+
 
 def test_drop():
-    with tmpfile('.bcolz') as fn:
-        r = resource(fn, dshape='var * {name: string[5, "ascii"], balance: int32}')
-
-        assert os.path.exists(fn)
-        drop(fn)
-        assert not os.path.exists(fn)
+    with tmpbcolz(dshape='var * {name: string[5, "ascii"], balance: int32}') as b:
+        assert os.path.exists(b.rootdir)
+        drop(b)
+        assert not os.path.exists(b.rootdir)
 
 
 def test_resource_shape():
-    with tmpfile('.bcolz') as fn:
-        assert resource(fn, dshape='10 * int').shape == (10,)
-    with tmpfile('.bcolz') as fn:
-        assert resource(fn, dshape='10 * 10 * int').shape == (10, 10)
-    with tmpfile('.bcolz') as fn:
-        assert resource(fn, dshape='var * 10 * int').shape == (0, 10)
+    with tmpbcolz(dshape='10 * int') as b:
+        assert b.shape == (10,)
+    with tmpbcolz(dshape='10 * 10 * int') as b:
+        assert b.shape == (10, 10)
+    with tmpbcolz(dshape='var * 10 * int') as b:
+        assert b.shape == (0, 10)

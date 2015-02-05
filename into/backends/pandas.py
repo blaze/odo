@@ -1,18 +1,24 @@
 from __future__ import absolute_import, division, print_function
 
 from datashape import discover
+from datashape import (float32, float64, string, Option, Record, object_,
+        datetime_)
 import datashape
 
 import pandas as pd
 
 
+possibly_missing = set((string, datetime_, float32, float64))
+
 @discover.register(pd.DataFrame)
 def discover_dataframe(df):
-    obj = datashape.coretypes.object_
+    obj = object_
     names = list(df.columns)
     dtypes = list(map(datashape.CType.from_numpy_dtype, df.dtypes))
-    dtypes = [datashape.string if dt == obj else dt for dt in dtypes]
-    schema = datashape.Record(list(zip(names, dtypes)))
+    dtypes = [string if dt == obj else dt for dt in dtypes]
+    odtypes = [Option(dt) if dt in possibly_missing else dt
+                for dt in dtypes]
+    schema = datashape.Record(list(zip(names, odtypes)))
     return len(df) * schema
 
 

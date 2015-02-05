@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function
+
 from into.temp import Temp, _Temp
 from into.drop import drop
 

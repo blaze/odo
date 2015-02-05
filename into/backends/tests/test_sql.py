@@ -126,6 +126,7 @@ def test_select_to_iterator():
     result = convert(list, sel3, dshape=discover(t))
     assert type(result[0]) is tuple
 
+
 def test_discovery_engine():
     engine, t = single_table_engine()
 
@@ -197,6 +198,7 @@ def test_into_table_iterator():
     append(t, data)
 
     assert convert(list, t) == data
+    assert isinstance(convert(list, t)[0], tuple)
 
     t2 = dshape_to_table('points2', '{x: int, y: int}', metadata=metadata)
     t2.create()
