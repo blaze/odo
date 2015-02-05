@@ -86,9 +86,9 @@ def S3(cls):
     return type('S3(%s)' % cls.__name__, (_S3, cls), {'subtype': cls})
 
 
-@sample.register(S3(CSV))
+@sample.register((S3(CSV), S3(JSONLines)))
 @contextmanager
-def sample_s3_csv(data, length=8192):
+def sample_s3_line_delimited(data, length=8192):
     """Get bytes from `start` to `stop` of `key` from the S3 bucket `bucket`.
 
     Parameters
@@ -123,17 +123,47 @@ def sample_s3_csv(data, length=8192):
 
     raw = raw[:index]
 
-    with tmpfile('.csv') as fn:
+    with tmpfile(ext(data.path)) as fn:
         # we use wb because without an encoding boto returns bytes
         with open(fn, 'wb') as f:
             f.write(raw)
         yield fn
 
 
-@discover.register(S3(CSV))
-def discover_s3_csv(c, length=8192, **kwargs):
+@discover.register((S3(CSV), S3(JSONLines)))
+def discover_s3_line_delimited(c, length=8192, **kwargs):
+    """Discover CSV and JSONLines files from S3.
+
+    Examples
+    --------
+    >>> csv_dshape = discover(resource('s3://nyqpug/tips.csv'))
+    >>> print(csv_dshape)
+    var * {
+      total_bill: ?float64,
+      tip: ?float64,
+      sex: ?string,
+      smoker: ?string,
+      day: ?string,
+      time: ?string,
+      size: int64
+      }
+    >>> json_dshape = discover(resource('s3://nyqpug/tips.json'))
+    >>> names = sorted(json_dshape.measure.names)
+    >>> names
+    [u'day', u'sex', u'size', u'smoker', u'time', u'tip', u'total_bill']
+    >>> types = [json_dshape.measure[name] for name in names]
+    >>> from pprint import pprint
+    >>> pprint(types)
+    [ctype("string"),
+     ctype("string"),
+     ctype("int64"),
+     ctype("string"),
+     ctype("string"),
+     ctype("float64"),
+     ctype("float64")]
+    """
     with sample(c, length=length) as fn:
-        return discover(CSV(fn, **kwargs), **kwargs)
+        return discover(c.subtype(fn, **kwargs), **kwargs)
 
 
 @resource.register('s3://.*\.(csv|txt)', priority=18)
