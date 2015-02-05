@@ -267,8 +267,8 @@ def gentemp(it, suffix=None, start=0):
         A integer indicating where to start the numbering of chunks in `it`.
     """
     for i, data in enumerate(it, start=start):  # aws needs parts to start at 1
-        _, fn = tempfile.mkstemp(suffix=suffix)
-        yield i, fn, data
+        with tmpfile('.into') as fn:
+            yield i, fn, data
 
 
 @curry
