@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+import os
+
 from into.backends.hdfstore import discover
 from contextlib import contextmanager
 from into.utils import tmpfile
@@ -9,20 +11,21 @@ import datashape
 import pandas as pd
 from datetime import datetime
 import numpy as np
-import os
 
 try:
     f = pd.HDFStore('foo')
-    f.close()
-except (RuntimeError, ImportError):
+except (RuntimeError, ImportError) as e:
     import pytest
-    pytest.importorskip('oshfshffhf')
+    pytest.skip('skipping test_hdfstore.py %s' % e)
+else:
+    f.close()
+    os.remove('foo')
 
 df = pd.DataFrame([['a', 1, 10., datetime(2000, 1, 1)],
                    ['ab', 2, 20., datetime(2000, 2, 2)],
                    ['abc', 3, 30., datetime(2000, 3, 3)],
                    ['abcd', 4, 40., datetime(2000, 4, 4)]],
-                   columns=['name', 'a', 'b', 'time'])
+                  columns=['name', 'a', 'b', 'time'])
 
 
 @contextmanager
