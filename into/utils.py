@@ -256,14 +256,15 @@ def write(triple, writer):
 
 
 def gentemp(it, suffix=None, start=0):
-    """Generate an index, a temporary file, and return data for each element
-    in `it
+    """Yield an index, a temp file, and data for each element in `it`.
 
     Parameters
     ----------
-    it : iterable
-    suffix : str
+    it : Iterable
+    suffix : str or ``None``, optional
         Suffix to add to each temporary file's name
+    start : int, optional
+        A integer indicating where to start the numbering of chunks in `it`.
     """
     for i, data in enumerate(it, start=start):  # aws needs parts to start at 1
         _, fn = tempfile.mkstemp(suffix=suffix)
