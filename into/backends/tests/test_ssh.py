@@ -19,10 +19,9 @@ import socket
 
 try:
     ssh = connect(hostname='localhost')
+    ssh.close()
 except socket.error:
     pytest.importorskip('does_not_exist')
-finally:
-    ssh.close()
 
 
 def test_resource():
