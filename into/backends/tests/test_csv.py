@@ -295,6 +295,7 @@ def test_convert_to_csv():
     assert isinstance(csv, _Temp)
 
 
+@skipif(os.name == 'nt')
 def test_unicode_column_names():
     with filetext('foo\xc4\x87,a\n1,2\n3,4', extension='csv') as fn:
         csv = CSV(fn, has_header=True)
