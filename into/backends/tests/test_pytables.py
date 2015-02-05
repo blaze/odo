@@ -16,7 +16,7 @@ try:
     f.close()
     if os.path.exists('import-tables-test.hdf5'):
         os.remove('import-tables-test.hdf5')
-except tables.exceptions.HDF5ExtError:
+except tb.exceptions.HDF5ExtError:
     pytest.importorskip('oshfshffhf')
 
 
