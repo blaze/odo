@@ -181,7 +181,7 @@ def s3_csv_to_s3_csv(a, b, **kwargs):
 @convert.register(Temp(S3(JSON)), (JSON, Temp(JSON)))
 @convert.register(Temp(S3(JSONLines)), (JSONLines, Temp(JSONLines)))
 def text_data_to_temp_s3_text_data(data, **kwargs):
-    subtype = getattr(data, 'subtype', type(data))
+    subtype = getattr(data, 'persistent_type', type(data))
     uri = 's3://%s/%s.%s' % (uuid.uuid1(), uuid.uuid1(), ext(data.path))
     return append(Temp(S3(subtype))(uri, **kwargs), data)
 
