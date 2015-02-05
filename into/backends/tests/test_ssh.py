@@ -5,7 +5,6 @@ paramiko = pytest.importorskip('paramiko')
 
 import pandas as pd
 import numpy as np
-import uuid
 import re
 import os
 
@@ -86,7 +85,7 @@ def test_copy_remote_csv():
                       extension='csv') as fn:
             csv = resource(fn)
 
-            uri = 'ssh://localhost:%s.csv' % str(uuid.uuid1())
+            uri = 'ssh://localhost:%s.csv' % target
             scsv = into(uri, csv)
 
             assert isinstance(scsv, SSH(CSV))
@@ -95,8 +94,6 @@ def test_copy_remote_csv():
             # Round trip
             csv2 = into(target, scsv)
             assert into(list, csv) == into(list, csv2)
-
-            drop(uri)
 
 
 def test_drop():
