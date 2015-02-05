@@ -150,6 +150,7 @@ def test_s3_to_redshift(db):
         drop(table)
 
 
+@pytest.mark.timeout(10)
 def test_redshift_getting_started(db):
     dshape = datashape.dshape("""var * {
         userid: int64,
