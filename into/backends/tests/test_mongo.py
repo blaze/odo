@@ -12,7 +12,11 @@ from copy import deepcopy
 from bson.objectid import ObjectId
 
 
-conn = pymongo.MongoClient()
+try:
+    conn = pymongo.MongoClient()
+except:
+    pytest.skip('No local Mongo Server')
+
 db = conn._test_db
 
 
