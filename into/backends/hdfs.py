@@ -1,11 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
-from toolz import memoize, merge
+from toolz import memoize, merge, partition_all
 from functools import wraps
 import re
 
 from .csv import CSV
 from .json import JSON, JSONLines
+from .text import TextFile
 import datashape
 import sqlalchemy as sa
 from datashape import discover, dshape
@@ -14,7 +15,7 @@ from collections import namedtuple
 from contextlib import contextmanager
 from .ssh import SSH, _SSH
 from .sql import metadata_of_engine, sa
-from ..utils import tmpfile, sample, ignoring
+from ..utils import tmpfile, sample, ignoring, raises
 from ..append import append
 from ..resource import resource
 from ..directory import _Directory, Directory
@@ -23,6 +24,7 @@ from ..compatibility import unicode
 
 with ignoring(ImportError):
     from pywebhdfs.webhdfs import PyWebHdfsClient
+    from pywebhdfs.errors import FileNotFound
 
 
 class _HDFS(object):
@@ -337,14 +339,42 @@ def append_remote_csv_to_table(tbl, csv, **kwargs):
         path = '/home/%s/%s' % (csv.auth['username'], csv.path)
 
     if tbl.bind.dialect.name == 'hive':
-        statement = ('LOAD DATA LOCAL INPATH "%(path)s" INTO TABLE %(tablename)s' %
-                {'path': path, 'tablename': tbl.name})
+        statement =('LOAD DATA LOCAL INPATH "%(path)s" INTO TABLE %(tablename)s'
+                     % {'path': path, 'tablename': tbl.name})
     else:
         raise NotImplementedError("Don't know how to migrate csvs on remote "
-                "disk to database of dialect %s" % tbl.engine.dialect.name)
+                  "disk to database of dialect %s" % tbl.engine.dialect.name)
     with tbl.bind.connect() as conn:
         conn.execute(statement)
     return tbl
+
+
+@append.register(TextFile, HDFS(TextFile))
+@append.register(JSONLines, HDFS(JSONLines))
+@append.register(JSON, HDFS(JSON))
+@append.register(CSV, HDFS(CSV))
+def append_hdfs_file_to_local(target, source, **kwargs):
+    text = source.hdfs.read_file(source.path.lstrip('/'), **kwargs)
+    with open(target.path, 'w') as f:
+        f.write(text)
+    return target
+
+
+@append.register(HDFS(TextFile), TextFile)
+@append.register(HDFS(JSONLines), JSONLines)
+@append.register(HDFS(JSON), JSON)
+@append.register(HDFS(CSV), CSV)
+def append_local_file_to_hdfs(target, source, blocksize=100000, **kwargs):
+    if raises(FileNotFound,
+              lambda: target.hdfs.list_dir(target.path.lstrip('/'))):
+        target.hdfs.create_file(target.path.lstrip('/'), '')
+
+    with open(source.path, 'r') as f:
+        blocks = partition_all(blocksize, f)
+        for block in blocks:
+            target.hdfs.append_file(target.path.lstrip('/'), ''.join(block))
+
+    return target
 
 
 import csv
@@ -387,7 +417,8 @@ def dialect_of(data, **kwargs):
 
 
 
-types_by_extension = {'csv': CSV, 'json': JSONLines}
+types_by_extension = {'csv': CSV, 'json': JSONLines, 'txt': TextFile,
+                      'log': TextFile}
 
 hdfs_pattern = '(((?P<user>[a-zA-Z]\w*)@)?(?P<host>[\w.-]*)?(:(?P<port>\d+))?:)?(?P<path>[/\w.*-]+)'
 
@@ -411,3 +442,27 @@ def resource_hdfs(uri, **kwargs):
         subtype = type(resource(path))
 
     return HDFS(subtype)(path, **kwargs)
+
+
+@append.register(HDFS(TextFile), SSH(TextFile))
+@append.register(HDFS(JSONLines), SSH(JSONLines))
+@append.register(HDFS(JSON), SSH(JSON))
+@append.register(HDFS(CSV), SSH(CSV))
+def append_remote_file_to_hdfs(target, source, **kwargs):
+    raise NotImplementedError()
+
+
+@append.register(HDFS(TextFile), HDFS(TextFile))
+@append.register(HDFS(JSONLines), HDFS(JSONLines))
+@append.register(HDFS(JSON), HDFS(JSON))
+@append.register(HDFS(CSV), HDFS(CSV))
+def append_hdfs_file_to_hdfs_file(target, source, **kwargs):
+    raise NotImplementedError()
+
+
+@append.register(SSH(TextFile), HDFS(TextFile))
+@append.register(SSH(JSONLines), HDFS(JSONLines))
+@append.register(SSH(JSON), HDFS(JSON))
+@append.register(SSH(CSV), HDFS(CSV))
+def append_hdfs_file_to_remote(target, source, **kwargs):
+    raise NotImplementedError()

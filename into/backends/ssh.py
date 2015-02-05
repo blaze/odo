@@ -2,13 +2,13 @@ from __future__ import absolute_import, division, print_function
 
 import paramiko
 from contextlib import contextmanager
-from toolz import keyfilter, memoize, take
+from toolz import keyfilter, memoize, take, curry
 from datashape import discover
 import re
 import uuid
 
 from ..directory import _Directory, Directory
-from ..utils import keywords, tmpfile, sample
+from ..utils import keywords, tmpfile, sample, ignoring
 from ..resource import resource
 from ..append import append
 from ..convert import convert
@@ -16,6 +16,7 @@ from ..temp import Temp
 from ..drop import drop
 from .csv import CSV
 from .json import JSON, JSONLines
+from .text import TextFile
 
 connection_pool = dict()
 
@@ -175,7 +176,8 @@ def discover_ssh_directory(data, **kwargs):
 @drop.register((_SSH, SSH(CSV), SSH(JSON), SSH(JSONLines)))
 def drop_ssh(data, **kwargs):
     conn = sftp(**data.auth)
-    conn.remove(data.path)
+    with ignoring(IOError):
+        conn.remove(data.path)
 
 
 @append.register(_SSH, object)
@@ -188,6 +190,7 @@ def append_anything_to_ssh(target, source, **kwargs):
     return target
 
 
+@append.register(TextFile, SSH(TextFile))
 @append.register(JSONLines, SSH(JSONLines))
 @append.register(JSON, SSH(JSON))
 @append.register(CSV, SSH(CSV))
@@ -198,27 +201,23 @@ def append_sshX_to_X(target, source, **kwargs):
     return target
 
 
-@convert.register(Temp(SSH(JSONLines)), (Temp(JSONLines), JSONLines))
-def csv_to_temp_ssh_jsonlines(data, **kwargs):
-    fn = '.%s.json' % uuid.uuid1()
-    target = Temp(SSH(JSONLines))(fn, **kwargs)
+@curry
+def file_to_temp_ssh_file(typ, data, **kwargs):
+    """ Generic convert function sending data to ssh(data)
+
+    Needs to be partially evaluated with a type"""
+    fn = '.%s.%s' % (uuid.uuid1(), typ.canonical_extension)
+    target = Temp(SSH(typ))(fn, **kwargs)
     return append(target, data, **kwargs)
 
-@convert.register(Temp(SSH(JSON)), (Temp(JSON), JSON))
-def csv_to_temp_ssh_json(data, **kwargs):
-    fn = '.%s.json' % uuid.uuid1()
-    target = Temp(SSH(JSON))(fn, **kwargs)
-    return append(target, data, **kwargs)
-
-@convert.register(Temp(SSH(CSV)), (Temp(CSV), CSV))
-def csv_to_temp_ssh_csv(data, **kwargs):
-    fn = '.%s.csv' % uuid.uuid1()
-    target = Temp(SSH(CSV))(fn, **kwargs)
-    return append(target, data, **kwargs)
+for typ in [CSV, JSON, JSONLines, TextFile]:
+    convert.register(Temp(SSH(typ)), (Temp(typ), typ))(
+            file_to_temp_ssh_file(typ))
 
 
-@convert.register(Temp(JSON), (Temp(SSH(JSON)), SSH(JSON)))
+@convert.register(Temp(TextFile), (Temp(SSH(TextFile)), SSH(TextFile)))
 @convert.register(Temp(JSONLines), (Temp(SSH(JSONLines)), SSH(JSONLines)))
+@convert.register(Temp(JSON), (Temp(SSH(JSON)), SSH(JSON)))
 @convert.register(Temp(CSV), (Temp(SSH(CSV)), SSH(CSV)))
 def ssh_csv_to_temp_csv(data, **kwargs):
     fn = '.%s' % uuid.uuid1()

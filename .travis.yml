@@ -24,11 +24,11 @@ install:
   - conda update conda
 
   # Install dependencies
-  - conda create -n test-environment python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python
+  - conda create -n test-environment python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python pymongo paramiko
   - source activate test-environment
 
   # Install PyMongo
-  - pip install pymongo pymysql paramiko sas7bdat psycopg2
+  - pip install sas7bdat psycopg2 pymysql
 
   # Install DataShape
   - pip install --upgrade git+http://github.com/ContinuumIO/datashape
