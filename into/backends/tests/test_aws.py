@@ -141,7 +141,7 @@ def test_s3_to_redshift(db):
         assert table.name == 'tips'
 
         # make sure we have a non empty table
-        assert table.bind.execute("select count(*) from tips;").scalar() == 244
+        assert table.count().execute().scalar() == 244
 
         # make sure we have the proper column types
         assert dshape == ds
@@ -181,7 +181,7 @@ def test_redshift_getting_started(db):
         assert table.name == 'users'
 
         # make sure we have a non empty table
-        assert table.bind.execute("select count(*) from users;").scalar() == n
+        assert table.count().execute().scalar() == n
     finally:
         # don't hang around
         drop(table)
@@ -196,8 +196,7 @@ def test_frame_to_s3_to_frame(s3_bucket):
 def test_csv_to_redshift(tmpcsv, temp_tb):
     table = into(temp_tb, into(Temp(S3(CSV)), tmpcsv))
     try:
-        assert (table.bind.execute("select count(*) from %s;" %
-                temp_tb.split('::', 1)[1]).scalar() == 3)
+        assert table.count().execute().scalar() == 3
     finally:
         drop(table)
 
