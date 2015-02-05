@@ -123,7 +123,7 @@ def test_csv_to_s3_into(s3_bucket):
 
 def test_s3_to_redshift(db):
     redshift_uri = '%s::tips' % db
-    s3 = S3(CSV)('s3://nyqpug/tips.csv')
+    s3 = resource(tips_uri)
     table = into(redshift_uri, s3, dshape=discover(s3))
     dshape = discover(table)
     ds = datashape.dshape("""
