@@ -199,6 +199,17 @@ def test_resource_with_variable_length():
             r.file.close()
 
 
+def test_resource_with_option_types():
+    with tmpfile('.hdf5') as fn:
+        ds = datashape.dshape('4 * {name: ?string, amount: ?int32}')
+        r = resource(fn + '::/data', dshape=ds)
+        try:
+            assert r.shape == (4,)
+            assert r.dtype == [('name', 'O'), ('amount', 'f4')]
+        finally:
+            r.file.close()
+
+
 def test_copy_with_into():
     with tmpfile('.hdf5') as fn:
         dset = into(fn + '::/data', [1, 2, 3])
