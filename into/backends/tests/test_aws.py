@@ -1,10 +1,9 @@
 import pytest
 import os
 import itertools
-from into import into, resource, S3, discover, CSV, drop, append
-from into import JSON
+from into import into, resource, S3, discover, CSV, drop, append, SSH
 from into.backends.aws import get_s3_connection
-from into.utils import tmpfile
+from into.utils import tmpfile, filetext
 import pandas as pd
 import pandas.util.testing as tm
 import datashape
@@ -249,3 +248,10 @@ def test_jsonlines_to_s3(s3_json_bucket):
                 f.write(os.linesep)
         result = into(s3_json_bucket, resource(fn))
     assert discover(result) == discover(js)
+
+
+def test_ssh_csv_to_s3_csv(s3_bucket):
+    with filetext('name,balance\nAlice,100\nBob,200') as fn:
+        remote = SSH(CSV)(fn, hostname='localhost')
+        result = into(s3_bucket, remote)
+        assert discover(result) == discover(resource(s3_bucket))
