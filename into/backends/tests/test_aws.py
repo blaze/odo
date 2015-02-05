@@ -1,7 +1,8 @@
 import pytest
 import os
 import itertools
-from into import into, resource, S3, discover, CSV, drop, append, Temp
+from into import into, resource, S3, discover, CSV, drop, append
+from into import JSON
 from into.backends.aws import get_s3_connection
 from into.utils import tmpfile
 import pandas as pd
@@ -23,6 +24,9 @@ df = pd.DataFrame({
     'b': [1, 2, 3],
     'c': [1.0, 2.0, 3.0]
 })[['a', 'b', 'c']]
+
+
+js = pd.io.json.loads(pd.io.json.dumps(df, orient='records'))
 
 
 @pytest.fixture
@@ -77,10 +81,28 @@ test_bucket_name = 'into-redshift-csvs'
 _tmps = ('tmp%d' % i for i in itertools.count())
 
 
+@pytest.fixture
+def tmp():
+    return next(_tmps)
+
+
 @pytest.yield_fixture
-def s3_bucket(conn):
-    key = next(_tmps)
-    b = 's3://%s/%s.csv' % (test_bucket_name, key)
+def s3_bucket(conn, tmp):
+    b = 's3://%s/%s.csv' % (test_bucket_name, tmp)
+    yield b
+    drop(resource(b))
+
+
+@pytest.yield_fixture
+def s3_text_bucket(conn, tmp):
+    b = 's3://%s/%s.txt' % (test_bucket_name, tmp)
+    yield b
+    drop(resource(b))
+
+
+@pytest.yield_fixture
+def s3_json_bucket(conn, tmp):
+    b = 's3://%s/%s.json' % (test_bucket_name, tmp)
     yield b
     drop(resource(b))
 
@@ -174,7 +196,7 @@ def test_redshift_getting_started(db):
     }""")
 
     redshift_uri = '%s::users' % db
-    csv = 's3://awssampledb/tickit/allusers_pipe.txt'
+    csv = S3(CSV)('s3://awssampledb/tickit/allusers_pipe.txt')
     table = into(redshift_uri, csv, dshape=dshape, delimiter='|')
     n = 49989
     try:
@@ -208,3 +230,22 @@ def test_frame_to_redshift(temp_tb):
         assert into(set, tb) == into(set, df)
     finally:
         drop(tb)
+
+
+def test_textfile_to_s3(s3_text_bucket):
+    text = 'A cow jumped over the moon'
+    with tmpfile('.txt') as fn:
+        with open(fn, mode='wb') as f:
+            f.write(os.linesep.join(text.split()))
+        result = into(s3_text_bucket, resource(fn))
+    assert discover(result) == datashape.dshape('var * string')
+
+
+def test_jsonlines_to_s3(s3_json_bucket):
+    with tmpfile('.json') as fn:
+        with open(fn, mode='wb') as f:
+            for row in js:
+                f.write(pd.io.json.dumps(row))
+                f.write(os.linesep)
+        result = into(s3_json_bucket, resource(fn))
+    assert discover(result) == discover(js)

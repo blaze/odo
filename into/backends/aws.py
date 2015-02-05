@@ -4,6 +4,7 @@ import os
 import uuid
 
 from contextlib import contextmanager
+from collections import Iterator
 
 try:
     from urlparse import urlparse
@@ -153,17 +154,22 @@ def discover_s3_line_delimited(c, length=8192, **kwargs):
         return discover(c.subtype(fn, **kwargs), **kwargs)
 
 
-@resource.register('s3://.*\.(csv|txt)', priority=18)
+@resource.register('s3://.*\.csv(\.gz)?', priority=18)
 def resource_s3_csv(uri, **kwargs):
     return S3(CSV)(uri, **kwargs)
 
 
-@resource.register('s3://.*\.json', priority=18)
+@resource.register('s3://.*\.txt(\.gz)?')
+def resource_s3_text(uri, **kwargs):
+    return S3(TextFile)(uri)
+
+
+@resource.register('s3://.*\.json(\.gz)?', priority=18)
 def resource_s3_json_lines(uri, **kwargs):
     return S3(JSONLines)(uri, **kwargs)
 
 
-@drop.register((S3(CSV), S3(JSON), S3(JSONLines)))
+@drop.register((S3(CSV), S3(JSON), S3(JSONLines), S3(TextFile)))
 def drop_s3(s3):
     s3.object.delete()
 
@@ -178,19 +184,28 @@ def drop_temp_s3(s3):
 @convert.register(Temp(CSV), (Temp(S3(CSV)), S3(CSV)))
 @convert.register(Temp(JSON), (Temp(S3(JSON)), S3(JSON)))
 @convert.register(Temp(JSONLines), (Temp(S3(JSONLines)), S3(JSONLines)))
-def s3_csv_to_temp_csv(s3, **kwargs):
+@convert.register(Temp(TextFile), (Temp(S3(TextFile)), S3(TextFile)))
+def s3_text_to_temp_text(s3, **kwargs):
     tmp_filename = '.%s.%s' % (uuid.uuid1(), ext(s3.path))
     s3.object.get_contents_to_filename(tmp_filename)
     return Temp(s3.subtype)(tmp_filename, **kwargs)
 
 
 @append.register(CSV, S3(CSV))
-def s3_csv_to_csv(csv, s3, **kwargs):
-    return append(csv, into(Temp(CSV), s3, **kwargs), **kwargs)
+@append.register(JSON, S3(JSON))
+@append.register(JSONLines, S3(JSONLines))
+@append.register(TextFile, S3(TextFile))
+def s3_text_to_text(data, s3, **kwargs):
+    return append(data, into(Temp(s3.subtype), s3, **kwargs), **kwargs)
 
 
 @append.register((S3(CSV), Temp(S3(CSV))), (S3(CSV), Temp(S3(CSV))))
-def s3_csv_to_s3_csv(a, b, **kwargs):
+@append.register((S3(JSON), Temp(S3(JSON))), (S3(JSON), Temp(S3(JSON))))
+@append.register((S3(JSONLines), Temp(S3(JSONLines))),
+                 (S3(JSONLines), Temp(S3(JSONLines))))
+@append.register((S3(TextFile), Temp(S3(TextFile))),
+                 (S3(TextFile), Temp(S3(TextFile))))
+def temp_s3_to_s3(a, b, **kwargs):
     a.object.bucket.copy_key(b.object.name, a.object.bucket.name,
                              b.object.name)
     return a
@@ -199,21 +214,24 @@ def s3_csv_to_s3_csv(a, b, **kwargs):
 @convert.register(Temp(S3(CSV)), (CSV, Temp(CSV)))
 @convert.register(Temp(S3(JSON)), (JSON, Temp(JSON)))
 @convert.register(Temp(S3(JSONLines)), (JSONLines, Temp(JSONLines)))
-def text_data_to_temp_s3_text_data(data, **kwargs):
+@convert.register(Temp(S3(TextFile)), (TextFile, Temp(TextFile)))
+def text_to_temp_s3_text(data, **kwargs):
     subtype = getattr(data, 'persistent_type', type(data))
     uri = 's3://%s/%s.%s' % (uuid.uuid1(), uuid.uuid1(), ext(data.path))
     return append(Temp(S3(subtype))(uri, **kwargs), data)
 
 
-@append.register(S3(CSV), (pd.DataFrame, chunks(pd.DataFrame), object))
-def anything_to_s3_csv(s3, o, **kwargs):
-    return into(s3, into(Temp(CSV), o, **kwargs), **kwargs)
+@append.register((S3(CSV), S3(JSON), S3(JSONLines)),
+                 (pd.DataFrame, chunks(pd.DataFrame), (list, Iterator)))
+def anything_to_s3_text(s3, o, **kwargs):
+    return into(s3, into(Temp(s3.subtype), o, **kwargs), **kwargs)
 
 
 @append.register(S3(JSONLines), (JSONLines, Temp(JSONLines)))
 @append.register(S3(JSON), (JSON, Temp(JSON)))
 @append.register(S3(CSV), (CSV, Temp(CSV)))
-def append_csv_to_s3(s3, data, **kwargs):
+@append.register(S3(TextFile), (TextFile, Temp(TextFile)))
+def append_text_to_s3(s3, data, **kwargs):
     s3.object.set_contents_from_filename(data.path)
     return s3
 
