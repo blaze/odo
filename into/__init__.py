@@ -1,5 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
+try:
+    import h5py  #  h5py has precedence over pytables
+except:
+    pass
 from multipledispatch import halt_ordering, restart_ordering
 
 halt_ordering() # Turn off multipledispatch ordering

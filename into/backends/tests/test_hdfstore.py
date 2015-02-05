@@ -11,6 +11,13 @@ from datetime import datetime
 import numpy as np
 import os
 
+try:
+    f = pd.HDFStore('foo')
+    f.close()
+except (RuntimeError, ImportError):
+    import pytest
+    pytest.importorskip('oshfshffhf')
+
 df = pd.DataFrame([['a', 1, 10., datetime(2000, 1, 1)],
                    ['ab', 2, 20., datetime(2000, 2, 2)],
                    ['abc', 3, 30., datetime(2000, 3, 3)],

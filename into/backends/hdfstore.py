@@ -45,6 +45,18 @@ def hdfstore_to_chunks_dataframes(data, chunksize=1000000, **kwargs):
 def hdfstore_to_chunks_dataframes(data, **kwargs):
     return data.read()
 
+
+pytables_h5py_explanation = """
+You've run in to a conflict between the two HDF5 libraries in Python,
+H5Py and PyTables.  You're trying to do something that requires PyTables but
+H5Py was loaded first and the two libraries don't share well.
+
+To resolve this you'll have to restart your Python process and ensure that you
+
+    import tables
+
+before you import projects like into or blaze."""
+
 from collections import namedtuple
 
 EmptyHDFStoreDataset = namedtuple('EmptyHDFStoreDataset', 'parent,pathname,dshape')
@@ -55,7 +67,11 @@ def resource_hdfstore(uri, datapath=None, dshape=None, **kwargs):
     # 1. Support nested datashapes (e.g. groups)
     # 2. Try translating unicode to ascii?  (PyTables fails here)
     fn = uri.split('://')[1]
-    f = pd.HDFStore(fn)
+    try:
+        f = pd.HDFStore(fn)
+    except RuntimeError  as e:
+        raise type(e)(pytables_h5py_explanation)
+
     if dshape is None:
         if datapath:
             return f.get_storer(datapath)

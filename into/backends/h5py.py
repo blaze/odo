@@ -1,12 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
+import h5py
 import os
 
 import datashape
 from datashape import DataShape, Record, to_numpy, to_numpy_dtype, discover
 from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
-import h5py
 import numpy as np
 from toolz import keyfilter
 

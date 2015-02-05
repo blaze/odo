@@ -4,13 +4,20 @@ import numpy as np
 import datashape as ds
 import pytest
 
-
 from into import into
 from into.utils import tmpfile
 from into.backends.pytables import PyTables, discover
-
+import os
 
 tb = pytest.importorskip('tables')
+
+try:
+    f = tb.open_file('import-tables-test.hdf5', mode='w')
+    f.close()
+    if os.path.exists('import-tables-test.hdf5'):
+        os.remove('import-tables-test.hdf5')
+except tables.exceptions.HDF5ExtError:
+    pytest.importorskip('oshfshffhf')
 
 
 x = np.array([(1, 'Alice', 100),

@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import h5py
 import os
 from contextlib import contextmanager
 
