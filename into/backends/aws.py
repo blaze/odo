@@ -18,6 +18,7 @@ import boto
 from into import discover, CSV, resource, append, convert, drop, Temp, JSON
 from into import JSONLines, SSH, into, chunks
 
+from .text import TextFile
 from ..utils import tmpfile, ext, sample
 
 
@@ -150,7 +151,8 @@ def drop_s3(s3):
     s3.object.delete()
 
 
-@drop.register((Temp(S3(CSV)), Temp(S3(JSON)), Temp(S3(JSONLines))))
+@drop.register((Temp(S3(CSV)), Temp(S3(JSON)), Temp(S3(JSONLines)),
+                Temp(S3(TextFile))))
 def drop_temp_s3(s3):
     s3.object.delete()
     s3.object.bucket.delete()
