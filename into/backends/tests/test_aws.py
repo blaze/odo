@@ -195,7 +195,7 @@ def test_frame_to_s3_to_frame(s3_bucket):
 
 
 def test_csv_to_redshift(tmpcsv, temp_tb):
-    table = into(temp_tb, into(Temp(S3(CSV)), tmpcsv))
+    table = into(temp_tb, tmpcsv)
     try:
         assert table.count().execute().scalar() == 3
     finally:
