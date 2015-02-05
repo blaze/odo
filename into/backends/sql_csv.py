@@ -118,11 +118,9 @@ else:
                        blanks_as_null=False)
 
         if schema_name is None:
-            if tbl.schema is not None:
-                schema_name = tbl.schema
-            else:
-                # 'public' by default, this is a postgres convention
-                schema_name = sa.inspect(tbl.bind).default_schema_name
+            # 'public' by default, this is a postgres convention
+            schema_name = (tbl.schema or
+                           sa.inspect(tbl.bind).default_schema_name)
         cmd = CopyCommand(schema_name=schema_name,
                           table_name=tbl.name,
                           data_location=csv.path,
