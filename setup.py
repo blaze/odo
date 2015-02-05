@@ -31,4 +31,5 @@ setup(name='into',
       long_description=(open('README.rst').read() if os.path.exists('README.rst')
                         else ''),
       package_data={'into': package_data},
-      zip_safe=False)
+      zip_safe=False,
+      scripts=['bin/pandat'])
