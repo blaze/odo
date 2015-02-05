@@ -128,12 +128,12 @@ def test_s3_to_redshift(db):
     dshape = discover(table)
     ds = datashape.dshape("""
     var * {
-        total_bill: float64,
-        tip: float64,
-        sex: string,
-        smoker: string,
-        day: string,
-        time: string,
+        total_bill: ?float64,
+        tip: ?float64,
+        sex: ?string,
+        smoker: ?string,
+        day: ?string,
+        time: ?string,
         size: int64
     }""")
     try:

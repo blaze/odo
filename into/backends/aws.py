@@ -102,12 +102,12 @@ def sample_s3_csv(data, length=8192):
     >>> csv = S3(CSV)('s3://nyqpug/tips.csv')
     >>> print(discover(csv))
     var * {
-      total_bill: float64,
-      tip: float64,
-      sex: string,
-      smoker: string,
-      day: string,
-      time: string,
+      total_bill: ?float64,
+      tip: ?float64,
+      sex: ?string,
+      smoker: ?string,
+      day: ?string,
+      time: ?string,
       size: int64
       }
     """
