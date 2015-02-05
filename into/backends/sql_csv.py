@@ -147,6 +147,13 @@ def execute_copy_all(dialect, engine, statement):
 
 @append.register(sqlalchemy.Table, CSV)
 def append_csv_to_sql_table(tbl, csv, **kwargs):
-    statement = copy_command(tbl.bind.dialect.name, tbl, csv, **kwargs)
-    execute_copy(tbl.bind.dialect.name, tbl.bind, statement)
+    dialect = tbl.bind.dialect.name
+
+    # move things to a temporary S3 bucket if we're using redshift and we
+    # aren't already in S3
+    if dialect == 'redshift' and not isinstance(csv, (S3(CSV), Temp(S3(CSV)))):
+        csv = into(Temp(S3(CSV)), csv)
+
+    statement = copy_command(dialect, tbl, csv, **kwargs)
+    execute_copy(dialect, tbl.bind, statement)
     return tbl
