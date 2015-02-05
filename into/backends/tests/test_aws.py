@@ -47,7 +47,7 @@ def temp_tb(db):
 @pytest.yield_fixture
 def tmpcsv():
     with tmpfile('.csv') as fn:
-        with open(fn, mode='wb') as f:
+        with open(fn, mode='w') as f:
             df.to_csv(f, index=False)
         yield fn
 
@@ -235,7 +235,7 @@ def test_frame_to_redshift(temp_tb):
 def test_textfile_to_s3(s3_text_bucket):
     text = 'A cow jumped over the moon'
     with tmpfile('.txt') as fn:
-        with open(fn, mode='wb') as f:
+        with open(fn, mode='w') as f:
             f.write(os.linesep.join(text.split()))
         result = into(s3_text_bucket, resource(fn))
     assert discover(result) == datashape.dshape('var * string')
@@ -243,7 +243,7 @@ def test_textfile_to_s3(s3_text_bucket):
 
 def test_jsonlines_to_s3(s3_json_bucket):
     with tmpfile('.json') as fn:
-        with open(fn, mode='wb') as f:
+        with open(fn, mode='w') as f:
             for row in js:
                 f.write(pd.io.json.dumps(row))
                 f.write(os.linesep)

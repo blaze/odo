@@ -136,9 +136,9 @@ def discover_s3_line_delimited(c, length=8192, **kwargs):
       size: int64
       }
     >>> json_dshape = discover(resource('s3://nyqpug/tips.json'))
-    >>> names = sorted(json_dshape.measure.names)
+    >>> names = list(map(str, sorted(json_dshape.measure.names)))
     >>> names
-    [u'day', u'sex', u'size', u'smoker', u'time', u'tip', u'total_bill']
+    ['day', 'sex', 'size', 'smoker', 'time', 'tip', 'total_bill']
     >>> types = [json_dshape.measure[name] for name in names]
     >>> from pprint import pprint
     >>> pprint(types)
@@ -159,7 +159,7 @@ def resource_s3_csv(uri, **kwargs):
     return S3(CSV)(uri, **kwargs)
 
 
-@resource.register('s3://.*\.txt(\.gz)?')
+@resource.register('s3://.*\.txt(\.gz)?', priority=18)
 def resource_s3_text(uri, **kwargs):
     return S3(TextFile)(uri)
 
