@@ -250,16 +250,6 @@ def convert_dataframes_to_temporary_csv(data, **kwargs):
     return append(csv, data, **kwargs)
 
 
-@append.register(CSV, Temp(CSV))
-def temp_csv_to_csv(a, b, **kwargs):
-    return append(a, CSV(b.path), **kwargs)
-
-
-@convert.register(Temp(CSV), CSV)
-def csv_to_temp_csv(csv, **kwargs):
-    return Temp(CSV)(csv.path, **kwargs)
-
-
 @dispatch(CSV)
 def drop(c):
     os.unlink(c.path)
