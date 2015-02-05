@@ -98,19 +98,6 @@ def sample_s3_line_delimited(data, length=8192):
     length : int, optional, default ``8192``
         Number of bytes of the file to read
 
-    Examples
-    --------
-    >>> csv = S3(CSV)('s3://nyqpug/tips.csv')
-    >>> print(discover(csv))
-    var * {
-      total_bill: ?float64,
-      tip: ?float64,
-      sex: ?string,
-      smoker: ?string,
-      day: ?string,
-      time: ?string,
-      size: int64
-      }
     """
     headers = {'Range': 'bytes=0-%d' % length}
     raw = data.object.get_contents_as_string(headers=headers)
@@ -172,8 +159,8 @@ def resource_s3_csv(uri, **kwargs):
 
 
 @resource.register('s3://.*\.json', priority=18)
-def resource_s3_csv(uri, **kwargs):
-    return S3(JSON)(uri, **kwargs)
+def resource_s3_json_lines(uri, **kwargs):
+    return S3(JSONLines)(uri, **kwargs)
 
 
 @drop.register((S3(CSV), S3(JSON), S3(JSONLines)))
