@@ -1,13 +1,18 @@
 from __future__ import absolute_import, division, print_function
 
+import os
+import re
+import subprocess
+
+import sqlalchemy
+
+from multipledispatch import MDNotImplementedError
+
 from ..regex import RegexDispatcher
 from ..append import append
 from .csv import CSV
-from multipledispatch import MDNotImplementedError
-import os
-import re
-import sqlalchemy
-import subprocess
+from ..temp import Temp
+from ..into import into
 
 copy_command = RegexDispatcher('copy_command')
 execute_copy = RegexDispatcher('execute_copy')
