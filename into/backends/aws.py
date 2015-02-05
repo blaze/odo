@@ -17,7 +17,7 @@ from toolz import memoize
 import boto
 
 from into import discover, CSV, resource, append, convert, drop, Temp, JSON
-from into import JSONLines, SSH, into, chunks
+from into import JSONLines, SSH, into, chunks, HDFS
 
 from .text import TextFile
 from ..utils import tmpfile, ext, sample
@@ -221,7 +221,7 @@ def text_to_temp_s3_text(data, **kwargs):
     return append(Temp(S3(subtype))(uri, **kwargs), data)
 
 
-@append.register((S3(CSV), S3(JSON), S3(JSONLines)),
+@append.register((S3(CSV), S3(JSON), S3(JSONLines), S3(TextFile)),
                  (pd.DataFrame, chunks(pd.DataFrame), (list, Iterator)))
 def anything_to_s3_text(s3, o, **kwargs):
     return into(s3, into(Temp(s3.subtype), o, **kwargs), **kwargs)
@@ -236,8 +236,13 @@ def append_text_to_s3(s3, data, **kwargs):
     return s3
 
 
-@append.register(S3(JSON), SSH(JSON))
-@append.register(S3(JSONLines), SSH(JSONLines))
-@append.register(S3(CSV), SSH(CSV))
-def ssh_text_to_s3_text(a, b, **kwargs):
+@append.register(S3(JSON), (SSH(JSON), HDFS(JSON)))
+@append.register(S3(JSONLines), (SSH(JSONLines), HDFS(JSONLines)))
+@append.register(S3(CSV), (SSH(CSV), HDFS(CSV)))
+@append.register(S3(TextFile), (SSH(TextFile), HDFS(TextFile)))
+@append.register(HDFS(JSON), S3(JSON))
+@append.register(HDFS(JSONLines), S3(JSONLines))
+@append.register(HDFS(CSV), S3(CSV))
+@append.register(HDFS(TextFile), S3(TextFile))
+def remote_text_to_s3_text(a, b, **kwargs):
     return into(a, into(Temp(b.subtype), b, **kwargs), **kwargs)
