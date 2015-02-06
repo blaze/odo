@@ -38,9 +38,13 @@ def db():
         return key
 
 
-@pytest.fixture
+@pytest.yield_fixture
 def temp_tb(db):
-    return '%s::%s' % (db, next(_tmps))
+    t = '%s::%s' % (db, next(_tmps))
+    try:
+        yield t
+    finally:
+        drop(resource(t))
 
 
 @pytest.yield_fixture
@@ -80,30 +84,31 @@ test_bucket_name = 'into-redshift-csvs'
 _tmps = ('tmp%d' % i for i in itertools.count())
 
 
-@pytest.fixture
-def tmp():
-    return next(_tmps)
+@pytest.yield_fixture
+def s3_bucket(conn):
+    b = 's3://%s/%s.csv' % (test_bucket_name, next(_tmps))
+    try:
+        yield b
+    finally:
+        drop(resource(b))
 
 
 @pytest.yield_fixture
-def s3_bucket(conn, tmp):
-    b = 's3://%s/%s.csv' % (test_bucket_name, tmp)
-    yield b
-    drop(resource(b))
+def s3_text_bucket(conn):
+    b = 's3://%s/%s.txt' % (test_bucket_name, next(_tmps))
+    try:
+        yield b
+    finally:
+        drop(resource(b))
 
 
 @pytest.yield_fixture
-def s3_text_bucket(conn, tmp):
-    b = 's3://%s/%s.txt' % (test_bucket_name, tmp)
-    yield b
-    drop(resource(b))
-
-
-@pytest.yield_fixture
-def s3_json_bucket(conn, tmp):
-    b = 's3://%s/%s.json' % (test_bucket_name, tmp)
-    yield b
-    drop(resource(b))
+def s3_json_bucket(conn):
+    b = 's3://%s/%s.json' % (test_bucket_name, next(_tmps))
+    try:
+        yield b
+    finally:
+        drop(resource(b))
 
 
 def test_s3_resource():
@@ -198,15 +203,12 @@ def test_redshift_getting_started(db):
     csv = S3(CSV)('s3://awssampledb/tickit/allusers_pipe.txt')
     table = into(redshift_uri, csv, dshape=dshape, delimiter='|')
     n = 49989
-    try:
-        # make sure our table is properly named
-        assert table.name == 'users'
 
-        # make sure we have a non empty table
-        assert table.count().execute().scalar() == n
-    finally:
-        # don't hang around
-        drop(table)
+    # make sure our table is properly named
+    assert table.name == 'users'
+
+    # make sure we have a non empty table
+    assert table.count().execute().scalar() == n
 
 
 def test_frame_to_s3_to_frame(s3_bucket):
@@ -217,18 +219,12 @@ def test_frame_to_s3_to_frame(s3_bucket):
 
 def test_csv_to_redshift(tmpcsv, temp_tb):
     table = into(temp_tb, tmpcsv)
-    try:
-        assert table.count().execute().scalar() == 3
-    finally:
-        drop(table)
+    assert table.count().execute().scalar() == 3
 
 
 def test_frame_to_redshift(temp_tb):
     tb = into(temp_tb, df)
-    try:
-        assert into(set, tb) == into(set, df)
-    finally:
-        drop(tb)
+    assert into(set, tb) == into(set, df)
 
 
 def test_textfile_to_s3(s3_text_bucket):
