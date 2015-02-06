@@ -53,6 +53,10 @@ with ignoring(ImportError):
 with ignoring(ImportError):
      from .backends.bokeh import ColumnDataSource
 
+try:
+    from .backends import iopro
+except:
+    pass
 
 restart_ordering() # Restart multipledispatch ordering and do ordering
 
