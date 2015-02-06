@@ -36,6 +36,9 @@ Example
 Contents
 --------
 
+User documentation
+``````````````````
+
 .. toctree::
    :maxdepth: 1
 
@@ -46,3 +49,11 @@ Contents
    sql
    ssh
    hdfs
+
+Developer documentation
+```````````````````````
+
+.. toctree::
+   :maxdepth: 1
+
+   type-modifiers
