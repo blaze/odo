@@ -103,6 +103,10 @@ def test_copy_hdfs_files_locally():
             with open(csv.path) as f:
                 assert f.read().strip() == accounts_1_csv
 
+def test_copy_hdfs_data_into_memory():
+    with accounts_data() as (d, (a, b)):
+        assert into(list, a)
+
 
 def test_hdfs_resource():
     r = resource('hdfs://user@hostname:1234:/path/to/myfile.json')

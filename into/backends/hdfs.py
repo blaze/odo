@@ -4,10 +4,12 @@ from toolz import memoize, merge, partition_all
 from functools import wraps
 from multipledispatch import MDNotImplementedError
 import re
+import os
 
 from .csv import CSV
 from .json import JSON, JSONLines
 from .text import TextFile
+import uuid
 import datashape
 import sqlalchemy as sa
 from datashape import discover, dshape
@@ -17,7 +19,9 @@ from contextlib import contextmanager
 from .ssh import SSH, _SSH
 from .sql import metadata_of_engine, sa
 from ..utils import tmpfile, sample, ignoring, raises
+from ..temp import Temp
 from ..append import append
+from ..convert import convert
 from ..resource import resource
 from ..directory import _Directory, Directory
 from ..compatibility import unicode
@@ -359,6 +363,17 @@ def append_hdfs_file_to_local(target, source, **kwargs):
     with open(target.path, 'w') as f:
         f.write(text)
     return target
+
+
+@convert.register(Temp(TextFile), HDFS(TextFile))
+@convert.register(Temp(JSONLines), HDFS(JSONLines))
+@convert.register(Temp(JSON), HDFS(JSON))
+@convert.register(Temp(CSV), HDFS(CSV))
+def convert_hdfs_file_to_temp_local(source, **kwargs):
+    ext = os.path.splitext(source.path)[1].strip('.')
+    fn = '.%s.%s' % (str(uuid.uuid1()), ext)
+    tmp = Temp(source.subtype)(fn)
+    return append(tmp, source, **kwargs)
 
 
 @append.register(HDFS(TextFile), TextFile)
