@@ -6,13 +6,14 @@ in-memory structures like ``list``, ``pd.DataFrame`` and ``np.ndarray`` and
 also data outside of Python like CSV/JSON/HDF5 files, SQL databases,
 data on remote machines, and the Hadoop File System.
 
-Into
-====
+The ``into`` function
+---------------------
 
 ``into`` takes two arguments, a target and a source for a data transfer.
 
 .. code-block:: python
 
+   >>> from into import into
    >>> into(target, source)  # load source into target
 
 It efficiently migrates data from the source to the target.
