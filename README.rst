@@ -1,6 +1,8 @@
 Into
 ====
 
+|Build Status| |Version Status| |Doc Status|
+
 Data migration in Python
 
 
@@ -94,3 +96,10 @@ Into was factored out from the Blaze_ project.
 
 .. _Blaze: http://blaze.pydata.org/
 .. _networkx: https://networkx.github.io/
+.. |Build Status| image:: https://travis-ci.org/ContinuumIO/into.png
+   :target: https://travis-ci.org/ContinuumIO/into
+.. |Version Status| image:: https://pypip.in/v/into.png
+   :target: https://pypi.python.org/pypi/into/
+.. |Doc Status| image:: https://readthedocs.org/projects/into/badge/?version=latest
+   :target: https://readthedocs.org/projects/into/?badge=latest
+   :alt: Documentation Status
