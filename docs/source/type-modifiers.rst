@@ -21,10 +21,11 @@ following::
     chunks - a sequence of data in chunks
     SSH - data living on a remote machine
     HDFS - data living on Hadoop File system
+    S3 - data living on Amazon's S3
     Directory - a directory of data
     Temp - a temporary piece of data to be garbage collected
 
-We use these function on *types* to construct new types.
+We use these functions on *types* to construct new types.
 
 .. code-block:: python
 
@@ -32,7 +33,7 @@ We use these function on *types* to construct new types.
    >>> Directory(JSON)('/path/to/data/')
 
 We compose these functions to specify more complex situations like a temporary
-directory of JSON data lving on S3
+directory of JSON data living on S3
 
 .. code-block:: python
 
