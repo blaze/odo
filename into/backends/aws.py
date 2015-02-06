@@ -19,6 +19,8 @@ import boto
 from into import discover, CSV, resource, append, convert, drop, Temp, JSON
 from into import JSONLines, SSH, into, chunks, HDFS
 
+from multipledispatch import MDNotImplementedError
+
 from .text import TextFile
 from ..utils import tmpfile, ext, sample
 
@@ -231,4 +233,4 @@ def append_text_to_s3(s3, data, **kwargs):
 @append.register(HDFS(CSV), S3(CSV))
 @append.register(HDFS(TextFile), S3(TextFile))
 def remote_text_to_s3_text(a, b, **kwargs):
-    return into(a, into(Temp(b.subtype), b, **kwargs), **kwargs)
+    raise MDNotImplementedError()
