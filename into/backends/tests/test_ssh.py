@@ -22,7 +22,9 @@ try:
     ssh = connect(hostname='localhost')
     ssh.close()
 except socket.error:
-    pytest.importorskip('does_not_exist')
+    pytest.skip('Could not connect')
+except paramiko.PasswordRequiredException:
+    pytest.skip('password required for connection')
 
 
 def test_resource():
