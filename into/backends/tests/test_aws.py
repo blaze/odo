@@ -1,19 +1,29 @@
+from __future__ import print_function
+
 import pytest
-import os
-import itertools
-from contextlib import contextmanager
-from into import into, resource, S3, discover, CSV, drop, append
-from into.backends.aws import get_s3_connection
-from into.utils import tmpfile
-import pandas as pd
-import pandas.util.testing as tm
-import datashape
-from datashape import string, float64, int64
+import sys
+
+pytestmark = pytest.mark.skipif(sys.platform == 'win32',
+                                reason='Requires Mac or Linux')
 
 sa = pytest.importorskip('sqlalchemy')
 boto = pytest.importorskip('boto')
 pytest.importorskip('psycopg2')
 pytest.importorskip('redshift_sqlalchemy')
+
+import os
+import itertools
+from contextlib import contextmanager
+
+from into import into, resource, S3, discover, CSV, drop, append
+from into.backends.aws import get_s3_connection
+from into.utils import tmpfile
+
+import pandas as pd
+import pandas.util.testing as tm
+
+import datashape
+from datashape import string, float64, int64
 
 from boto.exception import S3ResponseError
 
