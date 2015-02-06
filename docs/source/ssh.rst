@@ -22,7 +22,7 @@ arguments to the into function as in the following example
 
 We pass through authentication keyword arguments to the
 ``paramiko.SSHClient.connect`` method.  That method takes the following
-options:
+options::
 
     port=22
     username=None
