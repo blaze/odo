@@ -41,8 +41,10 @@ To convert data any pair of formats ``into`` relies on a network of
 pairwise conversions.  We visualize that network below
 
 .. figure:: images/conversions.png
-   :scale: 50 %
+   :width: 60 %
    :alt: into network of conversions
+   :target: _images/conversions.png
+
 
    Each node represents a data format. Each directed edge represents a function
    to transform data between two formats. A single call to ``into`` may

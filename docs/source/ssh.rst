@@ -7,16 +7,18 @@ URIs
 ----
 
 SSH uris consist of the ``ssh://`` protocol, a hostname, and a filename.
-Simple and complex examples follow:
+Simple and complex examples follow::
 
     ssh://hostname:myfile.csv
     ssh://username@hostname:/path/to/myfile.csv
 
 Additionally you may want to pass authentication information through keyword
-arguments to the into function as in
+arguments to the into function as in the following example
 
-    into('ssh://hostname:myfile.csv', 'localfile.csv',
-         username='user', key_filename='.ssh/id_rsa', port=22)
+.. code-block:: python
+
+   into('ssh://hostname:myfile.csv', 'localfile.csv',
+        username='user', key_filename='.ssh/id_rsa', port=22)
 
 We pass through authentication keyword arguments to the
 ``paramiko.SSHClient.connect`` method.  That method takes the following
