@@ -135,20 +135,6 @@ def discover_s3_line_delimited(c, length=8192, **kwargs):
       time: ?string,
       size: int64
       }
-    >>> json_dshape = discover(resource('s3://nyqpug/tips.json'))
-    >>> names = list(map(str, sorted(json_dshape.measure.names)))
-    >>> names
-    ['day', 'sex', 'size', 'smoker', 'time', 'tip', 'total_bill']
-    >>> types = [json_dshape.measure[name] for name in names]
-    >>> from pprint import pprint
-    >>> pprint(types)
-    [ctype("string"),
-     ctype("string"),
-     ctype("int64"),
-     ctype("string"),
-     ctype("string"),
-     ctype("float64"),
-     ctype("float64")]
     """
     with sample(c, length=length) as fn:
         return discover(c.subtype(fn, **kwargs), **kwargs)

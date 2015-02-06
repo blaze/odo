@@ -8,6 +8,7 @@ from into.utils import tmpfile
 import pandas as pd
 import pandas.util.testing as tm
 import datashape
+from datashape import string, float64, int64
 
 sa = pytest.importorskip('sqlalchemy')
 boto = pytest.importorskip('boto')
@@ -205,3 +206,12 @@ def test_jsonlines_to_s3():
         with s3_bucket('.json') as b:
             result = into(b, resource(fn))
             assert discover(result) == discover(js)
+
+
+def test_s3_jsonlines_discover():
+    json_dshape = discover(resource('s3://nyqpug/tips.json'))
+    names = list(map(str, sorted(json_dshape.measure.names)))
+    assert names == ['day', 'sex', 'size', 'smoker', 'time', 'tip',
+                     'total_bill']
+    types = [json_dshape.measure[name] for name in names]
+    assert types == [string, string, int64, string, string, float64, float64]
