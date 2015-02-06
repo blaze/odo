@@ -5,6 +5,7 @@ Into
 
 Data migration in Python
 
+Documentation_
 
 Example
 -------
@@ -96,6 +97,7 @@ Into was factored out from the Blaze_ project.
 
 .. _Blaze: http://blaze.pydata.org/
 .. _networkx: https://networkx.github.io/
+.. _Documentation: https://into.readthedocs.org/en/latest/
 .. |Build Status| image:: https://travis-ci.org/ContinuumIO/into.png
    :target: https://travis-ci.org/ContinuumIO/into
 .. |Version Status| image:: https://pypip.in/v/into.png
