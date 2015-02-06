@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import re
 import os
+import sys
 
 from into.utils import tmpfile, filetext
 from into.directory import _Directory, Directory
@@ -21,7 +22,9 @@ try:
     ssh = connect(hostname='localhost')
     ssh.close()
 except socket.error:
-    pytest.importorskip('does_not_exist')
+    pytest.skip('Could not connect')
+except paramiko.PasswordRequiredException:
+    pytest.skip('password required for connection')
 
 
 def test_resource():
@@ -144,3 +147,18 @@ def test_convert_through_temporary_local_storage():
 
         sjson = into(Temp(SSH(JSONLines)), df, hostname='localhost')
         assert (into(np.ndarray, sjson) == into(np.ndarray, df)).all()
+
+
+@pytest.mark.skipif(sys.version_info[:2] == (3, 3) and
+                    sys.platform.startswith('linux'),
+                    reason='Strange hanging on travis for python33')
+def test_ssh_csv_to_s3_csv():
+    # for some reason this can only be run in the same file as other ssh tests
+    # and must be a Temp(SSH(CSV)) otherwise tests above this one fail
+    s3_bucket = pytest.importorskip('into.backends.tests.test_aws').s3_bucket
+
+    with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
+        remote = into(Temp(SSH(CSV)), CSV(fn), hostname='localhost')
+        with s3_bucket('.csv') as b:
+            result = into(b, remote)
+            assert discover(result) == discover(resource(b))
