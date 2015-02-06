@@ -206,7 +206,7 @@ def file_to_temp_ssh_file(typ, data, **kwargs):
     """ Generic convert function sending data to ssh(data)
 
     Needs to be partially evaluated with a type"""
-    fn = '.%s.%s' % (uuid.uuid1(), typ.canonical_extension)
+    fn = '%s.%s' % (uuid.uuid1(), typ.canonical_extension)
     target = Temp(SSH(typ))(fn, **kwargs)
     return append(target, data, **kwargs)
 
@@ -230,7 +230,7 @@ def ssh_file_to_temp_file(data, **kwargs):
 @convert.register(Temp(SSH(JSON)), (JSON, Temp(JSON)))
 @convert.register(Temp(SSH(CSV)), (CSV, Temp(CSV)))
 def file_to_temp_ssh_file(data, **kwargs):
-    fn = '.%s' % uuid.uuid1()
+    fn = '%s' % uuid.uuid1()
     if isinstance(data, _Temp):
         target = Temp(SSH(data.persistent_type))(fn, **kwargs)
     else:

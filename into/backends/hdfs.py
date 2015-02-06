@@ -334,6 +334,11 @@ def append_remote_csv_to_new_table(tbl, data, dshape=None, **kwargs):
     return append(tbl2, data, **kwargs)
 
 
+@append.register(TableProxy, object)
+def append_anything_to_tableproxy(tbl, data, **kwargs):
+    return append(tbl, convert(Temp(SSH(CSV)), data, **kwargs), **kwargs)
+
+
 @append.register(sa.Table, (SSH(CSV), SSH(Directory(CSV))))
 def append_remote_csv_to_table(tbl, csv, **kwargs):
     """
