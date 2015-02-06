@@ -45,3 +45,4 @@ Contents
    json
    sql
    ssh
+   hdfs

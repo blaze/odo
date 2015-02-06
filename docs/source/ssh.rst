@@ -36,6 +36,23 @@ options::
     sock=None
 
 
+Constructing SSH Objects explicitly
+-----------------------------------
+
+Most users usually interact with into using URI strings.
+
+Alternatively you can construct objects programmatically.  SSH uses the
+``SSH`` type modifier
+
+.. code-block:: python
+
+   >>> from into import SSH, CSV, JSON
+   >>> auth = {'user': 'ubuntu',
+   ...         'host': 'hostname',
+   ...         'key_filename': '.ssh/id_rsa'}
+   >>> data = SSH(CSV)('data/accounts.csv', **auth)
+   >>> data = SSH(JSONLines)('accounts.json', **auth)
+
 Conversions
 -----------
 
