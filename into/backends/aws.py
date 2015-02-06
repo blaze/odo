@@ -91,7 +91,7 @@ S3 = memoize(S3)
 @sample.register((S3(CSV), S3(JSONLines)))
 @contextmanager
 def sample_s3_line_delimited(data, length=8192):
-    """Get bytes from `start` to `stop` of `key` from the S3 bucket `bucket`.
+    """Get a size `length` sample from an S3 CSV or S3 line-delimited JSON.
 
     Parameters
     ----------
@@ -99,7 +99,6 @@ def sample_s3_line_delimited(data, length=8192):
         A CSV file living in  an S3 bucket
     length : int, optional, default ``8192``
         Number of bytes of the file to read
-
     """
     headers = {'Range': 'bytes=0-%d' % length}
     raw = data.object.get_contents_as_string(headers=headers)
