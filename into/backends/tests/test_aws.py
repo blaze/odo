@@ -215,3 +215,17 @@ def test_s3_jsonlines_discover():
                      'total_bill']
     types = [json_dshape.measure[name] for name in names]
     assert types == [string, string, int64, string, string, float64, float64]
+
+
+def test_s3_csv_discover():
+    result = discover(resource('s3://nyqpug/tips.csv'))
+    expected = datashape.dshape("""var * {
+      total_bill: ?float64,
+      tip: ?float64,
+      sex: ?string,
+      smoker: ?string,
+      day: ?string,
+      time: ?string,
+      size: int64
+      }""")
+    assert result == expected

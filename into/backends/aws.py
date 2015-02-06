@@ -122,22 +122,7 @@ def sample_s3_line_delimited(data, length=8192):
 
 @discover.register((S3(CSV), S3(JSONLines)))
 def discover_s3_line_delimited(c, length=8192, **kwargs):
-    """Discover CSV and JSONLines files from S3.
-
-    Examples
-    --------
-    >>> csv_dshape = discover(resource('s3://nyqpug/tips.csv'))
-    >>> print(csv_dshape)
-    var * {
-      total_bill: ?float64,
-      tip: ?float64,
-      sex: ?string,
-      smoker: ?string,
-      day: ?string,
-      time: ?string,
-      size: int64
-      }
-    """
+    """Discover CSV and JSONLines files from S3."""
     with sample(c, length=length) as fn:
         return discover(c.subtype(fn, **kwargs), **kwargs)
 
