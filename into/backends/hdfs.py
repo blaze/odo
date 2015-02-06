@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from toolz import memoize, merge, partition_all
 from functools import wraps
+from multipledispatch import MDNotImplementedError
 import re
 
 from .csv import CSV
@@ -449,7 +450,7 @@ def resource_hdfs(uri, **kwargs):
 @append.register(HDFS(JSON), SSH(JSON))
 @append.register(HDFS(CSV), SSH(CSV))
 def append_remote_file_to_hdfs(target, source, **kwargs):
-    raise NotImplementedError()
+    raise MDNotImplementedError()
 
 
 @append.register(HDFS(TextFile), HDFS(TextFile))
@@ -457,7 +458,7 @@ def append_remote_file_to_hdfs(target, source, **kwargs):
 @append.register(HDFS(JSON), HDFS(JSON))
 @append.register(HDFS(CSV), HDFS(CSV))
 def append_hdfs_file_to_hdfs_file(target, source, **kwargs):
-    raise NotImplementedError()
+    raise MDNotImplementedError()
 
 
 @append.register(SSH(TextFile), HDFS(TextFile))
@@ -465,4 +466,4 @@ def append_hdfs_file_to_hdfs_file(target, source, **kwargs):
 @append.register(SSH(JSON), HDFS(JSON))
 @append.register(SSH(CSV), HDFS(CSV))
 def append_hdfs_file_to_remote(target, source, **kwargs):
-    raise NotImplementedError()
+    raise MDNotImplementedError()
