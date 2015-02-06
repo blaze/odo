@@ -12,7 +12,7 @@ from into.utils import tmpfile, filetext
 from into.directory import _Directory, Directory
 from into.backends.ssh import SSH, resource, ssh_pattern, sftp, drop, connect
 from into.backends.csv import CSV
-from into import into, discover, CSV, JSONLines, JSON
+from into import into, discover, CSV, JSONLines, JSON, convert
 from into.temp import _Temp, Temp
 from into.compatibility import PY3, skipif
 import socket
@@ -118,6 +118,14 @@ def test_drop_of_csv_json_lines_use_ssh_version():
     from into.backends.ssh import drop_ssh
     for typ in [CSV, JSON, JSONLines]:
         assert drop.dispatch(SSH(typ)) == drop_ssh
+
+
+def test_convert_local_file_to_temp_ssh_file():
+    with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
+        csv = CSV(fn)
+        scsv = convert(Temp(SSH(CSV)), csv, hostname='localhost')
+
+        assert into(list, csv) == into(list, scsv)
 
 
 @skipif(PY3, reason="Don't know")

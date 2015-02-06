@@ -12,7 +12,7 @@ from ..utils import keywords, tmpfile, sample, ignoring
 from ..resource import resource
 from ..append import append
 from ..convert import convert
-from ..temp import Temp
+from ..temp import Temp, _Temp
 from ..drop import drop
 from .csv import CSV
 from .json import JSON, JSONLines
@@ -219,7 +219,20 @@ for typ in [CSV, JSON, JSONLines, TextFile]:
 @convert.register(Temp(JSONLines), (Temp(SSH(JSONLines)), SSH(JSONLines)))
 @convert.register(Temp(JSON), (Temp(SSH(JSON)), SSH(JSON)))
 @convert.register(Temp(CSV), (Temp(SSH(CSV)), SSH(CSV)))
-def ssh_csv_to_temp_csv(data, **kwargs):
+def ssh_file_to_temp_file(data, **kwargs):
     fn = '.%s' % uuid.uuid1()
     target = Temp(data.subtype)(fn, **kwargs)
+    return append(target, data, **kwargs)
+
+
+@convert.register(Temp(SSH(TextFile)), (TextFile, Temp(TextFile)))
+@convert.register(Temp(SSH(JSONLines)), (JSONLines, Temp(JSONLines)))
+@convert.register(Temp(SSH(JSON)), (JSON, Temp(JSON)))
+@convert.register(Temp(SSH(CSV)), (CSV, Temp(CSV)))
+def file_to_temp_ssh_file(data, **kwargs):
+    fn = '.%s' % uuid.uuid1()
+    if isinstance(data, _Temp):
+        target = Temp(SSH(data.persistent_type))(fn, **kwargs)
+    else:
+        target = Temp(SSH(type(data)))(fn, **kwargs)
     return append(target, data, **kwargs)
