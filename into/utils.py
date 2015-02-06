@@ -204,5 +204,15 @@ def ignoring(*exceptions):
         pass
 
 
+def into_path(*path):
+    """ Path to file in into directory
+
+    >>> into_path('backends', 'tests', 'myfile.csv')  # doctest: +SKIP
+    '/home/user/into/into/backends/tests/myfile.csv')
+    """
+    import into
+    return os.path.join(os.path.dirname(into.__file__), *path)
+
+
 from multipledispatch import Dispatcher
 sample = Dispatcher('sample')

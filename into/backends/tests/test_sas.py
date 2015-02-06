@@ -9,12 +9,11 @@ from collections import Iterator
 from sas7bdat import SAS7BDAT
 
 from into.backends.sas import discover, sas_to_iterator
-from into.utils import tmpfile
+from into.utils import tmpfile, into_path
 from into import append, convert, resource, dshape
 
 
-cur_path = os.path.abspath(os.path.dirname(__file__))
-test_path = os.path.join(cur_path, 'airline.sas7bdat')
+test_path = into_path('backends', 'tests', 'airline.sas7bdat')
 sasfile = SAS7BDAT(test_path)
 
 
