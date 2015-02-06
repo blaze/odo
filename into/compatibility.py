@@ -5,6 +5,7 @@ import itertools
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
+ON_TRAVIS_CI = 'TRAVIS_PYTHON_VERSION' in os.environ
 
 if sys.version_info[0] >= 3:
     unicode = str

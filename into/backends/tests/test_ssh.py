@@ -15,7 +15,7 @@ from into.backends.ssh import SSH, resource, ssh_pattern, sftp, drop, connect
 from into.backends.csv import CSV
 from into import into, discover, CSV, JSONLines, JSON
 from into.temp import _Temp, Temp
-from into.compatibility import PY3, skipif
+from into.compatibility import PY3, skipif, ON_TRAVIS_CI
 import socket
 
 try:
@@ -123,7 +123,7 @@ def test_drop_of_csv_json_lines_use_ssh_version():
         assert drop.dispatch(SSH(typ)) == drop_ssh
 
 
-@skipif(PY3, reason="Don't know")
+@skipif(ON_TRAVIS_CI, reason="Don't know")
 def test_temp_ssh_files():
     with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
         csv = CSV(fn)
@@ -133,7 +133,7 @@ def test_temp_ssh_files():
         assert isinstance(scsv, _Temp)
 
 
-@skipif(PY3, reason="Don't know")
+@skipif(ON_TRAVIS_CI, reason="Don't know")
 def test_convert_through_temporary_local_storage():
     with filetext('name,quantity\nAlice,100\nBob,200', extension='csv') as fn:
         csv = CSV(fn)
@@ -149,8 +149,7 @@ def test_convert_through_temporary_local_storage():
         assert (into(np.ndarray, sjson) == into(np.ndarray, df)).all()
 
 
-@pytest.mark.skipif(sys.version_info[:2] == (3, 3) and
-                    sys.platform.startswith('linux'),
+@pytest.mark.skipif(ON_TRAVIS_CI,
                     reason='Strange hanging on travis for python33')
 def test_ssh_csv_to_s3_csv():
     # for some reason this can only be run in the same file as other ssh tests
