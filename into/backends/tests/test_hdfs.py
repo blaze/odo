@@ -1,13 +1,19 @@
 from __future__ import absolute_import, division, print_function
 
-try:
-    from pywebhdfs.webhdfs import PyWebHdfsClient
-except ImportError:
-    import pytest
-    pytest.importorskip('does_not_exist')
+import pytest
+import os
+
+pywebhdfs = pytest.importorskip('pywebhdfs')
+pyhive = pytest.importorskip('pyhive')
+
+host = os.environ.get('HDFS_TEST_HOST')
+pytestmark = pytest.mark.skipif(host is None,
+                                reason='No HDFS_TEST_HOST envar defined')
+
+from pywebhdfs.webhdfs import PyWebHdfsClient
 
 import uuid
-from into.backends.hdfs import (discover, HDFS, CSV, TableProxy, SSH)
+from into.backends.hdfs import discover, HDFS, CSV, SSH
 from into.backends.sql import resource
 from into import into, drop, JSONLines
 from into.utils import filetext, ignoring, tmpfile
@@ -15,14 +21,6 @@ import sqlalchemy as sa
 from datashape import dshape
 from into.directory import Directory
 from contextlib import contextmanager
-import os
-
-host = '' or os.environ.get('HDFS_TEST_HOST')
-
-if not host:
-    import pytest
-    pytest.importorskip('does_not_exist')
-
 
 hdfs = PyWebHdfsClient(host=host, port='14000', user_name='hdfs')
 ds = dshape('var * {id: ?int64, name: ?string, amount: ?int64}')
