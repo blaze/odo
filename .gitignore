@@ -1,2 +1,3 @@
 *.pyc
 *.dot
+docs/build
