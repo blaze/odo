@@ -9,7 +9,7 @@ URIs
 
 JSON URI's are their paths/filenames
 
-Simple examples of CSV uris::
+Simple examples of JSON uris::
 
     myfile.json
     /path/to/myfile.json.gz

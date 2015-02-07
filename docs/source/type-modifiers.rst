@@ -3,8 +3,8 @@ Type Modifiers
 
 Into decides what conversion functions to run based on the type (e.g.
 ``pd.DataFrame, sqlalchemy.Table, into.CSV`` of the input.  In many cases we
-want slight variations to signify differnt circumstances such as the difference
-between the following CSV files
+want slight variations to signify different circumstances such as the
+difference between the following CSV files
 
 *  A local CSV file
 *  A sequence of CSV files
