@@ -36,19 +36,28 @@ Example
 Contents
 --------
 
-User documentation
-``````````````````
+General
+```````
 
 .. toctree::
    :maxdepth: 1
 
    overview
    uri
+
+
+Formats
+```````
+
+.. toctree::
+   :maxdepth: 1
+
    csv
    json
    sql
    ssh
    hdfs
+
 
 Developer documentation
 ```````````````````````
