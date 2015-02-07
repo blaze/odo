@@ -46,4 +46,16 @@ Conversions
 We can convert any text type (``CSV, JSON, JSONLines, TextFile``) to its
 equivalent on HDFS (``HDFS(CSV), HDFS(JSON), ...``).  The ``into`` network
 allows conversions from other types, like a pandas dataframe to a CSV file on
-HDFS, by routing through a temporary local csv file.
+HDFS, by routing through a temporary local csv file.::
+
+    HDFS(*) <-> *
+
+Additionally we know how to load HDFS files into the Hive metastore::
+
+    HDFS(*) -> Hive
+
+The network also allows conversions from other types, like a pandas
+``DataFrame`` to an HDFS CSV file, by routing through a temporary local csv
+file.::
+
+    Foo <-> Temp(*) <-> HDFS(*)

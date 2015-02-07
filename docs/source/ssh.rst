@@ -57,6 +57,13 @@ Conversions
 -----------
 
 We're able to convert any text type (``CSV, JSON, JSONLines, TextFile``) to its
-equivalent on the remote server (``SSH(CSV), SSH(JSON), ...``).  The network
-allows conversions from other types, like a pandas dataframe to a remote CSV
-file, by routing through a temporary local csv file.
+equivalent on the remote server (``SSH(CSV), SSH(JSON), ...``).::
+
+
+    SSH(*) <-> *
+
+The network also allows conversions from other types, like a pandas
+``DataFrame`` to a remote CSV file, by routing through a temporary local csv
+file.::
+
+    Foo <-> Temp(*) <-> SSH(*)

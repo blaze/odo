@@ -30,4 +30,6 @@ this can be overruled by using the following protocols::
 Conversions
 -----------
 
-The default paths in and out of JSON files is through Python iterators of dicts.
+The default paths in and out of JSON files is through Python iterators of dicts.::
+
+    JSON <-> Iterator

@@ -26,9 +26,14 @@ Conversions
 -----------
 
 The default path in and out of a SQL database is to use the SQLAlchemy library
-to consume iterators of Python dictionaries.  This method is robust but slow.
+to consume iterators of Python dictionaries.  This method is robust but slow.::
+
+    sqlalchemy.Table <-> Iterator
+    sqlalchemy.Select <-> Iterator
 
 For a growing subset of databases (``sqlite, MySQL, PostgreSQL, Hive,
 RedShift``) we also use the CSV or JSON tools that come with those databases.
 These are often an order of magnitude faster than the ``Python->SQLAlchemy``
-route when they are available.
+route when they are available.::
+
+    sqlalchemy.Table <- CSV
