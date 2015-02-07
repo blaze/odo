@@ -1,14 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
-import csv
-
 import re
 import datashape
 from datashape import discover, Record, Option
 from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
-from collections import Iterator
-from toolz import concat, keyfilter, assoc
+from toolz import concat, keyfilter
 import pandas
 import pandas as pd
 import os
@@ -17,7 +14,7 @@ import bz2
 import uuid
 
 from ..compatibility import unicode
-from ..utils import keywords
+from ..utils import keywords, ext
 from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
@@ -28,6 +25,7 @@ from .pandas import coerce_datetimes
 
 dialect_terms = '''delimiter doublequote escapechar lineterminator quotechar
 quoting skipinitialspace strict'''.split()
+
 
 class CSV(object):
     """ Proxy for a CSV file
@@ -102,11 +100,6 @@ def append_iterator_to_csv(c, cs, **kwargs):
     for chunk in cs:
         append(c, chunk, **kwargs)
     return c
-
-
-def ext(path):
-    _, e = os.path.splitext(path)
-    return e.lstrip('.')
 
 
 @convert.register(pd.DataFrame, (Temp(CSV), CSV), cost=20.0)

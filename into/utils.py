@@ -1,14 +1,20 @@
 from __future__ import absolute_import, division, print_function
 
 from datashape import dshape, Record
-from toolz import pluck, get
+from toolz import pluck, get, curry
 from contextlib import contextmanager
+from multiprocessing.pool import ThreadPool
 import inspect
 import datetime
 import tempfile
 import os
 import numpy as np
 from .compatibility import unicode
+
+
+def ext(filename):
+    _, e = os.path.splitext(filename)
+    return e.lstrip(os.extsep)
 
 
 def raises(err, lamda):
@@ -36,6 +42,7 @@ def expand_tuples(L):
     else:
         rest = expand_tuples(L[1:])
         return [(item,) + t for t in rest for item in L[0]]
+
 
 @contextmanager
 def tmpfile(extension=''):
@@ -131,7 +138,6 @@ def assert_allclose(lhs, rhs):
             assert left == right
 
 
-
 def records_to_tuples(ds, data):
     """ Transform records into tuples
 
@@ -180,7 +186,6 @@ def tuples_to_records(ds, data):
 
     See Also
     --------
-
     records_to_tuples
     """
     if isinstance(ds, (str, unicode)):
@@ -216,3 +221,83 @@ def into_path(*path):
 
 from multipledispatch import Dispatcher
 sample = Dispatcher('sample')
+
+
+@curry
+def pmap(f, iterable):
+    """Map `f` over `iterable` in parallel using a ``ThreadPool``.
+    """
+    p = ThreadPool()
+    try:
+        result = p.map(f, iterable)
+    finally:
+        p.terminate()
+    return result
+
+
+@curry
+def write(triple, writer):
+    """Write a file using the input from `gentemp` using `writer` and return
+    its index and filename.
+
+    Parameters
+    ----------
+    triple : tuple of int, str, str
+        The first element is the index in the set of chunks of a file, the
+        second element is the path to write to, the third element is the data
+        to write.
+
+    Returns
+    -------
+    i, filename : int, str
+        File's index and filename. This is used to return the index and
+        filename after splitting files.
+
+    Notes
+    -----
+    This could be adapted to write to an already open handle, which would
+    allow, e.g., multipart gzip uploads. Currently we open write a new file
+    every time.
+    """
+    i, filename, data = triple
+    with writer(filename, mode='wb') as f:
+        f.write(data)
+    return i, filename
+
+
+def gentemp(it, suffix=None, start=0):
+    """Yield an index, a temp file, and data for each element in `it`.
+
+    Parameters
+    ----------
+    it : Iterable
+    suffix : str or ``None``, optional
+        Suffix to add to each temporary file's name
+    start : int, optional
+        A integer indicating where to start the numbering of chunks in `it`.
+    """
+    for i, data in enumerate(it, start=start):  # aws needs parts to start at 1
+        with tmpfile('.into') as fn:
+            yield i, fn, data
+
+
+@curry
+def split(filename, nbytes, suffix=None, writer=open, start=0):
+    """Split a file into chunks of size `nbytes` with each filename containing
+    a suffix specified by `suffix`. The file will be written with the ``write``
+    method of an instance of `writer`.
+
+    Parameters
+    ----------
+    filename : str
+        The file to split
+    nbytes : int
+        Split `filename` into chunks of this size
+    suffix : str, optional
+    writer : callable, optional
+        Callable object to use to write the chunks of `filename`
+    """
+    with open(filename, mode='rb') as f:
+        byte_chunks = iter(curry(f.read, nbytes), '')
+        return pmap(write(writer=writer),
+                    gentemp(byte_chunks, suffix=suffix, start=start))

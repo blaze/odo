@@ -24,14 +24,17 @@ install:
   - conda update conda
 
   # Install dependencies
-  - conda create -n test-environment python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python pymongo paramiko
+  - conda create -n test-environment python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python pymongo paramiko boto
   - source activate test-environment
 
-  # Install PyMongo
-  - pip install sas7bdat psycopg2 pymysql
+  # Install various deps
+  - pip install pymysql psycopg2 sas7bdat
 
   # Install DataShape
   - pip install --upgrade git+http://github.com/ContinuumIO/datashape
+
+  # redshift sqlalchemy dialect
+  - pip install --upgrade git+git://github.com/cpcloud/redshift_sqlalchemy
 
   # Install Bokeh
   - if [[ $TRAVIS_PYTHON_VERSION > '2.6' ]]; then conda install bokeh; fi
