@@ -26,8 +26,9 @@ Interface
 ---------
 
 ``into`` provides access to the following AWS services:
-  * `S3 <http://aws.amazon.com/s3>`_ via `boto <https://boto.readthedocs.org/en/latest>`_
-  * `Redshift <http://aws.amazon.com/redshift>`_ via a `SQLAlchemy dialect <https://github.com/cpcloud/redshift_sqlalchemy>`_
+
+* `S3 <http://aws.amazon.com/s3>`_ via `boto <https://boto.readthedocs.org/en/latest>`_
+* `Redshift <http://aws.amazon.com/redshift>`_ via a `SQLAlchemy dialect <https://github.com/cpcloud/redshift_sqlalchemy>`_
 
 URIs
 ----
