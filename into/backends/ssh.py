@@ -206,6 +206,7 @@ def file_to_temp_ssh_file(typ, data, **kwargs):
     """ Generic convert function sending data to ssh(data)
 
     Needs to be partially evaluated with a type"""
+    # don't use . prefix to hide because Hive doesn't like it
     fn = '%s.%s' % (uuid.uuid1(), typ.canonical_extension)
     target = Temp(SSH(typ))(fn, **kwargs)
     return append(target, data, **kwargs)
