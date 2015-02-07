@@ -21,4 +21,6 @@ Conversions
 The default paths in and out of CSV files is through Pandas DataFrames.
 Because CSV files might be quite large it is dangerous to read them directly
 into a single DataFrame.  Instead we convert them to a stream of medium sized
-DataFrames.  We call this type ``chunks(DataFrame)``.
+DataFrames.  We call this type ``chunks(DataFrame)``.::
+
+    chunks(DataFrame) <-> CSV
