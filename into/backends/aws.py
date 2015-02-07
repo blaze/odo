@@ -209,13 +209,21 @@ def append_text_to_s3(s3, data, **kwargs):
     return s3
 
 
-@append.register(S3(JSON), (SSH(JSON), HDFS(JSON)))
-@append.register(S3(JSONLines), (SSH(JSONLines), HDFS(JSONLines)))
-@append.register(S3(CSV), (SSH(CSV), HDFS(CSV)))
-@append.register(S3(TextFile), (SSH(TextFile), HDFS(TextFile)))
+@append.register(S3(JSON), SSH(JSON))
+@append.register(S3(JSONLines), SSH(JSONLines))
+@append.register(S3(CSV), SSH(CSV))
+@append.register(S3(TextFile), SSH(TextFile))
+def remote_text_to_s3_text(a, b, **kwargs):
+    return append(a, convert(Temp(b.subtype), b, **kwargs), **kwargs)
+
+
+@append.register(S3(JSON), HDFS(JSON))
+@append.register(S3(JSONLines), HDFS(JSONLines))
+@append.register(S3(CSV), HDFS(CSV))
+@append.register(S3(TextFile), HDFS(TextFile))
 @append.register(HDFS(JSON), S3(JSON))
 @append.register(HDFS(JSONLines), S3(JSONLines))
 @append.register(HDFS(CSV), S3(CSV))
 @append.register(HDFS(TextFile), S3(TextFile))
-def remote_text_to_s3_text(a, b, **kwargs):
+def other_remote_text_to_s3_text(a, b, **kwargs):
     raise MDNotImplementedError()
