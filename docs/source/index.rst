@@ -54,6 +54,7 @@ Formats
 
    csv
    json
+   hdf5
    sql
    mongo
    ssh
