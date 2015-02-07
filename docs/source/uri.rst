@@ -37,9 +37,10 @@ What sorts of URI's does into support?
     * *anything supported by SQLAlchemy*
 * MongoDB Connection strings
     * ``mongodb://username:password@hostname:port/database_name::collection_name``
-* Remote locations via SSH or HDFS
+* Remote locations via SSH, HDFS and Amazon's S3
     * ``ssh://user@hostname:/path/to/data``
     * ``hdfs://user@hostname:/path/to/data``
+    * ``s3://path/to/data``
 
 
 Separating parts with ``::``

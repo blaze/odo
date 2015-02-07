@@ -59,6 +59,7 @@ Formats
    mongo
    ssh
    hdfs
+   aws
 
 
 Developer documentation
