@@ -10,17 +10,19 @@ interact with HDF5
 *  ``pandas HDFStore`` - a commonly used format among Pandas users.
 
 All of these libraries create and read HDF5 files.  Unfortunately some of them
-have special conventions that can only be understood by their library.  For
-example, pandas ``HDFStore`` format is specific to Pandas and is not widely
-understood by other tools.
+have special conventions that can only be understood by their library.  So a
+given HDF5 file created some of these libraries may not be well understood by
+the others.
+
 
 Protocols
 ---------
 
-If given an explicitly object, like an ``h5py.Dataset``, ``pytables.Table`` or
-``pandas.HDFStore`` then the ``into`` project can intelligently decide what to
-do.  If given a string, like ``myfile.hdf5::/data/path`` then ``into`` defaults
-to using the vanilla ``h5py`` solution.
+If given an explicit object (not a string uri), like an ``h5py.Dataset``,
+``pytables.Table`` or ``pandas.HDFStore`` then the ``into`` project can
+intelligently decide what to do.  If given a string, like
+``myfile.hdf5::/data/path`` then ``into`` defaults to using the vanilla
+``h5py`` solution, the least opinionated of the three.
 
 You can specify that you want a particular format with one of the following protocols
 
@@ -28,11 +30,17 @@ You can specify that you want a particular format with one of the following prot
 *  ``pytables://``
 *  ``hdfstore://``
 
+
 Limitations
 -----------
 
-H5Py does not like datetimes, PyTables does not like variable length strings,
-Pandas does not like non-tabular data (like ``ndarrays``).
+Each library has limitations.
+
+* H5Py does not like datetimes
+* PyTables does not like variable length strings,
+* Pandas does not like non-tabular data (like ``ndarrays``) and, if users
+  don't select the ``format='table'`` keyword argument, creates HDF5 files
+  that are not well understood by other libraries.
 
 Our support for PyTables is admittedly weak.  We would love contributions here.
 

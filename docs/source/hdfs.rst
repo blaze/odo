@@ -52,7 +52,7 @@ HDFS, by routing through a temporary local csv file.::
 
 Additionally we know how to load HDFS files into the Hive metastore::
 
-    HDFS(*) -> Hive
+    HDFS(Directory(CSV)) -> Hive
 
 The network also allows conversions from other types, like a pandas
 ``DataFrame`` to an HDFS CSV file, by routing through a temporary local csv
