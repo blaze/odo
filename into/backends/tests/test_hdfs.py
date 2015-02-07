@@ -103,6 +103,10 @@ def test_copy_hdfs_files_locally():
             with open(csv.path) as f:
                 assert f.read().strip() == accounts_1_csv
 
+def test_copy_hdfs_data_into_memory():
+    with accounts_data() as (d, (a, b)):
+        assert into(list, a)
+
 
 def test_hdfs_resource():
     r = resource('hdfs://user@hostname:1234:/path/to/myfile.json')
@@ -158,6 +162,14 @@ def test_ssh_hive_creation():
         t = into(uri, ssh_csv, raise_on_errors=True)
         assert isinstance(t, sa.Table)
         assert len(into(list, t)) > 0
+
+
+def test_hive_creation_from_local_file():
+    with filetext(accounts_1_csv, extension='csv') as fn:
+        with hive_table(host) as uri:
+            t = into(uri, fn, **auth)
+            assert isinstance(t, sa.Table)
+            assert into(set, t) == into(set, fn)
 
 
 def test_ssh_directory_hive_creation():
