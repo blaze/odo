@@ -1,11 +1,14 @@
 from __future__ import absolute_import, division, print_function
 
-from into.backends.sql_csv import *
-from into import resource, into
+import os
+
+import pandas as pd
 import datashape
+
+from into.backends.sql_csv import append_csv_to_sql_table, copy_command
+from into import resource, into, CSV, discover
 from into.utils import tmpfile
 from into.compatibility import skipif
-import os
 
 
 def normalize(s):
