@@ -12,7 +12,13 @@ Into
 
    >>> into(target, source)  # load source into target
 
-It efficiently migrates data from the source to the target.
+It efficiently migrates data from the source to the target through a network
+of conversions.
+
+.. figure:: images/conversions.png
+   :width: 60 %
+   :alt: into network of conversions
+   :target: _images/conversions.png
 
 
 Example
