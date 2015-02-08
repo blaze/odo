@@ -95,3 +95,17 @@ def test_into_sqlite_with_header_and_different_sep():
             assert into(list, result) == into(list, df)
 
 
+@skipif(os.name == 'nt', reason='SQLite copier uses posix shell features')
+def test_into_sqlite_with_different_sep():
+    df = pd.DataFrame([('Alice', 100), ('Bob', 200)],
+                      columns=['name', 'amount'])
+    with tmpfile('.csv') as fn:
+        # TODO: get the  header  argument to work in into(CSV, other)
+        df.to_csv(fn, sep='|', header=False, index=False)
+        csv = CSV(fn, delimiter='|', has_header=False)
+
+        with tmpfile('.db') as sql:
+            db = resource('sqlite:///%s::df' % sql, dshape=discover(csv))
+            result = into(db, csv)
+
+            assert into(list, result) == into(list, df)
