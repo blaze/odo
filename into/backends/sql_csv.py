@@ -25,9 +25,11 @@ def copy_sqlite(dialect, tbl, csv, **kwargs):
         abspath = abspath.replace('\\', '\\\\')
     tblname = tbl.name
     dbpath = str(tbl.bind.url).split('///')[-1]
+    delim = csv.dialect.get('delimiter', ',')
+    n = 2 if csv.has_header else 1
 
     statement = """
-     (echo '.mode csv'; echo '.import {abspath} {tblname}';) | sqlite3 {dbpath}
+     pipe=$(mktemp -t pipe) && rm -f $pipe && mkfifo -m 600 $pipe && (tail +{n} {abspath} > $pipe &) && (echo '.separator {delim}'; echo ".import $pipe {tblname}";) | sqlite3 {dbpath}
     """
 
     return statement.format(**locals())
