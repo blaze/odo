@@ -29,7 +29,7 @@ def copy_sqlite(dialect, tbl, csv, **kwargs):
     n = 2 if csv.has_header else 1
 
     statement = """
-     pipe=$(mktemp -t pipe) && rm -f $pipe && mkfifo -m 600 $pipe && (tail +{n} {abspath} > $pipe &) && (echo '.separator {delim}'; echo ".import $pipe {tblname}";) | sqlite3 {dbpath}
+     pipe=$(mktemp -t pipe.XXXXXXXXXX) && rm -f $pipe && mkfifo -m 600 $pipe && (tail +{n} {abspath} > $pipe &) && (echo '.separator {delim}'; echo ".import $pipe {tblname}";) | sqlite3 {dbpath}
     """
 
     return statement.format(**locals())
