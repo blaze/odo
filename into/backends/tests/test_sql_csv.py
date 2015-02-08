@@ -40,12 +40,6 @@ def test_postgres_load():
     """ % escaped_fn)
 
 
-def test_sqlite_load():
-    assert normalize(copy_command('sqlite', tbl, csv)) == normalize("""
-     (echo '.mode csv'; echo '.import %s my_table';) | sqlite3 :memory:
-     """ % escaped_fn)
-
-
 def test_mysql_load():
     assert normalize(copy_command('mysql', tbl, csv)) == normalize("""
             LOAD DATA  INFILE '%s'
