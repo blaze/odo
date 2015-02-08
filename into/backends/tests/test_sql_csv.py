@@ -53,7 +53,7 @@ def test_mysql_load():
             IGNORE 1 LINES;""" % escaped_fn)
 
 
-@skipif(os.name == 'nt')
+@skipif(os.name == 'nt', reason='SQLite copier uses posix shell features')
 def test_into_sqlite():
     data = [('Alice', 100), ('Bob', 200)]
     ds = datashape.dshape('var * {name: string, amount: int}')
