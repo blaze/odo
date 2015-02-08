@@ -53,7 +53,6 @@ def test_mysql_load():
             IGNORE 1 LINES;""" % escaped_fn)
 
 
-@skipif(os.name == 'nt', reason='SQLite copier uses posix shell features')
 def test_into_sqlite():
     data = [('Alice', 100), ('Bob', 200)]
     ds = datashape.dshape('var * {name: string, amount: int}')
@@ -67,7 +66,6 @@ def test_into_sqlite():
             assert into(list, sql) == data
 
 
-@skipif(os.name == 'nt', reason='SQLite copier uses posix shell features')
 def test_into_sqlite_with_header():
     df = pd.DataFrame([('Alice', 100), ('Bob', 200)],
                       columns=['name', 'amount'])
@@ -81,7 +79,6 @@ def test_into_sqlite_with_header():
             assert into(list, result) == into(list, df)
 
 
-@skipif(os.name == 'nt', reason='SQLite copier uses posix shell features')
 def test_into_sqlite_with_header_and_different_sep():
     df = pd.DataFrame([('Alice', 100), ('Bob', 200)],
                       columns=['name', 'amount'])
@@ -95,7 +92,6 @@ def test_into_sqlite_with_header_and_different_sep():
             assert into(list, result) == into(list, df)
 
 
-@skipif(os.name == 'nt', reason='SQLite copier uses posix shell features')
 def test_into_sqlite_with_different_sep():
     df = pd.DataFrame([('Alice', 100), ('Bob', 200)],
                       columns=['name', 'amount'])
