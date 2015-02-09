@@ -1,10 +1,14 @@
+from __future__ import division, print_function, absolute_import
+
 import pandas as pd
 import datashape
 from datashape import dshape, Record, Tuple, DataShape, Option
 from datashape.predicates import isdimension
 from toolz import valmap
 
-from ..core import convert, append, discover
+from ..convert import convert
+from ..append import append
+from ..core import discover
 
 
 class Dummy(object):
