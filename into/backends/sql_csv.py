@@ -26,11 +26,17 @@ def copy_sqlite(dialect, tbl, csv, **kwargs):
     tblname = tbl.name
     dbpath = str(tbl.bind.url).split('///')[-1]
     delim = csv.dialect.get('delimiter', ',')
-    n = 2 if csv.has_header else 1
 
-    statement = """
-     pipe=$(mktemp -t pipe.XXXXXXXXXX) && rm -f $pipe && mkfifo -m 600 $pipe && (tail -n +{n} {abspath} > $pipe &) && (echo '.separator {delim}'; echo ".import $pipe {tblname}";) | sqlite3 {dbpath}
-    """
+    if not csv.has_header:
+        statement = """
+            echo .import {abspath} {tblname} | sqlite3 -separator "{delim}" {dbpath}
+        """
+    elif os.name != 'nt':
+        statement = """
+            pipe=$(mktemp -t pipe.XXXXXXXXXX) && rm -f $pipe && mkfifo -m 600 $pipe && (tail -n +2 {abspath} > $pipe &) && echo ".import $pipe {tblname}" | sqlite3 -separator '{delim}' {dbpath}
+        """
+    else:
+        raise NotImplementedError()
 
     return statement.format(**locals())
 
