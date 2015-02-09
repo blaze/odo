@@ -32,4 +32,4 @@ setup(name='into',
                         else ''),
       package_data={'into': package_data},
       zip_safe=False,
-      scripts=['bin/pandat'])
+      scripts=['bin/into'])
