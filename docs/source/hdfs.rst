@@ -4,6 +4,11 @@ HDFS
 Into interacts with the Hadoop File System using WebHDFS and the ``pywebhdfs``
 Python lirary.
 
+.. image:: images/hdfs.png
+   :width: 50 %
+   :alt: into and hdfs
+   :align: right
+
 URIs
 ----
 
