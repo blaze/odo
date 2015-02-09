@@ -21,11 +21,6 @@ data = [['Alice', 100.0, 1],
 df = pd.DataFrame(data, columns=['name', 'amount', 'id'])
 
 
-@pytest.fixture(scope='session')
-def sc():
-    return pyspark.SparkContext('local', 'into-test')
-
-
 @pytest.fixture(scope='module')
 def sql(sc):
     return SQLContext(sc)
