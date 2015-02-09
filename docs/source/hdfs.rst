@@ -1,5 +1,5 @@
-HDFS
-====
+Hadoop File System
+==================
 
 Into interacts with the Hadoop File System using WebHDFS and the ``pywebhdfs``
 Python lirary.
