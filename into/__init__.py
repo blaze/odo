@@ -56,6 +56,8 @@ with ignoring(ImportError):
 with ignoring(ImportError):
     from .backends.bokeh import ColumnDataSource
 with ignoring(ImportError):
+    from .backends.spark import RDD
+with ignoring(ImportError):
     from .backends.sparksql import SparkDataFrame
 
 
