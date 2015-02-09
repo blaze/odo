@@ -7,8 +7,17 @@ from toolz import partition
 literals = [True, False, None]
 
 def parse(s):
-    """ Parse strings to booleans, integers, or strings """
+    """ Parse strings to booleans, integers, or strings
+
+    >>> parse("true")
+    True
+    >>> parse("1")
+    1
+    >>> parse('";"')
+    ';'
+    """
     for l in literals:
+        s = s.strip('"\'')
         if s.lower() == str(l).lower():
             return l
     if s.isdigit():
