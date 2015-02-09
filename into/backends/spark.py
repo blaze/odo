@@ -22,24 +22,22 @@ from ..core import discover
 
 
 @append.register(SparkContext, (list, tuple, Iterator))
-def iterable_to_spark_context(sc, seq):
+def iterable_to_spark_context(sc, seq, **kwargs):
     return sc.parallelize(seq)
 
 
 @append.register(RDD, (list, tuple))
-def sequence_to_rdd(rdd, seq):
+def sequence_to_rdd(rdd, seq, **kwargs):
     # Hm this seems anti-pattern-y
     return append(rdd.context, seq)
 
 
 @convert.register(list, RDD)
-def rdd_to_list(rdd):
+def rdd_to_list(rdd, **kwargs):
     return rdd.collect()
 
 
 @discover.register(RDD)
-def discover_rdd(rdd):
-    data = rdd.take(50)
+def discover_rdd(rdd, n=50, **kwargs):
+    data = rdd.take(n)
     return var * discover(data).subshape[0]
-
-
