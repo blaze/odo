@@ -25,18 +25,24 @@ def copy_sqlite(dialect, tbl, csv, **kwargs):
         abspath = abspath.replace('\\', '\\\\')
     tblname = tbl.name
     dbpath = str(tbl.bind.url).split('///')[-1]
+    delim = csv.dialect.get('delimiter', ',')
 
-    statement = """
-     (echo '.mode csv'; echo '.import {abspath} {tblname}';) | sqlite3 {dbpath}
-    """
+    if not csv.has_header:
+        statement = """
+            echo .import {abspath} {tblname} | sqlite3 -separator "{delim}" {dbpath}
+        """
+    elif os.name != 'nt':
+        statement = """
+            pipe=$(mktemp -t pipe.XXXXXXXXXX) && rm -f $pipe && mkfifo -m 600 $pipe && (tail -n +2 {abspath} > $pipe &) && echo ".import $pipe {tblname}" | sqlite3 -separator '{delim}' {dbpath}
+        """
+    else:
+        raise NotImplementedError()
 
-    return statement.format(**locals())
+    return statement.format(**locals()).strip()
 
 
 @execute_copy.register('sqlite')
 def execute_copy_sqlite(dialect, engine, statement):
-    if os.name == 'nt':
-        raise MDNotImplementedError()
     ps = subprocess.Popen(statement, shell=True, stdout=subprocess.PIPE)
     return ps.stdout.read()
 
@@ -151,8 +157,10 @@ def append_csv_to_sql_table(tbl, csv, **kwargs):
 
     # move things to a temporary S3 bucket if we're using redshift and we
     # aren't already in S3
-    if dialect == 'redshift' and not isinstance(csv, (S3(CSV), Temp(S3(CSV)))):
-        csv = into(Temp(S3(CSV)), csv)
+    if dialect == 'redshift' and not isinstance(csv, S3(CSV)):
+        csv = into(Temp(S3(CSV)), csv, **kwargs)
+    elif dialect != 'redshift' and isinstance(csv, S3(CSV)):
+        csv = into(Temp(CSV), csv, has_header=csv.has_header, **kwargs)
 
     statement = copy_command(dialect, tbl, csv, **kwargs)
     execute_copy(dialect, tbl.bind, statement)

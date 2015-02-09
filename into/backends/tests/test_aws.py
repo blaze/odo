@@ -239,3 +239,11 @@ def test_s3_csv_discover():
       size: int64
       }""")
     assert result == expected
+
+
+def test_s3_to_sqlite():
+    with tmpfile('.db') as fn:
+        tb = into('sqlite:///%s::tips' % fn, tips_uri,
+                  dshape=discover(resource(tips_uri)))
+        lhs = into(list, tb)
+        assert lhs == into(list, tips_uri)
