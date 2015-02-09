@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import pytest
 import os
 
 import pandas as pd
@@ -8,7 +9,6 @@ import datashape
 from into.backends.sql_csv import append_csv_to_sql_table, copy_command
 from into import resource, into, CSV, discover
 from into.utils import tmpfile
-from into.compatibility import skipif
 
 
 def normalize(s):
@@ -66,6 +66,8 @@ def test_into_sqlite():
             assert into(list, sql) == data
 
 
+@pytest.mark.xfail(os.name == 'nt', raises=NotImplementedError,
+                   reason='Cannot import files with headers in sqlite')
 def test_into_sqlite_with_header():
     df = pd.DataFrame([('Alice', 100), ('Bob', 200)],
                       columns=['name', 'amount'])
@@ -79,6 +81,8 @@ def test_into_sqlite_with_header():
             assert into(list, result) == into(list, df)
 
 
+@pytest.mark.xfail(os.name == 'nt', raises=NotImplementedError,
+                   reason='Cannot import files with headers in sqlite')
 def test_into_sqlite_with_header_and_different_sep():
     df = pd.DataFrame([('Alice', 100), ('Bob', 200)],
                       columns=['name', 'amount'])
