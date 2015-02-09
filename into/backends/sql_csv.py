@@ -38,7 +38,7 @@ def copy_sqlite(dialect, tbl, csv, **kwargs):
     else:
         raise NotImplementedError()
 
-    return statement.format(**locals())
+    return statement.format(**locals()).strip()
 
 
 @execute_copy.register('sqlite')
