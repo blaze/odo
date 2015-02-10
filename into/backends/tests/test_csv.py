@@ -9,7 +9,7 @@ from datashape import Option, string
 from collections import Iterator
 
 from into.backends.csv import (CSV, append, convert, resource,
-        csv_to_DataFrame, CSV_to_chunks_of_dataframes)
+        csv_to_DataFrame, CSV_to_chunks_of_dataframes, infer_header)
 from into.utils import tmpfile, filetext, filetexts, raises
 from into import into, append, convert, resource, discover, dshape, Temp
 from into.temp import _Temp
@@ -300,3 +300,10 @@ def test_unicode_column_names():
     with filetext('foo\xc4\x87,a\n1,2\n3,4', extension='csv') as fn:
         csv = CSV(fn, has_header=True)
         df = into(pd.DataFrame, csv)
+
+
+def test_infer_header():
+    with filetext('name,val\nAlice,100\nNA,200', extension='csv') as fn:
+        assert infer_header(CSV(fn)) == True
+    with filetext('Alice,100\nNA,200', extension='csv') as fn:
+        assert infer_header(CSV(fn)) == False
