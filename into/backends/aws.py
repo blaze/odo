@@ -14,8 +14,6 @@ except ImportError:
 import pandas as pd
 from toolz import memoize
 
-import boto
-
 from into import discover, CSV, resource, append, convert, drop, Temp, JSON
 from into import JSONLines, SSH, into, chunks, HDFS
 
@@ -29,6 +27,7 @@ from ..utils import tmpfile, ext, sample
 def get_s3_connection(aws_access_key_id=None,
                       aws_secret_access_key=None,
                       anon=False):
+    import boto
     cfg = boto.Config()
 
     if aws_access_key_id is None:
@@ -61,6 +60,7 @@ class _S3(object):
     """
     def __init__(self, uri, s3=None, aws_access_key_id=None,
                  aws_secret_access_key=None, *args, **kwargs):
+        import boto
         result = urlparse(uri)
         self.bucket = result.netloc
         self.key = result.path.lstrip('/')
