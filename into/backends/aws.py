@@ -23,6 +23,10 @@ from .text import TextFile
 from ..utils import tmpfile, ext, sample
 
 
+def filter_kwargs(f, kwargs):
+    return keyfilter(keywords(f).__contains__, kwargs)
+
+
 @memoize
 def get_s3_connection(aws_access_key_id=None,
                       aws_secret_access_key=None,
@@ -71,15 +75,21 @@ class _S3(object):
             self.s3 = get_s3_connection(aws_access_key_id=aws_access_key_id,
                                         aws_secret_access_key=aws_secret_access_key)
         try:
-            bucket = self.s3.get_bucket(self.bucket)
+            bucket = self.s3.get_bucket(self.bucket,
+                                        **filter_kwargs(self.s3.get_bucket,
+                                                        kwargs))
         except boto.exception.S3ResponseError:
-            bucket = self.s3.create_bucket(self.bucket)
+            bucket = self.s3.create_bucket(self.bucket,
+                                           **filter_kwargs(self.s3.create_bucket,
+                                                           kwargs))
 
-        self.object = bucket.get_key(self.key)
+        self.object = bucket.get_key(self.key, **filter_kwargs(bucket.get_key,
+                                                               kwargs))
         if self.object is None:
             self.object = bucket.new_key(self.key)
 
-        self.subtype.__init__(self, uri, *args, **kwargs)
+        self.subtype.__init__(self, uri, *args,
+                              **filter_kwargs(self.subtype.__init__, kwargs))
 
 
 def S3(cls):
