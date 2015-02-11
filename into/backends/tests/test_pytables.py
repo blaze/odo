@@ -3,13 +3,13 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 import datashape as ds
 import pytest
+tb = pytest.importorskip('tables')
 
 from into import into
 from into.utils import tmpfile
 from into.backends.pytables import PyTables, discover
 import os
 
-tb = pytest.importorskip('tables')
 
 try:
     f = tb.open_file('import-tables-test.hdf5', mode='w')
