@@ -1,7 +1,3 @@
-.. into documentation master file, created by
-   sphinx-quickstart on Sat Dec  6 16:03:44 2014.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
 
 Into
 ====
@@ -77,3 +73,8 @@ Developer documentation
    :maxdepth: 1
 
    type-modifiers
+
+Into is part of the Open Source Blaze_ projects supported by `Continuum Analytics`_
+
+.. _Blaze: http://continuum.io/open-source/blaze/
+.. _`Continuum Analytics`: http://continuum.io
