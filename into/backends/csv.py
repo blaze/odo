@@ -255,4 +255,26 @@ def drop(c):
     os.unlink(c.path)
 
 
+def infer_header(csv, encoding='utf-8', **kwargs):
+    """ Guess if csv file has a header or not
+
+    This uses Pandas to read a sample of the file, then looks at the column
+    names to see if they are all word-like.
+
+    Returns True or False
+    """
+    compression = kwargs.pop('compression',
+            {'gz': 'gzip', 'bz2': 'bz2'}.get(ext(csv.path)))
+    # See read_csv docs for header for reasoning
+    try:
+        df = pd.read_csv(csv.path, encoding=encoding,
+                         compression=compression, nrows=5)
+    except StopIteration:
+        df = pd.read_csv(csv.path, encoding=encoding,
+                                  compression=compression)
+    return (len(df) > 0 and
+            all(re.match('^\s*\D\w*\s*$', n) for n in df.columns) and
+            not all(dt == 'O' for dt in df.dtypes))
+
+
 ooc_types.add(CSV)

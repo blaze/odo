@@ -10,7 +10,7 @@ from multipledispatch import MDNotImplementedError
 
 from ..regex import RegexDispatcher
 from ..append import append
-from .csv import CSV
+from .csv import CSV, infer_header
 from ..temp import Temp
 from ..into import into
 
@@ -19,15 +19,19 @@ execute_copy = RegexDispatcher('execute_copy')
 
 
 @copy_command.register('.*sqlite')
-def copy_sqlite(dialect, tbl, csv, **kwargs):
+def copy_sqlite(dialect, tbl, csv, has_header=None, **kwargs):
     abspath = os.path.abspath(csv.path)
     if os.name == 'nt':
         abspath = abspath.replace('\\', '\\\\')
     tblname = tbl.name
     dbpath = str(tbl.bind.url).split('///')[-1]
     delim = csv.dialect.get('delimiter', ',')
+    if has_header is None:
+        has_header = csv.has_header
+    if has_header is None:
+        has_header = infer_header(csv, **kwargs)
 
-    if not csv.has_header:
+    if not has_header:
         statement = """
             echo .import {abspath} {tblname} | sqlite3 -separator "{delim}" {dbpath}
         """
