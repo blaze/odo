@@ -40,7 +40,7 @@ def copy_sqlite(dialect, tbl, csv, has_header=None, **kwargs):
             pipe=$(mktemp -t pipe.XXXXXXXXXX) && rm -f $pipe && mkfifo -m 600 $pipe && (tail -n +2 {abspath} > $pipe &) && echo ".import $pipe {tblname}" | sqlite3 -separator '{delim}' {dbpath}
         """
     else:
-        raise NotImplementedError()
+        raise MDNotImplementedError()
 
     return statement.format(**locals()).strip()
 
