@@ -113,6 +113,7 @@ try:
     from redshift_sqlalchemy.dialect import CopyCommand
     import sqlalchemy as sa
 except ImportError:
+    S3 = None
     pass
 else:
     @copy_command.register('redshift.*')
@@ -161,9 +162,9 @@ def append_csv_to_sql_table(tbl, csv, **kwargs):
 
     # move things to a temporary S3 bucket if we're using redshift and we
     # aren't already in S3
-    if dialect == 'redshift' and not isinstance(csv, S3(CSV)):
+    if dialect == 'redshift' and S3 and not isinstance(csv, S3(CSV)):
         csv = into(Temp(S3(CSV)), csv, **kwargs)
-    elif dialect != 'redshift' and isinstance(csv, S3(CSV)):
+    elif dialect != 'redshift' and S3 and isinstance(csv, S3(CSV)):
         csv = into(Temp(CSV), csv, has_header=csv.has_header, **kwargs)
 
     statement = copy_command(dialect, tbl, csv, **kwargs)
