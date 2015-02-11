@@ -19,7 +19,7 @@ package_data = [x.replace('into' + os.sep, '') for x in
 
 
 setup(name='into',
-      version='0.1.4',
+      version='0.2.0',
       description='Data migration utilities',
       url='http://github.com/ContinuumIO/into/',
       author='Matthew Rocklin',

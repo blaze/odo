@@ -10,3 +10,5 @@ pymongo
 bcolz
 sas7bdat
 paramiko
+pywebhdfs
+boto
