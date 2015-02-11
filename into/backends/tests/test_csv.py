@@ -11,7 +11,8 @@ from collections import Iterator
 from into.backends.csv import (CSV, append, convert, resource,
         csv_to_DataFrame, CSV_to_chunks_of_dataframes, infer_header)
 from into.utils import tmpfile, filetext, filetexts, raises
-from into import into, append, convert, resource, discover, dshape, Temp
+from into import (into, append, convert, resource, discover, dshape, Temp,
+        chunks)
 from into.temp import _Temp
 from into.compatibility import unicode, skipif
 
@@ -179,6 +180,9 @@ def test_glob():
         r = resource('accounts*.csv', has_header=True)
         assert convert(list, r) == [('Alice', 100), ('Bob', 200),
                                     ('Alice', 300), ('Bob', 400)]
+
+        r = resource('*.csv')
+        assert isinstance(r, chunks(CSV))
 
 
 def test_pandas_csv_naive_behavior_results_in_columns():
