@@ -50,6 +50,7 @@ General
 
    overview
    uri
+   datashape
    drop
 
 
