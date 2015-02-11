@@ -47,7 +47,11 @@ def copy_sqlite(dialect, tbl, csv, has_header=None, **kwargs):
 
 @execute_copy.register('sqlite')
 def execute_copy_sqlite(dialect, engine, statement):
-    ps = subprocess.Popen(statement, shell=True, stdout=subprocess.PIPE)
+    ps = subprocess.Popen(statement, shell=True, stdout=subprocess.PIPE,
+                                                 stderr=subprocess.PIPE)
+    if ps.stderr.read():
+        raise MDNotImplementedError()
+
     return ps.stdout.read()
 
 
