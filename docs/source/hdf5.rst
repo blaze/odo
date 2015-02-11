@@ -51,7 +51,7 @@ URIs
 A URI to an HDF5 dataset includes a filename, and a datapath within that file.
 Optionally it can include a protocol
 
-Examples of CSV uris::
+Examples of HDF5 uris::
 
     myfile.hdf5::/data/path
     hdfstore://myfile.h5::/data/path

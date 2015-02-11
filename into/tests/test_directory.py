@@ -38,7 +38,7 @@ def test_resource_directory():
         assert r.path.rstrip(os.path.sep) == path.rstrip(os.path.sep)
 
         r2 = resource(os.path.join(path, '*.csv'))
-        assert type(r) == Directory(CSV)
+        assert type(r2) == Directory(CSV)
         assert r2.path.rstrip(os.path.sep) == path.rstrip(os.path.sep)
 
 

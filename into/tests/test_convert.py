@@ -157,6 +157,10 @@ def test_list_of_lists_to_set_creates_tuples():
     assert convert(set, [[1], [2]]) == set([(1,), (2,)])
 
 
+def test_list_of_strings_to_set():
+    assert convert(set, ['Alice', 'Bob']) == set(['Alice', 'Bob'])
+
+
 def test_datetimes_persist():
     typs = [list, tuple, pd.Series, np.ndarray, tuple]
     L = [datetime.datetime.now()] * 3

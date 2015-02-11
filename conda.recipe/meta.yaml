@@ -1,6 +1,14 @@
 package:
   name: into
-  version: !!str 0.1.4
+  version: {{ environ.get('GIT_DESCRIBE_TAG', '')}}
+
+build:
+  number: {{ environ.get('GIT_DESCRIBE_NUMBER', 0) }}
+  string: {{ environ.get('GIT_BUILD_STR', '') }}
+  script: python setup.py install
+
+source:
+  git_url: ../
 
 requirements:
   build:
@@ -38,4 +46,4 @@ test:
 about:
   home: http://github.com/ContinuumIO/into/
   license: BSD
-  summary: 'Data migration utilities'
+  summary: 'Data migration'

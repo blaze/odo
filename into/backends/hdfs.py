@@ -46,13 +46,15 @@ class _HDFS(object):
     >>> resource('hdfs://hdfs@54.91.255.255:/path/to/file.csv')  # doctest: +SKIP
     """
     def __init__(self, *args, **kwargs):
-        hdfs = kwargs.pop('hdfs', None)
-        host = kwargs.pop('host', None)
-        port = str(kwargs.pop('port', '14000'))
-        user = kwargs.pop('user', 'hdfs')
-
+        hdfs = kwargs.get('hdfs', None)
+        host = kwargs.get('host', None)
+        user = (kwargs.get('user_name') or
+                kwargs.get('user') or
+                kwargs.get('username') or None)
+        port = str(kwargs.get('port', 14000))
         if not hdfs and (host and port and user):
-            hdfs = PyWebHdfsClient(host=host, port=port, user_name=user)
+            hdfs = PyWebHdfsClient(host=host, port=str(port),
+                                   user_name=user)
 
         if hdfs is None:
             raise ValueError("No HDFS credentials found.\n"

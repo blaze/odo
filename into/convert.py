@@ -123,7 +123,7 @@ def ishashable(x):
 
 @convert.register(set, (list, tuple), cost=5.0)
 def iterable_to_set(x, **kwargs):
-    if x and isinstance(x[0], Iterable) and not ishashable(x):
+    if x and isinstance(x[0], (tuple, list)) and not ishashable(x):
         x = map(tuple, x)
     return set(x)
 
