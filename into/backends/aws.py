@@ -12,7 +12,7 @@ except ImportError:
     from urllib.parse import urlparse
 
 import pandas as pd
-from toolz import memoize
+from toolz import memoize, keyfilter
 
 from into import discover, CSV, resource, append, convert, drop, Temp, JSON
 from into import JSONLines, SSH, into, chunks, HDFS
@@ -20,7 +20,7 @@ from into import JSONLines, SSH, into, chunks, HDFS
 from multipledispatch import MDNotImplementedError
 
 from .text import TextFile
-from ..utils import tmpfile, ext, sample
+from ..utils import tmpfile, ext, sample, keywords
 
 
 def filter_kwargs(f, kwargs):
