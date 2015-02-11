@@ -6,13 +6,12 @@ import subprocess
 
 import sqlalchemy
 
-from multipledispatch import MDNotImplementedError
-
 from ..regex import RegexDispatcher
 from ..append import append
 from .csv import CSV
 from ..temp import Temp
 from ..into import into
+from .aws import S3
 
 copy_command = RegexDispatcher('copy_command')
 execute_copy = RegexDispatcher('execute_copy')
