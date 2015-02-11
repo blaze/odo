@@ -52,9 +52,9 @@ class _HDFS(object):
                 kwargs.get('user') or
                 kwargs.get('username') or None)
         port = str(kwargs.get('port', 14000))
-        if not hdfs and (host and port and user_name):
+        if not hdfs and (host and port and user):
             hdfs = PyWebHdfsClient(host=host, port=str(port),
-                                   user_name=user_name)
+                                   user_name=user)
 
         if hdfs is None:
             raise ValueError("No HDFS credentials found.\n"
