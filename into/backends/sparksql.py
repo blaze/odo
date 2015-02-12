@@ -108,8 +108,8 @@ def dshape_to_schema(ds):
 
 
 def schema_to_dshape(schema):
-    if schema in sparksql_to_dshape:
-        return sparksql_to_dshape[schema]
+    if type(schema) in sparksql_to_dshape:
+        return sparksql_to_dshape[type(schema)]
     if isinstance(schema, ArrayType):
         dshape = schema_to_dshape(schema.elementType)
         return datashape.var * (Option(dshape)
