@@ -66,7 +66,7 @@ def rdd_to_sqlcontext(ctx, rdd, name=None, dshape=None, **kwargs):
 @discover.register(SQLContext)
 def discover_sqlcontext(ctx):
     dshapes = valmap(discover, get_catalog(ctx))
-    return datashape.DataShape(datashape.Record(dshapes.items()))
+    return datashape.DataShape(datashape.Record(sorted(dshapes.items())))
 
 
 @discover.register(SchemaRDD)
@@ -204,4 +204,4 @@ def get_catalog(ctx):
     java_names = ctx._ssql_ctx.catalog().tables().keySet()
     table_names = scala_set_to_set(ctx, java_names)
     tables = map(ctx.table, table_names)
-    return dict(sorted(zip(table_names, tables)))
+    return dict(zip(table_names, tables))
