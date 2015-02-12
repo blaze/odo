@@ -20,11 +20,7 @@ from into import JSONLines, SSH, into, chunks, HDFS
 from multipledispatch import MDNotImplementedError
 
 from .text import TextFile
-from ..utils import tmpfile, ext, sample, keywords
-
-
-def filter_kwargs(f, kwargs):
-    return keyfilter(keywords(f).__contains__, kwargs)
+from ..utils import tmpfile, ext, sample, filter_kwargs
 
 
 @memoize
