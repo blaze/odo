@@ -26,7 +26,7 @@ def list_to_spark_context(sc, seq, **kwargs):
     return sc.parallelize(seq)
 
 
-@append.register((SparkContext, SQLContext), object)
+@append.register(SparkContext, object)
 def anything_to_spark_context(sc, o, **kwargs):
     return append(sc, convert(list, o, **kwargs), **kwargs)
 

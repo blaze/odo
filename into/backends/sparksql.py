@@ -26,9 +26,9 @@ except ImportError:
 _names = ('tmp%d' % i for i in itertools.count())
 
 
-@append.register(SQLContext, list)
+@append.register(SQLContext, object)
 def iterable_to_sql_context(ctx, seq, **kwargs):
-    return append(ctx, ctx._sc.parallelize(seq), **kwargs)
+    return append(ctx, append(ctx._sc, seq, **kwargs), **kwargs)
 
 
 @append.register(SQLContext, RDD)
