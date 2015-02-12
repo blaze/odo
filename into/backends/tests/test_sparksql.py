@@ -1,14 +1,15 @@
 from __future__ import print_function, absolute_import, division
 
 import pytest
-import pandas as pd
-import pandas.util.testing as tm
 
 pyspark = pytest.importorskip('pyspark')
 
 from pyspark.sql import SchemaRDD, Row
 from pyspark.sql import ArrayType, StructField, StructType, IntegerType
 from pyspark.sql import StringType
+
+import numpy as np
+import pandas as pd
 
 import datashape
 from datashape import dshape
@@ -63,7 +64,8 @@ def test_dataframe_to_sparksql(ctx):
 
 def test_sparksql_to_frame(ctx):
     result = into(pd.DataFrame, ctx.table('t'))
-    tm.assert_frame_equal(result.sort_index(axis=1), df.sort_index(axis=1))
+    np.testing.assert_array_equal(result.sort_index(axis=1).values,
+                                  df.sort_index(axis=1).values)
 
 
 def test_discover_context(ctx):
