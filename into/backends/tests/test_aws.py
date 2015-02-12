@@ -14,15 +14,12 @@ pytest.importorskip('redshift_sqlalchemy')
 import os
 import itertools
 import json
-try:
-    from urllib2 import urlopen
-except ImportError:
-    from urllib.request import urlopen
 from contextlib import contextmanager
 
 from into import into, resource, S3, discover, CSV, drop, append
 from into.backends.aws import get_s3_connection
 from into.utils import tmpfile
+from into.compatibility import urlopen
 
 import pandas as pd
 import pandas.util.testing as tm
