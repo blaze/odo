@@ -2,10 +2,22 @@ sudo: False
 
 language: python
 python:
-    - "2.6"
-    - "2.7"
-    - "3.3"
-    - "3.4"
+    - 2.6
+    - 2.7
+    - 3.3
+    - 3.4
+env:
+    SPARK=1
+    SPARK=0
+
+matrix:
+    exclude:
+        - python: 2.6
+          env: SPARK=1
+        - python: 3.3
+          env: SPARK=1
+        - python: 3.4
+          env: SPARK=1
 
 addons:
   postgresql: "9.3"
@@ -35,6 +47,8 @@ install:
 
   # redshift sqlalchemy dialect
   - pip install --upgrade git+git://github.com/cpcloud/redshift_sqlalchemy
+
+  - if [[ $SPARK == '1' ]]; then conda install spark -c blaze; fi
 
   # Install Bokeh
   - if [[ $TRAVIS_PYTHON_VERSION > '2.6' ]]; then conda install bokeh; fi
