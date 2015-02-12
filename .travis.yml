@@ -7,8 +7,8 @@ python:
     - 3.3
     - 3.4
 env:
-    SPARK=1
-    SPARK=0
+    - SPARK=1
+    - SPARK=0
 
 matrix:
     exclude:
