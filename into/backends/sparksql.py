@@ -29,8 +29,9 @@ except ImportError:
 
 
 @convert.register(pd.DataFrame, SchemaRDD)
-def sparksql_dataframe_to_pandas_dataframe(rdd, **kwargs):
-    return pd.DataFrame(convert(list, rdd, **kwargs), columns=rdd.columns)
+def sparksql_dataframe_to_pandas_dataframe(rdd, dshape=None, **kwargs):
+    return pd.DataFrame(convert(list, rdd, **kwargs),
+                        columns=dshape.measure.names)
 
 
 _names = ('tmp%d' % i for i in itertools.count())

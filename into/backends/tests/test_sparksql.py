@@ -1,6 +1,8 @@
+from __future__ import print_function, absolute_import, division
 
 import pytest
 import pandas as pd
+import pandas.util.testing as tm
 
 pyspark = pytest.importorskip('pyspark')
 
@@ -53,10 +55,15 @@ def test_pyspark_to_sparksql_raises_on_tuple_dshape(ctx, people):
         into(ctx, data)
 
 
-def test_into_sparksql_from_other(ctx):
+def test_dataframe_to_sparksql(ctx):
     sdf = into(ctx, df)
     assert isinstance(sdf, SchemaRDD)
     assert into(list, sdf) == into(list, df)
+
+
+def test_sparksql_to_frame(ctx):
+    result = into(pd.DataFrame, ctx.table('t'))
+    tm.assert_frame_equal(result.sort_index(axis=1), df.sort_index(axis=1))
 
 
 def test_discover_context(ctx):
