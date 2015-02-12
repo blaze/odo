@@ -6,20 +6,17 @@ import uuid
 from contextlib import contextmanager
 from collections import Iterator
 
-try:
-    from urlparse import urlparse
-except ImportError:
-    from urllib.parse import urlparse
-
 import pandas as pd
-from toolz import memoize, keyfilter
+from toolz import memoize
 
-from into import discover, CSV, resource, append, convert, drop, Temp, JSON
-from into import JSONLines, SSH, into, chunks, HDFS
+from .. import (discover, CSV, resource, append, convert, drop, Temp, JSON,
+                SSH, JSONLines, into, chunks, HDFS)
 
 from multipledispatch import MDNotImplementedError
 
 from .text import TextFile
+
+from ..compatibility import urlparse
 from ..utils import tmpfile, ext, sample, filter_kwargs
 
 
