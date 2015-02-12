@@ -51,19 +51,16 @@ def iterable_to_sql_context(ctx, seq, **kwargs):
 
 
 @append.register(SQLContext, RDD)
-def rdd_to_sqlcontext(ctx, rdd, schema=None, columns=None, **kwargs):
+def rdd_to_sqlcontext(ctx, rdd, name=None, **kwargs):
     """ Convert a normal PySpark RDD to a SparkSQL RDD
 
     Schema inferred by ds_to_sparksql.  Can also specify it explicitly with
     schema keyword argument.
     """
-    schema = schema or discover(rdd).subshape[0]
-    if isinstance(schema[0], Tuple):
-        columns = columns or list(range(len(schema[0].dshapes)))
-        types = schema[0].dshapes
-        schema = dshape(Record(list(zip(columns, types))))
-    sql_schema = dshape_to_schema(schema)
-    return ctx.applySchema(rdd, sql_schema)
+    sql_schema = dshape_to_schema(kwargs['dshape'])
+    sdf = ctx.applySchema(rdd, sql_schema)
+    ctx.registerRDDAsTable(sdf, name or next(_names))
+    return sdf
 
 
 @discover.register(SQLContext)
