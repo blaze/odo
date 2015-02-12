@@ -1,8 +1,9 @@
 from __future__ import print_function, absolute_import, division
 
 import pytest
+from datashape import dshape
 from into import into, discover
-from into.backends.spark import RDD
+from into.backends.spark import RDD, SchemaRDD
 
 
 data = [['Alice', 100.0, 1],
@@ -25,6 +26,13 @@ def test_spark_into_context(sc):
     rdd = into(sc, seq)
     assert isinstance(rdd, RDD)
     assert into([], rdd) == seq
+
+
+def test_rdd_into_schema_rdd(rdd):
+    ds = dshape('var * {name: string, amount: float64, id: int64}')
+    srdd = into(SchemaRDD, rdd, dshape=ds)
+    assert isinstance(srdd, SchemaRDD)
+    assert list(map(set, srdd.collect())) == list(map(set, rdd.collect()))
 
 
 def test_discover_rdd(rdd):

@@ -40,3 +40,8 @@ def rdd_to_list(rdd, **kwargs):
 def discover_rdd(rdd, n=50, **kwargs):
     data = rdd.take(n)
     return var * discover(data).subshape[0]
+
+
+@convert.register(SchemaRDD, RDD)
+def rdd_to_schema_rdd(rdd, **kwargs):
+    return append(SQLContext(rdd.context), rdd, **kwargs)
