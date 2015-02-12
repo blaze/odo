@@ -3,11 +3,13 @@ import pytest
 import pandas as pd
 
 pyspark = pytest.importorskip('pyspark')
-from pyspark.sql import SchemaRDD, Row, SQLContext
+
+from pyspark.sql import SchemaRDD, Row
 from pyspark.sql import ArrayType, StructField, StructType, IntegerType
 from pyspark.sql import StringType
 
-from datashape import dshape, int64
+import datashape
+from datashape import dshape
 from into import into, discover
 from into.utils import tmpfile
 from into.backends.sparksql import schema_to_dshape, dshape_to_schema
