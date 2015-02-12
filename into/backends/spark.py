@@ -26,12 +26,6 @@ def iterable_to_spark_context(sc, seq, **kwargs):
     return sc.parallelize(seq)
 
 
-@append.register(RDD, (list, tuple))
-def sequence_to_rdd(rdd, seq, **kwargs):
-    # Hm this seems anti-pattern-y
-    return append(rdd.context, seq)
-
-
 @convert.register(list, (RDD, PipelinedRDD, SchemaRDD))
 def rdd_to_list(rdd, **kwargs):
     return rdd.collect()

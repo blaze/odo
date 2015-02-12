@@ -16,9 +16,15 @@ def rdd(sc):
 
 
 def test_spark_into(rdd):
+    with pytest.raises(NotImplementedError):
+        into(rdd, [1, 2, 3])
+
+
+def test_spark_into_context(sc):
     seq = [1, 2, 3]
-    assert isinstance(into(rdd, seq), RDD)
-    assert into([], into(rdd, seq)) == seq
+    rdd = into(sc, seq)
+    assert isinstance(rdd, RDD)
+    assert into([], rdd) == seq
 
 
 def test_discover_rdd(rdd):
