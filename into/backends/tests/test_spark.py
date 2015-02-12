@@ -1,5 +1,5 @@
 import pytest
-from into import into
+from into import into, discover
 from pyspark import RDD
 
 
@@ -17,3 +17,7 @@ def test_spark_into(rdd):
     seq = [1, 2, 3]
     assert isinstance(into(rdd, seq), RDD)
     assert into([], into(rdd, seq)) == seq
+
+
+def test_discover_rdd(rdd):
+    assert discover(rdd).subshape[0] == discover(data).subshape[0]
