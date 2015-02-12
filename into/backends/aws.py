@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from collections import Iterator
 
 import pandas as pd
-from toolz import memoize, identity
+from toolz import memoize
 
 from .. import (discover, CSV, resource, append, convert, drop, Temp, JSON,
                 SSH, JSONLines, into, chunks, HDFS)
