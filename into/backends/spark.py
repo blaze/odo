@@ -1,15 +1,16 @@
 class Dummy(object):
-    sum = max = min = count = distinct = mean = variance = stdev = None
+    pass
 
 try:
     from pyspark import SparkContext
     import pyspark
-    from pyspark.rdd import RDD
+    from pyspark import RDD
+    from pyspark.rdd import PipelinedRDD
+    from pyspark.sql import SchemaRDD
     RDD.min
 except (AttributeError, ImportError):
     SparkContext = Dummy
     pyspark = Dummy()
-    pyspark.rdd = Dummy()
     RDD = Dummy
 
 
@@ -32,7 +33,7 @@ def sequence_to_rdd(rdd, seq, **kwargs):
     return append(rdd.context, seq)
 
 
-@convert.register(list, RDD)
+@convert.register(list, (RDD, PipelinedRDD, SchemaRDD))
 def rdd_to_list(rdd, **kwargs):
     return rdd.collect()
 
