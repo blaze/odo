@@ -106,6 +106,11 @@ def test_copy_hdfs_data_into_memory():
         assert into(list, a)
 
 
+def test_HDFS_constructor_allows_user_alternatives():
+    r = HDFS(CSV)('foo.csv', username='alice', host='host')
+    assert r.hdfs.user_name == 'alice'
+
+
 def test_hdfs_resource():
     r = resource('hdfs://user@hostname:1234:/path/to/myfile.json')
     assert isinstance(r, HDFS(JSONLines))

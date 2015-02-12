@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from datashape import dshape, Record
-from toolz import pluck, get, curry
+from toolz import pluck, get, curry, keyfilter
 from contextlib import contextmanager
 from multiprocessing.pool import ThreadPool
 import inspect
@@ -301,3 +301,23 @@ def split(filename, nbytes, suffix=None, writer=open, start=0):
         byte_chunks = iter(curry(f.read, nbytes), '')
         return pmap(write(writer=writer),
                     gentemp(byte_chunks, suffix=suffix, start=start))
+
+
+def filter_kwargs(f, kwargs):
+    """Return a dict of valid kwargs for `f` from a subset of `kwargs`
+
+    Examples
+    --------
+    >>> def f(a, b=1, c=2):
+    ...     return a + b + c
+    ...
+    >>> raw_kwargs = dict(a=1, b=3, d=4)
+    >>> f(**raw_kwargs)
+    Traceback (most recent call last):
+        ...
+    TypeError: f() got an unexpected keyword argument 'd'
+    >>> kwargs = filter_kwargs(f, raw_kwargs)
+    >>> f(**kwargs)
+    6
+    """
+    return keyfilter(keywords(f).__contains__, kwargs)

@@ -10,24 +10,29 @@ from multipledispatch import MDNotImplementedError
 
 from ..regex import RegexDispatcher
 from ..append import append
-from .csv import CSV
+from .csv import CSV, infer_header
 from ..temp import Temp
 from ..into import into
+from .aws import S3
 
 copy_command = RegexDispatcher('copy_command')
 execute_copy = RegexDispatcher('execute_copy')
 
 
 @copy_command.register('.*sqlite')
-def copy_sqlite(dialect, tbl, csv, **kwargs):
+def copy_sqlite(dialect, tbl, csv, has_header=None, **kwargs):
     abspath = os.path.abspath(csv.path)
     if os.name == 'nt':
         abspath = abspath.replace('\\', '\\\\')
     tblname = tbl.name
     dbpath = str(tbl.bind.url).split('///')[-1]
     delim = csv.dialect.get('delimiter', ',')
+    if has_header is None:
+        has_header = csv.has_header
+    if has_header is None:
+        has_header = infer_header(csv, **kwargs)
 
-    if not csv.has_header:
+    if not has_header:
         statement = """
             echo .import {abspath} {tblname} | sqlite3 -separator "{delim}" {dbpath}
         """
@@ -36,15 +41,20 @@ def copy_sqlite(dialect, tbl, csv, **kwargs):
             pipe=$(mktemp -t pipe.XXXXXXXXXX) && rm -f $pipe && mkfifo -m 600 $pipe && (tail -n +2 {abspath} > $pipe &) && echo ".import $pipe {tblname}" | sqlite3 -separator '{delim}' {dbpath}
         """
     else:
-        raise NotImplementedError()
+        raise MDNotImplementedError()
 
+    # strip is needed for windows
     return statement.format(**locals()).strip()
 
 
 @execute_copy.register('sqlite')
 def execute_copy_sqlite(dialect, engine, statement):
-    ps = subprocess.Popen(statement, shell=True, stdout=subprocess.PIPE)
-    return ps.stdout.read()
+    ps = subprocess.Popen(statement, shell=True,
+                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    stdout, stderr = ps.communicate()
+    if stderr is not None:
+        raise MDNotImplementedError(stderr)
+    return stdout
 
 
 @copy_command.register('postgresql')

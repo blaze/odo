@@ -1,8 +1,13 @@
-HDFS
-====
+Hadoop File System
+==================
 
 Into interacts with the Hadoop File System using WebHDFS and the ``pywebhdfs``
 Python lirary.
+
+.. image:: images/hdfs.png
+   :width: 50 %
+   :alt: into and hdfs
+   :align: right
 
 URIs
 ----
@@ -22,7 +27,11 @@ arguments to the into function as in the following example
    ...      port=14000, user='hdfs')
 
 We pass through authentication keyword arguments to the
-``pywebhdfs.webhdfs.PyWebHdfsClient`` class.
+``pywebhdfs.webhdfs.PyWebHdfsClient`` class, using the following defaults::
+
+    user_name='hdfs'
+    host=None
+    port='14000'
 
 
 Constructing HDFS Objects explicitly
@@ -39,6 +48,7 @@ Alternatively you can construct objects programmatically.  HDFS uses the
    >>> data = HDFS(CSV)('/user/hdfs/data/accounts.csv', **auth)
    >>> data = HDFS(JSONLines)('/user/hdfs/data/accounts.json', **auth)
    >>> data = HDFS(Directory(CSV))('/user/hdfs/data/', **auth)
+
 
 Conversions
 -----------

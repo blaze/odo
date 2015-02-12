@@ -7,7 +7,7 @@ Into interacts with Mongo databases through PyMongo.
 URIs
 ----
 
-Simple and complex examples of SQL uris::
+Simple and complex examples of MONGODB uris::
 
     mongodb://localhost/mydb::mycollection
     mongodb://user:password@localhost:port/mydb::mycollection
