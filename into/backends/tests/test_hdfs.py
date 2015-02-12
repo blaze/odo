@@ -164,7 +164,13 @@ def test_ssh_hive_creation():
     with hive_table(host) as uri:
         t = into(uri, ssh_csv, raise_on_errors=True)
         assert isinstance(t, sa.Table)
-        assert len(into(list, t)) > 0
+        l = len(into(list, t))
+        assert l > 0
+
+        # Load again
+        t2 = into(uri, ssh_csv, raise_on_errors=True)
+        assert isinstance(t2, sa.Table)
+        assert len(into(list, t2)) > l
 
 
 def test_hive_creation_from_local_file():
@@ -173,6 +179,10 @@ def test_hive_creation_from_local_file():
             t = into(uri, fn, **auth)
             assert isinstance(t, sa.Table)
             assert into(set, t) == into(set, fn)
+
+            t2 = into(uri, fn, **auth)
+            assert isinstance(t2, sa.Table)
+            assert len(into(list, t2)) == 2 * len(into(list, fn))
 
 
 def test_ssh_directory_hive_creation():

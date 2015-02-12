@@ -10,6 +10,7 @@ from multipledispatch import MDNotImplementedError
 
 from ..regex import RegexDispatcher
 from ..append import append
+from ..convert import convert
 from .csv import CSV, infer_header
 from ..temp import Temp
 from ..into import into
@@ -171,6 +172,9 @@ def append_csv_to_sql_table(tbl, csv, **kwargs):
         csv = into(Temp(S3(CSV)), csv, **kwargs)
     elif dialect != 'redshift' and isinstance(csv, S3(CSV)):
         csv = into(Temp(CSV), csv, has_header=csv.has_header, **kwargs)
+    elif dialect == 'hive':
+        from .ssh import SSH
+        return append(tbl, convert(Temp(SSH(CSV)), csv, **kwargs), **kwargs)
 
     statement = copy_command(dialect, tbl, csv, **kwargs)
     execute_copy(dialect, tbl.bind, statement)
