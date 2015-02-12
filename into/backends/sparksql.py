@@ -77,15 +77,15 @@ def dshape_to_schema(ds):
 
     Examples
     --------
-    >>> print(dshape_to_schema('int32'))
+    >>> print(dshape_to_schema('int32'))  # doctest: +SKIP
     IntegerType
-    >>> print(dshape_to_schema('5 * int32'))
+    >>> print(dshape_to_schema('5 * int32')  # doctest: +SKIP
     ArrayType(IntegerType,false)
-    >>> print(dshape_to_schema('5 * ?int32'))
+    >>> print(dshape_to_schema('5 * ?int32'))  # doctest: +SKIP
     ArrayType(IntegerType,true)
-    >>> print(dshape_to_schema('{name: string, amount: int32}'))
-    StructType(List(StructField(name,StringType,false),StructField(amount,IntegerType,false)))
-    >>> print(dshape_to_schema('10 * {name: string, amount: ?int32}'))
+    >>> print(dshape_to_schema('{name: string, amount: int32}'))  # doctest: +SKIP
+    StructType(List(StructField(name,StringType,false),StructField(amount,IntegerType,false)  # doctest: +SKIP))
+    >>> print(dshape_to_schema('10 * {name: string, amount: ?int32}'))  # doctest: +SKIP
     ArrayType(StructType(List(StructField(name,StringType,false),StructField(amount,IntegerType,true))),false)
     """
     if isinstance(ds, str):
