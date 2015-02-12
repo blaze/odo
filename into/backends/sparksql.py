@@ -32,11 +32,6 @@ except ImportError:
     TimestampType = DateType = StructType = ArrayType = StructField = Dummy()
 
 
-@convert.register(list, SchemaRDD)
-def sparksql_dataframe_to_list(df, **kwargs):
-    return df.collect()
-
-
 @convert.register(pd.DataFrame, SchemaRDD)
 def sparksql_dataframe_to_pandas_dataframe(df, **kwargs):
     return pd.DataFrame(convert(list, df, **kwargs), columns=df.columns)
