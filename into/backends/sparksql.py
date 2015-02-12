@@ -152,28 +152,16 @@ sparksql_to_dshape = {
 dshape_to_sparksql = {
     datashape.int16: ShortType(),
     datashape.int32: IntegerType(),
-    datashape.int64: IntegerType(),
+    datashape.int64: LongType(),
     datashape.float32: FloatType(),
     datashape.float64: DoubleType(),
     datashape.real: DoubleType(),
     datashape.time_: TimestampType(),
-    datashape.date_: TimestampType(),
+    datashape.date_: DateType(),
     datashape.datetime_: TimestampType(),
     datashape.bool_: BooleanType(),
     datashape.string: StringType()
 }
-
-
-def schema_to_dshape(schema):
-    dshape = []
-    for field in schema.fields:
-        name = field.name
-        value = sparksql_to_dshape.get(type(field.dataType))
-        if value is None:
-            raise ValueError('No known mapping for SparkSQL type %r to '
-                             'datashape type' % str(field.dataType))
-        dshape.append((name, value))
-    return datashape.Record(dshape)
 
 
 def scala_set_to_set(ctx, x):
