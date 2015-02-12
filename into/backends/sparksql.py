@@ -70,21 +70,19 @@ def discover_spark_data_frame(df):
 
 
 def dshape_to_schema(ds):
-    """ Convert datashape to SparkSQL type system
+    """Convert datashape to SparkSQL type system.
 
-    >>> print(ds_to_sparksql('int32')) # doctest: +SKIP
+    Examples
+    --------
+    >>> print(dshape_to_schema('int32'))
     IntegerType
-
-    >>> print(ds_to_sparksql('5 * int32')) # doctest: +SKIP
+    >>> print(dshape_to_schema('5 * int32'))
     ArrayType(IntegerType,false)
-
-    >>> print(ds_to_sparksql('5 * ?int32'))  # doctest: +SKIP
+    >>> print(dshape_to_schema('5 * ?int32'))
     ArrayType(IntegerType,true)
-
-    >>> print(ds_to_sparksql('{name: string, amount: int32}'))  # doctest: +SKIP
+    >>> print(dshape_to_schema('{name: string, amount: int32}'))
     StructType(List(StructField(name,StringType,false),StructField(amount,IntegerType,false)))
-
-    >>> print(ds_to_sparksql('10 * {name: string, amount: ?int32}'))  # doctest: +SKIP
+    >>> print(dshape_to_schema('10 * {name: string, amount: ?int32}'))
     ArrayType(StructType(List(StructField(name,StringType,false),StructField(amount,IntegerType,true))),false)
     """
     if isinstance(ds, str):
