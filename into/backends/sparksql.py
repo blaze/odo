@@ -51,7 +51,7 @@ def frame_to_sqlcontext(ctx, df, **kwargs):
 
 
 @append.register(SQLContext, RDD)
-def rdd_to_sqlcontext(ctx, rdd, name=None, **kwargs):
+def rdd_to_sqlcontext(ctx, rdd, name=None, dshape=None, **kwargs):
     """ Convert a normal PySpark RDD to a SparkSQL RDD
 
     Schema inferred by ds_to_sparksql.  Can also specify it explicitly with
