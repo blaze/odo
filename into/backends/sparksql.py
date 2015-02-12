@@ -12,24 +12,19 @@ from ..convert import convert
 from ..append import append
 from ..core import discover
 from ..into import convert, append
-
-
-class Dummy(object):
-    pass
+from .spark import RDD, SchemaRDD, Dummy
 
 
 try:
-    from pyspark.sql import SQLContext, SchemaRDD
     from pyspark.sql import (ByteType, ShortType, IntegerType, LongType,
                              FloatType, DoubleType, StringType, BinaryType,
                              BooleanType, TimestampType, DateType, ArrayType,
                              StructType, StructField, MapType)
-    from pyspark import RDD
 except ImportError:
     SchemaRDD = SQLContext = Dummy
-    ByteType = ShortType = IntegerType = LongType = FloatType = Dummy()
-    MapType = DoubleType = StringType = BinaryType = BooleanType = Dummy()
-    TimestampType = DateType = StructType = ArrayType = StructField = Dummy()
+    ByteType = ShortType = IntegerType = LongType = FloatType = Dummy
+    MapType = DoubleType = StringType = BinaryType = BooleanType = Dummy
+    TimestampType = DateType = StructType = ArrayType = StructField = Dummy
 
 
 @convert.register(pd.DataFrame, SchemaRDD)

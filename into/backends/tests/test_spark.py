@@ -1,6 +1,6 @@
 import pytest
 from into import into, discover
-from pyspark import RDD
+from into.backends.spark import RDD
 
 
 data = [['Alice', 100.0, 1],
