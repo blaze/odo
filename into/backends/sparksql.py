@@ -45,6 +45,11 @@ def iterable_to_sql_context(ctx, seq, **kwargs):
     return append(ctx, ctx._sc.parallelize(seq), **kwargs)
 
 
+@append.register(SQLContext, pd.DataFrame)
+def frame_to_sqlcontext(ctx, df, **kwargs):
+    return append(ctx, convert(Iterator, df, **kwargs), **kwargs)
+
+
 @append.register(SQLContext, RDD)
 def rdd_to_sqlcontext(ctx, rdd, name=None, **kwargs):
     """ Convert a normal PySpark RDD to a SparkSQL RDD
