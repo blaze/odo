@@ -4,13 +4,14 @@ from collections import Iterator
 import pandas as pd
 import itertools
 import datashape
-from datashape import dshape, Record, Tuple, DataShape, Option
+from datashape import dshape, Record, DataShape, Option
 from datashape.predicates import isdimension
 from toolz import valmap
 
 from ..convert import convert
 from ..append import append
 from ..core import discover
+from ..into import convert, append
 
 
 class Dummy(object):
@@ -22,12 +23,12 @@ try:
     from pyspark.sql import (ByteType, ShortType, IntegerType, LongType,
                              FloatType, DoubleType, StringType, BinaryType,
                              BooleanType, TimestampType, DateType, ArrayType,
-                             StructType, StructField)
+                             StructType, StructField, MapType)
     from pyspark import RDD
 except ImportError:
     SchemaRDD = SQLContext = Dummy
     ByteType = ShortType = IntegerType = LongType = FloatType = Dummy()
-    DoubleType = StringType = BinaryType = BooleanType = Dummy()
+    MapType = DoubleType = StringType = BinaryType = BooleanType = Dummy()
     TimestampType = DateType = StructType = ArrayType = StructField = Dummy()
 
 
