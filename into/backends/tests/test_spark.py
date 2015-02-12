@@ -1,9 +1,15 @@
 from __future__ import print_function, absolute_import, division
 
 import pytest
+
+pytest.importorskip('pyspark')
+
+import pytest
 from datashape import dshape
 from into import into, discover
-from into.backends.spark import RDD, SchemaRDD
+from pyspark import RDD
+from pyspark.rdd import PipelinedRDD
+from pyspark.sql import SchemaRDD, Row
 
 
 data = [['Alice', 100.0, 1],
@@ -33,6 +39,18 @@ def test_rdd_into_schema_rdd(rdd):
     srdd = into(SchemaRDD, rdd, dshape=ds)
     assert isinstance(srdd, SchemaRDD)
     assert list(map(set, srdd.collect())) == list(map(set, rdd.collect()))
+
+
+def test_pipelined_rdd_into_schema_rdd(rdd):
+    pipelined = rdd.map(lambda x: Row(amount=x[1]))
+    assert isinstance(pipelined, PipelinedRDD)
+
+    srdd = into(SchemaRDD, pipelined,
+                dshape=dshape('var * {amount: float64}'))
+
+    assert isinstance(srdd, SchemaRDD)
+    assert (list(map(set, srdd.collect())) ==
+            list(map(set, pipelined.collect())))
 
 
 def test_discover_rdd(rdd):
