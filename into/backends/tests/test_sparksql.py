@@ -59,18 +59,18 @@ def test_discover_context(ctx):
 
 
 def test_schema_to_dshape():
-    assert schema_to_dshape(IntegerType()) == int64
+    assert schema_to_dshape(IntegerType()) == datashape.int32
 
     assert schema_to_dshape(
-        ArrayType(IntegerType(), False)) == dshape("var * int64")
+        ArrayType(IntegerType(), False)) == dshape("var * int32")
 
     assert schema_to_dshape(
-        ArrayType(IntegerType(), True)) == dshape("var * ?int64")
+        ArrayType(IntegerType(), True)) == dshape("var * ?int32")
 
     assert schema_to_dshape(StructType([
         StructField('name', StringType(), False),
         StructField('amount', IntegerType(), True)])) \
-        == dshape("{name: string, amount: ?int64}")
+        == dshape("{name: string, amount: ?int32}")
 
 
 def test_dshape_to_schema():
