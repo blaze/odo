@@ -16,6 +16,7 @@ from .spark import RDD, SchemaRDD, Dummy
 
 
 try:
+    from pyspark.sql import SQLContext
     from pyspark.sql import (ByteType, ShortType, IntegerType, LongType,
                              FloatType, DoubleType, StringType, BinaryType,
                              BooleanType, TimestampType, DateType, ArrayType,
