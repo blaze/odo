@@ -92,6 +92,9 @@ def dshape_to_schema(ds):
     """
     if isinstance(ds, str):
         return dshape_to_schema(dshape(ds))
+    if isinstance(ds, Tuple):
+        raise TypeError('Please provide a Record dshape for these column '
+                        'types: %s' % (ds.dshapes,))
     if isinstance(ds, Record):
         return StructType([
             StructField(name,
