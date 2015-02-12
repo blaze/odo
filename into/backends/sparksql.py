@@ -16,25 +16,25 @@ class Dummy(object):
 
 
 try:
-    from pyspark.sql import SQLContext, DataFrame as SparkDataFrame
+    from pyspark.sql import SQLContext, SchemaRDD
     from pyspark.sql import (ByteType, ShortType, IntegerType, LongType,
                              FloatType, DoubleType, StringType, BinaryType,
                              BooleanType, TimestampType, DateType, ArrayType,
                              StructType, StructField)
     from pyspark import RDD
 except ImportError:
-    SparkDataFrame = SQLContext = Dummy
+    SchemaRDD = SQLContext = Dummy
     ByteType = ShortType = IntegerType = LongType = FloatType = Dummy()
     DoubleType = StringType = BinaryType = BooleanType = Dummy()
     TimestampType = DateType = StructType = ArrayType = StructField = Dummy()
 
 
-@convert.register(list, SparkDataFrame)
+@convert.register(list, SchemaRDD)
 def sparksql_dataframe_to_list(df, **kwargs):
     return list(map(tuple, df.collect()))
 
 
-@convert.register(pd.DataFrame, SparkDataFrame)
+@convert.register(pd.DataFrame, SchemaRDD)
 def sparksql_dataframe_to_pandas_dataframe(df, **kwargs):
     return pd.DataFrame(convert(list, df, **kwargs), columns=df.columns)
 
@@ -120,7 +120,7 @@ def deoption(ds):
         return ds
 
 
-@discover.register(SparkDataFrame)
+@discover.register(SchemaRDD)
 def discover_spark_data_frame(df):
     return datashape.var * schema_to_dshape(df.schema())
 

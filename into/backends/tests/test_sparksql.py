@@ -3,7 +3,7 @@ import pytest
 import pandas as pd
 
 pyspark = pytest.importorskip('pyspark')
-from pyspark.sql import DataFrame as SparkDataFrame, Row, SQLContext
+from pyspark.sql import SchemaRDD, Row, SQLContext
 from pyspark.sql import ArrayType, StructField, StructType, IntegerType
 from pyspark.sql import StringType
 
@@ -46,13 +46,13 @@ def ctx(sql, people):
 
 def test_pyspark_to_sparksql(ctx, people):
     sdf = into(ctx, data)
-    assert isinstance(sdf, SparkDataFrame)
+    assert isinstance(sdf, SchemaRDD)
     assert into(list, people) == into(list, sdf)
 
 
 def test_into_sparksql_from_other(ctx):
     sdf = into(ctx, df)
-    assert isinstance(sdf, SparkDataFrame)
+    assert isinstance(sdf, SchemaRDD)
     assert into(list, sdf) == into(list, df)
 
 
