@@ -6,6 +6,8 @@ import subprocess
 
 import sqlalchemy
 
+from multipledispatch import MDNotImplementedError
+
 from ..regex import RegexDispatcher
 from ..append import append
 from .csv import CSV, infer_header
@@ -41,17 +43,18 @@ def copy_sqlite(dialect, tbl, csv, has_header=None, **kwargs):
     else:
         raise MDNotImplementedError()
 
+    # strip is needed for windows
     return statement.format(**locals()).strip()
 
 
 @execute_copy.register('sqlite')
 def execute_copy_sqlite(dialect, engine, statement):
-    ps = subprocess.Popen(statement, shell=True, stdout=subprocess.PIPE,
-                                                 stderr=subprocess.PIPE)
-    if ps.stderr.read():
-        raise MDNotImplementedError()
-
-    return ps.stdout.read()
+    ps = subprocess.Popen(statement, shell=True,
+                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    stdout, stderr = ps.communicate()
+    if stderr is not None:
+        raise MDNotImplementedError(stderr)
+    return stdout
 
 
 @copy_command.register('postgresql')
