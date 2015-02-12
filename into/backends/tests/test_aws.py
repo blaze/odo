@@ -14,7 +14,7 @@ pytest.importorskip('redshift_sqlalchemy')
 import os
 import itertools
 import json
-from contextlib import contextmanager
+from contextlib import contextmanager, closing
 
 from into import into, resource, S3, discover, CSV, drop, append
 from into.backends.aws import get_s3_connection
@@ -40,11 +40,13 @@ df = pd.DataFrame({
 
 js = pd.io.json.loads(pd.io.json.dumps(df, orient='records'))
 
-
 is_authorized = False
 tried = False
-public_ip = json.load(urlopen('http://httpbin.org/ip'))['origin']
-ip = public_ip + '/32'
+
+with closing(urlopen('http://httpbin.org/ip')) as url:
+    public_ip = json.loads(url.read().decode())['origin']
+
+cidrip = public_ip + '/32'
 
 
 @pytest.fixture(scope='module')
@@ -64,7 +66,8 @@ def rs_auth():
                 pytest.skip('authorization to access redshift cluster failed '
                             '%s' % e)
             try:
-                conn.authorize_cluster_security_group_ingress('default', ip)
+                conn.authorize_cluster_security_group_ingress('default',
+                                                              cidrip=cidrip)
             except boto.redshift.exceptions.AuthorizationAlreadyExists:
                 is_authorized = True
             except Exception as e:
