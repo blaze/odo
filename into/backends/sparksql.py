@@ -1,5 +1,6 @@
 from __future__ import division, print_function, absolute_import
 
+from collections import Iterator
 import pandas as pd
 import datashape
 from datashape import dshape, Record, Tuple, DataShape, Option
@@ -31,12 +32,17 @@ except ImportError:
 
 @convert.register(list, SchemaRDD)
 def sparksql_dataframe_to_list(df, **kwargs):
-    return list(map(tuple, df.collect()))
+    return df.collect()
 
 
 @convert.register(pd.DataFrame, SchemaRDD)
 def sparksql_dataframe_to_pandas_dataframe(df, **kwargs):
     return pd.DataFrame(convert(list, df, **kwargs), columns=df.columns)
+
+
+@append.register(SQLContext, (list, tuple, Iterator))
+def iterable_to_sql_context(ctx, seq, **kwargs):
+    return append(ctx, ctx._sc.parallelize(seq), **kwargs)
 
 
 @append.register(SQLContext, RDD)
