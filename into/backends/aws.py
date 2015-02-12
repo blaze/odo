@@ -111,11 +111,7 @@ def sample_s3_line_delimited(data, length=8192):
     raw = data.object.get_contents_as_string(headers=headers)
 
     if ext(data.path) == 'gz':
-        dec = zlib.decompressobj(32 + zlib.MAX_WBITS).decompress
-    else:
-        dec = identity
-
-    raw = dec(raw)
+        raw = zlib.decompress(raw, 32 + zlib.MAX_WBITS)
 
     # this is generally cheap as we usually have a tiny amount of data
     try:
