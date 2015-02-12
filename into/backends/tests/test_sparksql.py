@@ -42,9 +42,15 @@ def ctx(sqlctx, people):
 
 
 def test_pyspark_to_sparksql(ctx, people):
-    sdf = into(ctx, data)
+    sdf = into(ctx, data, dshape=discover(df))
     assert isinstance(sdf, SchemaRDD)
-    assert into(list, people) == into(list, sdf)
+    assert (list(map(set, into(list, people))) ==
+            list(map(set, into(list, sdf))))
+
+
+def test_pyspark_to_sparksql_raises_on_tuple_dshape(ctx, people):
+    with pytest.raises(TypeError):
+        into(ctx, data)
 
 
 def test_into_sparksql_from_other(ctx):
