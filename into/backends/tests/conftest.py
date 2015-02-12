@@ -9,4 +9,5 @@ def sc():
 
 @pytest.fixture(scope='session')
 def sqlctx(sc):
-    return pytest.importorskip('pyspark.sql.SQLContext')(sc)
+    sparksql = pytest.importorskip('pyspark.sql')
+    return sparksql.SQLContext(sc)
