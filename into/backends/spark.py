@@ -9,9 +9,8 @@ try:
     from pyspark.sql import SchemaRDD
     RDD.min
 except (AttributeError, ImportError):
-    SparkContext = Dummy
+    SchemaRDD = PipelinedRDD = RDD = SparkContext = Dummy
     pyspark = Dummy()
-    RDD = Dummy
 
 
 from collections import Iterator
