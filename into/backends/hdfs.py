@@ -284,12 +284,7 @@ def create_new_hive_table_from_csv(tbl, data, dshape=None, path=None, **kwargs):
 
     Actually executes command.
     """
-    if isinstance(data, _SSH):
-        table_type = None
-    elif isinstance(data, _HDFS):
-        table_type = 'EXTERNAL'
-    else:
-        table_type = None
+    table_type = 'EXTERNAL'
 
     if not dshape:
         dshape = discover(data)
@@ -311,6 +306,14 @@ def create_new_hive_table_from_csv(tbl, data, dshape=None, path=None, **kwargs):
     tbl2 = sa.Table(tbl.name, metadata, autoload=True,
             autoload_with=tbl.engine)
     return tbl2
+
+
+@append.register(TableProxy, (HDFS(CSV), Temp(HDFS(CSV))))
+def create_new_hive_table_from_csv_file(tbl, data, dshape=None, path=None, **kwargs):
+    raise ValueError(
+        "Can not create a new Hive table from a single CSV file on HDFS.\n"
+        "Instead try loading a complete directory or base your data outside of"
+        " HDFS")
 
 
 @append.register(TableProxy, (SSH(CSV), SSH(Directory(CSV))))
@@ -360,6 +363,21 @@ def append_remote_csv_to_table(tbl, csv, **kwargs):
         conn.execute(statement)
     return tbl
 
+
+@append.register(sa.Table, (HDFS(CSV), HDFS(Directory(CSV)), Temp(HDFS(CSV))))
+def append_hdfs_csv_to_table(tbl, csv, **kwargs):
+    """
+    Load Remote data into existing Hive table
+    """
+    if tbl.bind.dialect.name != 'hive':
+        raise NotImplementedError("Don't know how to migrate csvs on remote "
+                  "disk to database of dialect %s" % tbl.engine.dialect.name)
+
+    statement =('LOAD DATA INPATH "%(path)s" INTO TABLE %(tablename)s'
+                 % {'path': csv.path, 'tablename': tbl.name})
+    with tbl.bind.connect() as conn:
+        conn.execute(statement)
+    return tbl
 
 @append.register(TextFile, HDFS(TextFile))
 @append.register(JSONLines, HDFS(JSONLines))
