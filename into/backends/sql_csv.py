@@ -136,7 +136,8 @@ else:
                        ignore_header=int(kwargs.get('has_header',
                                                     csv.has_header)),
                        empty_as_null=True,
-                       blanks_as_null=False)
+                       blanks_as_null=False,
+                       compression=kwargs.get('compression', ''))
 
         if schema_name is None:
             # 'public' by default, this is a postgres convention
