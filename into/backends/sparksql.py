@@ -67,6 +67,11 @@ def discover_sqlcontext(ctx):
     return datashape.DataShape(datashape.Record(dshapes.items()))
 
 
+@discover.register(SchemaRDD)
+def discover_spark_data_frame(df):
+    return datashape.var * schema_to_dshape(df.schema())
+
+
 def dshape_to_schema(ds):
     """ Convert datashape to SparkSQL type system
 
@@ -105,6 +110,23 @@ def dshape_to_schema(ds):
     if ds in dshape_to_sparksql:
         return dshape_to_sparksql[ds]
     raise NotImplementedError()
+
+
+def schema_to_dshape(schema):
+    if schema in sparksql_to_dshape:
+        return sparksql_to_dshape[schema]
+    if isinstance(schema, ArrayType):
+        dshape = schema_to_dshape(schema.elementType)
+        return datashape.var * (Option(dshape)
+                                if schema.containsNull else dshape)
+    if isinstance(schema, StructType):
+        return dshape(Record([(field.name,
+                               Option(schema_to_dshape(field.dataType))
+                               if field.nullable
+                               else schema_to_dshape(field.dataType))
+                              for field in schema.fields]))
+    raise NotImplementedError('SparkSQL type not known %r' %
+                              type(schema).__name__)
 
 
 def deoption(ds):
