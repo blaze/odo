@@ -92,7 +92,3 @@ def test_dshape_to_schema():
             [StructField('name', StringType(), False),
              StructField('amount', IntegerType(), True)]),
         False)
-
-
-def test_discover_rdd(rdd):
-    assert discover(rdd).subshape[0] == discover(data).subshape[0]
