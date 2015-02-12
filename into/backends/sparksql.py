@@ -202,4 +202,4 @@ def get_catalog(ctx):
     java_names = ctx._ssql_ctx.catalog().tables().keySet()
     table_names = scala_set_to_set(ctx, java_names)
     tables = map(ctx.table, table_names)
-    return dict(zip(table_names, tables))
+    return dict(sorted(zip(table_names, tables)))
