@@ -115,11 +115,10 @@ def schema_to_dshape(schema):
         return datashape.var * (Option(dshape)
                                 if schema.containsNull else dshape)
     if isinstance(schema, StructType):
-        return dshape(Record([(field.name,
-                               Option(schema_to_dshape(field.dataType))
-                               if field.nullable
-                               else schema_to_dshape(field.dataType))
-                              for field in schema.fields]))
+        fields = [(field.name, Option(schema_to_dshape(field.dataType))
+                  if field.nullable else schema_to_dshape(field.dataType))
+                  for field in schema.fields]
+        return datashape.dshape(Record(fields))
     raise NotImplementedError('SparkSQL type not known %r' %
                               type(schema).__name__)
 
