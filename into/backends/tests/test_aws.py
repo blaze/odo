@@ -27,7 +27,7 @@ import pandas.util.testing as tm
 import datashape
 from datashape import string, float64, int64
 
-from boto.exception import S3ResponseError
+from boto.exception import S3ResponseError, NoAuthHandlerFound
 
 tips_uri = 's3://nyqpug/tips.csv'
 
@@ -43,10 +43,12 @@ js = pd.io.json.loads(pd.io.json.dumps(df, orient='records'))
 
 is_authorized = False
 tried = False
+public_ip = json.load(urlopen('http://httpbin.org/ip'))['origin']
+ip = public_ip + '/32'
 
 
-@pytest.fixture
-def db():
+@pytest.fixture(scope='module')
+def rs_auth():
     # if we aren't authorized and we've tried to authorize then skip, prevents
     # us from having to deal with timeouts
 
@@ -54,25 +56,30 @@ def db():
     # security group than 'default'
     global is_authorized, tried
 
-    if not is_authorized:
+    if not is_authorized and not tried:
         if not tried:
-            public_ip = json.load(urlopen('http://httpbin.org/ip'))['origin']
-            conn = boto.connect_redshift()
-            ip = public_ip + '/32'
             try:
-                conn.authorize_cluster_security_group_ingress('default',
-                                                              cidrip=ip)
+                conn = boto.connect_redshift()
+            except NoAuthHandlerFound as e:
+                pytest.skip('authorization to access redshift cluster failed '
+                            '%s' % e)
+            try:
+                conn.authorize_cluster_security_group_ingress('default', ip)
             except boto.redshift.exceptions.AuthorizationAlreadyExists:
                 is_authorized = True
             except Exception as e:
-                pytest.skip('authorization to access redshift cluster failed %s' %
-                            e)
+                pytest.skip('authorization to access redshift cluster failed '
+                            '%s' % e)
             else:
                 is_authorized = True
             finally:
                 tried = True
         else:
             pytest.skip('authorization to access redshift cluster failed')
+
+
+@pytest.fixture
+def db(rs_auth):
     key = os.environ.get('REDSHIFT_DB_URI', None)
     if not key:
         pytest.skip('Please define a non-empty environment variable called '
