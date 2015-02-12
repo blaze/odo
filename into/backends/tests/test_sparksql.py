@@ -21,11 +21,6 @@ data = [['Alice', 100.0, 1],
 df = pd.DataFrame(data, columns=['name', 'amount', 'id'])
 
 
-@pytest.fixture(scope='module')
-def sql(sc):
-    return SQLContext(sc)
-
-
 @pytest.yield_fixture(scope='module')
 def people(sc):
     with tmpfile('.txt') as fn:
@@ -38,10 +33,10 @@ def people(sc):
 
 
 @pytest.fixture(scope='module')
-def ctx(sql, people):
-    schema = sql.inferSchema(people)
+def ctx(sqlctx, people):
+    schema = sqlctx.inferSchema(people)
     schema.registerTempTable('t')
-    return sql
+    return sqlctx
 
 
 def test_pyspark_to_sparksql(ctx, people):
