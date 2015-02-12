@@ -4,7 +4,7 @@ from collections import Iterator
 import pandas as pd
 import itertools
 import datashape
-from datashape import dshape, Record, DataShape, Option
+from datashape import dshape, Record, DataShape, Option, Tuple
 from datashape.predicates import isdimension
 from toolz import valmap
 
@@ -33,8 +33,8 @@ except ImportError:
 
 
 @convert.register(pd.DataFrame, SchemaRDD)
-def sparksql_dataframe_to_pandas_dataframe(df, **kwargs):
-    return pd.DataFrame(convert(list, df, **kwargs), columns=df.columns)
+def sparksql_dataframe_to_pandas_dataframe(rdd, **kwargs):
+    return pd.DataFrame(convert(list, rdd, **kwargs), columns=rdd.columns)
 
 
 _names = ('tmp%d' % i for i in itertools.count())
