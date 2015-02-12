@@ -1,17 +1,12 @@
 from __future__ import division, print_function, absolute_import
 
-from collections import Iterator
-import pandas as pd
 import itertools
 import datashape
 from datashape import dshape, Record, DataShape, Option, Tuple
 from datashape.predicates import isdimension
 from toolz import valmap
 
-from ..convert import convert
-from ..append import append
-from ..core import discover
-from ..into import convert, append
+from .. import append, discover
 from .spark import RDD, SchemaRDD, Dummy
 
 
@@ -28,23 +23,12 @@ except ImportError:
     TimestampType = DateType = StructType = ArrayType = StructField = Dummy
 
 
-@convert.register(pd.DataFrame, SchemaRDD)
-def sparksql_dataframe_to_pandas_dataframe(rdd, dshape=None, **kwargs):
-    return pd.DataFrame(convert(list, rdd, **kwargs),
-                        columns=dshape.measure.names)
-
-
 _names = ('tmp%d' % i for i in itertools.count())
 
 
-@append.register(SQLContext, (list, tuple, Iterator))
+@append.register(SQLContext, list)
 def iterable_to_sql_context(ctx, seq, **kwargs):
     return append(ctx, ctx._sc.parallelize(seq), **kwargs)
-
-
-@append.register(SQLContext, pd.DataFrame)
-def frame_to_sqlcontext(ctx, df, **kwargs):
-    return append(ctx, convert(Iterator, df, **kwargs), **kwargs)
 
 
 @append.register(SQLContext, RDD)

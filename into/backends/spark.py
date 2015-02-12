@@ -1,3 +1,6 @@
+from __future__ import division, print_function, absolute_import
+
+
 class Dummy(object):
     pass
 
@@ -6,24 +9,26 @@ try:
     import pyspark
     from pyspark import RDD
     from pyspark.rdd import PipelinedRDD
-    from pyspark.sql import SchemaRDD
+    from pyspark.sql import SchemaRDD, SQLContext
     RDD.min
 except (AttributeError, ImportError):
-    SchemaRDD = PipelinedRDD = RDD = SparkContext = Dummy
+    SchemaRDD = PipelinedRDD = RDD = SparkContext = SQLContext = Dummy
     pyspark = Dummy()
 
 
-from collections import Iterator
-
 from datashape import var
 
-from ..into import convert, append
-from ..core import discover
+from .. import convert, append, discover
 
 
-@append.register(SparkContext, (list, tuple, Iterator))
-def iterable_to_spark_context(sc, seq, **kwargs):
+@append.register(SparkContext, list)
+def list_to_spark_context(sc, seq, **kwargs):
     return sc.parallelize(seq)
+
+
+@append.register((SparkContext, SQLContext), object)
+def anything_to_spark_context(sc, o, **kwargs):
+    return append(sc, convert(list, o, **kwargs), **kwargs)
 
 
 @convert.register(list, (RDD, PipelinedRDD, SchemaRDD))
