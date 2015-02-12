@@ -2,6 +2,7 @@ from __future__ import division, print_function, absolute_import
 
 from collections import Iterator
 import pandas as pd
+import itertools
 import datashape
 from datashape import dshape, Record, Tuple, DataShape, Option
 from datashape.predicates import isdimension
@@ -38,6 +39,9 @@ def sparksql_dataframe_to_list(df, **kwargs):
 @convert.register(pd.DataFrame, SchemaRDD)
 def sparksql_dataframe_to_pandas_dataframe(df, **kwargs):
     return pd.DataFrame(convert(list, df, **kwargs), columns=df.columns)
+
+
+_names = ('tmp%d' % i for i in itertools.count())
 
 
 @append.register(SQLContext, (list, tuple, Iterator))
