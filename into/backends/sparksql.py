@@ -57,7 +57,10 @@ def rdd_to_sqlcontext(ctx, rdd, name=None, dshape=None, **kwargs):
     Schema inferred by ds_to_sparksql.  Can also specify it explicitly with
     schema keyword argument.
     """
-    sql_schema = dshape_to_schema(kwargs['dshape'])
+    # TODO: assumes that we don't have e.g., 10 * 10 * {x: int, y: int}
+    if isdimension(dshape.parameters[0]):
+        dshape = dshape.measure
+    sql_schema = dshape_to_schema(dshape)
     sdf = ctx.applySchema(rdd, sql_schema)
     ctx.registerRDDAsTable(sdf, name or next(_names))
     return sdf
