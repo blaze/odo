@@ -16,6 +16,7 @@ except (AttributeError, ImportError):
     pyspark = Dummy()
 
 
+from toolz import memoize
 from datashape import var
 
 from .. import convert, append, discover
@@ -40,6 +41,9 @@ def rdd_to_list(rdd, **kwargs):
 def discover_rdd(rdd, n=50, **kwargs):
     data = rdd.take(n)
     return var * discover(data).subshape[0]
+
+
+SQLContext = memoize(SQLContext)
 
 
 @convert.register(SchemaRDD, (RDD, PipelinedRDD))
