@@ -168,3 +168,15 @@ def test_ssh_csv_to_s3_csv():
         with s3_bucket('.csv') as b:
             result = into(b, remote)
             assert discover(result) == discover(resource(b))
+
+
+@pytest.mark.skipif(os.name == 'win32',
+                    reason='windows does not have an SSH daemon on localhost')
+def test_s3_to_ssh():
+    pytest.importorskip('boto')
+
+    tips_uri = 's3://nyqpug/tips.csv'
+    with tmpfile('.csv') as fn:
+        result = into(Temp(SSH(CSV))(fn, hostname='localhost'), tips_uri)
+        assert into(list, result) == into(list, tips_uri)
+        assert discover(result) == discover(resource(tips_uri))
