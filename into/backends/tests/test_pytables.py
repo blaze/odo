@@ -17,7 +17,7 @@ try:
     if os.path.exists('import-tables-test.hdf5'):
         os.remove('import-tables-test.hdf5')
 except tb.exceptions.HDF5ExtError as e:
-    pytest.skip('Cannot write file, error: %s' % e)
+    pytest.skip('Cannot write file, error:\n%s' % e)
 
 
 x = np.array([(1, 'Alice', 100),
