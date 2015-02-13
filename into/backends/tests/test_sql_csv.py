@@ -66,8 +66,6 @@ def test_into_sqlite():
                 assert into(list, sql) == data
 
 
-@pytest.mark.xfail(os.name == 'nt', raises=NotImplementedError,
-                   reason='Cannot import files with headers in sqlite')
 def test_into_sqlite_with_header():
     df = pd.DataFrame([('Alice', 100), ('Bob', 200)],
                       columns=['name', 'amount'])
@@ -81,8 +79,6 @@ def test_into_sqlite_with_header():
             assert into(list, result) == into(list, df)
 
 
-@pytest.mark.xfail(os.name == 'nt', raises=NotImplementedError,
-                   reason='Cannot import files with headers in sqlite')
 def test_into_sqlite_with_header_and_different_sep():
     df = pd.DataFrame([('Alice', 100), ('Bob', 200)],
                       columns=['name', 'amount'])

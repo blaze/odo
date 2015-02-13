@@ -20,6 +20,7 @@ from .text import TextFile
 
 from ..compatibility import urlparse
 from ..utils import tmpfile, ext, sample, filter_kwargs
+from .ssh import connect, _SSH
 
 
 @memoize
@@ -235,3 +236,19 @@ def remote_text_to_s3_text(a, b, **kwargs):
 @append.register(HDFS(TextFile), S3(TextFile))
 def other_remote_text_to_s3_text(a, b, **kwargs):
     raise MDNotImplementedError()
+
+
+@append.register(_SSH, _S3)
+def s3_to_ssh(ssh, s3, url_timeout=600, **kwargs):
+    if s3.s3.anon:
+        url = 'https://%s.s3.amazonaws.com/%s' % (s3.bucket, s3.object.name)
+    else:
+        url = s3.object.generate_url(url_timeout)
+    command = "wget '%s' -qO- >> '%s'" % (url, ssh.path)
+    conn = connect(**ssh.auth)
+    _, stdout, stderr = conn.exec_command(command)
+    exit_status = stdout.channel.recv_exit_status()
+    if exit_status:
+        raise ValueError('Error code %d, message: %r' % (exit_status,
+                                                         stderr.read()))
+    return ssh

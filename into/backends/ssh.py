@@ -7,7 +7,7 @@ from datashape import discover
 import re
 import uuid
 
-from ..directory import _Directory, Directory
+from ..directory import Directory
 from ..utils import keywords, tmpfile, sample, ignoring
 from ..resource import resource
 from ..append import append
