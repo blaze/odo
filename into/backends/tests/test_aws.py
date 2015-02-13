@@ -281,6 +281,20 @@ def test_s3_csv_discover():
     assert result == expected
 
 
+def test_s3_gz_csv_discover():
+    result = discover(S3(CSV)('s3://nyqpug/tips.gz'))
+    expected = datashape.dshape("""var * {
+      total_bill: ?float64,
+      tip: ?float64,
+      sex: ?string,
+      smoker: ?string,
+      day: ?string,
+      time: ?string,
+      size: int64
+      }""")
+    assert result == expected
+
+
 def test_s3_to_sqlite():
     with tmpfile('.db') as fn:
         tb = into('sqlite:///%s::tips' % fn, tips_uri,

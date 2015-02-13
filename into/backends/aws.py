@@ -2,6 +2,8 @@ from __future__ import print_function, division, absolute_import
 
 import os
 import uuid
+import zlib
+import re
 
 from contextlib import contextmanager
 from collections import Iterator
@@ -108,6 +110,9 @@ def sample_s3_line_delimited(data, length=8192):
     headers = {'Range': 'bytes=0-%d' % length}
     raw = data.object.get_contents_as_string(headers=headers)
 
+    if ext(data.path) == 'gz':
+        raw = zlib.decompress(raw, 32 + zlib.MAX_WBITS)
+
     # this is generally cheap as we usually have a tiny amount of data
     try:
         index = raw.rindex(b'\r\n')
@@ -116,7 +121,7 @@ def sample_s3_line_delimited(data, length=8192):
 
     raw = raw[:index]
 
-    with tmpfile(ext(data.path)) as fn:
+    with tmpfile(ext(re.sub('\.gz$', '', data.path))) as fn:
         # we use wb because without an encoding boto returns bytes
         with open(fn, 'wb') as f:
             f.write(raw)
