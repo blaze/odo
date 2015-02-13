@@ -16,7 +16,7 @@ from ..resource import resource
 class TextFile(object):
     canonical_extension = 'txt'
 
-    def __init__(self, path):
+    def __init__(self, path, **kwargs):
         self.path = path
 
     @property
