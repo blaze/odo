@@ -4,11 +4,13 @@ import gzip
 from datashape import discover, dshape
 from collections import Iterator
 from toolz import partial, concat
+import uuid
 import os
 
 from ..compatibility import unicode
 from ..chunks import chunks
 from ..drop import drop
+from ..temp import Temp
 from ..append import append
 from ..convert import convert
 from ..resource import resource
@@ -27,7 +29,7 @@ class TextFile(object):
             return open
 
 
-@convert.register(Iterator, TextFile, cost=0.1)
+@convert.register(Iterator, (TextFile, Temp(TextFile)), cost=0.1)
 def textfile_to_iterator(data, **kwargs):
     with data.open(data.path) as f:
         for line in f:
@@ -39,22 +41,30 @@ def chunks_textfile_to_iterator(data, **kwargs):
     return concat(map(partial(convert, Iterator), data))
 
 
-@discover.register(TextFile)
+@discover.register((TextFile, Temp(TextFile)))
 def discover_textfile(data, **kwargs):
     return dshape('var * string')
 
 
-@append.register(TextFile, Iterator)
+@append.register((Temp(TextFile), TextFile), Iterator)
 def append_iterator_to_textfile(target, source, **kwargs):
     with target.open(target.path, 'a') as f:
         for item in source:
             f.write(unicode(item))
             f.write('\n')  # TODO: detect OS-level newline character
+    return target
 
 
 @append.register(TextFile, object)
 def append_anything_to_textfile(target, source, **kwargs):
     return append(target, convert(Iterator, source, **kwargs), **kwargs)
+
+
+@convert.register(Temp(TextFile), Iterator)
+def iterator_to_temp_textfile(seq, **kwargs):
+    fn = str(uuid.uuid1())
+    txt = Temp(TextFile)(fn)
+    return append(txt, seq, **kwargs)
 
 
 @resource.register('.+\.(txt|log)(.gz)?')

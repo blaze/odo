@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from into.backends.text import (TextFile, resource, convert, discover, append,
-        drop, chunks)
+        drop, chunks, Temp)
 from into.utils import tmpfile, filetexts, filetext
 from datashape import dshape
 import gzip
@@ -51,3 +51,7 @@ def test_chunks_textfile():
         logs = chunks(TextFile)(list(map(TextFile, fns)))
         assert set(map(str.strip, convert(list, logs))) == \
                 set(['Hello', 'World', 'Hola', 'Mundo'])
+
+def test_temp():
+    t = convert(Temp(TextFile), [1, 2, 3])
+    assert [int(line.strip()) for line in convert(list, t)] == [1, 2, 3]
