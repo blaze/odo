@@ -14,7 +14,7 @@ Setup
 We recommend you install Spark via ``conda`` from the ``blaze``
 `binstar <http://www.binstar.org>`_ channel:
 
-.. code-block:: shell
+.. code-block:: sh
 
    $ conda install pyhive spark -c blaze
 
@@ -76,6 +76,24 @@ URIs
 ----
 URI syntax isn't currently implemented for Spark objects.
 
+
+Conversions
+-----------
+The main paths into and out of ``RDD`` and ``SchemaRDD`` are through Python
+``list`` objects:
+
+::
+
+   RDD <-> list
+   SchemaRDD <-> list
+
+
+Additionally, there's a specialized one-way path for going directly to
+``SchemaRDD`` from ``RDD``:
+
+::
+
+   RDD -> SchemaRDD
 
 TODO
 ----
