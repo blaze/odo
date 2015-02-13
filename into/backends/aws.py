@@ -241,7 +241,7 @@ def other_remote_text_to_s3_text(a, b, **kwargs):
 
 @append.register(SSH(CSV), S3(CSV))
 def s3_to_ssh(ssh, s3, url_timeout=600, **kwargs):
-    url = s3.object.generate_url(url_timeout)
+    url = s3.object.generate_url(url_timeout, query_auth=s3.s3.anon)
     command = "wget '%s' -qO- >> '%s'" % (url, ssh.path)
     conn = connect(**ssh.auth)
     _, stdout, stderr = conn.exec_command(command)
