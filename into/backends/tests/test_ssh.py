@@ -7,7 +7,6 @@ import pandas as pd
 import numpy as np
 import re
 import os
-import sys
 
 from into.utils import tmpfile, filetext
 from into.directory import _Directory, Directory
@@ -15,7 +14,7 @@ from into.backends.ssh import SSH, resource, ssh_pattern, sftp, drop, connect
 from into.backends.csv import CSV
 from into import into, discover, CSV, JSONLines, JSON, convert
 from into.temp import _Temp, Temp
-from into.compatibility import PY3, skipif, ON_TRAVIS_CI
+from into.compatibility import skipif, ON_TRAVIS_CI
 import socket
 
 try:
