@@ -55,6 +55,10 @@ with ignoring(ImportError):
     from .backends import sql_csv
 with ignoring(ImportError):
     from .backends.bokeh import ColumnDataSource
+with ignoring(ImportError):
+    from .backends.spark import RDD
+with ignoring(ImportError):
+    from .backends.sparksql import SchemaRDD
 
 
 restart_ordering()  # Restart multipledispatch ordering and do ordering
