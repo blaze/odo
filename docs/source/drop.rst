@@ -8,7 +8,7 @@ live outside of Python.
 Examples
 --------
 
-.. code-block:: Python
+.. code-block:: python
 
    >>> from into import drop
    >>> drop('myfile.csv')                 # Removes file
