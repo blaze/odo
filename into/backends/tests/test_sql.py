@@ -262,3 +262,16 @@ def test_engine_metadata_caching():
 
         assert a.metadata is b.metadata
         assert engine is a.bind is b.bind
+
+
+def test_copy_one_table_to_a_foreign_engine():
+    data = [(1, 1), (2, 4), (3, 9)]
+    ds = dshape('var * {x: int, y: int}')
+    with tmpfile('db') as fn1:
+        with tmpfile('db') as fn2:
+            src = into('sqlite:///%s::points' % fn1, data, dshape=ds)
+            tgt = into('sqlite:///%s::points' % fn2 + '::points',
+                    sa.select([src]), dshape=ds)
+
+            assert into(set, src) == into(set, tgt)
+            assert into(set, data) == into(set, tgt)
