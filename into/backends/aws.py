@@ -1,6 +1,7 @@
 from __future__ import print_function, division, absolute_import
 
 import os
+import sys
 import uuid
 import zlib
 import re
@@ -20,6 +21,7 @@ from .text import TextFile
 
 from ..compatibility import urlparse
 from ..utils import tmpfile, ext, sample, filter_kwargs
+from .ssh import connect
 
 
 @memoize
@@ -235,3 +237,21 @@ def remote_text_to_s3_text(a, b, **kwargs):
 @append.register(HDFS(TextFile), S3(TextFile))
 def other_remote_text_to_s3_text(a, b, **kwargs):
     raise MDNotImplementedError()
+
+
+if sys.platform != 'win32':
+    @append.register(SSH(CSV), S3(CSV))
+    def s3_to_ssh(ssh, s3, url_timeout=600, **kwargs):
+        url = s3.object.generate_url(url_timeout)
+        command = "wget '%s' -qO- >> '%s'" % (url, ssh.path)
+        conn = connect(**ssh.auth)
+        _, stdout, stderr = conn.exec_command(command)
+
+        while not stdout.channel.exit_status_ready():
+            pass
+        else:
+            exit_status = stdout.channel.exit_status
+
+        if exit_status:
+            raise ValueError(stderr.read())
+        return ssh

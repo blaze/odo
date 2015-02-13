@@ -301,3 +301,12 @@ def test_s3_to_sqlite():
                   dshape=discover(resource(tips_uri)))
         lhs = into(list, tb)
         assert lhs == into(list, tips_uri)
+
+
+@pytest.mark.skipif(sys.platform == 'win32',
+                    reason='windows does not have wget by default')
+def test_s3_ssh():
+    with tmpfile('.csv') as fn:
+        result = into('ssh://localhost:%s' % fn, tips_uri)
+        assert into(list, result) == into(list, tips_uri)
+        assert discover(result) == discover(resource(tips_uri))
