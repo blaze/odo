@@ -304,7 +304,7 @@ def test_s3_to_sqlite():
 
 
 @pytest.mark.skipif(sys.platform == 'win32',
-                    reason='windows does not have wget by default')
+                    reason='windows does not have an SSH daemon on localhost')
 def test_s3_ssh():
     with tmpfile('.csv') as fn:
         result = into('ssh://localhost:%s' % fn, tips_uri)
