@@ -15,6 +15,27 @@ Simple examples of CSV uris::
     /path/to/myfile.csv.gz
 
 
+Keyword Arguments
+-----------------
+
+The standard csv dialect terms are usually supported::
+
+    has_header=True/False/None
+    encoding
+
+    delimiter
+    doublequote
+    escapechar
+    lineterminator
+    quotechar
+    quoting
+    skipinitialspace
+
+However these or others may be in effect depending on what library is
+interacting with your file.  Oftentimes this is the ``pandas.read_csv``
+function, which has an extensive `list of keyword arguments`_
+
+
 Conversions
 -----------
 
@@ -24,3 +45,9 @@ into a single DataFrame.  Instead we convert them to a stream of medium sized
 DataFrames.  We call this type ``chunks(DataFrame)``.::
 
     chunks(DataFrame) <-> CSV
+
+CSVs can also be efficiently loaded into SQL Databases::
+
+    SQL <- CSV
+
+.. _`list of keyword arguments`: http://pandas.pydata.org/pandas-docs/stable/generated/pandas.io.parsers.read_csv.html
