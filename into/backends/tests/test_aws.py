@@ -13,11 +13,13 @@ pytest.importorskip('redshift_sqlalchemy')
 
 import os
 import itertools
-from contextlib import contextmanager
+import json
+from contextlib import contextmanager, closing
 
 from into import into, resource, S3, discover, CSV, drop, append
 from into.backends.aws import get_s3_connection
 from into.utils import tmpfile
+from into.compatibility import urlopen
 
 import pandas as pd
 import pandas.util.testing as tm
@@ -25,8 +27,7 @@ import pandas.util.testing as tm
 import datashape
 from datashape import string, float64, int64
 
-from boto.exception import S3ResponseError
-
+from boto.exception import S3ResponseError, NoAuthHandlerFound
 
 tips_uri = 's3://nyqpug/tips.csv'
 
@@ -39,9 +40,49 @@ df = pd.DataFrame({
 
 js = pd.io.json.loads(pd.io.json.dumps(df, orient='records'))
 
+is_authorized = False
+tried = False
+
+with closing(urlopen('http://httpbin.org/ip')) as url:
+    public_ip = json.loads(url.read().decode())['origin']
+
+cidrip = public_ip + '/32'
+
+
+@pytest.fixture(scope='module')
+def rs_auth():
+    # if we aren't authorized and we've tried to authorize then skip, prevents
+    # us from having to deal with timeouts
+
+    # TODO: this will fail if we want to use a testing cluster with a different
+    # security group than 'default'
+    global is_authorized, tried
+
+    if not is_authorized and not tried:
+        if not tried:
+            try:
+                conn = boto.connect_redshift()
+            except NoAuthHandlerFound as e:
+                pytest.skip('authorization to access redshift cluster failed '
+                            '%s' % e)
+            try:
+                conn.authorize_cluster_security_group_ingress('default',
+                                                              cidrip=cidrip)
+            except boto.redshift.exceptions.AuthorizationAlreadyExists:
+                is_authorized = True
+            except Exception as e:
+                pytest.skip('authorization to access redshift cluster failed '
+                            '%s' % e)
+            else:
+                is_authorized = True
+            finally:
+                tried = True
+        else:
+            pytest.skip('authorization to access redshift cluster failed')
+
 
 @pytest.fixture
-def db():
+def db(rs_auth):
     key = os.environ.get('REDSHIFT_DB_URI', None)
     if not key:
         pytest.skip('Please define a non-empty environment variable called '
@@ -152,7 +193,6 @@ def test_s3_to_redshift(temp_tb):
     assert into(set, table) == into(set, s3)
 
 
-@pytest.mark.timeout(10)
 def test_redshift_getting_started(temp_tb):
     dshape = datashape.dshape("""var * {
         userid: int64,
@@ -229,6 +269,20 @@ def test_s3_jsonlines_discover():
 
 def test_s3_csv_discover():
     result = discover(resource('s3://nyqpug/tips.csv'))
+    expected = datashape.dshape("""var * {
+      total_bill: ?float64,
+      tip: ?float64,
+      sex: ?string,
+      smoker: ?string,
+      day: ?string,
+      time: ?string,
+      size: int64
+      }""")
+    assert result == expected
+
+
+def test_s3_gz_csv_discover():
+    result = discover(S3(CSV)('s3://nyqpug/tips.gz'))
     expected = datashape.dshape("""var * {
       total_bill: ?float64,
       tip: ?float64,

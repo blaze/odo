@@ -10,9 +10,11 @@ from multipledispatch import MDNotImplementedError
 
 from ..regex import RegexDispatcher
 from ..append import append
+from ..convert import convert
 from .csv import CSV, infer_header
 from ..temp import Temp
 from ..into import into
+from .aws import S3
 
 copy_command = RegexDispatcher('copy_command')
 execute_copy = RegexDispatcher('execute_copy')
@@ -42,17 +44,18 @@ def copy_sqlite(dialect, tbl, csv, has_header=None, **kwargs):
     else:
         raise MDNotImplementedError()
 
+    # strip is needed for windows
     return statement.format(**locals()).strip()
 
 
 @execute_copy.register('sqlite')
 def execute_copy_sqlite(dialect, engine, statement):
-    ps = subprocess.Popen(statement, shell=True, stdout=subprocess.PIPE,
-                                                 stderr=subprocess.PIPE)
-    if ps.stderr.read():
-        raise MDNotImplementedError()
-
-    return ps.stdout.read()
+    ps = subprocess.Popen(statement, shell=True,
+                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    stdout, stderr = ps.communicate()
+    if stderr is not None:
+        raise MDNotImplementedError(stderr)
+    return stdout
 
 
 @copy_command.register('postgresql')
@@ -117,7 +120,6 @@ try:
     from redshift_sqlalchemy.dialect import CopyCommand
     import sqlalchemy as sa
 except ImportError:
-    S3 = None
     pass
 else:
     @copy_command.register('redshift.*')
@@ -135,7 +137,8 @@ else:
                        ignore_header=int(kwargs.get('has_header',
                                                     csv.has_header)),
                        empty_as_null=True,
-                       blanks_as_null=False)
+                       blanks_as_null=False,
+                       compression=kwargs.get('compression', ''))
 
         if schema_name is None:
             # 'public' by default, this is a postgres convention
@@ -166,10 +169,13 @@ def append_csv_to_sql_table(tbl, csv, **kwargs):
 
     # move things to a temporary S3 bucket if we're using redshift and we
     # aren't already in S3
-    if dialect == 'redshift' and S3 and not isinstance(csv, S3(CSV)):
+    if dialect == 'redshift' and not isinstance(csv, S3(CSV)):
         csv = into(Temp(S3(CSV)), csv, **kwargs)
-    elif dialect != 'redshift' and S3 and isinstance(csv, S3(CSV)):
+    elif dialect != 'redshift' and isinstance(csv, S3(CSV)):
         csv = into(Temp(CSV), csv, has_header=csv.has_header, **kwargs)
+    elif dialect == 'hive':
+        from .ssh import SSH
+        return append(tbl, convert(Temp(SSH(CSV)), csv, **kwargs), **kwargs)
 
     statement = copy_command(dialect, tbl, csv, **kwargs)
     execute_copy(dialect, tbl.bind, statement)

@@ -42,29 +42,38 @@ id,name,amount
 8,Hannah,800
 """.strip()
 
+accounts_3_csv = """
+id,name,amount
+9,Isaac,900
+10,Jane,1000
+""".strip()
 
 @contextmanager
 def accounts_data():
     a = '/user/hive/test/accounts/accounts.1.csv'
     b = '/user/hive/test/accounts/accounts.2.csv'
+    c = '/user/hive/test/accounts.3.csv'
     hdfs.make_dir('user/hive/test/accounts')
     hdfs.create_file(a.lstrip('/'), accounts_1_csv)
     hdfs.create_file(b.lstrip('/'), accounts_2_csv)
+    hdfs.create_file(c.lstrip('/'), accounts_3_csv)
 
     A = HDFS(CSV)(a, hdfs=hdfs)
     B = HDFS(CSV)(b, hdfs=hdfs)
+    C = HDFS(CSV)(c, hdfs=hdfs)
     directory = HDFS(Directory(CSV))('/user/hive/test/accounts/', hdfs=hdfs)
 
     try:
-        yield (directory, (A, B))
+        yield (directory, (A, B, C))
     finally:
         hdfs.delete_file_dir(a)
         hdfs.delete_file_dir(b)
+        hdfs.delete_file_dir(c)
 
 
 
 def test_discover():
-    with accounts_data() as (directory, (a, b)):
+    with accounts_data() as (directory, (a, b, c)):
         assert str(discover(a)).replace('?', '') == \
                 'var * {id: int64, name: string, amount: int64}'
 
@@ -96,13 +105,14 @@ def test_copy_local_files_to_hdfs():
 
 def test_copy_hdfs_files_locally():
     with tmpfile('csv') as target:
-        with accounts_data() as (d, (a, b)):
+        with accounts_data() as (d, (a, b, c)):
             csv = into(target, a)
             with open(csv.path) as f:
                 assert f.read().strip() == accounts_1_csv
 
+
 def test_copy_hdfs_data_into_memory():
-    with accounts_data() as (d, (a, b)):
+    with accounts_data() as (d, (a, b, c)):
         assert into(list, a)
 
 
@@ -125,15 +135,6 @@ def test_hdfs_resource():
     assert isinstance(resource('hdfs://path/to/*.csv',
                                 host='host', user='user', port=1234),
                       HDFS(Directory(CSV)))
-
-
-def test_hdfs_hive_creation():
-    with accounts_data() as (hdfs_directory, _):
-        with hive_table(host) as uri:
-            t = into(uri, hdfs_directory)
-            assert isinstance(t, sa.Table)
-            assert len(into(list, t)) > 0
-            assert discover(t) == ds
 
 
 def normalize(s):
@@ -160,11 +161,30 @@ def hive_table(host):
             drop(uri)
 
 
+def test_hdfs_directory_hive_creation():
+    with accounts_data() as (hdfs_directory, (a, b, c)):
+        with hive_table(host) as uri:
+            t = into(uri, hdfs_directory)
+            assert isinstance(t, sa.Table)
+            result = into(set, t)
+            assert result > 0
+            assert discover(t) == ds
+
+            t2 = into(uri, c)  # append new singleton file
+            assert len(into(list, t2)) > len(result)
+
+
 def test_ssh_hive_creation():
     with hive_table(host) as uri:
         t = into(uri, ssh_csv, raise_on_errors=True)
         assert isinstance(t, sa.Table)
-        assert len(into(list, t)) > 0
+        assert into(set, t) == into(set, ssh_csv)
+
+        # Load again
+        t2 = into(uri, ssh_csv, raise_on_errors=True)
+        assert isinstance(t2, sa.Table)
+        assert len(into(list, t2)) == 2 * len(into(list, ssh_csv))
+
 
 
 def test_hive_creation_from_local_file():
@@ -173,6 +193,10 @@ def test_hive_creation_from_local_file():
             t = into(uri, fn, **auth)
             assert isinstance(t, sa.Table)
             assert into(set, t) == into(set, fn)
+
+            t2 = into(uri, fn, **auth)
+            assert isinstance(t2, sa.Table)
+            assert len(into(list, t2)) == 2 * len(into(list, fn))
 
 
 def test_ssh_directory_hive_creation():

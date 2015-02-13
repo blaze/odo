@@ -2,33 +2,32 @@ from __future__ import print_function, division, absolute_import
 
 import os
 import uuid
+import zlib
+import re
 
 from contextlib import contextmanager
 from collections import Iterator
 
-try:
-    from urlparse import urlparse
-except ImportError:
-    from urllib.parse import urlparse
-
 import pandas as pd
 from toolz import memoize
 
-import boto
-
-from into import discover, CSV, resource, append, convert, drop, Temp, JSON
-from into import JSONLines, SSH, into, chunks, HDFS
+from .. import (discover, CSV, resource, append, convert, drop, Temp, JSON,
+                SSH, JSONLines, into, chunks, HDFS)
 
 from multipledispatch import MDNotImplementedError
 
 from .text import TextFile
-from ..utils import tmpfile, ext, sample
+
+from ..compatibility import urlparse
+from ..utils import tmpfile, ext, sample, filter_kwargs
+from .ssh import connect, _SSH
 
 
 @memoize
 def get_s3_connection(aws_access_key_id=None,
                       aws_secret_access_key=None,
                       anon=False):
+    import boto
     cfg = boto.Config()
 
     if aws_access_key_id is None:
@@ -61,6 +60,7 @@ class _S3(object):
     """
     def __init__(self, uri, s3=None, aws_access_key_id=None,
                  aws_secret_access_key=None, *args, **kwargs):
+        import boto
         result = urlparse(uri)
         self.bucket = result.netloc
         self.key = result.path.lstrip('/')
@@ -71,15 +71,21 @@ class _S3(object):
             self.s3 = get_s3_connection(aws_access_key_id=aws_access_key_id,
                                         aws_secret_access_key=aws_secret_access_key)
         try:
-            bucket = self.s3.get_bucket(self.bucket)
+            bucket = self.s3.get_bucket(self.bucket,
+                                        **filter_kwargs(self.s3.get_bucket,
+                                                        kwargs))
         except boto.exception.S3ResponseError:
-            bucket = self.s3.create_bucket(self.bucket)
+            bucket = self.s3.create_bucket(self.bucket,
+                                           **filter_kwargs(self.s3.create_bucket,
+                                                           kwargs))
 
-        self.object = bucket.get_key(self.key)
+        self.object = bucket.get_key(self.key, **filter_kwargs(bucket.get_key,
+                                                               kwargs))
         if self.object is None:
             self.object = bucket.new_key(self.key)
 
-        self.subtype.__init__(self, uri, *args, **kwargs)
+        self.subtype.__init__(self, uri, *args,
+                              **filter_kwargs(self.subtype.__init__, kwargs))
 
 
 def S3(cls):
@@ -105,6 +111,9 @@ def sample_s3_line_delimited(data, length=8192):
     headers = {'Range': 'bytes=0-%d' % length}
     raw = data.object.get_contents_as_string(headers=headers)
 
+    if ext(data.path) == 'gz':
+        raw = zlib.decompress(raw, 32 + zlib.MAX_WBITS)
+
     # this is generally cheap as we usually have a tiny amount of data
     try:
         index = raw.rindex(b'\r\n')
@@ -113,7 +122,7 @@ def sample_s3_line_delimited(data, length=8192):
 
     raw = raw[:index]
 
-    with tmpfile(ext(data.path)) as fn:
+    with tmpfile(ext(re.sub('\.gz$', '', data.path))) as fn:
         # we use wb because without an encoding boto returns bytes
         with open(fn, 'wb') as f:
             f.write(raw)
@@ -227,3 +236,19 @@ def remote_text_to_s3_text(a, b, **kwargs):
 @append.register(HDFS(TextFile), S3(TextFile))
 def other_remote_text_to_s3_text(a, b, **kwargs):
     raise MDNotImplementedError()
+
+
+@append.register(_SSH, _S3)
+def s3_to_ssh(ssh, s3, url_timeout=600, **kwargs):
+    if s3.s3.anon:
+        url = 'https://%s.s3.amazonaws.com/%s' % (s3.bucket, s3.object.name)
+    else:
+        url = s3.object.generate_url(url_timeout)
+    command = "wget '%s' -qO- >> '%s'" % (url, ssh.path)
+    conn = connect(**ssh.auth)
+    _, stdout, stderr = conn.exec_command(command)
+    exit_status = stdout.channel.recv_exit_status()
+    if exit_status:
+        raise ValueError('Error code %d, message: %r' % (exit_status,
+                                                         stderr.read()))
+    return ssh
