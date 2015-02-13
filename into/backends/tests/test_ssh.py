@@ -15,8 +15,10 @@ from into.backends.ssh import SSH, resource, ssh_pattern, sftp, drop, connect
 from into.backends.csv import CSV
 from into import into, discover, CSV, JSONLines, JSON, convert
 from into.temp import _Temp, Temp
-from into.compatibility import skipif, ON_TRAVIS_CI
+from into.compatibility import ON_TRAVIS_CI
 import socket
+
+skipif = pytest.mark.skipif
 
 try:
     ssh = connect(hostname='localhost')
@@ -157,8 +159,8 @@ def test_convert_through_temporary_local_storage():
         assert (into(np.ndarray, sjson) == into(np.ndarray, df)).all()
 
 
-@pytest.mark.skipif(ON_TRAVIS_CI and sys.version_info[:2] == (3, 3),
-                    reason='Strange hanging on travis for python33')
+@skipif(ON_TRAVIS_CI and sys.version_info[:2] == (3, 3),
+        reason='Strange hanging on travis for python33')
 def test_ssh_csv_to_s3_csv():
     # for some reason this can only be run in the same file as other ssh tests
     # and must be a Temp(SSH(CSV)) otherwise tests above this one fail
@@ -171,8 +173,8 @@ def test_ssh_csv_to_s3_csv():
             assert discover(result) == discover(resource(b))
 
 
-@pytest.mark.skipif(ON_TRAVIS_CI and sys.version_info[:2] == (3, 3),
-                    reason='windows does not have an SSH daemon on localhost')
+@skipif(ON_TRAVIS_CI and sys.version_info[:2] == (3, 3),
+        reason='windows does not have an SSH daemon on localhost')
 def test_s3_to_ssh():
     pytest.importorskip('boto')
 
