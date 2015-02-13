@@ -1,16 +1,18 @@
 from __future__ import absolute_import, division, print_function
 
+import pytest
 from into.convert import (convert, list_to_numpy, iterator_to_numpy_chunks,
-        numpy_to_chunks_numpy, dataframe_to_chunks_dataframe,
-        chunks_dataframe_to_dataframe)
+                          dataframe_to_chunks_dataframe, numpy_to_chunks_numpy,
+                          chunks_dataframe_to_dataframe)
 from into.chunks import chunks
 from datashape import discover, dshape
-from toolz import first
 from collections import Iterator
 import datetime
 import datashape
 import numpy as np
 import pandas as pd
+import pandas.util.testing as tm
+
 
 def test_basic():
     assert convert(tuple, [1, 2, 3]) == (1, 2, 3)
@@ -86,10 +88,24 @@ def test_list_to_numpy():
     assert (x == [1, 2, 3]).all()
     assert isinstance(x, np.ndarray)
 
-
     ds = datashape.dshape('3 * ?int32')
     x = list_to_numpy([1, None, 3], dshape=ds)
     assert np.isnan(x[1])
+
+
+def test_list_of_single_element_tuples_to_series():
+    data = [(1,), (2,), (3,)]
+    ds = datashape.dshape('3 * {id: int64}')
+    result = convert(pd.Series, data, dshape=ds)
+    expected = pd.Series([1, 2, 3], name='id')
+    tm.assert_series_equal(result, expected)
+
+
+def test_cannot_convert_to_series_from_more_than_one_column():
+    data = [(1, 2), (2, 3), (3, 4)]
+    ds = datashape.dshape('3 * {id: int64, id2: int64}')
+    with pytest.raises(ValueError):
+        convert(pd.Series, data, dshape=ds)
 
 
 def test_list_to_numpy_on_tuples():

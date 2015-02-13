@@ -31,6 +31,12 @@ def numpy_to_dataframe(x, **kwargs):
 
 @convert.register(pd.Series, np.ndarray, cost=1.0)
 def numpy_to_series(x, **kwargs):
+    names = x.dtype.names
+    if names is not None:
+        if len(names) > 1:
+            raise ValueError('passed in an ndarray with more than 1 column')
+        name, = names
+        return pd.Series(x[name], name=name)
     return pd.Series(x)
 
 
