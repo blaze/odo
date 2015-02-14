@@ -34,14 +34,13 @@ def iterable_to_sql_context(ctx, seq, **kwargs):
 
 
 @append.register(SQLContext, (JSONLines, Directory(JSONLines)))
-def jsonlines_to_sparksql(ctx, json, dshape=None, name=None,
+def jsonlines_to_sparksql(ctx, json, dshape=None, name=None, schema=None,
                           samplingRatio=0.25, **kwargs):
-    if dshape is not None:
+    # if we're passing in schema, assume that we know what we're doing and
+    # bypass any automated dshape inference
+    if dshape is not None and schema is None:
         schema = dshape_to_schema(dshape.measure
                                   if isrecord(dshape.measure) else dshape)
-    else:
-        # let spark figure it out
-        schema = None
     srdd = ctx.jsonFile(json.path, schema=schema, samplingRatio=samplingRatio)
     ctx.registerRDDAsTable(srdd, name or next(_names))
     return srdd
