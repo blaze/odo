@@ -34,6 +34,11 @@ def anything_to_spark_context(sc, o, **kwargs):
     return append(sc, convert(list, o, **kwargs), **kwargs)
 
 
+@append.register(RDD, RDD)
+def append_rdd_to_rdd(a, b, **kwargs):
+    return a.union(b)
+
+
 @convert.register(list, (RDD, PipelinedRDD, SchemaRDD))
 def rdd_to_list(rdd, **kwargs):
     return rdd.collect()

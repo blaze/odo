@@ -18,6 +18,7 @@ import pandas as pd
 
 import datashape
 from datashape import dshape
+from toolz import concat
 from into import into, discover, Directory, JSONLines
 from into.utils import tmpfile, ignoring
 from into.backends.sparksql import schema_to_dshape, dshape_to_schema
@@ -173,3 +174,11 @@ def test_s3_json_to_sparksql(ctx):
     srdd = into(ctx, tips)
     assert (set(map(frozenset, into(list, srdd))) ==
             set(map(lambda x: frozenset(x.values()), into(list, tips))))
+
+
+def test_append_srdd_to_srdd(ctx):
+    rdd = ctx.table('t')
+    result = into(rdd, rdd)
+    rdd_list = into(list, rdd)
+    assert (set(map(frozenset, result.collect())) ==
+            set(map(frozenset, concat((rdd_list, rdd_list)))))

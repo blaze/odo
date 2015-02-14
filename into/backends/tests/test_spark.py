@@ -6,7 +6,8 @@ pytest.importorskip('pyspark')
 
 import os
 from datashape import dshape
-from into import into, discover, resource, CSV, S3
+from into import into, discover, CSV, S3
+from toolz import concat
 from pyspark import RDD
 from pyspark.rdd import PipelinedRDD
 from pyspark.sql import SchemaRDD, Row
@@ -69,3 +70,10 @@ def test_skip_header_from_csv(sc):
     tips = S3(CSV)('s3://nyqpug/tips.csv')
     rdd = into(sc, tips, minPartitions=5)
     assert set(rdd.first()) != set(discover(tips).measure.names)
+
+
+def test_append_rdd_to_rdd(rdd):
+    result = into(rdd, rdd)
+    rdd_list = into(list, rdd)
+    assert (set(map(frozenset, result.collect())) ==
+            set(map(frozenset, concat((rdd_list, rdd_list)))))
