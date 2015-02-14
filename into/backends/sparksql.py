@@ -3,10 +3,12 @@ from __future__ import division, print_function, absolute_import
 import itertools
 import datashape
 from datashape import dshape, Record, DataShape, Option, Tuple
-from datashape.predicates import isdimension
+from datashape.predicates import isdimension, isrecord
 from toolz import valmap
 
 from .. import append, discover
+from ..directory import Directory
+from .json import JSONLines
 from .spark import RDD, SchemaRDD, Dummy
 
 
@@ -29,6 +31,19 @@ _names = ('tmp%d' % i for i in itertools.count())
 @append.register(SQLContext, object)
 def iterable_to_sql_context(ctx, seq, **kwargs):
     return append(ctx, append(ctx._sc, seq, **kwargs), **kwargs)
+
+
+@append.register(SQLContext, (JSONLines, Directory(JSONLines)))
+def jsonlines_to_sparksql(ctx, json, dshape=None, name=None, schema=None,
+                          samplingRatio=0.25, **kwargs):
+    # if we're passing in schema, assume that we know what we're doing and
+    # bypass any automated dshape inference
+    if dshape is not None and schema is None:
+        schema = dshape_to_schema(dshape.measure
+                                  if isrecord(dshape.measure) else dshape)
+    srdd = ctx.jsonFile(json.path, schema=schema)
+    ctx.registerRDDAsTable(srdd, name or next(_names))
+    return srdd
 
 
 @append.register(SQLContext, RDD)
