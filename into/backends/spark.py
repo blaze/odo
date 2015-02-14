@@ -16,9 +16,11 @@ except (AttributeError, ImportError):
     pyspark = Dummy()
 
 
-from toolz import memoize
+from toolz import memoize, drop
 from datashape import var
 
+from .csv import CSV, infer_header, get_delimiter
+from .aws import S3, get_s3n_path
 from .. import convert, append, discover
 
 
@@ -49,3 +51,30 @@ SQLContext = memoize(SQLContext)
 @convert.register(SchemaRDD, (RDD, PipelinedRDD))
 def rdd_to_schema_rdd(rdd, **kwargs):
     return append(SQLContext(rdd.context), rdd, **kwargs)
+
+
+@append.register(SparkContext, S3(CSV))
+def s3_csv_to_rdd(sc, s3, dshape=None, use_unicode=False, minPartitions=None,
+                  **kwargs):
+    """Convert an S3(CSV) file to a Spark RDD.
+
+    Notes
+    -----
+    Performs no type inference.
+    """
+    # spark only accepts s3n://
+    path = get_s3n_path(s3.path)
+
+    # load up our CSV file
+    rdd = sc.textFile(path, minPartitions=minPartitions,
+                      use_unicode=use_unicode)
+
+    sep = s3.dialect.get('delimiter') or get_delimiter(s3)
+
+    # split by our delimiter and strip off extra whitespace
+    split = rdd.map(lambda x, sep=sep: tuple(s.strip() for s in x.split(sep)))
+
+    # remove the first line if we have a header
+    if infer_header(s3) if s3.has_header is None else s3.has_header:
+        return split.mapPartitionsWithIndex(lambda _, it: drop(1, it))
+    return split
