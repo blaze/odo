@@ -88,15 +88,19 @@ The main paths into and out of ``RDD`` and ``SchemaRDD`` are through Python
    SchemaRDD <-> list
 
 
-Additionally, there's a specialized one-way path for going directly to
-``SchemaRDD`` from ``RDD``:
+There are a few specialized, one-way paths for ``RDD``s that take advantage of
+Spark's built-in loaders:
 
 ::
 
    RDD -> SchemaRDD
+   S3(CSV) -> RDD
+   S3(JSONLines) -> RDD
+   CSV -> RDD
+   JSONLines -> RDD
+
 
 TODO
 ----
 * Resource/URIs
-* Native loaders for JSON and possibly CSV
 * HDFS integration
