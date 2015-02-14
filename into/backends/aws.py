@@ -31,8 +31,11 @@ def get_s3n_path(path):
     >>> uri = 's3://nyqpug/tips.csv'
     >>> get_s3n_path(uri)
     's3n://nyqpug/tips.csv'
+    >>> uri = 's3n://nyqpug/tips.csv'
+    >>> get_s3n_path(uri)
+    's3n://nyqpug/tips.csv'
     """
-    return re.sub('^(s3)', r'\1n', path)
+    return re.sub('^(s3)(?=:)', r'\1n', path)
 
 
 @memoize
