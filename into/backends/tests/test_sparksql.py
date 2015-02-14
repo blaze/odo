@@ -146,3 +146,19 @@ def test_load_from_dir_of_jsonlines(ctx):
         result = into(ctx, Directory(JSONLines)(d))
         assert (set(map(frozenset, into(list, result))) ==
                 set(map(frozenset, into(list, expected))))
+
+
+def test_s3_csv_to_sparksql(ctx):
+    pytest.importorskip('boto')
+    tips = 's3://nyqpug/tips.csv'
+    srdd = into(ctx, tips)
+    assert (set(map(frozenset, into(list, srdd))) ==
+            set(map(frozenset, into(list, tips))))
+
+
+def test_s3_json_to_sparksql(ctx):
+    pytest.importorskip('boto')
+    tips = 's3://nyqpug/tips.json'
+    srdd = into(ctx, tips)
+    assert (set(map(frozenset, into(list, srdd))) ==
+            set(map(lambda x: frozenset(x.values()), into(list, tips))))
