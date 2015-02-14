@@ -41,7 +41,7 @@ def jsonlines_to_sparksql(ctx, json, dshape=None, name=None, schema=None,
     if dshape is not None and schema is None:
         schema = dshape_to_schema(dshape.measure
                                   if isrecord(dshape.measure) else dshape)
-    srdd = ctx.jsonFile(json.path, schema=schema)
+    srdd = ctx.jsonFile(json.path, schema=schema, samplingRatio=samplingRatio)
     ctx.registerRDDAsTable(srdd, name or next(_names))
     return srdd
 
