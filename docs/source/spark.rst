@@ -88,7 +88,7 @@ The main paths into and out of ``RDD`` and ``SchemaRDD`` are through Python
    SchemaRDD <-> list
 
 
-There are a few specialized, one-way paths for ``RDD``s that take advantage of
+There are a few specialized, one-way paths for ``RDD`` that take advantage of
 Spark's built-in loaders:
 
 ::
