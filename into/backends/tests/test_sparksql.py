@@ -4,6 +4,7 @@ import pytest
 
 pyspark = pytest.importorskip('pyspark')
 
+import os
 import shutil
 import tempfile
 from contextlib import contextmanager
@@ -148,6 +149,13 @@ def test_load_from_dir_of_jsonlines(ctx):
                 set(map(frozenset, into(list, expected))))
 
 
+has_environment_creds = ('AWS_ACCESS_KEY_ID' in os.environ and
+                         'AWS_SECRET_ACCESS_KEY' in os.environ)
+
+
+@pytest.mark.skipif(not has_environment_creds,
+                    reason=('Need environment variables AWS_ACCESS_KEY_ID and '
+                            'AWS_SECRET_ACCESS_KEY'))
 def test_s3_csv_to_sparksql(ctx):
     pytest.importorskip('boto')
     tips = 's3://nyqpug/tips.csv'
@@ -156,6 +164,9 @@ def test_s3_csv_to_sparksql(ctx):
             set(map(frozenset, into(list, tips))))
 
 
+@pytest.mark.skipif(not has_environment_creds,
+                    reason=('Need environment variables AWS_ACCESS_KEY_ID and '
+                            'AWS_SECRET_ACCESS_KEY'))
 def test_s3_json_to_sparksql(ctx):
     pytest.importorskip('boto')
     tips = 's3://nyqpug/tips.json'
