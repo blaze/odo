@@ -61,6 +61,9 @@ has_environment_creds = ('AWS_ACCESS_KEY_ID' in os.environ and
                          'AWS_SECRET_ACCESS_KEY' in os.environ)
 
 
+@pytest.mark.skipif(not has_environment_creds,
+                    reason=('Need environment variables AWS_ACCESS_KEY_ID and '
+                            'AWS_SECRET_ACCESS_KEY'))
 def test_skip_header_from_csv(sc):
     pytest.importorskip('boto')
     tips = S3(CSV)('s3://nyqpug/tips.csv')
