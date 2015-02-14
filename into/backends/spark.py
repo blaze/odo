@@ -74,7 +74,10 @@ def s3_csv_to_rdd(sc, s3, dshape=None, use_unicode=False, minPartitions=None,
     # split by our delimiter and strip off extra whitespace
     split = rdd.map(lambda x, sep=sep: tuple(s.strip() for s in x.split(sep)))
 
-    # remove the first line if we have a header
+    # remove the first line if we have a header, assuming it's on the first
+    # partition
     if infer_header(s3) if s3.has_header is None else s3.has_header:
-        return split.mapPartitionsWithIndex(lambda _, it: drop(1, it))
+        return split.mapPartitionsWithIndex(lambda idx, it: (drop(1, it)
+                                                             if not idx
+                                                             else it))
     return split
