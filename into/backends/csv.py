@@ -12,9 +12,10 @@ import os
 import gzip
 import bz2
 import uuid
+from csv import Sniffer
 
 from ..compatibility import unicode
-from ..utils import keywords, ext
+from ..utils import keywords, ext, sample
 from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
@@ -275,6 +276,15 @@ def infer_header(csv, encoding='utf-8', **kwargs):
     return (len(df) > 0 and
             all(re.match('^\s*\D\w*\s*$', n) for n in df.columns) and
             not all(dt == 'O' for dt in df.dtypes))
+
+
+def get_delimiter(csv, length=8192):
+    """Figure out the delimiter of a CSV file.
+    """
+    sniffer = Sniffer()
+    with sample(csv, length=length) as fn:
+        with open(fn, mode='rb') as f:
+            return sniffer.sniff(f.read()).delimiter
 
 
 ooc_types.add(CSV)
