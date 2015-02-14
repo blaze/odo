@@ -18,6 +18,8 @@ We recommend you install Spark via ``conda`` from the ``blaze``
 
    $ conda install pyhive spark -c blaze
 
+This will install Spark 1.2.0.
+
 The package works well on Ubuntu Linux and Mac OS X. Other issues may arise
 when installing this package on a non-Ubuntu Linux distro. There's a
 `known issue <https://github.com/quasiben/backend-recipes/issues/1>`_ with
