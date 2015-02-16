@@ -64,6 +64,7 @@ Formats
    ssh
    hdfs
    aws
+   spark
 
 
 Developer documentation

@@ -4,6 +4,10 @@ import pytest
 
 pyspark = pytest.importorskip('pyspark')
 
+import shutil
+import tempfile
+from contextlib import contextmanager
+
 from pyspark.sql import SchemaRDD, Row
 from pyspark.sql import ArrayType, StructField, StructType, IntegerType
 from pyspark.sql import StringType
@@ -13,8 +17,8 @@ import pandas as pd
 
 import datashape
 from datashape import dshape
-from into import into, discover
-from into.utils import tmpfile
+from into import into, discover, Directory, JSONLines
+from into.utils import tmpfile, ignoring
 from into.backends.sparksql import schema_to_dshape, dshape_to_schema
 
 
@@ -104,3 +108,41 @@ def test_dshape_to_schema():
             [StructField('name', StringType(), False),
              StructField('amount', IntegerType(), True)]),
         False)
+
+
+def test_load_from_jsonlines(ctx):
+    with tmpfile('.json') as fn:
+        js = into('jsonlines://%s' % fn, df)
+        result = into(ctx, js, name='r')
+        assert (list(map(set, into(list, result))) ==
+                list(map(set, into(list, df))))
+
+
+@contextmanager
+def jslines(n=3):
+    d = tempfile.mkdtemp()
+    files = []
+    dfc = df.copy()
+    for i in range(n):
+        _, fn = tempfile.mkstemp(suffix='.json', dir=d)
+        dfc['id'] += i
+        into('jsonlines://%s' % fn, dfc)
+        files.append(fn)
+
+    yield d
+
+    with ignoring(OSError):
+        shutil.rmtree(d)
+
+
+def test_load_from_dir_of_jsonlines(ctx):
+    dfs = []
+    dfc = df.copy()
+    for i in range(3):
+        dfc['id'] += i
+        dfs.append(dfc.copy())
+    expected = pd.concat(dfs, axis=0, ignore_index=True)
+    with jslines() as d:
+        result = into(ctx, Directory(JSONLines)(d))
+        assert (set(map(frozenset, into(list, result))) ==
+                set(map(frozenset, into(list, expected))))

@@ -41,7 +41,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'into'
-copyright = u'2014, Matthew Rocklin'
+copyright = u'2014, Continuum Analytics'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -214,7 +214,7 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'into', u'into Documentation',
-     [u'Matthew Rocklin'], 1)
+     [u'Continuum Analytics'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -228,7 +228,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   ('index', 'into', u'into Documentation',
-   u'Matthew Rocklin', 'into', 'One line description of project.',
+   u'Continuum Analytics', 'into', 'One line description of project.',
    'Miscellaneous'),
 ]
 
@@ -247,8 +247,8 @@ texinfo_documents = [
 # Bibliographic Dublin Core info.
 epub_title = u'into'
 epub_author = u'Matthew Rocklin'
-epub_publisher = u'Matthew Rocklin'
-epub_copyright = u'2014, Matthew Rocklin'
+epub_publisher = u'Continuum Analytics'
+epub_copyright = u'2014, Continuum Analytics'
 
 # The language of the text. It defaults to the language option
 # or en if the language is not set.
