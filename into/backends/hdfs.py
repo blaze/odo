@@ -70,15 +70,24 @@ def HDFS(cls):
     return type('HDFS(%s)' % cls.__name__, (_HDFS, cls), {'subtype':  cls})
 
 
-@sample.register(HDFS(CSV))
+@sample.register(_HDFS)
 @contextmanager
 def sample_hdfs_csv(data, length=10000):
     sample = data.hdfs.read_file(data.path.lstrip('/'), length=length)
-    with tmpfile('.csv') as fn:
+    with tmpfile(data.canonical_extension) as fn:
         with open(fn, 'w') as f:
             f.write(sample)
 
         yield fn
+
+
+@discover.register(HDFS(JSON))
+@discover.register(HDFS(JSONLines))
+@discover.register(HDFS(TextFile))
+def discover_hdfs_file(data, **kwargs):
+    with sample(data) as fn:
+        result = discover(data.subtype(fn, **kwargs))
+    return result
 
 
 @discover.register(HDFS(CSV))
@@ -439,7 +448,7 @@ def dialect_of(data, **kwargs):
 
         # Get sample text
         with open(data.path, 'r') as f:
-            text = f.read(1000)
+            text = f.read()
 
         result = dict()
 
@@ -483,6 +492,15 @@ def resource_hdfs(uri, **kwargs):
         subtype = type(resource(path))
 
     return HDFS(subtype)(path, **kwargs)
+
+
+@append.register(HDFS(TextFile), object)
+@append.register(HDFS(JSONLines), object)
+@append.register(HDFS(JSON), object)
+@append.register(HDFS(CSV), object)
+def append_object_to_hdfs(target, source, **kwargs):
+    tmp = convert(Temp(target.subtype), source, **kwargs)
+    return append(target, tmp, **kwargs)
 
 
 @append.register(HDFS(TextFile), SSH(TextFile))

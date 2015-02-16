@@ -122,7 +122,6 @@ def sample_ssh(data, lines=500):
         with open(fn, 'w') as f:
             for line in take(lines, data.lines()):
                 f.write(line)
-                f.write('\n')
         yield fn
 
 

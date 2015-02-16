@@ -12,6 +12,8 @@ pytestmark = pytest.mark.skipif(host is None,
 
 from pywebhdfs.webhdfs import PyWebHdfsClient
 
+import pandas as pd
+import numpy as np
 import uuid
 from into.backends.hdfs import discover, HDFS, CSV, SSH
 from into.backends.sql import resource
@@ -230,3 +232,10 @@ def test_hive_resource():
     db = resource('hive://%s/' % host)
     assert isinstance(db, sa.engine.Engine)
     assert str(db.url) == 'hive://hdfs@%s:10000/default' % host
+
+
+def test_append_object_to_HDFS_foo():
+    df = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]})
+    with tmpfile_hdfs('json') as fn:
+        js = into('hdfs://%s:%s' % (host, fn), df, hdfs=hdfs)
+        assert (into(np.ndarray, js) == into(np.ndarray, df)).all()
