@@ -12,7 +12,7 @@ import pandas as pd
 from toolz import memoize
 
 from .. import (discover, CSV, resource, append, convert, drop, Temp, JSON,
-                SSH, JSONLines, into, chunks, HDFS)
+                JSONLines, into, chunks)
 
 from multipledispatch import MDNotImplementedError
 
@@ -20,7 +20,6 @@ from .text import TextFile
 
 from ..compatibility import urlparse
 from ..utils import tmpfile, ext, sample, filter_kwargs
-from .ssh import connect, _SSH
 
 
 @memoize
@@ -218,37 +217,47 @@ def append_text_to_s3(s3, data, **kwargs):
     return s3
 
 
-@append.register(S3(JSON), SSH(JSON))
-@append.register(S3(JSONLines), SSH(JSONLines))
-@append.register(S3(CSV), SSH(CSV))
-@append.register(S3(TextFile), SSH(TextFile))
-def remote_text_to_s3_text(a, b, **kwargs):
-    return append(a, convert(Temp(b.subtype), b, **kwargs), **kwargs)
+try:
+    from .hdfs import HDFS
+except ImportError:
+    pass
+else:
+    @append.register(S3(JSON), HDFS(JSON))
+    @append.register(S3(JSONLines), HDFS(JSONLines))
+    @append.register(S3(CSV), HDFS(CSV))
+    @append.register(S3(TextFile), HDFS(TextFile))
+    @append.register(HDFS(JSON), S3(JSON))
+    @append.register(HDFS(JSONLines), S3(JSONLines))
+    @append.register(HDFS(CSV), S3(CSV))
+    @append.register(HDFS(TextFile), S3(TextFile))
+    def other_remote_text_to_s3_text(a, b, **kwargs):
+        raise MDNotImplementedError()
 
 
-@append.register(S3(JSON), HDFS(JSON))
-@append.register(S3(JSONLines), HDFS(JSONLines))
-@append.register(S3(CSV), HDFS(CSV))
-@append.register(S3(TextFile), HDFS(TextFile))
-@append.register(HDFS(JSON), S3(JSON))
-@append.register(HDFS(JSONLines), S3(JSONLines))
-@append.register(HDFS(CSV), S3(CSV))
-@append.register(HDFS(TextFile), S3(TextFile))
-def other_remote_text_to_s3_text(a, b, **kwargs):
-    raise MDNotImplementedError()
+try:
+    from .ssh import connect, _SSH, SSH
+except ImportError:
+    pass
+else:
+    @append.register(S3(JSON), SSH(JSON))
+    @append.register(S3(JSONLines), SSH(JSONLines))
+    @append.register(S3(CSV), SSH(CSV))
+    @append.register(S3(TextFile), SSH(TextFile))
+    def remote_text_to_s3_text(a, b, **kwargs):
+        return append(a, convert(Temp(b.subtype), b, **kwargs), **kwargs)
 
 
-@append.register(_SSH, _S3)
-def s3_to_ssh(ssh, s3, url_timeout=600, **kwargs):
-    if s3.s3.anon:
-        url = 'https://%s.s3.amazonaws.com/%s' % (s3.bucket, s3.object.name)
-    else:
-        url = s3.object.generate_url(url_timeout)
-    command = "wget '%s' -qO- >> '%s'" % (url, ssh.path)
-    conn = connect(**ssh.auth)
-    _, stdout, stderr = conn.exec_command(command)
-    exit_status = stdout.channel.recv_exit_status()
-    if exit_status:
-        raise ValueError('Error code %d, message: %r' % (exit_status,
-                                                         stderr.read()))
-    return ssh
+    @append.register(_SSH, _S3)
+    def s3_to_ssh(ssh, s3, url_timeout=600, **kwargs):
+        if s3.s3.anon:
+            url = 'https://%s.s3.amazonaws.com/%s' % (s3.bucket, s3.object.name)
+        else:
+            url = s3.object.generate_url(url_timeout)
+        command = "wget '%s' -qO- >> '%s'" % (url, ssh.path)
+        conn = connect(**ssh.auth)
+        _, stdout, stderr = conn.exec_command(command)
+        exit_status = stdout.channel.recv_exit_status()
+        if exit_status:
+            raise ValueError('Error code %d, message: %r' % (exit_status,
+                                                             stderr.read()))
+        return ssh
