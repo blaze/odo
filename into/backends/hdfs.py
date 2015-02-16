@@ -9,12 +9,13 @@ import os
 from .csv import CSV
 from .json import JSON, JSONLines
 from .text import TextFile
+import pandas as pd
 import uuid
 import datashape
 import sqlalchemy as sa
 from datashape import discover, dshape
 from datashape import coretypes as ct
-from collections import namedtuple
+from collections import namedtuple, Iterator
 from contextlib import contextmanager
 from .ssh import SSH, _SSH
 from .sql import metadata_of_engine, sa
@@ -22,6 +23,7 @@ from ..utils import tmpfile, sample, ignoring, raises
 from ..temp import Temp
 from ..append import append
 from ..convert import convert
+from ..chunks import chunks
 from ..resource import resource
 from ..directory import _Directory, Directory
 from ..compatibility import unicode
@@ -494,10 +496,10 @@ def resource_hdfs(uri, **kwargs):
     return HDFS(subtype)(path, **kwargs)
 
 
-@append.register(HDFS(TextFile), object)
-@append.register(HDFS(JSONLines), object)
-@append.register(HDFS(JSON), object)
-@append.register(HDFS(CSV), object)
+@append.register(HDFS(TextFile), (Iterator, object))
+@append.register(HDFS(JSONLines), (Iterator, object))
+@append.register(HDFS(JSON), (list, object))
+@append.register(HDFS(CSV), (chunks(pd.DataFrame), pd.DataFrame, object))
 def append_object_to_hdfs(target, source, **kwargs):
     tmp = convert(Temp(target.subtype), source, **kwargs)
     return append(target, tmp, **kwargs)
