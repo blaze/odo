@@ -8,6 +8,7 @@ import inspect
 import datetime
 import tempfile
 import os
+import shutil
 import numpy as np
 from .compatibility import unicode
 
@@ -54,7 +55,10 @@ def tmpfile(extension=''):
     yield filename
 
     if os.path.exists(filename):
-        os.remove(filename)
+        if os.path.isdir(filename):
+            shutil.rmtree(filename)
+        else:
+            os.remove(filename)
 
 
 def keywords(func):

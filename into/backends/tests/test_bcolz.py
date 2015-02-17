@@ -5,7 +5,7 @@ from into.backends.bcolz import (append, convert, ctable, carray, resource,
 from into.chunks import chunks
 from into import append, convert, discover, into
 import numpy as np
-from into.utils import tmpfile, ignoring
+from into.utils import tmpfile, ignoring, filetext
 from contextlib import contextmanager
 import shutil
 import os
@@ -174,3 +174,13 @@ def test_resource_shape():
         assert b.shape == (10, 10)
     with tmpbcolz(dshape='var * 10 * int') as b:
         assert b.shape == (0, 10)
+
+
+def test_csv_to_bcolz():
+    with filetext('name,runway,takeoff,datetime_nearest_close\n'
+                  'S28,28,TRUE,A\n'
+                  'S16,16,TRUE,Q\n'
+                  'L14,14,FALSE,I', extension='csv') as src:
+        with tmpfile('bcolz') as tgt:
+            bc = into(tgt, src)
+            assert len(bc) == 3
