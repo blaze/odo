@@ -53,7 +53,7 @@ def execute_copy_sqlite(dialect, engine, statement):
     ps = subprocess.Popen(statement, shell=True,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     stdout, stderr = ps.communicate()
-    if stderr is not None:
+    if stderr is not None or 'not recognized' in stdout:
         raise MDNotImplementedError(stderr)
     return stdout
 
