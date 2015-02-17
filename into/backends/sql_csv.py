@@ -54,7 +54,7 @@ def execute_copy_sqlite(dialect, engine, statement):
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     stdout, stderr = ps.communicate()
     # Windows sometimes doesn't have sqlite3.exe
-    if os.name == 'nt' and (stderr is not None or 'not recognized' in stdout):
+    if os.name == 'nt' and (stderr or 'not recognized' in str(stdout)):
         raise MDNotImplementedError(stderr)
     return stdout
 
