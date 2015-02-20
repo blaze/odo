@@ -1,8 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
+try:
+    import h5py  #  h5py has precedence over pytables
+except:
+    pass
 from multipledispatch import halt_ordering, restart_ordering
 
-halt_ordering() # Turn off multipledispatch ordering
+halt_ordering()  # Turn off multipledispatch ordering
 
 from .utils import ignoring
 from .convert import convert
@@ -12,48 +16,58 @@ from .directory import Directory
 from .into import into
 from .drop import drop
 from .temp import Temp
+from .backends.text import TextFile
 from .chunks import chunks, Chunks
 from datashape import discover, dshape
-from collections import Iterator
 import numpy as np
 
 with ignoring(ImportError):
-     from .backends.sas import sas7bdat
+    from .backends.sas import sas7bdat
 with ignoring(ImportError):
-     from .backends.pandas import pd
+    from .backends.pandas import pd
 with ignoring(ImportError):
-     from .backends.bcolz import bcolz
+    from .backends.bcolz import bcolz
 with ignoring(ImportError):
-     from .backends.h5py import h5py
+    from .backends.h5py import h5py
 with ignoring(ImportError):
-     from .backends.hdfstore import HDFStore
+    from .backends.hdfstore import HDFStore
 with ignoring(ImportError):
-     from .backends.pytables import tables
+    from .backends.pytables import tables
 with ignoring(ImportError):
-     from .backends.dynd import nd
+    from .backends.dynd import nd
 with ignoring(ImportError):
-     from .backends import sql
+    from .backends import sql
 with ignoring(ImportError):
-     from .backends import mongo
+    from .backends import mongo
 with ignoring(ImportError):
-     from .backends.csv import CSV
+    from .backends.csv import CSV
 with ignoring(ImportError):
-     from .backends.json import JSON, JSONLines
+    from .backends.json import JSON, JSONLines
 with ignoring(ImportError):
-     from .backends.hdfs import HDFS
+    from .backends.hdfs import HDFS
 with ignoring(ImportError):
-     from .backends.ssh import SSH
+    from .backends.ssh import SSH
 with ignoring(ImportError):
-     from .backends import sql_csv
+    from .backends import sql_csv
+with ignoring(ImportError):
+    from .backends.aws import S3
+with ignoring(ImportError):
+    from .backends import sql_csv
+with ignoring(ImportError):
+    from .backends.bokeh import ColumnDataSource
+with ignoring(ImportError):
+    from .backends.spark import RDD
+with ignoring(ImportError):
+    from .backends.sparksql import SchemaRDD
 
 try:
     from .backends import iopro
 except:
     pass
 
-restart_ordering() # Restart multipledispatch ordering and do ordering
+restart_ordering()  # Restart multipledispatch ordering and do ordering
 
-__version__ = '0.1.3'
+__version__ = '0.2.2'
 
 
 def test(verbose=False, junitfile=None, exit=False):

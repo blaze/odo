@@ -35,6 +35,8 @@ class JSON(object):
 
     JSONLines - Line-delimited JSON
     """
+    canonical_extension = 'json'
+
     def __init__(self, path, **kwargs):
         self.path = path
 
@@ -55,6 +57,8 @@ class JSONLines(object):
 
     JSON - Not-line-delimited JSON
     """
+    canonical_extension = 'json'
+
     def __init__(self, path, **kwargs):
         self.path = path
 

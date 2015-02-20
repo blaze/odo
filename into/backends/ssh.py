@@ -2,39 +2,51 @@ from __future__ import absolute_import, division, print_function
 
 import paramiko
 from contextlib import contextmanager
-from toolz import keyfilter, memoize, take
+from toolz import keyfilter, memoize, take, curry
 from datashape import discover
 import re
 import uuid
 
-from ..directory import _Directory, Directory
-from ..utils import keywords, tmpfile, sample
+from ..directory import Directory
+from ..utils import keywords, tmpfile, sample, ignoring
 from ..resource import resource
 from ..append import append
 from ..convert import convert
-from ..temp import Temp
+from ..temp import Temp, _Temp
 from ..drop import drop
 from .csv import CSV
 from .json import JSON, JSONLines
+from .text import TextFile
 
-@contextmanager
+connection_pool = dict()
+
 def connect(**auth):
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(**auth)
+    key = tuple(sorted(auth.items()))
+    if key in connection_pool:
+        ssh = connection_pool[key]
+        if not ssh.get_transport() or not ssh.get_transport().is_active():
+            ssh.connect(**auth)
+    else:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(**auth)
+        connection_pool[key] = ssh
+    return ssh
 
-    try:
-        yield ssh
-    finally:
-        ssh.close()
+sftp_pool = dict()
 
-
-@contextmanager
 def sftp(**auth):
-    with connect(**auth) as ssh:
-        sftp = ssh.open_sftp()
+    ssh = connect(**auth)  # Need to call this explicitly (can't memoize)
+    key = tuple(sorted(auth.items()))
+    if key in sftp_pool:
+        conn = sftp_pool[key]
+    else:
+        conn = ssh.open_sftp()
+        sftp_pool[key] = conn
 
-        yield sftp
+    conn.sock.setblocking(True)
+
+    return conn
 
 
 class _SSH(object):
@@ -62,9 +74,8 @@ class _SSH(object):
         self.subtype.__init__(self, *args, **kwargs)
 
     def lines(self):
-        with sftp(**self.auth) as conn:
-            for line in conn.file(self.path, 'r'):
-                yield line
+        conn = sftp(**self.auth)
+        return conn.file(self.path, 'r')
 
 
 def SSH(cls):
@@ -111,7 +122,6 @@ def sample_ssh(data, lines=500):
         with open(fn, 'w') as f:
             for line in take(lines, data.lines()):
                 f.write(line)
-                f.write('\n')
         yield fn
 
 
@@ -121,11 +131,11 @@ def sample_ssh(data, lines=500):
 @contextmanager
 def sample_ssh(data, **kwargs):
     """ Grab a few lines from a file in a remote directory """
-    with sftp(**data.auth) as conn:
-        fn = data.path + '/' + conn.listdir(data.path)[0]
-        one_file = SSH(data.container)(fn, **data.auth)
-        with sample(one_file, **kwargs) as result:
-            yield result
+    conn = sftp(**data.auth)
+    fn = data.path + '/' + conn.listdir(data.path)[0]
+    one_file = SSH(data.container)(fn, **data.auth)
+    with sample(one_file, **kwargs) as result:
+        yield result
 
 
 @discover.register(_SSH)
@@ -155,16 +165,17 @@ def discover_ssh_json(data, **kwargs):
                     SSH(Directory(JSON)),
                     SSH(Directory(JSONLines))))
 def discover_ssh_directory(data, **kwargs):
-    with sftp(**data.auth) as conn:
-        fn = data.path + '/' + conn.listdir(data.path)[0]
-        one_file = SSH(data.container)(fn, **data.auth)
-        result = discover(one_file)
+    conn = sftp(**data.auth)
+    fn = data.path + '/' + conn.listdir(data.path)[0]
+    one_file = SSH(data.container)(fn, **data.auth)
+    result = discover(one_file)
     return result
 
 
 @drop.register((_SSH, SSH(CSV), SSH(JSON), SSH(JSONLines)))
 def drop_ssh(data, **kwargs):
-    with sftp(**data.auth) as conn:
+    conn = sftp(**data.auth)
+    with ignoring(IOError):
         conn.remove(data.path)
 
 
@@ -173,44 +184,55 @@ def append_anything_to_ssh(target, source, **kwargs):
     if not isinstance(source, target.subtype):
         source = convert(Temp(target.subtype), source, **kwargs)
     # TODO: handle overwrite case
-    with sftp(**target.auth) as conn:
-        conn.put(source.path, target.path)
+    conn = sftp(**target.auth)
+    conn.put(source.path, target.path)
     return target
 
 
+@append.register(TextFile, SSH(TextFile))
 @append.register(JSONLines, SSH(JSONLines))
 @append.register(JSON, SSH(JSON))
 @append.register(CSV, SSH(CSV))
 def append_sshX_to_X(target, source, **kwargs):
     # TODO: handle overwrite case
-    with sftp(**source.auth) as conn:
-        conn.get(source.path, target.path)
+    conn = sftp(**source.auth)
+    conn.get(source.path, target.path)
     return target
 
 
-@convert.register(Temp(SSH(JSONLines)), (Temp(JSONLines), JSONLines))
-def csv_to_temp_ssh_jsonlines(data, **kwargs):
-    fn = '.%s.json' % uuid.uuid1()
-    target = Temp(SSH(JSONLines))(fn, **kwargs)
+@curry
+def file_to_temp_ssh_file(typ, data, **kwargs):
+    """ Generic convert function sending data to ssh(data)
+
+    Needs to be partially evaluated with a type"""
+    # don't use . prefix to hide because Hive doesn't like it
+    fn = '%s.%s' % (uuid.uuid1(), typ.canonical_extension)
+    target = Temp(SSH(typ))(fn, **kwargs)
     return append(target, data, **kwargs)
 
-@convert.register(Temp(SSH(JSON)), (Temp(JSON), JSON))
-def csv_to_temp_ssh_json(data, **kwargs):
-    fn = '.%s.json' % uuid.uuid1()
-    target = Temp(SSH(JSON))(fn, **kwargs)
-    return append(target, data, **kwargs)
-
-@convert.register(Temp(SSH(CSV)), (Temp(CSV), CSV))
-def csv_to_temp_ssh_csv(data, **kwargs):
-    fn = '.%s.csv' % uuid.uuid1()
-    target = Temp(SSH(CSV))(fn, **kwargs)
-    return append(target, data, **kwargs)
+for typ in [CSV, JSON, JSONLines, TextFile]:
+    convert.register(Temp(SSH(typ)), (Temp(typ), typ))(
+            file_to_temp_ssh_file(typ))
 
 
-@convert.register(Temp(JSON), (Temp(SSH(JSON)), SSH(JSON)))
+@convert.register(Temp(TextFile), (Temp(SSH(TextFile)), SSH(TextFile)))
 @convert.register(Temp(JSONLines), (Temp(SSH(JSONLines)), SSH(JSONLines)))
+@convert.register(Temp(JSON), (Temp(SSH(JSON)), SSH(JSON)))
 @convert.register(Temp(CSV), (Temp(SSH(CSV)), SSH(CSV)))
-def ssh_csv_to_temp_csv(data, **kwargs):
+def ssh_file_to_temp_file(data, **kwargs):
     fn = '.%s' % uuid.uuid1()
     target = Temp(data.subtype)(fn, **kwargs)
+    return append(target, data, **kwargs)
+
+
+@convert.register(Temp(SSH(TextFile)), (TextFile, Temp(TextFile)))
+@convert.register(Temp(SSH(JSONLines)), (JSONLines, Temp(JSONLines)))
+@convert.register(Temp(SSH(JSON)), (JSON, Temp(JSON)))
+@convert.register(Temp(SSH(CSV)), (CSV, Temp(CSV)))
+def file_to_temp_ssh_file(data, **kwargs):
+    fn = '%s' % uuid.uuid1()
+    if isinstance(data, _Temp):
+        target = Temp(SSH(data.persistent_type))(fn, **kwargs)
+    else:
+        target = Temp(SSH(type(data)))(fn, **kwargs)
     return append(target, data, **kwargs)

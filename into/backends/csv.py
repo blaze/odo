@@ -1,14 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
-import csv
-
 import re
 import datashape
 from datashape import discover, Record, Option
 from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
-from collections import Iterator
-from toolz import concat, keyfilter, assoc
+from toolz import concat, keyfilter
 import pandas
 import pandas as pd
 import os
@@ -17,7 +14,7 @@ import bz2
 import uuid
 
 from ..compatibility import unicode
-from ..utils import keywords
+from ..utils import keywords, ext
 from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
@@ -28,6 +25,7 @@ from .pandas import coerce_datetimes
 
 dialect_terms = '''delimiter doublequote escapechar lineterminator quotechar
 quoting skipinitialspace strict'''.split()
+
 
 class CSV(object):
     """ Proxy for a CSV file
@@ -44,6 +42,8 @@ class CSV(object):
     kwargs : other...
         Various choices about dialect
     """
+    canonical_extension = 'csv'
+
     def __init__(self, path, has_header='no-input', encoding='utf-8', **kwargs):
         self.path = path
         if has_header == 'no-input':
@@ -100,11 +100,6 @@ def append_iterator_to_csv(c, cs, **kwargs):
     for chunk in cs:
         append(c, chunk, **kwargs)
     return c
-
-
-def ext(path):
-    _, e = os.path.splitext(path)
-    return e.lstrip('.')
 
 
 @convert.register(pd.DataFrame, (Temp(CSV), CSV), cost=20.0)
@@ -215,7 +210,9 @@ def discover_csv(c, nrows=1000, **kwargs):
     measure = discover(df).measure
 
     # Use Series.notnull to determine Option-ness
-    measure2 = Record([[name, Option(typ) if (~df[name].notnull()).any() else typ]
+    measure2 = Record([[name, Option(typ)
+                              if (~df[name].notnull()).any()
+                              and not isinstance(typ, Option) else typ]
                       for name, typ in zip(measure.names, measure.types)])
 
     return datashape.var * measure2
@@ -227,7 +224,7 @@ def resource_csv(uri, **kwargs):
 
 
 from glob import glob
-@resource.register('.+\*.+', priority=12)
+@resource.register('.*\*.+', priority=12)
 def resource_glob(uri, **kwargs):
     filenames = sorted(glob(uri))
     r = resource(filenames[0], **kwargs)
@@ -256,6 +253,28 @@ def convert_dataframes_to_temporary_csv(data, **kwargs):
 @dispatch(CSV)
 def drop(c):
     os.unlink(c.path)
+
+
+def infer_header(csv, encoding='utf-8', **kwargs):
+    """ Guess if csv file has a header or not
+
+    This uses Pandas to read a sample of the file, then looks at the column
+    names to see if they are all word-like.
+
+    Returns True or False
+    """
+    compression = kwargs.pop('compression',
+            {'gz': 'gzip', 'bz2': 'bz2'}.get(ext(csv.path)))
+    # See read_csv docs for header for reasoning
+    try:
+        df = pd.read_csv(csv.path, encoding=encoding,
+                         compression=compression, nrows=5)
+    except StopIteration:
+        df = pd.read_csv(csv.path, encoding=encoding,
+                                  compression=compression)
+    return (len(df) > 0 and
+            all(re.match('^\s*\D\w*\s*$', n) for n in df.columns) and
+            not all(dt == 'O' for dt in df.dtypes))
 
 
 ooc_types.add(CSV)

@@ -1,8 +1,11 @@
 Into
 ====
 
+|Build Status| |Doc Status|
+
 Data migration in Python
 
+Documentation_
 
 Example
 -------
@@ -31,10 +34,10 @@ Into leverages the existing Python ecosystem.  The example above uses
 Method
 ------
 
-Into migrates data using network of small data conversion functions between
+Into migrates data using network of small data conersion functions between
 type pairs. That network is below:
 
-.. image:: https://raw.githubusercontent.com/ContinuumIO/into/master/doc/images/conversions.png
+.. image:: https://raw.githubusercontent.com/ContinuumIO/into/master/docs/source/images/conversions.png
    :alt: into conversions
 
 Each node is a container type (like ``pandas.DataFrame`` or
@@ -94,3 +97,9 @@ Into was factored out from the Blaze_ project.
 
 .. _Blaze: http://blaze.pydata.org/
 .. _networkx: https://networkx.github.io/
+.. _Documentation: https://into.readthedocs.org/en/latest/
+.. |Build Status| image:: https://travis-ci.org/ContinuumIO/into.png
+   :target: https://travis-ci.org/ContinuumIO/into
+.. |Doc Status| image:: https://readthedocs.org/projects/into/badge/?version=latest
+   :target: https://readthedocs.org/projects/into/?badge=latest
+   :alt: Documentation Status

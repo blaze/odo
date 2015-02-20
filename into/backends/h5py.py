@@ -1,15 +1,16 @@
 from __future__ import absolute_import, division, print_function
 
+import h5py
 import os
 
 import datashape
-from datashape import DataShape, Record, to_numpy, to_numpy_dtype, discover
+from datashape import DataShape, Record, to_numpy, discover
 from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
-import h5py
 import numpy as np
 from toolz import keyfilter
 
+from ..numpy_dtype import dshape_to_numpy
 from ..append import append
 from ..convert import convert, ooc_types
 from ..create import create
@@ -137,12 +138,12 @@ def varlen_dtype(dt):
 
 
 def dataset_from_dshape(file, datapath, ds, **kwargs):
-    dtype = varlen_dtype(to_numpy_dtype(ds))
+    dtype = varlen_dtype(dshape_to_numpy(ds))
 
     if datashape.var not in list(ds):
-        shape = to_numpy(ds)[0]
+        shape = tuple(map(int, ds.shape))
     elif datashape.var not in list(ds)[1:]:
-        shape = (0,) + to_numpy(ds.subshape[0])[0]
+        shape = (0,) + tuple(map(int, ds.shape[1:]))
     else:
         raise ValueError("Don't know how to handle varlen nd shapes")
 
@@ -233,6 +234,7 @@ def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
                 datapath, name = datapath.rsplit('/', 1)
                 ds = Record([[name, ds]])
             ds = datashape.dshape(ds)
+        f.close()
         f = create(h5py.File, path=uri, dshape=ds, **kwargs)
     if olddatapath:
         return f[olddatapath]
@@ -252,7 +254,9 @@ def drop(h):
 
 @dispatch(h5py.File)
 def drop(h):
-    os.remove(h.filename)
+    fn = h.filename
+    h.close()
+    os.remove(fn)
 
 
 ooc_types.add(h5py.Dataset)

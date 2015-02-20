@@ -2,10 +2,10 @@ sudo: False
 
 language: python
 python:
-    - "2.6"
-    - "2.7"
-    - "3.3"
-    - "3.4"
+    - 2.6
+    - 2.7
+    - 3.3
+    - 3.4
 
 addons:
   postgresql: "9.3"
@@ -24,14 +24,23 @@ install:
   - conda update conda
 
   # Install dependencies
-  - conda create -n test-environment python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python
+  - conda create -n test-environment python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python pymongo paramiko boto
   - source activate test-environment
 
-  # Install PyMongo
-  - pip install pymongo pymysql paramiko sas7bdat psycopg2
+  # Install various deps
+  - pip install pymysql psycopg2 sas7bdat
 
   # Install DataShape
   - pip install --upgrade git+http://github.com/ContinuumIO/datashape
+
+  # redshift sqlalchemy dialect
+  - pip install --upgrade git+git://github.com/cpcloud/redshift_sqlalchemy
+
+  # install pyspark
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then conda install -c blaze spark; fi
+
+  # Install Bokeh
+  - if [[ $TRAVIS_PYTHON_VERSION > '2.6' ]]; then conda install bokeh; fi
 
   # For bcolz
   - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda install unittest2; fi

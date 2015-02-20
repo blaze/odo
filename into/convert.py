@@ -31,6 +31,12 @@ def numpy_to_dataframe(x, **kwargs):
 
 @convert.register(pd.Series, np.ndarray, cost=1.0)
 def numpy_to_series(x, **kwargs):
+    names = x.dtype.names
+    if names is not None:
+        if len(names) > 1:
+            raise ValueError('passed in an ndarray with more than 1 column')
+        name, = names
+        return pd.Series(x[name], name=name)
     return pd.Series(x)
 
 
@@ -123,7 +129,7 @@ def ishashable(x):
 
 @convert.register(set, (list, tuple), cost=5.0)
 def iterable_to_set(x, **kwargs):
-    if x and isinstance(x[0], Iterable) and not ishashable(x):
+    if x and isinstance(x[0], (tuple, list)) and not ishashable(x):
         x = map(tuple, x)
     return set(x)
 

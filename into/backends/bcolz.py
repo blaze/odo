@@ -7,6 +7,7 @@ from toolz import keyfilter
 import datashape
 from datashape import discover
 import shutil
+from ..numpy_dtype import dshape_to_numpy
 from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
@@ -80,7 +81,7 @@ def resource_bcolz(uri, dshape=None, expected_dshape=None, **kwargs):
                              " valid datashape")
         dshape = datashape.dshape(dshape)
 
-        dt = datashape.to_numpy_dtype(dshape)
+        dt = dshape_to_numpy(dshape)
         shape_tail = tuple(map(int, dshape.shape[1:]))  # tail of shape
         if dshape.shape[0] == datashape.var:
             shape = (0,) + shape_tail
@@ -104,6 +105,7 @@ def resource_bcolz(uri, dshape=None, expected_dshape=None, **kwargs):
 
 @drop.register((carray, ctable))
 def drop_bcolz(b, **kwargs):
+    b.flush()
     shutil.rmtree(b.rootdir)
 
 

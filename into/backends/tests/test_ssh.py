@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function
+
 import pytest
 paramiko = pytest.importorskip('paramiko')
 
@@ -5,21 +7,26 @@ import pandas as pd
 import numpy as np
 import re
 import os
+import sys
 
 from into.utils import tmpfile, filetext
 from into.directory import _Directory, Directory
-from into.backends.ssh import SSH, resource, ssh_pattern, sftp, drop
+from into.backends.ssh import SSH, resource, ssh_pattern, sftp, drop, connect
 from into.backends.csv import CSV
-from into import into, discover, CSV, JSONLines, JSON
+from into import into, discover, CSV, JSONLines, JSON, convert
 from into.temp import _Temp, Temp
+from into.compatibility import ON_TRAVIS_CI
+import socket
 
-ssh = paramiko.SSHClient()
-ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+skipif = pytest.mark.skipif
 
 try:
-    ssh.connect('localhost')
-except:
-    pytest.skip('could not connect to localhost')
+    ssh = connect(hostname='localhost')
+    ssh.close()
+except socket.error:
+    pytest.skip('Could not connect')
+except paramiko.PasswordRequiredException:
+    pytest.skip('password required for connection')
 
 
 def test_resource():
@@ -28,6 +35,18 @@ def test_resource():
     assert r.path == '/path/to/myfile.csv'
     assert r.auth['hostname'] == 'localhost'
     assert r.auth['username'] == 'joe'
+
+
+def test_connect():
+    a = connect(hostname='localhost')
+    b = connect(hostname='localhost')
+    assert a is b
+
+    a.close()
+
+    c = connect(hostname='localhost')
+    assert a is c
+    assert c.get_transport() and c.get_transport().is_active()
 
 
 def test_resource_directory():
@@ -70,7 +89,10 @@ def test_copy_remote_csv():
         with filetext('name,balance\nAlice,100\nBob,200',
                       extension='csv') as fn:
             csv = resource(fn)
-            scsv = into('ssh://localhost:foo.csv', csv)
+
+            uri = 'ssh://localhost:%s.csv' % target
+            scsv = into(uri, csv)
+
             assert isinstance(scsv, SSH(CSV))
             assert discover(scsv) == discover(csv)
 
@@ -86,11 +108,12 @@ def test_drop():
 
             assert not os.path.exists(target)
 
-            with sftp(**scsv.auth) as conn:
-                conn.put(fn, target)
+            conn = sftp(**scsv.auth)
+            conn.put(fn, target)
 
             assert os.path.exists(target)
 
+            drop(scsv)
             drop(scsv)
 
             assert not os.path.exists(target)
@@ -102,6 +125,15 @@ def test_drop_of_csv_json_lines_use_ssh_version():
         assert drop.dispatch(SSH(typ)) == drop_ssh
 
 
+def test_convert_local_file_to_temp_ssh_file():
+    with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
+        csv = CSV(fn)
+        scsv = convert(Temp(SSH(CSV)), csv, hostname='localhost')
+
+        assert into(list, csv) == into(list, scsv)
+
+
+@skipif(ON_TRAVIS_CI, reason="Don't know")
 def test_temp_ssh_files():
     with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
         csv = CSV(fn)
@@ -111,6 +143,7 @@ def test_temp_ssh_files():
         assert isinstance(scsv, _Temp)
 
 
+@skipif(ON_TRAVIS_CI, reason="Don't know")
 def test_convert_through_temporary_local_storage():
     with filetext('name,quantity\nAlice,100\nBob,200', extension='csv') as fn:
         csv = CSV(fn)
@@ -124,3 +157,29 @@ def test_convert_through_temporary_local_storage():
 
         sjson = into(Temp(SSH(JSONLines)), df, hostname='localhost')
         assert (into(np.ndarray, sjson) == into(np.ndarray, df)).all()
+
+
+@skipif(ON_TRAVIS_CI and sys.version_info[:2] == (3, 3),
+        reason='Strange hanging on travis for python33')
+def test_ssh_csv_to_s3_csv():
+    # for some reason this can only be run in the same file as other ssh tests
+    # and must be a Temp(SSH(CSV)) otherwise tests above this one fail
+    s3_bucket = pytest.importorskip('into.backends.tests.test_aws').s3_bucket
+
+    with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
+        remote = into(Temp(SSH(CSV)), CSV(fn), hostname='localhost')
+        with s3_bucket('.csv') as b:
+            result = into(b, remote)
+            assert discover(result) == discover(resource(b))
+
+
+@skipif(ON_TRAVIS_CI and sys.version_info[:2] == (3, 3),
+        reason='windows does not have an SSH daemon on localhost')
+def test_s3_to_ssh():
+    pytest.importorskip('boto')
+
+    tips_uri = 's3://nyqpug/tips.csv'
+    with tmpfile('.csv') as fn:
+        result = into(Temp(SSH(CSV))(fn, hostname='localhost'), tips_uri)
+        assert into(list, result) == into(list, tips_uri)
+        assert discover(result) == discover(resource(tips_uri))

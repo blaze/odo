@@ -38,9 +38,11 @@ def test_resource_directory():
         assert r.path.rstrip(os.path.sep) == path.rstrip(os.path.sep)
 
         r2 = resource(os.path.join(path, '*.csv'))
-        assert type(r) == Directory(CSV)
+        assert type(r2) == Directory(CSV)
         assert r2.path.rstrip(os.path.sep) == path.rstrip(os.path.sep)
 
 
 def test_resource_directory():
-    assert isinstance(resource('/a/directory/that/doesnt/exist/'), _Directory)
+    assert isinstance(resource(os.path.join('a', 'nonexistent', 'directory') +
+                               os.path.sep),
+                      _Directory)

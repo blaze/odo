@@ -1,14 +1,23 @@
+from __future__ import absolute_import, division, print_function
+
 import numpy as np
 import datashape as ds
 import pytest
-
+tb = pytest.importorskip('tables')
 
 from into import into
 from into.utils import tmpfile
 from into.backends.pytables import PyTables, discover
+import os
 
 
-tb = pytest.importorskip('tables')
+try:
+    f = tb.open_file('import-tables-test.hdf5', mode='w')
+    f.close()
+    if os.path.exists('import-tables-test.hdf5'):
+        os.remove('import-tables-test.hdf5')
+except tb.exceptions.HDF5ExtError as e:
+    pytest.skip('Cannot write file, error:\n%s' % e)
 
 
 x = np.array([(1, 'Alice', 100),
@@ -142,3 +151,4 @@ class TestPyTablesLight(object):
                                           amount: float64,
                                           date: float64}}""")
         assert result == expected.measure
+        root._v_file.close()

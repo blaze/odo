@@ -13,9 +13,6 @@ engine:
   - python=3.3
   - python=3.4
 
-install:
-  - conda config --add channels blaze
-
 before_script:
   - python -V
 

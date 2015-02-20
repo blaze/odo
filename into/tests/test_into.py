@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function
+
 from into.into import into
 from into.utils import tmpfile, filetext
 from into.backends.csv import CSV

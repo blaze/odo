@@ -62,3 +62,7 @@ class RegexDispatcher(object):
 
     def __call__(self, s, *args, **kwargs):
         return self.dispatch(s)(s, *args, **kwargs)
+
+    @property
+    def __doc__(self):
+        return min(self.priorities.items(), key=lambda x: x[1])[0].__doc__

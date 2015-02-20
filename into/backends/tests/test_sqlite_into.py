@@ -2,16 +2,11 @@ from __future__ import absolute_import, division, print_function
 
 import pytest
 
-from datashape import dshape
+from datashape import dshape, discover
 from into.backends.csv import CSV
 from into import into, resource
-from into.utils import tmpfile
+from into.utils import tmpfile, filetext
 import sqlalchemy
-
-
-@pytest.yield_fixture
-def engine():
-    tbl = 'testtable'
 
 
 ds = dshape('var *  {a: int32, b: int32}' )
@@ -37,6 +32,24 @@ def test_simple_into(csv):
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' and name='{0}';".format(tbl))
 
         sqlite_tbl_names = cursor.fetchall()
-        assert sqlite_tbl_names[0][0] == tbl
+        conn.close()
 
+        assert sqlite_tbl_names[0][0] == tbl
         assert into(list, t) == data
+
+
+def test_csv_with_header():
+    with tmpfile('db') as dbfilename:
+        with filetext('a,b\n1,2\n3,4', extension='csv') as csvfilename:
+            t = into('sqlite:///%s::mytable' % dbfilename,
+                     csvfilename, has_header=True)
+            assert discover(t) == dshape('var * {a: int64, b: int64}')
+            assert into(set, t) == set([(1, 2), (3, 4)])
+
+
+def test_csv_infer_header():
+    with tmpfile('db') as dbfilename:
+        with filetext('a,b\n1,2\n3,4', extension='csv') as csvfilename:
+            t = into('sqlite:///%s::mytable' % dbfilename, csvfilename)
+            assert discover(t) == dshape('var * {a: int64, b: int64}')
+            assert into(set, t) == set([(1, 2), (3, 4)])

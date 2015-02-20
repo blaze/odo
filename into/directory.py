@@ -15,12 +15,12 @@ class _Directory(Chunks):
     parametrized Directory classes.
 
     >>> from into import CSV
-    >>> c = Directory(CSV)('path/to/data/')
+    >>> c = Directory(CSV)('path/to/data/')  # doctest: +SKIP
 
     Normal use through resource strings
 
-    >>> r = resource('path/to/data/*.csv')
-    >>> r = resource('path/to/data/')
+    >>> r = resource('path/to/data/*.csv')  # doctest: +SKIP
+    >>> r = resource('path/to/data/')  # doctest: +SKIP
 
 
     """
@@ -42,12 +42,16 @@ Directory.__doc__ = Directory.__doc__
 Directory = memoize(Directory)
 
 
+re_path_sep = os.path.sep
+if re_path_sep == '\\':
+    re_path_sep = '\\\\'
+
 @discover.register(_Directory)
 def discover_Directory(c, **kwargs):
     return var * discover(first(c)).subshape[0]
 
 
-@resource.register('.+' + os.path.sep + '\*\..+', priority=15)
+@resource.register('.+' + re_path_sep + '\*\..+', priority=15)
 def resource_directory(uri, **kwargs):
     path = uri.rsplit(os.path.sep, 1)[0]
     try:
@@ -58,7 +62,7 @@ def resource_directory(uri, **kwargs):
     return Directory(subtype)(path, **kwargs)
 
 
-@resource.register('.+' + os.path.sep, priority=9)
+@resource.register('.+' + re_path_sep, priority=9)
 def resource_directory_with_trailing_slash(uri, **kwargs):
     try:
         one_uri = os.listdir(uri)[0]
