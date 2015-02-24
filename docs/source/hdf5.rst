@@ -7,7 +7,7 @@ interact with HDF5
 
 *  ``h5py`` - an unopinionated reflection of the HDF5 library
 *  ``pytables`` - an opinionated version, adding extra features and conventions
-*  ``pandas HDFStore`` - a commonly used format among Pandas users.
+*  `pandas.HDFStore`_ - a commonly used format among Pandas users.
 
 All of these libraries create and read HDF5 files.  Unfortunately some of them
 have special conventions that can only be understood by their library.  So a
@@ -67,3 +67,5 @@ The default paths in and out of HDF5 files include sequences of Pandas
     tables.Table <-> chunks(pd.DataFrame)
     pandas.AppendableFrameTable <-> chunks(pd.DataFrame)
     pandas.FrameFixed <-> DataFrame
+
+.. _`pandas.HDFStore`: http://pandas.pydata.org/pandas-docs/stable/io.html#hdf5-pytables
