@@ -5,8 +5,8 @@ The Hierarchical Data Format is a binary, self-describing format, supporting
 regular strided and random access.  There are three main options in Python to
 interact with HDF5
 
-*  ``h5py`` - an unopinionated reflection of the HDF5 library
-*  ``pytables`` - an opinionated version, adding extra features and conventions
+*  `h5py`_ - an unopinionated reflection of the HDF5 library
+*  `pytables`_ - an opinionated version, adding extra features and conventions
 *  `pandas.HDFStore`_ - a commonly used format among Pandas users.
 
 All of these libraries create and read HDF5 files.  Unfortunately some of them
@@ -68,4 +68,6 @@ The default paths in and out of HDF5 files include sequences of Pandas
     pandas.AppendableFrameTable <-> chunks(pd.DataFrame)
     pandas.FrameFixed <-> DataFrame
 
+.. _`h5py`: http://www.h5py.org/
+.. _`PyTables`: http://pytables.github.io/index.html
 .. _`pandas.HDFStore`: http://pandas.pydata.org/pandas-docs/stable/io.html#hdf5-pytables
