@@ -256,6 +256,37 @@ first = unops['first']
 last = unops['last']
 
 
+def xkey(keys, table):
+    """Set keys on a q table from existing columns in the table. Similar to
+    ``DataFrame.set_index()``.
+
+    Examples
+    --------
+    >>> t = Symbol('t')
+    >>> keys = list('abc')
+    >>> xkey(keys, t)
+    (xkey; (,:[(`a; `b; `c)]); `t)
+    >>> xkey('a', t)
+    (xkey; (,:[`a]); `t)
+    """
+    return List('xkey', make_keys(keys), table)
+
+
+def make_keys(keys):
+    """Make a list of strings into a list of q symbols suitable for passing to
+    join functikeyss.
+
+    Examples
+    --------
+    >>> syms = list('abcdef')
+    >>> make_keys(syms)
+    (,:[(`a; `b; `c; `d; `e; `f)])
+    >>> make_keys('a')
+    (,:[`a])
+    """
+    return List(symlist(*keys)) if not isinstance(keys, basestring) else symlist(keys)
+
+
 def symlist(*args):
     return List(*list(map(Symbol, args)))
 
