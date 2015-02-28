@@ -265,6 +265,11 @@ def compute_up(expr, data, **kwargs):
     return q.mod(q.long(data[expr.attr]), 60)
 
 
+@dispatch(ReLabel, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return q.List('xcol', q.List(q.symlist(*expr.columns)), data)
+
+
 @dispatch(Join, q.Expr, q.Expr)
 def compute_up(expr, lhs, rhs, **kwargs):
     if expr.how != 'inner':

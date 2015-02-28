@@ -412,3 +412,10 @@ def test_compile(par):
     # this is incorrect and will break if we fix it
     assert str(compile(par.trade.price.sum() + 2)) == \
         '(+; (sum; `trade.price); 2)'
+
+
+def test_relabel(t, q, df):
+    expr = t.relabel(name='alias', when='yore')
+    result = compute(expr, q)
+    expected = compute(expr, df)
+    tm.assert_frame_equal(result, expected)
