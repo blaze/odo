@@ -15,6 +15,9 @@ t: ([] name: `Bob`Alice`Joe`Smithers`Smithers`Alice;
              2005.02.28D01:58:04.338
              2004.01.25D18:03:47.234;
        on: 2010.01.01 2010.01.02 2010.01.03 2010.01.04 2010.01.04 2010.01.02)
+s: ([] id: ,[til k; til k];
+       dollars: (2 * k) ? 10.0;
+       name: (2 * k) ? t.name)
 rt: ([name: `Bob`Alice`Joe`John] tax: -3.1 2.0 0n 4.2;
                                  street: `maple`apple`pine`grove)
 st: ([name: `Bob`Alice`Joe] jobcode: 9 10 11; tree: `maple`apple`pine; alias: `Joe`Betty`Moe)
