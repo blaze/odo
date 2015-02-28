@@ -189,17 +189,28 @@ def test_different_column_join(rt, st, rq, sq, rdf, sdf):
     tm.assert_frame_equal(result, expected)
 
 
-def test_sort(t, q, df):
-    expr = t.sort('name')
-    result = compute(expr, q)
-    expected = df.sort('name', kind='mergesort').reset_index(drop=True)
-    tm.assert_frame_equal(result, expected)
+@pytest.mark.parametrize('how',
+                         ['inner', 'left',
+                          pytest.mark.xfail('right',
+                                            raises=NotImplementedError),
+                          pytest.mark.xfail('outer',
+                                            raises=NotImplementedError)])
+def test_multiple_column_join(db, how):
+    on = ['id', 'name']
+    expr = bz.join(db.s, db.t, on, how=how)
+    result = compute(expr)
+    expected = pd.merge(into(pd.DataFrame, db.s),
+                        into(pd.DataFrame, db.t),
+                        on=on, how=how)
+    tm.assert_frame_equal(result.sort(on).reset_index(drop=True),
+                          expected.sort(on).reset_index(drop=True))
 
 
-def test_multicolumn_sort(t, q, df):
-    expr = t.sort(['name', 'amount'])
+@pytest.mark.parametrize('key', ['name', ['name', 'amount']])
+def test_sort(t, q, df, key):
+    expr = t.sort(key)
     result = compute(expr, q)
-    expected = compute(expr, df).reset_index(drop=True)
+    expected = df.sort(key, kind='mergesort').reset_index(drop=True)
     tm.assert_frame_equal(result, expected)
 
 
@@ -412,6 +423,15 @@ def test_compile(par):
     # this is incorrect and will break if we fix it
     assert str(compile(par.trade.price.sum() + 2)) == \
         '(+; (sum; `trade.price); 2)'
+
+
+@pytest.mark.xfail(raises=NotImplementedError,
+                   reason='Map expressions not implemented')
+def test_map(t, q, df):
+    expr = t.amount.map(lambda x: x + 1, 'float64')
+    result = compute(expr, q)
+    expected = compute(expr, df)
+    tm.assert_series_equal(result, expected)
 
 
 def test_relabel(t, q, df):
