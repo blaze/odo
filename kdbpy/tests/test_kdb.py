@@ -43,7 +43,7 @@ def qproc2(creds2):
     q.stop()
 
 
-@pytest.yield_fixture()
+@pytest.yield_fixture
 def qproc3(creds):
     q = k.Q(creds).start()
     yield q
@@ -82,6 +82,7 @@ def test_basic():
     assert kq.is_started
     kq.stop()
 
+    import pdb; pdb.set_trace()
     check_process_table_ok(starting)
 
 

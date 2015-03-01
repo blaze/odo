@@ -4,7 +4,6 @@ package:
 
 build:
     number: {{ environ.get('GIT_DESCRIBE_NUMBER', 0) }}
-    string: {{ environ.get('GIT_BUILD_STR', '') }}
 
 source:
     git_url: ../
@@ -30,9 +29,11 @@ test:
 
   imports:
     - kdbpy
+    - qpython
+    - blaze
 
   commands:
-    - py.test -vv -sx --pyargs kdbpy --doctest-modules
+    - py.test -sx -v $SRC_DIR/kdbpy/tests/test_kdb.py::test_basic $SRC_DIR/kdbpy/tests/test_kdb.py::test_basic_inuse
 
 about:
   home: https://github.com/ContinuumIO/kdbpy
