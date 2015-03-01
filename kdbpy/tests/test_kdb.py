@@ -82,12 +82,12 @@ def test_basic():
     assert kq.is_started
     kq.stop()
 
-    import pdb; pdb.set_trace()
     check_process_table_ok(starting)
 
 
 def test_basic_inuse():
 
+    import pdb; pdb.set_trace()
     starting = k.Q.processes.keys()
 
     kq = k.KQ(start=True)
