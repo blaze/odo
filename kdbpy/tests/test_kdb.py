@@ -87,7 +87,6 @@ def test_basic():
 
 def test_basic_inuse():
 
-    import pdb; pdb.set_trace()
     starting = k.Q.processes.keys()
 
     kq = k.KQ(start=True)
