@@ -140,7 +140,7 @@ def discover(metadata):
                 "\nSkipping.")
         except NotImplementedError as e:
             print("Blaze does not understand a SQLAlchemy type.\n"
-                "Blaze provided the following error:\n\t%s" % e.message +
+                "Blaze provided the following error:\n\t%s" % "\n\t".join(e.args) +
                 "\nSkipping.")
     return DataShape(Record(pairs))
 
