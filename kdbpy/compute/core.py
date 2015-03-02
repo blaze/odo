@@ -205,7 +205,7 @@ def compute_up(expr, data, **kwargs):
 def compute_up(expr, data, **kwargs):
     if expr.axis != (0,):
         raise ValueError("Axis keyword argument on reductions not supported")
-    return q.unops[expr.symbol](data)
+    return q.unops.setdefault(expr.symbol, q.unop(expr.symbol))(data)
 
 
 @dispatch((std, var), q.Expr)
@@ -217,7 +217,7 @@ def compute_up(expr, data, **kwargs):
 
 @dispatch(UnaryOp, q.Expr)
 def compute_up(expr, data, **kwargs):
-    return q.unops[expr.symbol](data)
+    return q.unops.setdefault(expr.symbol, q.unop(expr.symbol))(data)
 
 
 @dispatch(Field, q.Expr)
@@ -404,7 +404,7 @@ def compute_down(expr, data, **kwargs):
     if expr.axis != (0,):
         raise ValueError("axis == 1 not supported on record types")
 
-    reducer = q.unops[expr.symbol]
+    reducer = q.unops.setdefault(expr.symbol, q.unop(expr.symbol))
 
     if isinstance(expr, (std, var)):  # need the unbiased argument for std/var
         reducer = partial(reducer, unbiased=expr.unbiased)

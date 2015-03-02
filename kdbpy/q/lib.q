@@ -13,6 +13,8 @@ types: typenums!longnames
 
 typename: {[x] types[abs[type[x]]]}
 
+log10: {[x] x xlog 10}
+
 is_long: {[x] typename[x] = `long}
 
 is_partitioned: {[x]
