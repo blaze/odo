@@ -68,7 +68,7 @@ def iterator_to_temp_textfile(seq, **kwargs):
 
 
 @resource.register('.+\.(txt|log)(.gz)?')
-def resource_sas(uri, **kwargs):
+def resource_text(uri, **kwargs):
     return TextFile(uri)
 
 

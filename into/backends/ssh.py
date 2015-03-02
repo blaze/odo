@@ -17,6 +17,7 @@ from ..drop import drop
 from .csv import CSV
 from .json import JSON, JSONLines
 from .text import TextFile
+from .blob import File
 
 connection_pool = dict()
 
@@ -189,6 +190,7 @@ def append_anything_to_ssh(target, source, **kwargs):
     return target
 
 
+@append.register(File, SSH(File))
 @append.register(TextFile, SSH(TextFile))
 @append.register(JSONLines, SSH(JSONLines))
 @append.register(JSON, SSH(JSON))
@@ -210,11 +212,12 @@ def file_to_temp_ssh_file(typ, data, **kwargs):
     target = Temp(SSH(typ))(fn, **kwargs)
     return append(target, data, **kwargs)
 
-for typ in [CSV, JSON, JSONLines, TextFile]:
+for typ in [CSV, JSON, JSONLines, TextFile, File]:
     convert.register(Temp(SSH(typ)), (Temp(typ), typ))(
             file_to_temp_ssh_file(typ))
 
 
+@convert.register(Temp(File), (Temp(SSH(File)), SSH(File)))
 @convert.register(Temp(TextFile), (Temp(SSH(TextFile)), SSH(TextFile)))
 @convert.register(Temp(JSONLines), (Temp(SSH(JSONLines)), SSH(JSONLines)))
 @convert.register(Temp(JSON), (Temp(SSH(JSON)), SSH(JSON)))
@@ -225,6 +228,7 @@ def ssh_file_to_temp_file(data, **kwargs):
     return append(target, data, **kwargs)
 
 
+@convert.register(Temp(SSH(File)), (File, Temp(File)))
 @convert.register(Temp(SSH(TextFile)), (TextFile, Temp(TextFile)))
 @convert.register(Temp(SSH(JSONLines)), (JSONLines, Temp(JSONLines)))
 @convert.register(Temp(SSH(JSON)), (JSON, Temp(JSON)))

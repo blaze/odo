@@ -13,7 +13,7 @@ from into.utils import tmpfile, filetext
 from into.directory import _Directory, Directory
 from into.backends.ssh import SSH, resource, ssh_pattern, sftp, drop, connect
 from into.backends.csv import CSV
-from into import into, discover, CSV, JSONLines, JSON, convert
+from into import into, discover, CSV, JSONLines, JSON, convert, File
 from into.temp import _Temp, Temp
 from into.compatibility import ON_TRAVIS_CI
 import socket
@@ -101,6 +101,16 @@ def test_copy_remote_csv():
             assert into(list, csv) == into(list, csv2)
 
 
+def test_copy_remote_file():
+    with tmpfile('xyz') as target:
+        with filetext('abc', extension='xyz') as fn:
+            uri = 'ssh://localhost:%s' % target
+            result = into(uri, fn)
+
+            with open(target) as f:
+                assert f.read() == 'abc'
+
+
 def test_drop():
     with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
         with tmpfile('csv') as target:
@@ -183,3 +193,7 @@ def test_s3_to_ssh():
         result = into(Temp(SSH(CSV))(fn, hostname='localhost'), tips_uri)
         assert into(list, result) == into(list, tips_uri)
         assert discover(result) == discover(resource(tips_uri))
+
+
+def test_file():
+    assert isinstance(resource('ssh://localhost:foo.xyz'), SSH(File))
