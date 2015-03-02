@@ -154,7 +154,7 @@ longdesc = open('README.md').read()
 
 setup(
     name='kdbpy',
-    version='0.1.4',
+    version='0.1.5',
     author='Continuum Analytics',
     author_email='kdbpy-dev@continuum.io',
     description='kdbpy',
