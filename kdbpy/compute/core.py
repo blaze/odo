@@ -30,7 +30,7 @@ from blaze.compute.core import compute, swap_resources_into_scope
 from blaze.expr import Symbol, Projection, Selection, Field, Relational
 from blaze.expr import BinOp, UnaryOp, Expr, Reduction, By, Join, Head, Sort
 from blaze.expr import Slice, Distinct, Summary, std, var
-from blaze.expr import DateTime, Millisecond, Microsecond
+from blaze.expr import DateTime, Millisecond, Microsecond, ReLabel
 from blaze.expr.datetime import Minute
 
 from .. import q
@@ -265,13 +265,25 @@ def compute_up(expr, data, **kwargs):
     return q.mod(q.long(data[expr.attr]), 60)
 
 
+@dispatch(ReLabel, q.Expr)
+def compute_up(expr, data, **kwargs):
+    return q.List('xcol', q.List(q.symlist(*expr.columns)), data)
+
+
 @dispatch(Join, q.Expr, q.Expr)
 def compute_up(expr, lhs, rhs, **kwargs):
-    if expr.how != 'inner':
-        raise NotImplementedError('only inner joins supported')
     if expr._on_left != expr._on_right:
-        raise NotImplementedError('can only join on same named columns')
-    return q.List('ej', q.symlist(expr._on_left), lhs, rhs)
+        raise NotImplementedError('can only join on identically named columns')
+
+    on = expr._on_left
+    how = expr.how
+
+    if how == 'left':
+        return q.List('lj', lhs, q.xkey(on, rhs))
+    elif how == 'inner':
+        return q.List('ej', q.make_keys(on), lhs, rhs)
+    else:
+        raise NotImplementedError('only left and inner joins supported')
 
 
 @dispatch(Sort, q.Expr)
@@ -521,9 +533,16 @@ def compute_down(expr, data, **kwargs):
 def compile(expr):
     """ Compile a blaze expression to a q expression"""
     expr, data = swap_resources_into_scope(expr, {})
-    leaf, = expr._leaves()
-    if not isinstance(data[leaf], KQ):
-        raise TypeError('must compile from a single root database')
+    leaves = expr._leaves()
+
+    if len(leaves) != 1:
+        raise ValueError('Must compile expression against a single leaf, '
+                         'got %s' % list(leaves))
+    leaf, = leaves
+    data_leaf = data[leaf]
+    if not isinstance(data_leaf, KQ):
+        raise TypeError('Can only compile expressions against KQ object, '
+                        'got %r' % type(data_leaf).__name__)
     tables = [x for x in expr._subterms()
               if isinstance(x, Field) and isrecord(x.dshape.measure)]
 

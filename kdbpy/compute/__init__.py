@@ -3,7 +3,7 @@ from multipledispatch import halt_ordering, restart_ordering
 
 halt_ordering()
 from .qext import bar
-from .core import resource
+from .core import resource, compile
 restart_ordering()
 
 from .qtable import QTable, tables, discover

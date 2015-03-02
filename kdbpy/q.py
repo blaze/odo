@@ -1,7 +1,10 @@
+from __future__ import print_function, division, absolute_import
+
 import re
 import keyword
-from itertools import chain
+from itertools import chain, starmap
 from toolz import compose
+from toolz.compatibility import zip, map
 
 try:
     import builtins
@@ -23,11 +26,17 @@ class Expr(object):
 
 
 class Dict(OrderedDict):
-    def __init__(self, items):
-        super(Dict, self).__init__(items)
+    """q dictionary. Unlike Python q's dicts are ordered, so we must construct
+    them with tuples.
 
+    Examples
+    --------
+    >>> items = [(Symbol('a'), 1), (Symbol('b'), 2)]
+    >>> Dict(items)
+    (`a; `b)!(1; 2)
+    """
     def __repr__(self):
-        return '%s!%s' % (List(*self.keys()), List(*self.values()))
+        return '%s!%s' % tuple(starmap(List, zip(*self.items())))
 
 
 class Atom(Expr):
@@ -55,28 +64,28 @@ class String(Atom):
 
 
 class Symbol(Atom):
+    """Represents a q symbol
+
+    Examples
+    --------
+    >>> from kdbpy import q
+    >>> t = q.Symbol('t', 's', 'a')
+    >>> t
+    `t.s.a
+    >>> # getitem syntax
+    >>> from kdbpy import q
+    >>> t = q.Symbol('t')
+    >>> t['s']['a']
+    `t.s.a
+    >>> Symbol('2')
+    `$"2"
+    """
     def __init__(self, *args, **kwargs):
-        """
-        Examples
-        --------
-        >>> from kdbpy import q
-        >>> t = q.Symbol('t', 's', 'a')
-        >>> t
-        `t.s.a
-        """
         super(Symbol, self).__init__(args[0], **kwargs)
         self.fields = args[1:]
         self.str = '.'.join(chain([self.s], self.fields))
 
     def __getitem__(self, name):
-        """
-        Examples
-        --------
-        >>> from kdbpy import q
-        >>> t = q.Symbol('t')
-        >>> t['s']['a']
-        `t.s.a
-        """
         return type(self)(*list(chain([self.s], self.fields, [name])))
 
     def __repr__(self):
@@ -90,6 +99,16 @@ class Symbol(Atom):
 
 
 class List(object):
+    """List of q objects.
+
+    This is the main structure for describing q code
+
+    Examples
+    --------
+    >>> qlist = List(Symbol('a'), 1, List(2))
+    >>> qlist
+    (`a; 1; (,:[2]))
+    """
     is_partitioned = False
     is_splayed = False
 
@@ -124,6 +143,17 @@ class List(object):
 
 
 class Bool(object):
+    """Class to print q booleans from Python booleans
+
+    Examples
+    --------
+    >>> Bool(True)
+    1b
+    >>> Bool(False)
+    0b
+    >>> Bool()
+    0b
+    """
     is_partitioned = False
     is_splayed = False
 
@@ -131,7 +161,7 @@ class Bool(object):
         self.value = bool(value)
 
     def __repr__(self):
-        return '%ib' % self.value
+        return '%db' % self.value
 
     def __eq__(self, other):
         return type(self) == type(other) and self.value == other.value
@@ -141,10 +171,26 @@ class Bool(object):
 
 
 def binop(op):
+    """Binary operator generator
+
+    Examples
+    --------
+    >>> equals = binop('=')
+    >>> equals(1, 2)
+    (=; 1; 2)
+    """
     return lambda x, y: List(op, x, y)
 
 
 def unop(op):
+    """Unary operator generator
+
+    Examples
+    --------
+    >>> sin = unop('sin')
+    >>> sin(3.14159)
+    (sin; 3.14159)
+    """
     return lambda x: List(op, x)
 
 
@@ -171,11 +217,15 @@ cov = binop('cov')
 
 
 def xor(x, y):
+    """Exclusive or, q style
+
+    Examples
+    --------
+    >>> x, y = Bool(True), Bool(True)
+    >>> xor(x, y)
+    (&; (|; 1b; 1b); (~:; (&; 1b; 1b)))
+    """
     return and_(or_(x, y), not_(and_(x, y)))
-
-
-def floordiv(x, y):
-    return floor(div(x, y))
 
 
 neg = unop('-:')
@@ -187,9 +237,9 @@ ceil = unop('ceiling')
 count = unop('#:')
 til = unop('til')
 distinct = unop('?:')
-typeof = unop('type')
+typeof = unop('@:')
 istable = unop('.Q.qt')
-
+floordiv = compose(floor, div)
 
 binops = {
     '+': add,
@@ -251,7 +301,46 @@ first = unops.setdefault('first', unop('*:'))
 last = unops.setdefault('last', unop('last'))
 
 
+def xkey(keys, table):
+    """Set keys on a q table from existing columns in the table. Similar to
+    ``DataFrame.set_index()``.
+
+    Examples
+    --------
+    >>> t = Symbol('t')
+    >>> keys = list('abc')
+    >>> xkey(keys, t)
+    (xkey; (,:[(`a; `b; `c)]); `t)
+    >>> xkey('a', t)
+    (xkey; (,:[`a]); `t)
+    """
+    return List('xkey', make_keys(keys), table)
+
+
+def make_keys(keys):
+    """Make a list of strings into a list of q symbols suitable for passing to
+    join functikeyss.
+
+    Examples
+    --------
+    >>> syms = list('abcdef')
+    >>> make_keys(syms)
+    (,:[(`a; `b; `c; `d; `e; `f)])
+    >>> make_keys('a')
+    (,:[`a])
+    """
+    return List(symlist(*keys)) if not isinstance(keys, basestring) else symlist(keys)
+
+
 def symlist(*args):
+    """Turn a list of strings into a list of symbols
+
+    Examples
+    --------
+    >>> syms = list('abc')
+    >>> symlist(*syms)
+    (`a; `b; `c)
+    """
     return List(*list(map(Symbol, args)))
 
 
@@ -271,10 +360,29 @@ def sort(x, key, ascending):
 
 
 def isdict(x):
+    """Test whether a value is a dictionary
+
+    Examples
+    --------
+    >>> t = Symbol('t')
+    >>> isdict(t)
+    (=; (@:; `t); %d)
+    """ % QDICTIONARY
     return eq(typeof(x), QDICTIONARY)
 
 
 def cast(typ):
+    """Return a function to generate casting code for a type `typ`.
+
+    Examples
+    --------
+    >>> long = cast('long')
+    >>> long(1)
+    ($; (,:[`long]); 1)
+    >>> int = cast('int')
+    >>> int(1)
+    ($; (,:[`int]); 1)
+    """
     return lambda x: List('$', symlist(typ), x)
 
 
