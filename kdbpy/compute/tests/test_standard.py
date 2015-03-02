@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import pytest
 
+import math
 import numpy as np
 import pandas as pd
 import pandas.util.testing as tm
@@ -182,3 +183,34 @@ def test_multi_groupby(par):
     result = compute(expr)
     tm.assert_frame_equal(result.sort_index(axis=1),
                           expected.sort_index(axis=1))
+
+
+def test_abs(par):
+    expr = bz.expr.math.abs(-par.daily.price)
+    result = compute(expr)
+    expected = par.data.eval('abs neg daily.price')
+    tm.assert_series_equal(result, expected)
+
+
+missing_in_q = set(['sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh',
+                    'isnan', 'degrees', 'expm1', 'trunc', 'radians',
+                    'log1p'])
+
+
+mapping = {
+    'ceil': 'ceiling',
+    'log10': '.kdbpy.log10'
+}
+
+
+@pytest.mark.parametrize('func',
+                         filter(lambda x: (x not in missing_in_q and
+                                           not x.startswith('__')),
+                                set(dir(math)) & set(dir(bz.expr.math))))
+def test_math(db, func):
+    name = func
+    f = getattr(bz, func)
+    expr = f(db.daily.price)
+    result = compute(expr)
+    expected = db.data.eval('%s daily.price' % mapping.get(name, name))
+    tm.assert_series_equal(result, expected)

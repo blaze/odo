@@ -183,7 +183,7 @@ null = unop('^:')
 not_ = unop('~:')
 sqrt = unop('sqrt')
 floor = unop('_:')
-ceil = unop('-_-:')
+ceil = unop('ceiling')
 count = unop('#:')
 til = unop('til')
 distinct = unop('?:')
@@ -231,29 +231,24 @@ def std(x, unbiased=False, _std=unop('dev')):
     return mul(sqrt(div(sub(n, 1), n)), y)
 
 
-unops = {'-': neg,
-         '~': not_,
-         'floor': floor,
-         'ceil': ceil,
-         # reductions
-         'sum': unop('sum'),
-         'mean': unop('avg'),
-         'std': std,
-         'var': var,
-         'min': unop('min'),
-         'max': unop('max'),
-         'any': unop('any'),
-         'all': unop('all'),
-         'count': count,
-         'nelements': count,
-         'nunique': compose(count, distinct),
-         'first': unop('*:'),
-         'last': unop('last')
-         }
+unops = {
+    '-': neg,
+    '~': not_,
+    'floor': floor,
+    'ceil': ceil,
+    # reductions
+    'mean': unop('avg'),
+    'std': std,
+    'var': var,
+    'count': count,
+    'nelements': count,
+    'nunique': compose(count, distinct),
+    'log10': lambda x: List('.kdbpy.log10', x)
+}
 
 
-first = unops['first']
-last = unops['last']
+first = unops.setdefault('first', unop('*:'))
+last = unops.setdefault('last', unop('last'))
 
 
 def symlist(*args):
