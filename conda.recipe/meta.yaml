@@ -33,7 +33,7 @@ test:
     - blaze
 
   commands:
-    - py.test -x -v --doctest-modules
+    - py.test -x -v --doctest-modules --pyargs kdbpy
 
 about:
   home: https://github.com/ContinuumIO/kdbpy
