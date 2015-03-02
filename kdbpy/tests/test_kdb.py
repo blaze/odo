@@ -43,7 +43,7 @@ def qproc2(creds2):
     q.stop()
 
 
-@pytest.yield_fixture()
+@pytest.yield_fixture
 def qproc3(creds):
     q = k.Q(creds).start()
     yield q
