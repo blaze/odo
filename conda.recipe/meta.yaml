@@ -33,7 +33,7 @@ test:
     - blaze
 
   commands:
-    - py.test -sx -v $SRC_DIR/kdbpy/tests/test_kdb.py::test_basic $SRC_DIR/kdbpy/tests/test_kdb.py::test_basic_inuse
+    - py.test -x -v --doctest-modules
 
 about:
   home: https://github.com/ContinuumIO/kdbpy
