@@ -1,6 +1,7 @@
 from into.backends.blob import File, resource, drop
 import os
-from into.utils import filetext
+from into.utils import filetext, tmpfile
+from into import into
 
 
 def test_File():
@@ -18,3 +19,11 @@ def test_drop():
         assert os.path.exists(fn)
         drop(fn)
         assert not os.path.exists(fn)
+
+
+def test_copy():
+    with filetext('abc', extension='xyz') as src:
+        with tmpfile('xyz') as tgt:
+            into(tgt, src)
+            with open(tgt) as f:
+                assert f.read() == 'abc'
