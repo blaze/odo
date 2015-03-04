@@ -36,6 +36,10 @@ def test_Series_to_ndarray():
                       dshape='3 * string[5, "A"]'),
               np.array(['aa', 'bbb', 'ccccc'], dtype='S5'))
 
+    assert eq(convert(np.ndarray, pd.Series(['aa', 'bbb', 'ccccc']),
+                      dshape='3 * ?string'),
+              np.array(['aa', 'bbb', 'ccccc'], dtype='O'))
+
 
 def test_Series_to_object_ndarray():
     ds = datashape.dshape('{amount: float64, name: string, id: int64}')

@@ -65,7 +65,7 @@ higher_precision_freqs = frozenset(('ns', 'ps', 'fs', 'as'))
 
 @convert.register(np.ndarray, pd.Series, cost=0.1)
 def series_to_array(s, dshape=None, **kwargs):
-    dtype = datashape.to_numpy_dtype(datashape.dshape(dshape))
+    dtype = dshape_to_numpy(datashape.dshape(dshape))
     sdtype = s.dtype
     values = s.values
 
