@@ -44,3 +44,21 @@ Use URIs
 
 Most users don't interact with these types.  They are for internal use by
 developers to specify the situations in which a function should be called.
+
+
+``chunks``
+----------
+
+A particularly important type modifier is ``chunks``, which signifies an
+iterable of some other type.  For example ``chunks(list)`` means an iterable of
+Python lists and ``chunks(pd.DataFrame)`` an iterable of DataFrames.  The
+``chunks`` modifier is often used to convert between two out-of-core formats
+via an in-core format.  This is also a nice mechanism to interact with data in
+an online fashion
+
+.. code-block:: Python
+
+   >>> from into import into, pd, chunks
+   >>> seq = into(chunks(pd.DataFrame), 'postgresql://localhost::mytable')
+   >>> for df in seq:
+   ...    # work on each dataframe sequentially
