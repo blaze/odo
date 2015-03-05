@@ -2,14 +2,16 @@ from __future__ import division, print_function, absolute_import
 
 import itertools
 import datashape
+import numpy as np
 from datashape import dshape, Record, DataShape, Option, Tuple
 from datashape.predicates import isdimension, isrecord
 from toolz import valmap
 
-from .. import append, discover
+from .. import append, discover, convert
 from ..directory import Directory
 from .json import JSONLines
 from .spark import RDD, SchemaRDD, Dummy
+from .aws import S3, get_s3n_path
 
 
 try:
@@ -46,6 +48,12 @@ def jsonlines_to_sparksql(ctx, json, dshape=None, name=None, schema=None,
     return srdd
 
 
+@append.register(SQLContext, S3(JSONLines))
+def s3_jsonlines_to_sparksql(ctx, s3, **kwargs):
+    return jsonlines_to_sparksql(ctx, JSONLines(get_s3n_path(s3.path)),
+                                 **kwargs)
+
+
 @append.register(SQLContext, RDD)
 def rdd_to_sqlcontext(ctx, rdd, name=None, dshape=None, **kwargs):
     """ Convert a normal PySpark RDD to a SparkSQL RDD
@@ -57,7 +65,16 @@ def rdd_to_sqlcontext(ctx, rdd, name=None, dshape=None, **kwargs):
     if isdimension(dshape.parameters[0]):
         dshape = dshape.measure
     sql_schema = dshape_to_schema(dshape)
-    sdf = ctx.applySchema(rdd, sql_schema)
+
+    try:
+        sdf = ctx.applySchema(rdd, sql_schema)
+    except TypeError:
+        # TODO: gross
+        # we have to convert a tuple of strings to have typed elements
+        # this seems like it would be horribly inefficient
+        rdd = rdd.map(lambda x: convert(np.ndarray, [x], dshape=dshape).item())
+        sdf = ctx.applySchema(rdd, sql_schema)
+
     ctx.registerRDDAsTable(sdf, name or next(_names))
     return sdf
 

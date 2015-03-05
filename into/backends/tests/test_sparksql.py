@@ -4,6 +4,7 @@ import pytest
 
 pyspark = pytest.importorskip('pyspark')
 
+import os
 import shutil
 import tempfile
 from contextlib import contextmanager
@@ -17,6 +18,7 @@ import pandas as pd
 
 import datashape
 from datashape import dshape
+from toolz import concat
 from into import into, discover, Directory, JSONLines
 from into.utils import tmpfile, ignoring
 from into.backends.sparksql import schema_to_dshape, dshape_to_schema
@@ -146,3 +148,37 @@ def test_load_from_dir_of_jsonlines(ctx):
         result = into(ctx, Directory(JSONLines)(d))
         assert (set(map(frozenset, into(list, result))) ==
                 set(map(frozenset, into(list, expected))))
+
+
+has_environment_creds = ('AWS_ACCESS_KEY_ID' in os.environ and
+                         'AWS_SECRET_ACCESS_KEY' in os.environ)
+
+
+@pytest.mark.skipif(not has_environment_creds,
+                    reason=('Need environment variables AWS_ACCESS_KEY_ID and '
+                            'AWS_SECRET_ACCESS_KEY'))
+def test_s3_csv_to_sparksql(ctx):
+    pytest.importorskip('boto')
+    tips = 's3://nyqpug/tips.csv'
+    srdd = into(ctx, tips)
+    assert (set(map(frozenset, into(list, srdd))) ==
+            set(map(frozenset, into(list, tips))))
+
+
+@pytest.mark.skipif(not has_environment_creds,
+                    reason=('Need environment variables AWS_ACCESS_KEY_ID and '
+                            'AWS_SECRET_ACCESS_KEY'))
+def test_s3_json_to_sparksql(ctx):
+    pytest.importorskip('boto')
+    tips = 's3://nyqpug/tips.json'
+    srdd = into(ctx, tips)
+    assert (set(map(frozenset, into(list, srdd))) ==
+            set(map(lambda x: frozenset(x.values()), into(list, tips))))
+
+
+def test_append_srdd_to_srdd(ctx):
+    rdd = ctx.table('t')
+    result = into(rdd, rdd)
+    rdd_list = into(list, rdd)
+    assert (set(map(frozenset, result.collect())) ==
+            set(map(frozenset, concat((rdd_list, rdd_list)))))

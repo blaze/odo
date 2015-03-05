@@ -4,9 +4,10 @@ import pytest
 
 pytest.importorskip('pyspark')
 
-import pytest
+import os
 from datashape import dshape
-from into import into, discover
+from into import into, discover, CSV, S3
+from toolz import concat
 from pyspark import RDD
 from pyspark.rdd import PipelinedRDD
 from pyspark.sql import SchemaRDD, Row
@@ -55,3 +56,24 @@ def test_pipelined_rdd_into_schema_rdd(rdd):
 
 def test_discover_rdd(rdd):
     assert discover(rdd).subshape[0] == discover(data).subshape[0]
+
+
+has_environment_creds = ('AWS_ACCESS_KEY_ID' in os.environ and
+                         'AWS_SECRET_ACCESS_KEY' in os.environ)
+
+
+@pytest.mark.skipif(not has_environment_creds,
+                    reason=('Need environment variables AWS_ACCESS_KEY_ID and '
+                            'AWS_SECRET_ACCESS_KEY'))
+def test_skip_header_from_csv(sc):
+    pytest.importorskip('boto')
+    tips = S3(CSV)('s3://nyqpug/tips.csv')
+    rdd = into(sc, tips, minPartitions=5)
+    assert set(rdd.first()) != set(discover(tips).measure.names)
+
+
+def test_append_rdd_to_rdd(rdd):
+    result = into(rdd, rdd)
+    rdd_list = into(list, rdd)
+    assert (set(map(frozenset, result.collect())) ==
+            set(map(frozenset, concat((rdd_list, rdd_list)))))

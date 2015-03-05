@@ -22,6 +22,21 @@ from ..compatibility import urlparse
 from ..utils import tmpfile, ext, sample, filter_kwargs
 
 
+def get_s3n_path(path):
+    """Replace s3 with s3n in S3 urls.
+
+    Examples
+    --------
+    >>> uri = 's3://nyqpug/tips.csv'
+    >>> get_s3n_path(uri)
+    's3n://nyqpug/tips.csv'
+    >>> uri = 's3n://nyqpug/tips.csv'
+    >>> get_s3n_path(uri)
+    's3n://nyqpug/tips.csv'
+    """
+    return re.sub('^(s3)(?=:)', r'\1n', path)
+
+
 @memoize
 def get_s3_connection(aws_access_key_id=None,
                       aws_secret_access_key=None,
