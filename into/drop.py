@@ -18,7 +18,7 @@ def drop(rsrc):
     Examples
     --------
     >>> # Using SQLite
-    >>> from into import resource, into
+    >>> from odo import resource, into
     >>> # create a table called 'tb', in memory
     >>> from datashape import dshape
     >>> ds = dshape('var * {name: string, amount: int}')

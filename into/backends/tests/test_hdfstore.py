@@ -2,11 +2,11 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
-from into.backends.hdfstore import discover
+from odo.backends.hdfstore import discover
 from contextlib import contextmanager
-from into.utils import tmpfile
-from into.chunks import chunks
-from into import into, append, convert, resource, discover
+from odo.utils import tmpfile
+from odo.chunks import chunks
+from odo import into, append, convert, resource, discover
 import datashape
 import pandas as pd
 from datetime import datetime

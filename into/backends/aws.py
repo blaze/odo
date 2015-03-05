@@ -55,7 +55,7 @@ class _S3(object):
     Examples
     --------
     >>> S3(CSV)
-    <class 'into.backends.aws.S3(CSV)'>
+    <class 'odo.backends.aws.S3(CSV)'>
     """
     def __init__(self, uri, s3=None, aws_access_key_id=None,
                  aws_secret_access_key=None, *args, **kwargs):

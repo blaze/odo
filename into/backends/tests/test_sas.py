@@ -2,15 +2,15 @@ from __future__ import absolute_import, division, print_function
 
 import pytest
 sas7bdat = pytest.importorskip('sas7bdat')
-pytest.importorskip('into.backends.sas')
+pytest.importorskip('odo.backends.sas')
 import os
 import pandas as pd
 from collections import Iterator
 from sas7bdat import SAS7BDAT
 
-from into.backends.sas import discover, sas_to_iterator
-from into.utils import tmpfile, into_path
-from into import append, convert, resource, dshape
+from odo.backends.sas import discover, sas_to_iterator
+from odo.utils import tmpfile, into_path
+from odo import append, convert, resource, dshape
 
 
 test_path = into_path('backends', 'tests', 'airline.sas7bdat')

@@ -3,9 +3,9 @@ from __future__ import absolute_import, division, print_function
 import pytest
 
 from datashape import dshape, discover
-from into.backends.csv import CSV
-from into import into, resource
-from into.utils import tmpfile, filetext
+from odo.backends.csv import CSV
+from odo import into, resource
+from odo.utils import tmpfile, filetext
 import sqlalchemy
 
 

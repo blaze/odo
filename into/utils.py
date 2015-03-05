@@ -219,8 +219,8 @@ def into_path(*path):
     >>> into_path('backends', 'tests', 'myfile.csv')  # doctest: +SKIP
     '/home/user/into/into/backends/tests/myfile.csv'
     """
-    import into
-    return os.path.join(os.path.dirname(into.__file__), *path)
+    import odo
+    return os.path.join(os.path.dirname(odo.__file__), *path)
 
 
 from multipledispatch import Dispatcher

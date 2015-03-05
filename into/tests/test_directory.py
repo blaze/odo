@@ -3,9 +3,9 @@ from __future__ import absolute_import, division, print_function
 import tempfile
 from contextlib import contextmanager
 import shutil
-from into.backends.csv import CSV
-from into.directory import Directory, discover, resource, _Directory
-from into import into
+from odo.backends.csv import CSV
+from odo.directory import Directory, discover, resource, _Directory
+from odo import into
 from datashape import dshape
 import os
 

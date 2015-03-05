@@ -17,10 +17,10 @@ pytestmark = pytest.mark.skipif(num_processes < 6,
 
 
 from datashape import dshape
-from into.backends.csv import CSV
-from into.backends.sql import create_from_datashape
-from into import into, resource
-from into.utils import assert_allclose
+from odo.backends.csv import CSV
+from odo.backends.sql import create_from_datashape
+from odo import into, resource
+from odo.utils import assert_allclose
 import os
 import csv as csv_module
 

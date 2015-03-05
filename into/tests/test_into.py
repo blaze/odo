@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-from into.into import into
-from into.utils import tmpfile, filetext
-from into.backends.csv import CSV
+from odo.into import into
+from odo.utils import tmpfile, filetext
+from odo.backends.csv import CSV
 
 def test_into_convert():
     assert into(list, (1, 2, 3)) == [1, 2, 3]

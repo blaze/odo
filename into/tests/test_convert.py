@@ -1,10 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
 import pytest
-from into.convert import (convert, list_to_numpy, iterator_to_numpy_chunks,
+from odo.convert import (convert, list_to_numpy, iterator_to_numpy_chunks,
                           dataframe_to_chunks_dataframe, numpy_to_chunks_numpy,
                           chunks_dataframe_to_dataframe)
-from into.chunks import chunks
+from odo.chunks import chunks
 from datashape import discover, dshape
 from collections import Iterator
 import datetime

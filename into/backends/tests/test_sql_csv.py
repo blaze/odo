@@ -6,9 +6,9 @@ import os
 import pandas as pd
 import datashape
 
-from into.backends.sql_csv import append_csv_to_sql_table, copy_command
-from into import resource, into, CSV, discover
-from into.utils import tmpfile, ignoring
+from odo.backends.sql_csv import append_csv_to_sql_table, copy_command
+from odo import resource, into, CSV, discover
+from odo.utils import tmpfile, ignoring
 
 
 def normalize(s):
