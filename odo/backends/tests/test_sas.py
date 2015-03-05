@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import pytest
 sas7bdat = pytest.importorskip('sas7bdat')
-pytest.importorskip('into.backends.sas')
+pytest.importorskip('odo.backends.sas')
 import os
 import pandas as pd
 from collections import Iterator
