@@ -16,7 +16,7 @@ def find_data_files(where, exts):
 exts = ('*.h5', '*.csv', '*.xls', '*.xlsx', '*.db', '*.json', '*.gz', '*.hdf5',
         '*.sas7bdat')
 package_data = [x.replace('odo' + os.sep, '') for x in
-                find_data_files('into', exts)]
+                find_data_files('odo', exts)]
 
 
 setup(name='odo',
@@ -31,6 +31,6 @@ setup(name='odo',
       install_requires=list(open('requirements.txt').read().strip().split('\n')),
       long_description=(open('README.rst').read() if os.path.exists('README.rst')
                         else ''),
-      package_data={'into': package_data},
+      package_data={'odo': package_data},
       zip_safe=False,
-      scripts=[os.path.join('bin', 'into')])
+      scripts=[os.path.join('bin', 'odo')])

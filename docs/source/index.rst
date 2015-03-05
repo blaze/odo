@@ -1,7 +1,7 @@
 Odo: Shapeshifting for your data
 ================================
 
-``odo.into`` takes two arguments, a target and a source for a data transfer.
+``odo`` takes two arguments, a target and a source for a data transfer.
 
 .. code-block:: python
 
