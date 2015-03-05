@@ -68,7 +68,7 @@ __version__ = '0.2.2'
 
 def test(verbose=False, junitfile=None, exit=False):
     """
-    Runs the full into test suite, outputting
+    Runs the full odo test suite, outputting
     the results of the tests to sys.stdout.
 
     This uses py.test to discover which tests to
