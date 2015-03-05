@@ -4,6 +4,7 @@ import os
 from fnmatch import fnmatch
 from setuptools import setup, find_packages
 
+
 def find_data_files(where, exts):
     exts = tuple(exts)
     for root, dirs, files in os.walk(where):
@@ -14,22 +15,27 @@ def find_data_files(where, exts):
 
 exts = ('*.h5', '*.csv', '*.xls', '*.xlsx', '*.db', '*.json', '*.gz', '*.hdf5',
         '*.sas7bdat')
-package_data = [x.replace('into' + os.sep, '') for x in
-                    find_data_files('into', exts)]
+package_data = [x.replace('odo' + os.sep, '') for x in
+                find_data_files('odo', exts)]
 
 
-setup(name='into',
+def read_text(filename):
+    with open(filename) as f:
+        return f.read()
+
+
+setup(name='odo',
       version='0.2.2',
       description='Data migration utilities',
-      url='http://github.com/ContinuumIO/into/',
+      url='http://github.com/ContinuumIO/odo/',
       author='Matthew Rocklin',
       author_email='mrocklin@continuum.io',
       license='BSD',
-      keywords='into data conversion hdf5 sql blaze',
+      keywords='odo data conversion hdf5 sql blaze',
       packages=find_packages(),
-      install_requires=list(open('requirements.txt').read().strip().split('\n')),
-      long_description=(open('README.rst').read() if os.path.exists('README.rst')
+      install_requires=read_text('requirements.txt').strip().split('\n'),
+      long_description=(read_text('README.rst') if os.path.exists('README.rst')
                         else ''),
-      package_data={'into': package_data},
+      package_data={'odo': package_data},
       zip_safe=False,
-      scripts=['bin/into'])
+      scripts=['bin/odo'])
