@@ -24,7 +24,7 @@ arguments to the ``odo`` function as in the following example
 .. code-block:: python
 
    >>> from odo import odo
-   >>> odo('localfile.csv', 'lhfds://hostname:myfile.csv',
+   >>> odo('localfile.csv', 'hfds://hostname:myfile.csv',
    ...     port=14000, user='hdfs')
 
 We pass through authentication keyword arguments to the
