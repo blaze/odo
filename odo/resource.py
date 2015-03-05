@@ -18,13 +18,13 @@ def resource_all(uri, *args, **kwargs):
 
     Filenames for common formats are valid URIs
 
-    >>> resource('myfile.csv')  # doctest: +SKIP
-    <into.CSV ...>
+    >>> resource('myfile.csv')
+    <odo.CSV object at ...>
 
     Database connection strings may embed connection information
 
-    >>> resource('postgresql://user:pass@hostname/db::tablename')  # doctest: +SKIP
-    Table('tablename', MetaData(bind=Engine(postgres://...  ... )))
+    >>> resource('postgresql://user:pass@hostname/db::tablename')
+    Table('tablename', MetaData(bind=Engine(postgres://...)))
 
     When possible ``resource`` returns an object from another popular library.
     In the case above ``resource`` gives you a ``sqlalchemy.Table`` object.
