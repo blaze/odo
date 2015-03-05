@@ -75,8 +75,8 @@ method.  Similar functions exist for ``append``, to add to existing data, and
 * ``append``: Add dataset onto existing container
 * ``resource``: Given a URI find the appropriate data resource
 * ``odo``: Call one of the above based on inputs.
-  E.g. ``into(list, (1, 2, 3)) -> convert(list, (1, 2, 3))``
-  while ``L = []; into(L, (1, 2, 3)) -> append(L, (1, 2, 3))``
+  E.g. ``odo((1, 2, 3), list) -> convert(list, (1, 2, 3))``
+  while ``L = []; odo((1, 2, 3), L) -> append(L, (1, 2, 3))``
 
 Finally, ``odo`` is also aware of which containers must reside in memory and
 which do not.  In the graph above the *red-colored* nodes are robust to

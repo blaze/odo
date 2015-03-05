@@ -76,7 +76,7 @@ S3 CSV to a pandas DataFrame
 
        >>> import pandas as pd
        >>> from odo import odo
-       >>> df = odo(pd.DataFrame, 's3://mybucket/myfile.csv')
+       >>> df = odo('s3://mybucket/myfile.csv', pd.DataFrame)
 
 
 TODO
