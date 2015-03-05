@@ -14,6 +14,7 @@ from .append import append
 from .resource import resource
 from .directory import Directory
 from .into import into
+from .odo import odo
 from .drop import drop
 from .temp import Temp
 from .backends.text import TextFile
