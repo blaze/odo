@@ -20,7 +20,14 @@ from .text import TextFile
 
 connection_pool = dict()
 
+
 def connect(**auth):
+    """
+    Examples
+    --------
+    >>> connect(hostname='localhost')
+    <paramiko.client.SSHClient object at ...>
+    """
     key = tuple(sorted(auth.items()))
     if key in connection_pool:
         ssh = connection_pool[key]
@@ -34,6 +41,7 @@ def connect(**auth):
     return ssh
 
 sftp_pool = dict()
+
 
 def sftp(**auth):
     ssh = connect(**auth)  # Need to call this explicitly (can't memoize)
@@ -79,7 +87,7 @@ class _SSH(object):
 
 
 def SSH(cls):
-    return type('SSH(%s)' % cls.__name__, (_SSH, cls), {'subtype':  cls})
+    return type('SSH(%s)' % cls.__name__, (_SSH, cls), {'subtype': cls})
 
 SSH.__doc__ = _SSH.__doc__
 
@@ -89,6 +97,7 @@ SSH = memoize(SSH)
 types_by_extension = {'csv': CSV, 'json': JSONLines}
 
 ssh_pattern = '((?P<username>[a-zA-Z]\w*)@)?(?P<hostname>[\w.-]*)(:(?P<port>\d+))?:(?P<path>[/\w.*-]+)'
+
 
 @resource.register('ssh://.+', priority=16)
 def resource_ssh(uri, **kwargs):
@@ -149,7 +158,8 @@ def discover_ssh(data, **kwargs):
 @discover.register(SSH(CSV))
 def discover_ssh_csv(data, **kwargs):
     with sample(data) as fn:
-        o = CSV(fn, encoding=data.encoding, has_header=data.has_header, **data.dialect)
+        o = CSV(fn, encoding=data.encoding, has_header=data.has_header,
+                **data.dialect)
         result = discover(o)
     return result
 
