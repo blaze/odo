@@ -1,7 +1,7 @@
 SSH
 ===
 
-Into interacts with remote data over ``ssh`` using the ``paramiko`` library.
+Odo interacts with remote data over ``ssh`` using the ``paramiko`` library.
 
 URIs
 ----
@@ -13,7 +13,7 @@ Simple and complex examples follow::
     ssh://username@hostname:/path/to/myfile.csv
 
 Additionally you may want to pass authentication information through keyword
-arguments to the into function as in the following example
+arguments to the ``into`` function as in the following example
 
 .. code-block:: python
 
@@ -39,7 +39,7 @@ options::
 Constructing SSH Objects explicitly
 -----------------------------------
 
-Most users usually interact with into using URI strings.
+Most users usually interact with ``odo.into`` using URI strings.
 
 Alternatively you can construct objects programmatically.  SSH uses the
 ``SSH`` type modifier

@@ -1,12 +1,12 @@
 Hadoop File System
 ==================
 
-Into interacts with the Hadoop File System using WebHDFS and the ``pywebhdfs``
+Odo interacts with the Hadoop File System using WebHDFS and the ``pywebhdfs``
 Python lirary.
 
 .. image:: images/hdfs.png
    :width: 50 %
-   :alt: into and hdfs
+   :alt: odo and hdfs
    :align: right
 
 URIs
@@ -19,7 +19,7 @@ Simple and complex examples follow::
     hdfs://username@hostname:/path/to/myfile.csv
 
 Alternatively you may want to pass authentication information through keyword
-arguments to the into function as in the following example
+arguments to the ``into`` function as in the following example
 
 .. code-block:: python
 
@@ -37,7 +37,7 @@ We pass through authentication keyword arguments to the
 Constructing HDFS Objects explicitly
 ------------------------------------
 
-Most users usually interact with into using URI strings.
+Most users usually interact with ``odo`` using URI strings.
 
 Alternatively you can construct objects programmatically.  HDFS uses the
 ``HDFS`` type modifier
@@ -54,7 +54,7 @@ Conversions
 -----------
 
 We can convert any text type (``CSV, JSON, JSONLines, TextFile``) to its
-equivalent on HDFS (``HDFS(CSV), HDFS(JSON), ...``).  The ``into`` network
+equivalent on HDFS (``HDFS(CSV), HDFS(JSON), ...``).  The ``odo`` network
 allows conversions from other types, like a pandas dataframe to a CSV file on
 HDFS, by routing through a temporary local csv file.::
 

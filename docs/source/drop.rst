@@ -1,7 +1,7 @@
 Drop
 ====
 
-The ``into.drop`` function deletes a data resource.  That data resource may
+The ``odo.drop`` function deletes a data resource.  That data resource may
 live outside of Python.
 
 
