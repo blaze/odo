@@ -1,5 +1,5 @@
 Spark/SparkSQL
-==================
+==============
 
 Dependencies
 ------------
@@ -26,7 +26,7 @@ Arch Linux.
 Interface
 ---------
 
-Spark diverges a bit from other areas of ``into`` due to the way it works. With
+Spark diverges a bit from other areas of ``odo`` due to the way it works. With
 Spark, all objects are attached to a special object called ``SparkContext``.
 There can only be *one* of these running at a time. In contrast, SparkSQL
 objects all live inside of *one or more* ``SQLContext`` objects. ``SQLContext``
@@ -49,11 +49,12 @@ Next we create a ``SQLContext``:
    >>> sql = SQLContext(sc)  # from the previous code block
 
 
-From here, you can start using ``into`` to create ``SchemaRDD`` objects, which
+From here, you can start using ``odo`` to create ``SchemaRDD`` objects, which
 are the SparkSQL version of a table:
 
 .. code-block:: python
 
+   >>> from odo import into
    >>> data = [('Alice', 300.0), ('Bob', 200.0), ('Donatello', -100.0)]
    >>> type(sql)
    <class 'pyspark.sql.SQLContext'>

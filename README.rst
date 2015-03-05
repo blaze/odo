@@ -14,7 +14,7 @@ Into migrates data between different containers
 
 .. code-block:: python
 
-   >>> from into import into
+   >>> from odo import into
 
    >>> into(list, (1, 2, 3))
    [1, 2, 3]
@@ -59,7 +59,7 @@ convert from ``pandas.DataFrame`` to a ``numpy.ndarray``.
 
 .. code-block:: python
 
-   from into import convert
+   from odo import convert
 
    @convert.register(np.ndarray, pd.DataFrame, cost=1.0)
    def dataframe_to_numpy(df, **kwargs):

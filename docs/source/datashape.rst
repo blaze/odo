@@ -2,7 +2,7 @@ Data Types
 ==========
 
 We can resolve errors and increase efficiency by explicitly specifying data
-types.  Into uses DataShape_ to specify datatypes across all of the formats
+types.  Odo uses DataShape_ to specify datatypes across all of the formats
 that it supports.
 
 First we motivate the use of datatypes with two examples, then we talk about
@@ -21,13 +21,13 @@ Consider the following CSV file::
     ...
     Zelda,100.25
 
-When ``into`` loads this file into a new container (DataFrame, new SQL Table,
+When ``odo`` loads this file into a new container (DataFrame, new SQL Table,
 etc.) it needs to know the datatypes of the source so that it can create a
 matching target.  If the CSV file is large then it looks only at the first few
 hundred lines and guesses a datatype from that.  In this case it might
 incorrectly guess that the balance column is of integer type because it doesn't
 see a decimal value until very late in the file with the line ``Zelda,100.25``.
-This will cause ``into`` to create a target with the wrong datatypes which will
+This will cause ``odo`` to create a target with the wrong datatypes which will
 foul up the transfer.
 
 Into will err unless we provide an explicit datatype.  So we had this
@@ -90,10 +90,10 @@ And any composition of the above::
            payments: var * {when: ?datetime, amount: float32}}
 
 
-DataShape and ``into``
-----------------------
+DataShape and ``odo``
+---------------------
 
-If you want to be explicit you can add a datashape to an into call with the
+If you want to be explicit you can add a datashape to an ``into`` call with the
 ``dshape=`` keyword
 
 .. code-block:: python
@@ -101,7 +101,7 @@ If you want to be explicit you can add a datashape to an into call with the
     >>> into(pd.DataFrame, 'accounts.csv',
     ...      dshape='var * {name: string, balance: float64}')
 
-This removes all of the guessword from the ``into`` heuristics and.  This can
+This removes all of the guesswork from the ``into`` heuristics.  This can
 be necessary in tricky cases.
 
 
@@ -114,7 +114,7 @@ function to get the datashape of an object.
 .. code-block:: python
 
    >>> import numpy as np
-   >>> from into import discover
+   >>> from odo import discover
 
    >>> x = np.ones((5, 6), dtype='f4')
    >>> discover(x)
@@ -126,7 +126,7 @@ datashape is only a guess and might need to be tweaked.
 
 .. code-block:: python
 
-   >>> from into import resource, discover
+   >>> from odo import resource, discover
    >>> csv = resource('accounts.csv')  # Have to use resource to discover URIs
    >>> discover(csv)
    dshape("var * {name: string, balance: int64")
@@ -143,7 +143,8 @@ or not we intend them to be URIs.
 Learn More
 ----------
 
-DataShape is a separate project from ``into``.  You can learn more about it at http://datashape.pydata.org/
+DataShape is a separate project from ``odo``.  You can learn more about it
+at http://datashape.pydata.org/
 
 
 .. _DataShape: http://datashape.pydata.org/

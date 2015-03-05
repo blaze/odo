@@ -1,7 +1,7 @@
 CSV
 ===
 
-Into interacts with local CSV files through Pandas.
+Odo interacts with local CSV files through Pandas.
 
 
 URIs

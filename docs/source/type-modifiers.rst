@@ -1,8 +1,8 @@
 Type Modifiers
 ==============
 
-Into decides what conversion functions to run based on the type (e.g.
-``pd.DataFrame, sqlalchemy.Table, into.CSV`` of the input.  In many cases we
+Odo decides what conversion functions to run based on the type (e.g.
+``pd.DataFrame, sqlalchemy.Table, odo.CSV`` of the input.  In many cases we
 want slight variations to signify different circumstances such as the
 difference between the following CSV files
 
@@ -58,7 +58,7 @@ an online fashion
 
 .. code-block:: Python
 
-   >>> from into import into, pd, chunks
+   >>> from odo import into, pd, chunks
    >>> seq = into(chunks(pd.DataFrame), 'postgresql://localhost::mytable')
    >>> for df in seq:
    ...    # work on each dataframe sequentially

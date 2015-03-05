@@ -1,13 +1,13 @@
 Mongo
 =====
 
-Into interacts with Mongo databases through PyMongo.
+Odo interacts with Mongo databases through PyMongo.
 
 
 URIs
 ----
 
-Simple and complex examples of MONGODB uris::
+Simple and complex examples of MongoDB uris::
 
     mongodb://localhost/mydb::mycollection
     mongodb://user:password@localhost:port/mydb::mycollection

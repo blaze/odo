@@ -19,7 +19,7 @@ Protocols
 ---------
 
 If given an explicit object (not a string uri), like an ``h5py.Dataset``,
-``pytables.Table`` or ``pandas.HDFStore`` then the ``into`` project can
+``pytables.Table`` or ``pandas.HDFStore`` then the ``odo`` project can
 intelligently decide what to do.  If given a string, like
 ``myfile.hdf5::/data/path`` then ``into`` defaults to using the vanilla
 ``h5py`` solution, the least opinionated of the three.

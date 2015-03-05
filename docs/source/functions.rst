@@ -1,8 +1,8 @@
 Five Operations
 ===============
 
-The Blaze project originally included ``into`` a magic function that
-transformed data between containers.  This function was both sufficiently
+The Blaze project originally included ``odo.into`` as a magic function that
+moved data between containers.  This function was both sufficiently
 useful and sufficiently magical that it was moved to a separate project, its
 functionality separated into three operations
 
