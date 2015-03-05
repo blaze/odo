@@ -10,8 +10,8 @@ num_processes = len(output.splitlines())
 pytestmark = pytest.mark.skipif(num_processes < 3, reason="No MySQL Installation")
 
 
-from into.backends.csv import CSV
-from into import resource, into
+from odo.backends.csv import CSV
+from odo import resource, into
 import sqlalchemy
 import os
 import csv as csv_module

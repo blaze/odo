@@ -1,11 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
-from into.backends.bcolz import (append, convert, ctable, carray, resource,
+from odo.backends.bcolz import (append, convert, ctable, carray, resource,
                                  discover, drop)
-from into.chunks import chunks
-from into import append, convert, discover, into
+from odo.chunks import chunks
+from odo import append, convert, discover, into
 import numpy as np
-from into.utils import tmpfile, ignoring, filetext
+from odo.utils import tmpfile, ignoring, filetext
 from contextlib import contextmanager
 import shutil
 import os

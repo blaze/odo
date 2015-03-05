@@ -1,8 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-from into.backends.text import (TextFile, resource, convert, discover, append,
+from odo.backends.text import (TextFile, resource, convert, discover, append,
         drop, chunks, Temp)
-from into.utils import tmpfile, filetexts, filetext
+from odo.utils import tmpfile, filetexts, filetext
 from datashape import dshape
 import gzip
 import os

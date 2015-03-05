@@ -6,10 +6,10 @@ import numpy as np
 import sqlalchemy as sa
 from datashape import discover, dshape
 import datashape
-from into.backends.sql import (dshape_to_table, create_from_datashape,
+from odo.backends.sql import (dshape_to_table, create_from_datashape,
                                dshape_to_alchemy)
-from into.utils import tmpfile, raises
-from into import convert, append, resource, discover, into
+from odo.utils import tmpfile, raises
+from odo import convert, append, resource, discover, into
 
 
 def test_resource():

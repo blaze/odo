@@ -16,10 +16,10 @@ import itertools
 import json
 from contextlib import contextmanager, closing
 
-from into import into, resource, S3, discover, CSV, drop, append
-from into.backends.aws import get_s3_connection
-from into.utils import tmpfile
-from into.compatibility import urlopen
+from odo import into, resource, S3, discover, CSV, drop, append
+from odo.backends.aws import get_s3_connection
+from odo.utils import tmpfile
+from odo.compatibility import urlopen
 
 import pandas as pd
 import pandas.util.testing as tm

@@ -15,13 +15,13 @@ from pywebhdfs.webhdfs import PyWebHdfsClient
 import pandas as pd
 import numpy as np
 import uuid
-from into.backends.hdfs import discover, HDFS, CSV, SSH
-from into.backends.sql import resource
-from into import into, drop, JSONLines
-from into.utils import filetext, ignoring, tmpfile
+from odo.backends.hdfs import discover, HDFS, CSV, SSH
+from odo.backends.sql import resource
+from odo import into, drop, JSONLines
+from odo.utils import filetext, ignoring, tmpfile
 import sqlalchemy as sa
 from datashape import dshape
-from into.directory import Directory
+from odo.directory import Directory
 from contextlib import contextmanager
 
 hdfs = PyWebHdfsClient(host=host, port='14000', user_name='hdfs')

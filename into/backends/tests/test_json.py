@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
-from into.backends.json import *
-from into.utils import tmpfile, ignoring
-from into import into
-from into.temp import Temp, _Temp
+from odo.backends.json import *
+from odo.utils import tmpfile, ignoring
+from odo import into
+from odo.temp import Temp, _Temp
 from contextlib import contextmanager
 from datashape import dshape
 import datetime
@@ -121,7 +121,7 @@ def test_tuples_to_json():
 
 
 def test_datetimes():
-    from into import into
+    from odo import into
     import numpy as np
     data = [{'a': 1, 'dt': datetime.datetime(2001, 1, 1)},
             {'a': 2, 'dt': datetime.datetime(2002, 2, 2)}]

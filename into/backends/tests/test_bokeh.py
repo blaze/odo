@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import pytest
 bokeh = pytest.importorskip('bokeh')
 
-from into.backends.bokeh import convert, pd, ColumnDataSource
+from odo.backends.bokeh import convert, pd, ColumnDataSource
 import pandas.util.testing as tm
 
 

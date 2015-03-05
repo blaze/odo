@@ -17,9 +17,9 @@ import pandas as pd
 
 import datashape
 from datashape import dshape
-from into import into, discover, Directory, JSONLines
-from into.utils import tmpfile, ignoring
-from into.backends.sparksql import schema_to_dshape, dshape_to_schema
+from odo import into, discover, Directory, JSONLines
+from odo.utils import tmpfile, ignoring
+from odo.backends.sparksql import schema_to_dshape, dshape_to_schema
 
 
 data = [['Alice', 100.0, 1],

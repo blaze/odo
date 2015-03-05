@@ -8,13 +8,13 @@ import datashape
 from datashape import Option, string
 from collections import Iterator
 
-from into.backends.csv import (CSV, append, convert, resource,
+from odo.backends.csv import (CSV, append, convert, resource,
         csv_to_DataFrame, CSV_to_chunks_of_dataframes, infer_header)
-from into.utils import tmpfile, filetext, filetexts, raises
-from into import (into, append, convert, resource, discover, dshape, Temp,
+from odo.utils import tmpfile, filetext, filetexts, raises
+from odo import (into, append, convert, resource, discover, dshape, Temp,
         chunks)
-from into.temp import _Temp
-from into.compatibility import unicode, skipif
+from odo.temp import _Temp
+from odo.compatibility import unicode, skipif
 
 
 def test_csv():

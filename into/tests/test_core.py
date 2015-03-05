@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from into.core import NetworkDispatcher, path
+from odo.core import NetworkDispatcher, path
 from datashape import discover
 
 d = NetworkDispatcher('foo')

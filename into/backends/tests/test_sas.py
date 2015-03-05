@@ -8,9 +8,9 @@ import pandas as pd
 from collections import Iterator
 from sas7bdat import SAS7BDAT
 
-from into.backends.sas import discover, sas_to_iterator
-from into.utils import tmpfile, into_path
-from into import append, convert, resource, dshape
+from odo.backends.sas import discover, sas_to_iterator
+from odo.utils import tmpfile, into_path
+from odo import append, convert, resource, dshape
 
 
 test_path = into_path('backends', 'tests', 'airline.sas7bdat')

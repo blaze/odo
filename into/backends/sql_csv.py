@@ -117,7 +117,7 @@ def copy_mysql(dialect, tbl, csv, **kwargs):
 
 try:
     import boto
-    from into.backends.aws import S3
+    from odo.backends.aws import S3
     from redshift_sqlalchemy.dialect import CopyCommand
     import sqlalchemy as sa
 except ImportError:

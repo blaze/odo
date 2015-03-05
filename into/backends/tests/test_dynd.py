@@ -3,8 +3,8 @@ from __future__ import absolute_import, division, print_function
 import pytest
 pytest.importorskip('dynd')
 
-from into.backends.dynd import convert, append, create, discover
-from into import into, append, convert, resource, discover
+from odo.backends.dynd import convert, append, create, discover
+from odo import into, append, convert, resource, discover
 from dynd import nd
 import numpy as np
 import datashape

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from into.regex import RegexDispatcher
+from odo.regex import RegexDispatcher
 import re
 
 def test_regex_dispatcher():

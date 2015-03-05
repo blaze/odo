@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from into.chunks import *
+from odo.chunks import *
 from toolz import first
 
 

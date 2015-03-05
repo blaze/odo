@@ -4,12 +4,12 @@ import h5py
 import os
 from contextlib import contextmanager
 
-from into.backends.h5py import append, create, resource, discover, convert
-from into.backends.h5py import unicode_dtype
+from odo.backends.h5py import append, create, resource, discover, convert
+from odo.backends.h5py import unicode_dtype
 
-from into.utils import tmpfile, ignoring
-from into.chunks import chunks
-from into import into, append, convert, discover, drop
+from odo.utils import tmpfile, ignoring
+from odo.chunks import chunks
+from odo import into, append, convert, discover, drop
 import datashape
 import h5py
 import numpy as np

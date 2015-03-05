@@ -5,8 +5,8 @@ pymongo = pytest.importorskip('pymongo')
 
 from contextlib import contextmanager
 import datashape
-from into import discover, convert, append, resource, dshape
-from into.backends.mongo import *
+from odo import discover, convert, append, resource, dshape
+from odo.backends.mongo import *
 from toolz import pluck
 from copy import deepcopy
 from bson.objectid import ObjectId

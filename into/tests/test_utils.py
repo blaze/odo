@@ -1,4 +1,4 @@
-from into.utils import ext
+from odo.utils import ext
 
 
 def test_ext():
