@@ -48,6 +48,6 @@ DataFrames.  We call this type ``chunks(DataFrame)``.::
 
 CSVs can also be efficiently loaded into SQL Databases::
 
-    SQL <- CSV
+    CSV -> SQL
 
 .. _`list of keyword arguments`: http://pandas.pydata.org/pandas-docs/stable/generated/pandas.io.parsers.read_csv.html

@@ -95,13 +95,14 @@ the ``resource`` function.
    >>> resource('sqlite:///data.db::iris')
    Table('iris', MetaData(bind=Engine(sqlite:///myfile.db)), ...)
 
-When we use a string in ``into`` this is actually just shorthand for calling
+When we use a string in ``odo`` this is actually just shorthand for calling
 ``resource``.
 
 .. code-block:: python
 
-   >>> into(list, 'some-uri')            # When you write this
-   >>> into(list, resource('some-uri'))  # actually this happens
+   >>> from odo import odo
+   >>> odo('some-uri', list)            # When you write this
+   >>> odo(resource('some-uri'), list)  # actually this happens
 
 Notably, URIs are just syntactic sugar, you don't have to use them.  You can
 always construct the object explicitly.  Odo invents very few types,

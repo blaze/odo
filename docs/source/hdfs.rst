@@ -19,13 +19,13 @@ Simple and complex examples follow::
     hdfs://username@hostname:/path/to/myfile.csv
 
 Alternatively you may want to pass authentication information through keyword
-arguments to the ``into`` function as in the following example
+arguments to the ``odo`` function as in the following example
 
 .. code-block:: python
 
-   >>> from odo import into
-   >>> into('hfds://hostname:myfile.csv', 'localfile.csv',
-   ...      port=14000, user='hdfs')
+   >>> from odo import odo
+   >>> odo('localfile.csv', 'lhfds://hostname:myfile.csv',
+   ...     port=14000, user='hdfs')
 
 We pass through authentication keyword arguments to the
 ``pywebhdfs.webhdfs.PyWebHdfsClient`` class, using the following defaults::

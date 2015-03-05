@@ -59,11 +59,12 @@ Conversions
 -----------
 
 ``odo`` can take advantage of Redshift's fast S3 ``COPY`` command. It works
-transparently. For example, to upload a local CSV to a Redshift table
+transparently. For example, to upload a local CSV file called ``users.csv`` to a
+Redshift table
 
     .. code-block:: python
 
-       >>> table = into('redshift://user:pass@host:port/db::users', 'users.csv')
+       >>> table = odo('users.csv', 'redshift://user:pass@host:port/db::users')
 
 
 Remember that these are just additional nodes in the ``odo`` network, and as
@@ -73,7 +74,9 @@ S3 CSV to a pandas DataFrame
 
     .. code-block:: python
 
-       >>> df = into(pandas.DataFrame, 's3://mybucket/myfile.csv')
+       >>> import pandas as pd
+       >>> from odo import odo
+       >>> df = odo(pd.DataFrame, 's3://mybucket/myfile.csv')
 
 
 TODO

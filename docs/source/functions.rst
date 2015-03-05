@@ -13,6 +13,6 @@ functionality separated into three operations
 3.  ``resource``: Obtain or create dataset from a URI string
     ``resource('myfile.csv')``
 
-These are magically tied together as the original ``into`` function
+These are magically tied together as the original ``odo`` function
 
-4.  ``into``: Put stuff into other stuff (deliberately vague/magical.)
+4.  ``odo``: Put stuff into other stuff (deliberately vague/magical.)

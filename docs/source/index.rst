@@ -5,8 +5,8 @@ Odo: Shapeshifting for your data
 
 .. code-block:: python
 
-   >>> from odo import into
-   >>> into(target, source)  # load source into target
+   >>> from odo import odo
+   >>> odo(source, target)  # load source into target
 
 It efficiently migrates data from the source to the target through a network
 of conversions.
@@ -22,17 +22,17 @@ Example
 
 .. code-block:: python
 
-   >>> from odo import into
+   >>> from odo import odo
    >>> import pandas as pd
 
-   >>> into(pd.DataFrame, 'accounts.csv')  # Load csv file into DataFrame
+   >>> odo('accounts.csv', pd.DataFrame)  # Load csv file into DataFrame
          name  balance
    0    Alice      100
    1      Bob      200
    2  Charlie      300
 
    >>> # Load CSV file into Hive database
-   >>> into('hive://user:password@hostname/db::accounts', 'accounts.csv')
+   >>> odo('accounts.csv', 'hive://user:password@hostname/db::accounts')
 
 
 Contents
@@ -76,7 +76,7 @@ Developer documentation
    type-modifiers
    functions
 
-Into is part of the Open Source Blaze_ projects supported by `Continuum Analytics`_
+Odo is part of the Open Source Blaze_ projects supported by `Continuum Analytics`_
 
 .. _Blaze: http://continuum.io/open-source/blaze/
 .. _`Continuum Analytics`: http://continuum.io

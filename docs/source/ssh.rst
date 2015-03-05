@@ -13,13 +13,13 @@ Simple and complex examples follow::
     ssh://username@hostname:/path/to/myfile.csv
 
 Additionally you may want to pass authentication information through keyword
-arguments to the ``into`` function as in the following example
+arguments to the ``odo`` function as in the following example
 
 .. code-block:: python
 
-   >>> from odo import into
-   >>> into('ssh://hostname:myfile.csv', 'localfile.csv',
-   ...      username='user', key_filename='.ssh/id_rsa', port=22)
+   >>> from odo import odo
+   >>> odo('localfile.csv', 'ssh://hostname:myfile.csv',
+   ...     username='user', key_filename='.ssh/id_rsa', port=22)
 
 We pass through authentication keyword arguments to the
 ``paramiko.SSHClient.connect`` method.  That method takes the following

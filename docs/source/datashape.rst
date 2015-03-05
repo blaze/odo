@@ -30,7 +30,7 @@ see a decimal value until very late in the file with the line ``Zelda,100.25``.
 This will cause ``odo`` to create a target with the wrong datatypes which will
 foul up the transfer.
 
-Into will err unless we provide an explicit datatype.  So we had this
+Odo will err unless we provide an explicit datatype.  So we had this
 datashape::
 
     var * {name: string, balance: int64)
@@ -93,15 +93,15 @@ And any composition of the above::
 DataShape and ``odo``
 ---------------------
 
-If you want to be explicit you can add a datashape to an ``into`` call with the
+If you want to be explicit you can add a datashape to an ``odo`` call with the
 ``dshape=`` keyword
 
 .. code-block:: python
 
-    >>> into(pd.DataFrame, 'accounts.csv',
+    >>> odo('accounts.csv', pd.DataFrame,
     ...      dshape='var * {name: string, balance: float64}')
 
-This removes all of the guesswork from the ``into`` heuristics.  This can
+This removes all of the guesswork from the ``odo`` heuristics.  This can
 be necessary in tricky cases.
 
 
@@ -126,13 +126,13 @@ datashape is only a guess and might need to be tweaked.
 
 .. code-block:: python
 
-   >>> from odo import resource, discover
+   >>> from odo import odo, resource, discover
    >>> csv = resource('accounts.csv')  # Have to use resource to discover URIs
    >>> discover(csv)
    dshape("var * {name: string, balance: int64")
 
    >>> ds = dshape("var * {name: string, balance: float64")  # copy-paste-modify
-   >>> into(pd.DataFrame, 'accounts.csv', dshape=ds)
+   >>> odo('accounts.csv', pd.DataFrame, dshape=ds)
 
 In these cases we can copy-paste the datashape and modify the parts that we
 need to change.  In the example above we couldn't call discover directly on the

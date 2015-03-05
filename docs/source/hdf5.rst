@@ -21,7 +21,7 @@ Protocols
 If given an explicit object (not a string uri), like an ``h5py.Dataset``,
 ``pytables.Table`` or ``pandas.HDFStore`` then the ``odo`` project can
 intelligently decide what to do.  If given a string, like
-``myfile.hdf5::/data/path`` then ``into`` defaults to using the vanilla
+``myfile.hdf5::/data/path`` then ``odo`` defaults to using the vanilla
 ``h5py`` solution, the least opinionated of the three.
 
 You can specify that you want a particular format with one of the following protocols
