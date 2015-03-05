@@ -60,6 +60,10 @@ with ignoring(ImportError):
 with ignoring(ImportError):
     from .backends.sparksql import SchemaRDD
 
+try:
+    from .backends import iopro
+except:
+    pass
 
 restart_ordering()  # Restart multipledispatch ordering and do ordering
 

@@ -60,6 +60,14 @@ revtypes.update({sa.types.VARCHAR: 'string',
                  sa.types.NullType: 'string',
                  sa.types.Float: 'float64'})
 
+sa_create_engine_kwargs = ['case_sensitive', 'connect_args', 'convert_unicode',
+                           'creator', 'echo', 'echo_pool', 'encoding',
+                           'execution_options', 'implicit_returning',
+                           'isolation_level', 'label_length', 'listeners',
+                           'logging_name', 'max_overflow', 'module', 'paramstyle',
+                           'pool', 'poolclass', 'pool_logging_name', 'pool_size',
+                           'pool_recycle', 'pool_reset_on_return', 'pool_timeout',
+                           'strategy', 'executor']
 
 @discover.register(sa.sql.type_api.TypeEngine)
 def discover_typeengine(typ):
@@ -85,10 +93,9 @@ def discover_sqlalchemy_column(col):
         return Record([[col.name, discover(col.type)]])
 
 
-@discover.register(sa.Table)
-def discover_sqlalchemy_table(t):
-    return var * Record(list(sum([discover(c).parameters[0] for c in t.columns], ())))
-
+@discover.register((sa.Table, sa.sql.Select))
+def discover_sqlalchemy_sqlobj(sqlobj):
+    return var * Record(list(sum([discover(c).parameters[0] for c in sqlobj.columns], ())))
 
 @memoize
 def metadata_of_engine(engine):
@@ -326,7 +333,7 @@ def append_select_statement_to_sql_Table(t, o, **kwargs):
 
 @resource.register('(.*sql.*|oracle|redshift)(\+\w+)?://.+')
 def resource_sql(uri, *args, **kwargs):
-    kwargs2 = keyfilter(keywords(sa.create_engine).__contains__, kwargs)
+    kwargs2 = keyfilter(sa_create_engine_kwargs.__contains__, kwargs)
     engine = create_engine(uri, **kwargs2)
     ds = kwargs.get('dshape')
     if args and isinstance(args[0], str):
