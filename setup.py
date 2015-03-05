@@ -38,4 +38,4 @@ setup(name='odo',
                         else ''),
       package_data={'odo': package_data},
       zip_safe=False,
-      scripts=['bin/odo'])
+      scripts=[os.path.join('bin', 'odo')])
