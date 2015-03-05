@@ -13,7 +13,7 @@ The ``into`` function
 
 .. code-block:: python
 
-   >>> from into import into
+   >>> from odo import into
    >>> into(target, source)  # load source into target
 
 It efficiently migrates data from the source to the target.

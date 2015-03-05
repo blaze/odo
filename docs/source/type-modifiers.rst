@@ -58,7 +58,7 @@ an online fashion
 
 .. code-block:: Python
 
-   >>> from into import into, pd, chunks
+   >>> from odo import into, pd, chunks
    >>> seq = into(chunks(pd.DataFrame), 'postgresql://localhost::mytable')
    >>> for df in seq:
    ...    # work on each dataframe sequentially

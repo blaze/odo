@@ -22,7 +22,7 @@ Example
 
 .. code-block:: python
 
-   >>> from into import into
+   >>> from odo import into
    >>> import pandas as pd
 
    >>> into(pd.DataFrame, 'accounts.csv')  # Load csv file into DataFrame

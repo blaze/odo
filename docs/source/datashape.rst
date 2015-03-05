@@ -114,7 +114,7 @@ function to get the datashape of an object.
 .. code-block:: python
 
    >>> import numpy as np
-   >>> from into import discover
+   >>> from odo import discover
 
    >>> x = np.ones((5, 6), dtype='f4')
    >>> discover(x)
@@ -126,7 +126,7 @@ datashape is only a guess and might need to be tweaked.
 
 .. code-block:: python
 
-   >>> from into import resource, discover
+   >>> from odo import resource, discover
    >>> csv = resource('accounts.csv')  # Have to use resource to discover URIs
    >>> discover(csv)
    dshape("var * {name: string, balance: int64")

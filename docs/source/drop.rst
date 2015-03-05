@@ -10,7 +10,7 @@ Examples
 
 .. code-block:: python
 
-   >>> from into import drop
+   >>> from odo import drop
    >>> drop('myfile.csv')                 # Removes file
    >>> drop('sqlite:///my.db::accounts')  # Drops table 'accounts'
    >>> drop('myfile.hdf5::/data/path')    # Deletes dataset from file

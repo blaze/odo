@@ -91,7 +91,7 @@ the ``resource`` function.
 
 .. code-block:: python
 
-   >>> from into import resource
+   >>> from odo import resource
    >>> resource('sqlite:///data.db::iris')
    Table('iris', MetaData(bind=Engine(sqlite:///myfile.db)), ...)
 
@@ -118,7 +118,7 @@ Absolutely.  Lets make a little resource function to load pickle files.
 .. code-block:: python
 
    import pickle
-   from into import resource
+   from odo import resource
 
    @resource.register('.*\.pkl')  # match anything ending in .pkl
    def resource_pickle(uri, **kwargs):
