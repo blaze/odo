@@ -56,7 +56,7 @@ before_script:
  - ssh-add
 
 script:
-    - py.test --doctest-modules odo -r sxX && exit 0
+    - py.test --doctest-modules odo -r sxX
 
 notifications:
   email: false
