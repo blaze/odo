@@ -1,3 +1,4 @@
 *.pyc
 *.dot
 docs/build
+conda.recipe/build.sh

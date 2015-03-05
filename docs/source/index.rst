@@ -1,11 +1,11 @@
+Odo
+===
 
-Into
-====
-
-``into`` takes two arguments, a target and a source for a data transfer.
+``odo.into`` takes two arguments, a target and a source for a data transfer.
 
 .. code-block:: python
 
+   >>> from odo import into
    >>> into(target, source)  # load source into target
 
 It efficiently migrates data from the source to the target through a network
@@ -13,7 +13,7 @@ of conversions.
 
 .. figure:: images/conversions.png
    :width: 60 %
-   :alt: into network of conversions
+   :alt: odo network of conversions
    :target: _images/conversions.png
 
 
@@ -22,7 +22,7 @@ Example
 
 .. code-block:: python
 
-   >>> from into import into
+   >>> from odo import into
    >>> import pandas as pd
 
    >>> into(pd.DataFrame, 'accounts.csv')  # Load csv file into DataFrame
@@ -74,6 +74,7 @@ Developer documentation
    :maxdepth: 1
 
    type-modifiers
+   functions
 
 Into is part of the Open Source Blaze_ projects supported by `Continuum Analytics`_
 

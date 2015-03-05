@@ -1,7 +1,7 @@
 Overview
 ========
 
-Into migrates between many formats.  These include
+Odo migrates between many formats.  These include
 in-memory structures like ``list``, ``pd.DataFrame`` and ``np.ndarray`` and
 also data outside of Python like CSV/JSON/HDF5 files, SQL databases,
 data on remote machines, and the Hadoop File System.
@@ -13,7 +13,7 @@ The ``into`` function
 
 .. code-block:: python
 
-   >>> from into import into
+   >>> from odo import into
    >>> into(target, source)  # load source into target
 
 It efficiently migrates data from the source to the target.
@@ -64,12 +64,12 @@ So the following lines would be valid inputs to ``into``
 Network Effects
 ---------------
 
-To convert data any pair of formats ``into`` relies on a network of
+To convert data any pair of formats ``odo`` relies on a network of
 pairwise conversions.  We visualize that network below
 
 .. figure:: images/conversions.png
    :width: 60 %
-   :alt: into network of conversions
+   :alt: odo network of conversions
    :target: _images/conversions.png
 
 

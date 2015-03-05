@@ -1,7 +1,7 @@
 Mongo
 =====
 
-Into interacts with Mongo databases through PyMongo.
+Odo interacts with Mongo databases through PyMongo.
 
 
 URIs

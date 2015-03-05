@@ -1,5 +1,5 @@
 Spark/SparkSQL
-==================
+==============
 
 Dependencies
 ------------
@@ -26,7 +26,7 @@ Arch Linux.
 Interface
 ---------
 
-Spark diverges a bit from other areas of ``into`` due to the way it works. With
+Spark diverges a bit from other areas of ``odo`` due to the way it works. With
 Spark, all objects are attached to a special object called ``SparkContext``.
 There can only be *one* of these running at a time. In contrast, SparkSQL
 objects all live inside of *one or more* ``SQLContext`` objects. ``SQLContext``

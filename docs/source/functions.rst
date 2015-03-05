@@ -1,7 +1,7 @@
 Five Operations
 ===============
 
-The Blaze project originally included ``into`` a magic function that
+The Blaze project originally included ``odo`` a magic function that
 transformed data between containers.  This function was both sufficiently
 useful and sufficiently magical that it was moved to a separate project, its
 functionality separated into three operations
@@ -13,6 +13,6 @@ functionality separated into three operations
 3.  ``resource``: Obtain or create dataset from a URI string
     ``resource('myfile.csv')``
 
-These are magically tied together as the original ``into`` function
+These are magically tied together as the original ``odo`` function
 
 4.  ``into``: Put stuff into other stuff (deliberately vague/magical.)

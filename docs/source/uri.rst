@@ -2,7 +2,7 @@
 URI strings
 ===========
 
-Into uses strings refer to data outside of Python.
+Odo uses strings refer to data outside of Python.
 
 Some example uris include the following::
 
@@ -14,8 +14,8 @@ Some example uris include the following::
     hdfs://user@host:/path/to/myfile.csv
 
 
-What sorts of URI's does into support?
----------------------------------------
+What sorts of URI's does odo support?
+-------------------------------------
 
 * Paths to files on disk
     * ``.csv``
@@ -68,7 +68,7 @@ follows a common format, notably::
     Protocol:  sqlite://
     Filename:  data/my.db
 
-Into also uses protocols in many cases to give extra hints on how to
+Odo also uses protocols in many cases to give extra hints on how to
 handle your data.  For example Python has a few different libraries to
 handle HDF5 files (``h5py``, ``pytables``, ``pandas.HDFStore``).  By default
 when we see a URI like ``myfile.hdf5`` we currently use ``h5py``.  To
@@ -91,7 +91,7 @@ the ``resource`` function.
 
 .. code-block:: python
 
-   >>> from into import resource
+   >>> from odo import resource
    >>> resource('sqlite:///data.db::iris')
    Table('iris', MetaData(bind=Engine(sqlite:///myfile.db)), ...)
 
@@ -107,7 +107,7 @@ Notably, URIs are just syntactic sugar, you don't have to use them.  You can
 always construct the object explicitly.  Into invents very few types,
 preferring instead to use standard projects within the Python ecosystem like
 ``sqlalchemy.Table`` or ``pymongo.Collection``.  If your applicaiton also uses
-these types then it's likely that ``into`` already works with your data.
+these types then it's likely that ``odo`` already works with your data.
 
 
 Can I extend this to my own types?
@@ -118,7 +118,7 @@ Absolutely.  Lets make a little resource function to load pickle files.
 .. code-block:: python
 
    import pickle
-   from into import resource
+   from odo import resource
 
    @resource.register('.*\.pkl')  # match anything ending in .pkl
    def resource_pickle(uri, **kwargs):
