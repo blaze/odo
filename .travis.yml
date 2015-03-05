@@ -24,11 +24,11 @@ install:
   - conda update conda
 
   # Install dependencies
-  - conda create -n test-environment python=$TRAVIS_PYTHON_VERSION pytest psycopg2 numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python pymongo paramiko boto
+  - conda create -n test-environment python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python pymongo paramiko boto
   - source activate test-environment
 
   # Install various deps
-  - pip install sas7bdat
+  - pip install pymysql psycopg2 sas7bdat
 
   # Install DataShape
   - pip install --upgrade git+http://github.com/ContinuumIO/datashape
@@ -40,10 +40,10 @@ install:
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then conda install -c blaze spark; fi
 
   # Install Bokeh
-  - if [[ $TRAVIS_PYTHON_VERSION > '2.6' ]]; then conda install bokeh pymysql; fi
+  - if [[ $TRAVIS_PYTHON_VERSION > '2.6' ]]; then conda install bokeh; fi
 
   # For bcolz
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda install unittest2 && pip install pymysql; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda install unittest2; fi
 
 # Before_script section stolen from fabric
 # See license https://github.com/fabric/fabric/blob/master/LICENSE
@@ -56,7 +56,10 @@ before_script:
  - ssh-add
 
 script:
-    - py.test --doctest-modules odo -r sxX
+    - py.test --doctest-modules into
+
+after_success:
+    - pip install coveralls --use-mirrors ; coveralls
 
 notifications:
   email: false
