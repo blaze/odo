@@ -40,7 +40,7 @@ test:
     - pymongo
 
   commands:
-    - python -c "import odo; odo.test(exit=True)"
+    - py.test -x --doctest-modules --pyargs odo
 
 about:
   home: http://github.com/ContinuumIO/odo/
