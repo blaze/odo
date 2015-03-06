@@ -9,10 +9,10 @@ try:
     import pyspark
     from pyspark import RDD
     from pyspark.rdd import PipelinedRDD
-    from pyspark.sql import SchemaRDD, SQLContext
+    from pyspark.sql import DataFrame as SparkDataFrame, SQLContext
     RDD.min
 except (AttributeError, ImportError):
-    SchemaRDD = PipelinedRDD = RDD = SparkContext = SQLContext = Dummy
+    SparkDataFrame = PipelinedRDD = RDD = SparkContext = SQLContext = Dummy
     pyspark = Dummy()
 
 
@@ -32,7 +32,7 @@ def anything_to_spark_context(sc, o, **kwargs):
     return append(sc, convert(list, o, **kwargs), **kwargs)
 
 
-@convert.register(list, (RDD, PipelinedRDD, SchemaRDD))
+@convert.register(list, (RDD, PipelinedRDD, SparkDataFrame))
 def rdd_to_list(rdd, **kwargs):
     return rdd.collect()
 
@@ -46,6 +46,6 @@ def discover_rdd(rdd, n=50, **kwargs):
 SQLContext = memoize(SQLContext)
 
 
-@convert.register(SchemaRDD, (RDD, PipelinedRDD))
+@convert.register(SparkDataFrame, (RDD, PipelinedRDD))
 def rdd_to_schema_rdd(rdd, **kwargs):
     return append(SQLContext(rdd.context), rdd, **kwargs)

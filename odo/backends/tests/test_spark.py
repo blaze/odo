@@ -6,10 +6,10 @@ pytest.importorskip('pyspark')
 
 import pytest
 from datashape import dshape
-from odo import into, discover
+from odo import odo, discover
 from pyspark import RDD
 from pyspark.rdd import PipelinedRDD
-from pyspark.sql import SchemaRDD, Row
+from pyspark.sql import DataFrame as SparkDataFrame, Row
 
 
 data = [['Alice', 100.0, 1],
@@ -24,20 +24,20 @@ def rdd(sc):
 
 def test_spark_into(rdd):
     with pytest.raises(NotImplementedError):
-        into(rdd, [1, 2, 3])
+        odo([1, 2, 3], rdd)
 
 
 def test_spark_into_context(sc):
     seq = [1, 2, 3]
-    rdd = into(sc, seq)
+    rdd = odo(seq, sc)
     assert isinstance(rdd, RDD)
-    assert into([], rdd) == seq
+    assert odo(rdd, []) == seq
 
 
 def test_rdd_into_schema_rdd(rdd):
     ds = dshape('var * {name: string, amount: float64, id: int64}')
-    srdd = into(SchemaRDD, rdd, dshape=ds)
-    assert isinstance(srdd, SchemaRDD)
+    srdd = odo(rdd, SparkDataFrame, dshape=ds)
+    assert isinstance(srdd, SparkDataFrame)
     assert list(map(set, srdd.collect())) == list(map(set, rdd.collect()))
 
 
@@ -45,10 +45,10 @@ def test_pipelined_rdd_into_schema_rdd(rdd):
     pipelined = rdd.map(lambda x: Row(amount=x[1]))
     assert isinstance(pipelined, PipelinedRDD)
 
-    srdd = into(SchemaRDD, pipelined,
-                dshape=dshape('var * {amount: float64}'))
+    srdd = odo(pipelined, SparkDataFrame,
+               dshape=dshape('var * {amount: float64}'))
 
-    assert isinstance(srdd, SchemaRDD)
+    assert isinstance(srdd, SparkDataFrame)
     assert (list(map(set, srdd.collect())) ==
             list(map(set, pipelined.collect())))
 
