@@ -1,14 +1,14 @@
 from __future__ import absolute_import, division, print_function
 
-try:
-    from sas7bdat import SAS7BDAT
-except ImportError:
-    SAS7BDAT = type(None)
+import sas7bdat
+from sas7bdat import SAS7BDAT
 
-from datashape import discover, var, Record, date_, datetime_
+import datashape
+from datashape import discover, dshape, var, Record, date_, datetime_
 from collections import Iterator
 import pandas as pd
 from .pandas import coerce_datetimes
+from ..append import append
 from ..convert import convert
 from ..resource import resource
 
@@ -21,7 +21,7 @@ def resource_sas(uri, **kwargs):
 @discover.register(SAS7BDAT)
 def discover_sas(f, **kwargs):
     lines = f.readlines()
-    next(lines)  # burn header
+    next(lines) # burn header
     ln = next(lines)
     types = map(discover, ln)
     names = [col.name.decode("utf-8") for col in f.header.parent.columns]
