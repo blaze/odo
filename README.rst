@@ -102,9 +102,9 @@ Odo was factored out from the Blaze_ project.
 
 .. _Blaze: http://blaze.pydata.org/
 .. _networkx: https://networkx.github.io/
-.. _Documentation: https://into.readthedocs.org/en/latest/
+.. _Documentation: https://odo.readthedocs.org/en/latest/
 .. |Build Status| image:: https://travis-ci.org/ContinuumIO/odo.png
    :target: https://travis-ci.org/ContinuumIO/odo
-.. |Doc Status| image:: https://readthedocs.org/projects/into/badge/?version=latest
-   :target: https://readthedocs.org/projects/into/?badge=latest
+.. |Doc Status| image:: https://readthedocs.org/projects/odo/badge/?version=latest
+   :target: https://readthedocs.org/projects/odo/?badge=latest
    :alt: Documentation Status
