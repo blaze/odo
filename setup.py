@@ -20,11 +20,11 @@ package_data = [x.replace('odo' + os.sep, '') for x in
 
 
 setup(name='odo',
-      version='0.2.2',
+      version='0.3.0',
       description='Data migration utilities',
       url='http://github.com/ContinuumIO/odo',
-      author='Matthew Rocklin',
-      author_email='mrocklin@continuum.io',
+      author='Blaze development deam',
+      author_email='blaze-dev@continuum.io',
       license='BSD',
       keywords='odo data conversion hdf5 sql blaze',
       packages=find_packages(),
