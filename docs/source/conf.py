@@ -48,7 +48,7 @@ copyright = u'2015, Continuum Analytics'
 # built documents.
 #
 # The short X.Y version.
-from into import __version__ as version
+from odo import __version__ as version
 # The full version, including alpha/beta/rc tags.
 release = version
 
