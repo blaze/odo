@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
 from sys import argv
-from into import into
+from odo import odo
 from toolz import partition
 
 literals = [True, False, None]
+
 
 def parse(s):
     """ Parse strings to booleans, integers, or strings
@@ -24,11 +25,14 @@ def parse(s):
         return int(s)
     return s
 
+
 def get_args_kwargs(argv):
     source, target = argv[1], argv[2]
-    kwargs = dict((k.lstrip('-').replace('-','_'), parse(v))
-                for k, v in partition(2, argv[3:]))
-    return (target, source), kwargs
+    kwargs = dict((k.lstrip('-').replace('-', '_'), parse(v))
+                  for k, v in partition(2, argv[3:]))
+    return (source, target), kwargs
 
-args, kwargs = get_args_kwargs(argv)
-into(*args, **kwargs)
+
+if __name__ == '__main__':
+    args, kwargs = get_args_kwargs(argv)
+    odo(*args, **kwargs)
