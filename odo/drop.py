@@ -18,13 +18,13 @@ def drop(rsrc):
     Examples
     --------
     >>> # Using SQLite
-    >>> from odo import resource, into
+    >>> from odo import resource, odo
     >>> # create a table called 'tb', in memory
     >>> from datashape import dshape
     >>> ds = dshape('var * {name: string, amount: int}')
     >>> sql = resource('sqlite:///:memory:::tb', dshape=ds)
-    >>> into(sql, [('Alice', 100), ('Bob', 200)])
-    >>> into(list, sql)
+    >>> odo([('Alice', 100), ('Bob', 200)], sql)
+    >>> odo(sql, list)
     [('Alice', 100), ('Bob', 200)]
     >>> drop(sql)
     """
