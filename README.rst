@@ -14,7 +14,7 @@ Into migrates data between different containers
 
 .. code-block:: python
 
-   >>> from into import into
+   >>> from odo import odo
 
    >>> into(list, (1, 2, 3))
    [1, 2, 3]
@@ -45,13 +45,13 @@ Each node is a container type (like ``pandas.DataFrame`` or
 appends one container into or onto another.  We annotate these functions/edges
 with relative costs.
 
-This network approach allows ``into`` to select the shortest path between any
+This network approach allows ``odo`` to select the shortest path between any
 two types (thank you networkx_).  For performance reasons these functions often
 leverage non-Pythonic systems like NumPy arrays or native ``CSV->SQL`` loading
 functions.  Into is not dependent on only Python iterators.
 
 This network approach is also robust.  When libraries go missing or runtime
-errors occur ``into`` can work around these holes and find new paths.
+errors occur ``odo`` can work around these holes and find new paths.
 
 This network approach is extensible.  It is easy to write small functions and
 register them to the overall graph.  In the following example showing how we
@@ -59,7 +59,7 @@ convert from ``pandas.DataFrame`` to a ``numpy.ndarray``.
 
 .. code-block:: python
 
-   from into import convert
+   from odo import convert
 
    @convert.register(np.ndarray, pd.DataFrame, cost=1.0)
    def dataframe_to_numpy(df, **kwargs):
@@ -74,11 +74,11 @@ method.  Similar functions exist for ``append``, to add to existing data, and
 * ``convert``: Transform dataset into new container
 * ``append``: Add dataset onto existing container
 * ``resource``: Given a URI find the appropriate data resource
-* ``into``: Call one of the above based on inputs.
-  E.g. ``into(list, (1, 2, 3)) -> convert(list, (1, 2, 3))``
-  while ``L = []; into(L, (1, 2, 3)) -> append(L, (1, 2, 3))``
+* ``odo``: Call one of the above based on inputs.
+  E.g. ``odo((1, 2, 3), list) -> convert(list, (1, 2, 3))``
+  while ``L = []; odo((1, 2, 3), L) -> append(L, (1, 2, 3))``
 
-Finally, ``into`` is also aware of which containers must reside in memory and
+Finally, ``odo`` is also aware of which containers must reside in memory and
 which do not.  In the graph above the *red-colored* nodes are robust to
 larger-than-memory datasets.  Transformations between two out-of-core datasets
 operate only on the subgraph of the red nodes.

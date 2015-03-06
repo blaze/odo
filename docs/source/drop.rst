@@ -1,7 +1,7 @@
 Drop
 ====
 
-The ``into.drop`` function deletes a data resource.  That data resource may
+The ``odo.drop`` function deletes a data resource.  That data resource may
 live outside of Python.
 
 
@@ -10,7 +10,7 @@ Examples
 
 .. code-block:: python
 
-   >>> from into import drop
+   >>> from odo import drop
    >>> drop('myfile.csv')                 # Removes file
    >>> drop('sqlite:///my.db::accounts')  # Drops table 'accounts'
    >>> drop('myfile.hdf5::/data/path')    # Deletes dataset from file
