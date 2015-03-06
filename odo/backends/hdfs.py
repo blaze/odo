@@ -129,7 +129,7 @@ Foremost, a database is just a directory on HDFS holding something like a CSV
 file (or Avro, Parquet, etc..)  As a result when we construct a Table we
 actually have to know a lot about our CSV files (e.g. delimiter.)
 
-This breaks the current into model a bit because we usually create things with
+This breaks the current odo model a bit because we usually create things with
 `resource` and then `append` on to them.  Here we need to know both at the
 same time.  Enter a convenient hack, a token for a proxy table
 """

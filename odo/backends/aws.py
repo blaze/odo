@@ -12,7 +12,7 @@ import pandas as pd
 from toolz import memoize
 
 from .. import (discover, CSV, resource, append, convert, drop, Temp, JSON,
-                JSONLines, into, chunks)
+                JSONLines, chunks)
 
 from multipledispatch import MDNotImplementedError
 
@@ -177,7 +177,7 @@ def s3_text_to_temp_text(s3, **kwargs):
 @append.register(JSONLines, S3(JSONLines))
 @append.register(TextFile, S3(TextFile))
 def s3_text_to_text(data, s3, **kwargs):
-    return append(data, into(Temp(s3.subtype), s3, **kwargs), **kwargs)
+    return append(data, convert(Temp(s3.subtype), s3, **kwargs), **kwargs)
 
 
 @append.register((S3(CSV), Temp(S3(CSV))), (S3(CSV), Temp(S3(CSV))))
@@ -205,7 +205,7 @@ def text_to_temp_s3_text(data, **kwargs):
 @append.register((S3(CSV), S3(JSON), S3(JSONLines), S3(TextFile)),
                  (pd.DataFrame, chunks(pd.DataFrame), (list, Iterator)))
 def anything_to_s3_text(s3, o, **kwargs):
-    return into(s3, into(Temp(s3.subtype), o, **kwargs), **kwargs)
+    return append(s3, convert(Temp(s3.subtype), o, **kwargs), **kwargs)
 
 
 @append.register(S3(JSONLines), (JSONLines, Temp(JSONLines)))
