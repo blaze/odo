@@ -33,13 +33,15 @@ test:
     - pytest
     - coverage
     - h5py
+    - dynd-python
+    - paramiko
     - pytables
     - sqlalchemy
     - bcolz
     - pymongo
 
   commands:
-    - py.test --pyargs odo
+    - py.test --pyargs odo --doctest-modules -r sxX
 
 about:
   home: http://github.com/ContinuumIO/into/
