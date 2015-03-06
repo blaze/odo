@@ -161,7 +161,7 @@ def create_from_datashape(group, ds, name=None, **kwargs):
             "Trying to create an HDF5 file with non-record datashape failed\n"
             "Perhaps you forgot to specify a datapath?\n"
             "\tdshape: %s\n"
-            "If you're using odoconsider the following change\n"
+            "If you're using odo consider the following change\n"
             "\tBefore: odo(data, 'myfile.hdf5')\n"
             "\tAfter:  odo(data, 'myfile.hdf5::/datapath')" % ds)
     if isinstance(ds, DataShape) and len(ds) == 1:
