@@ -37,7 +37,7 @@ Method
 Into migrates data using network of small data conersion functions between
 type pairs. That network is below:
 
-.. image:: https://raw.githubusercontent.com/ContinuumIO/into/master/docs/source/images/conversions.png
+.. image:: https://raw.githubusercontent.com/ContinuumIO/odo/master/docs/source/images/conversions.png
    :alt: into conversions
 
 Each node is a container type (like ``pandas.DataFrame`` or
@@ -87,7 +87,7 @@ operate only on the subgraph of the red nodes.
 LICENSE
 -------
 
-New BSD. See `License File <https://github.com/ContinuumIO/into/blob/master/LICENSE.txt>`__.
+New BSD. See `License File <https://github.com/ContinuumIO/odo/blob/master/LICENSE.txt>`__.
 
 History
 -------
@@ -99,7 +99,7 @@ Into was factored out from the Blaze_ project.
 .. _networkx: https://networkx.github.io/
 .. _Documentation: https://into.readthedocs.org/en/latest/
 .. |Build Status| image:: https://travis-ci.org/ContinuumIO/into.png
-   :target: https://travis-ci.org/ContinuumIO/into
+   :target: https://travis-ci.org/ContinuumIO/odo
 .. |Doc Status| image:: https://readthedocs.org/projects/into/badge/?version=latest
    :target: https://readthedocs.org/projects/into/?badge=latest
    :alt: Documentation Status
