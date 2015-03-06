@@ -55,7 +55,7 @@ To resolve this you'll have to restart your Python process and ensure that you
 
     import tables
 
-before you import projects like into or blaze."""
+before you import projects like odo or into or blaze."""
 
 from collections import namedtuple
 

@@ -189,7 +189,7 @@ def list_to_json(j, seq, dshape=None, encoding='utf-8', **kwargs):
                 "Either remove contents from this file, save to a new file \n"
                 "or use line-delimited JSON format.\n"
                 "Consider using the jsonlines:// protocol, e.g.\n"
-                "\tinto('jsonlines://%s', your-data)" % j.path)
+                "\todo(your-data, 'jsonlines://%s')" % j.path)
 
     text = json.dumps(seq, default=json_dumps)
 

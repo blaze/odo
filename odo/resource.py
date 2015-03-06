@@ -19,7 +19,7 @@ def resource_all(uri, *args, **kwargs):
     Filenames for common formats are valid URIs
 
     >>> resource('myfile.csv')  # doctest: +SKIP
-    <into.CSV ...>
+    <odo.CSV ...>
 
     Database connection strings may embed connection information
 
@@ -63,23 +63,23 @@ def resource_all(uri, *args, **kwargs):
     to see what your installation currently supports.
 
     >>> resource.funcs  # doctest: +SKIP
-    {'.+\.csv)(\.gz|\.bz)?': <function into.backends.csv.resource_csv>,
-     '.+\.json)(\.gz|\.bz)?': <function into.backends.json.resource_json>,
-     '\w+sql\s+://.+': <function into.backends.sql.resource_sql>,
+    {'.+\.csv)(\.gz|\.bz)?': <function odo.backends.csv.resource_csv>,
+     '.+\.json)(\.gz|\.bz)?': <function odo.backends.json.resource_json>,
+     '\w+sql\s+://.+': <function odo.backends.sql.resource_sql>,
      ...}
 
-    Relation with ``into``
+    Relation with ``odo``
     ----------------------
 
-    The main ``into`` function uses ``resource`` to resolve string URIs.
+    The main ``odo`` function uses ``resource`` to resolve string URIs.
 
     The following call:
 
-    >>> into(target, 'some-sorce')  # doctest: +SKIP
+    >>> odo('some-sorce', target)  # doctest: +SKIP
 
     is shorthand for the following:
 
-    >>> into(target, resource('some-sorce'))  # doctest: +SKIP
+    >>> odo(resource('some-sorce'), target)  # doctest: +SKIP
 
     Create datasets with resource
     -----------------------------
@@ -94,7 +94,7 @@ def resource_all(uri, *args, **kwargs):
     See Also
     --------
 
-    into
+    odo
     discover
     """
     raise NotImplementedError("Unable to parse uri to data resource: " + uri)

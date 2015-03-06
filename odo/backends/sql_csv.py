@@ -13,7 +13,6 @@ from ..append import append
 from ..convert import convert
 from .csv import CSV, infer_header
 from ..temp import Temp
-from ..into import into
 from .aws import S3
 
 copy_command = RegexDispatcher('copy_command')
@@ -171,9 +170,9 @@ def append_csv_to_sql_table(tbl, csv, **kwargs):
     # move things to a temporary S3 bucket if we're using redshift and we
     # aren't already in S3
     if dialect == 'redshift' and not isinstance(csv, S3(CSV)):
-        csv = into(Temp(S3(CSV)), csv, **kwargs)
+        csv = convert(Temp(S3(CSV)), csv, **kwargs)
     elif dialect != 'redshift' and isinstance(csv, S3(CSV)):
-        csv = into(Temp(CSV), csv, has_header=csv.has_header, **kwargs)
+        csv = convert(Temp(CSV), csv, has_header=csv.has_header, **kwargs)
     elif dialect == 'hive':
         from .ssh import SSH
         return append(tbl, convert(Temp(SSH(CSV)), csv, **kwargs), **kwargs)

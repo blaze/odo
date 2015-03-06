@@ -217,7 +217,7 @@ def into_path(*path):
     """ Path to file in into directory
 
     >>> into_path('backends', 'tests', 'myfile.csv')  # doctest: +SKIP
-    '/home/user/into/into/backends/tests/myfile.csv'
+    '/home/user/odo/odo/backends/tests/myfile.csv'
     """
     import odo
     return os.path.join(os.path.dirname(odo.__file__), *path)
