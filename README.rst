@@ -3,6 +3,9 @@ Odo
 
 |Build Status| |Doc Status|
 
+.. image:: https://binstar.org/blaze/odo/badges/build.svg   :target: https://binstar.org/blaze/odo/builds
+.. image:: https://binstar.org/blaze/odo/badges/version.svg   :target: https://binstar.org/blaze/odo
+
 Data migration in Python
 
 Documentation_
