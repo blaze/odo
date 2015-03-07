@@ -1,11 +1,13 @@
 from __future__ import division, print_function, absolute_import
 
+from datetime import datetime, date
 import itertools
+
 import datashape
 from datashape import dshape, Record, DataShape, Option, Tuple
 from datashape.predicates import isdimension, isrecord
 
-from .. import append, discover
+from .. import append, discover, convert
 from ..directory import Directory
 from .json import JSONLines
 from .spark import RDD, SparkDataFrame, Dummy
@@ -25,6 +27,7 @@ except ImportError:
     TimestampType = DateType = StructType = ArrayType = StructField = Dummy
 
 
+base = (int, float, datetime, date, bool, str, type(None))
 _names = ('tmp%d' % i for i in itertools.count())
 
 
@@ -114,6 +117,11 @@ def dshape_to_schema(ds):
     if ds in dshape_to_sparksql:
         return dshape_to_sparksql[ds]
     raise NotImplementedError()
+
+
+@convert.register(base, SparkDataFrame, cost=100.0)
+def spark_df_to_base(df, **kwargs):
+    return df.collect()[0][0]
 
 
 def schema_to_dshape(schema):

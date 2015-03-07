@@ -8,6 +8,8 @@ import shutil
 import tempfile
 from contextlib import contextmanager
 
+import toolz
+
 from pyspark.sql import Row
 from pyspark.sql.types import ArrayType, StructField, StructType, IntegerType
 from pyspark.sql.types import StringType
@@ -71,6 +73,12 @@ def test_sparksql_to_frame(ctx):
     result = odo(ctx.table('t'), pd.DataFrame)
     np.testing.assert_array_equal(result.sort_index(axis=1).values,
                                   df.sort_index(axis=1).values)
+
+
+def test_reduction_to_scalar(ctx):
+    result = odo(ctx.sql('select sum(amount) from t'), float)
+    assert isinstance(result, float)
+    assert result == sum(map(toolz.second, data))
 
 
 def test_discover_context(ctx):
