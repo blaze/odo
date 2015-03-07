@@ -1,7 +1,13 @@
-Into
-====
+Odo
+===
 
 |Build Status| |Doc Status|
+
+.. image:: https://binstar.org/blaze/odo/badges/build.svg
+   :target: https://binstar.org/blaze/odo/builds
+
+.. image:: https://binstar.org/blaze/odo/badges/version.svg
+   :target: https://binstar.org/blaze/odo
 
 Data migration in Python
 
@@ -10,13 +16,12 @@ Documentation_
 Example
 -------
 
-Into migrates data between different containers
+Odo migrates data between different containers
 
 .. code-block:: python
 
    >>> from odo import odo
-
-   >>> into(list, (1, 2, 3))
+   >>> odo((1, 2, 3), list)
    [1, 2, 3]
 
 It operates on small, in-memory containers (as above) and large, out-of-core
@@ -24,21 +29,21 @@ containers (as below)
 
 .. code-block:: python
 
-   >>> into('postgresql://user:pass@host::my-table', 'myfile.hdf5::/data')
+   >>> odo('myfile.hdf5::/data', 'postgresql://user:pass@host::my-table')
    Table('my-table', MetaData(bind=Engine(postgresql://user:****@host)), ...)
 
-Into leverages the existing Python ecosystem.  The example above uses
+Odo leverages the existing Python ecosystem.  The example above uses
 ``sqlalchemy`` for SQL interation and ``h5py`` for HDF5 interaction.
 
 
 Method
 ------
 
-Into migrates data using network of small data conersion functions between
+Odo migrates data using network of small data conversion functions between
 type pairs. That network is below:
 
-.. image:: https://raw.githubusercontent.com/ContinuumIO/into/master/docs/source/images/conversions.png
-   :alt: into conversions
+.. image:: https://raw.githubusercontent.com/ContinuumIO/odo/master/docs/source/images/conversions.png
+   :alt: odo conversions
 
 Each node is a container type (like ``pandas.DataFrame`` or
 ``sqlalchemy.Table``) and each directed edge is a function that transforms or
@@ -48,7 +53,7 @@ with relative costs.
 This network approach allows ``odo`` to select the shortest path between any
 two types (thank you networkx_).  For performance reasons these functions often
 leverage non-Pythonic systems like NumPy arrays or native ``CSV->SQL`` loading
-functions.  Into is not dependent on only Python iterators.
+functions.  Odo is not dependent on only Python iterators.
 
 This network approach is also robust.  When libraries go missing or runtime
 errors occur ``odo`` can work around these holes and find new paths.
@@ -87,19 +92,19 @@ operate only on the subgraph of the red nodes.
 LICENSE
 -------
 
-New BSD. See `License File <https://github.com/ContinuumIO/into/blob/master/LICENSE.txt>`__.
+New BSD. See `License File <https://github.com/ContinuumIO/odo/blob/master/LICENSE.txt>`__.
 
 History
 -------
 
-Into was factored out from the Blaze_ project.
+Odo was factored out from the Blaze_ project.
 
 
 .. _Blaze: http://blaze.pydata.org/
 .. _networkx: https://networkx.github.io/
-.. _Documentation: https://into.readthedocs.org/en/latest/
-.. |Build Status| image:: https://travis-ci.org/ContinuumIO/into.png
-   :target: https://travis-ci.org/ContinuumIO/into
-.. |Doc Status| image:: https://readthedocs.org/projects/into/badge/?version=latest
-   :target: https://readthedocs.org/projects/into/?badge=latest
+.. _Documentation: https://odo.readthedocs.org/en/latest/
+.. |Build Status| image:: https://travis-ci.org/ContinuumIO/odo.png
+   :target: https://travis-ci.org/ContinuumIO/odo
+.. |Doc Status| image:: https://readthedocs.org/projects/odo/badge/?version=latest
+   :target: https://readthedocs.org/projects/odo/?badge=latest
    :alt: Documentation Status
