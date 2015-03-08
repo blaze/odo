@@ -11,10 +11,10 @@ from datetime import datetime, date
 
 import pandas as pd
 
+import toolz
 import datashape
 from datashape import dshape, Record, DataShape, Option, Tuple
 from datashape.predicates import isdimension, isrecord, iscollection
-from cytoolz.utils import consume
 from toolz.curried import get, map
 from toolz import pipe, concat
 
@@ -136,7 +136,7 @@ def spark_df_to_jsonlines(js, df, pattern='part-*', **kwargs):
     else:
         files = glob.glob(os.path.join(tmpd, pattern))
         with open(js.path, mode='ab') as f:
-            pipe(files, map(chunk_file), concat, map(f.write), consume)
+            pipe(files, map(chunk_file), concat, map(f.write), toolz.count)
     finally:
         shutil.rmtree(tmpd)
     return js
