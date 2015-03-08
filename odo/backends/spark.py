@@ -1,5 +1,10 @@
 from __future__ import division, print_function, absolute_import
 
+from toolz import memoize
+from datashape import var
+
+from .. import convert, append, discover
+
 
 class Dummy(object):
     pass
@@ -14,13 +19,10 @@ try:
     RDD.min
 except (AttributeError, ImportError):
     SparkDataFrame = PipelinedRDD = RDD = SparkContext = SQLContext = Dummy
+    HiveContext = Dummy
     pyspark = Dummy()
-
-
-from toolz import memoize
-from datashape import var
-
-from .. import convert, append, discover
+else:
+    HiveContext = memoize(HiveContext)
 
 
 @append.register(SparkContext, list)
@@ -42,9 +44,6 @@ def rdd_to_list(rdd, **kwargs):
 def discover_rdd(rdd, n=50, **kwargs):
     data = rdd.take(n)
     return var * discover(data).subshape[0]
-
-
-HiveContext = memoize(HiveContext)
 
 
 @convert.register(SparkDataFrame, (RDD, PipelinedRDD))
