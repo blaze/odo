@@ -14,6 +14,7 @@ import pandas as pd
 import datashape
 from datashape import dshape, Record, DataShape, Option, Tuple
 from datashape.predicates import isdimension, isrecord, iscollection
+from cytoolz.utils import consume
 from toolz.curried import get, map
 from toolz import pipe, concat
 
@@ -108,6 +109,37 @@ def discover_sqlcontext(ctx):
 @discover.register(SparkDataFrame)
 def discover_spark_data_frame(df):
     return datashape.var * schema_to_dshape(df.schema)
+
+
+def chunk_file(filename, chunksize=1 << 30):
+    """Stream `filename` in chunks of size `chunksize`.
+
+    Parameters
+    ----------
+    filename : str
+        File to chunk
+    chunksize : int, optional, defaults to 1GB
+        Number of bytes to hold in memory at a single time
+    """
+    with open(filename, mode='rb') as f:
+        for chunk in iter(partial(f.read, chunksize), ''):
+            yield chunk
+
+
+@append.register((JSONLines, JSON), SparkDataFrame)
+def spark_df_to_jsonlines(js, df, pattern='part-*', **kwargs):
+    tmpd = tempfile.mkdtemp()
+    try:
+        df.save(tmpd, source='org.apache.spark.sql.json', mode='overwrite')
+    except:
+        raise
+    else:
+        files = glob.glob(os.path.join(tmpd, pattern))
+        with open(js.path, mode='ab') as f:
+            pipe(files, map(chunk_file), concat, map(f.write), consume)
+    finally:
+        shutil.rmtree(tmpd)
+    return js
 
 
 def dshape_to_schema(ds):

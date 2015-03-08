@@ -53,7 +53,9 @@ def people(sc):
 @pytest.fixture(scope='module')
 def ctx(sqlctx, people):
     df = sqlctx.createDataFrame(people)
+    df2 = sqlctx.createDataFrame(people)
     sqlctx.registerDataFrameAsTable(df, 't')
+    sqlctx.registerDataFrameAsTable(df2, 't2')
     return sqlctx
 
 
@@ -123,6 +125,23 @@ def test_dshape_to_schema():
             [StructField('name', StringType(), False),
              StructField('amount', IntegerType(), True)]),
         False)
+
+
+def test_append_spark_df_to_json_lines(ctx):
+    out = os.linesep.join(map(compose(json.dumps,
+                                      methodcaller('to_dict'),
+                                      second),
+                              df.iterrows()))
+    sdf = ctx.table('t')
+    with tmpfile('.json') as fn:
+        with open(fn, mode='wb') as f:
+            f.write(out + os.linesep)
+
+        uri = 'jsonlines://%s' % fn
+        odo(sdf, uri)
+        result = odo(uri, pd.DataFrame).sort_index(axis=1)
+        expected = pd.concat([df, df], ignore_index=True).sort_index(axis=1)
+        tm.assert_frame_equal(result, expected)
 
 
 @pytest.mark.xfail(raises=py4j.protocol.Py4JJavaError,
