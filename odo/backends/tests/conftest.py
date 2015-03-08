@@ -6,14 +6,14 @@ import pytest
 @pytest.fixture(scope='session')
 def sc():
     pyspark = pytest.importorskip('pyspark')
-    return pyspark.SparkContext('local', 'into-test')
+    return pyspark.SparkContext('local[*]', 'odo')
 
 
 @pytest.yield_fixture(scope='session')
 def sqlctx(sc):
-    sparksql = pytest.importorskip('pyspark.sql')
+    pyspark = pytest.importorskip('pyspark')
     try:
-        yield sparksql.HiveContext(sc)
+        yield pyspark.HiveContext(sc)
     finally:
         dbpath = 'metastore_db'
         logpath = 'derby.log'
