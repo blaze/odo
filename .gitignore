@@ -4,5 +4,3 @@ docs/build
 build/
 odo.egg-info/
 dist
-derby.log
-metastore_db/
