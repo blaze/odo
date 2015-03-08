@@ -99,9 +99,9 @@ def rdd_to_sqlcontext(ctx, rdd, name=None, dshape=None, **kwargs):
 
 @discover.register(SQLContext)
 def discover_sqlcontext(ctx):
-    table_names = map(str, ctx.tableNames())
-    tables = map(ctx.table, table_names)
-    dshapes = sorted(zip(table_names, map(discover, tables)))
+    table_names = list(map(str, ctx.tableNames()))
+    dshapes = sorted(zip(table_names,
+                         map(discover, map(ctx.table, table_names))))
     return datashape.DataShape(datashape.Record(dshapes))
 
 
