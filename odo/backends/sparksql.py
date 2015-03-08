@@ -73,6 +73,11 @@ def spark_df_to_base(df, **kwargs):
     return df.collect()[0][0]
 
 
+@convert.register(pd.DataFrame, SparkDataFrame, cost=200.0)
+def spark_df_to_pandas_df(df, **kwargs):
+    return df.toPandas()
+
+
 @append.register(SQLContext, RDD)
 def rdd_to_sqlcontext(ctx, rdd, name=None, dshape=None, **kwargs):
     """ Convert a normal PySpark RDD to a SparkSQL RDD
