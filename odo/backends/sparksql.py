@@ -85,7 +85,10 @@ def rdd_to_sqlcontext(ctx, rdd, name=None, dshape=None, **kwargs):
         dshape = dshape.measure
     sql_schema = dshape_to_schema(dshape)
     sdf = ctx.applySchema(rdd, sql_schema)
-    ctx.registerDataFrameAsTable(sdf, name or next(_names))
+    if name is None:
+        name = next(_names)
+    ctx.registerDataFrameAsTable(sdf, name)
+    ctx.cacheTable(name)
     return sdf
 
 
