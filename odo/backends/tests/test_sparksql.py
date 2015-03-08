@@ -133,14 +133,15 @@ def test_append_spark_df_to_json_lines(ctx):
                                       second),
                               df.iterrows()))
     sdf = ctx.table('t')
+    expected = pd.concat([df, df],
+                         ignore_index=True).sort_index(axis=1).sort_index()
     with tmpfile('.json') as fn:
         with open(fn, mode='wb') as f:
             f.write(out + os.linesep)
 
         uri = 'jsonlines://%s' % fn
         odo(sdf, uri)
-        result = odo(uri, pd.DataFrame).sort_index(axis=1)
-        expected = pd.concat([df, df], ignore_index=True).sort_index(axis=1)
+        result = odo(uri, pd.DataFrame).sort_index(axis=1).sort_index()
         tm.assert_frame_equal(result, expected)
 
 
