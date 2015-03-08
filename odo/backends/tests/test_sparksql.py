@@ -12,8 +12,7 @@ import tempfile
 from contextlib import contextmanager
 
 import toolz
-from toolz import compose, second
-from operator import methodcaller
+from toolz.compatibility import map
 
 from pyspark.sql import Row
 from pyspark.sql.types import ArrayType, StructField, StructType, IntegerType
@@ -128,10 +127,7 @@ def test_dshape_to_schema():
 
 
 def test_append_spark_df_to_json_lines(ctx):
-    out = os.linesep.join(map(compose(json.dumps,
-                                      methodcaller('to_dict'),
-                                      second),
-                              df.iterrows()))
+    out = os.linesep.join(map(json.dumps, df.to_dict('records')))
     sdf = ctx.table('t')
     expected = pd.concat([df, df]).sort('amount').reset_index(drop=True).sort_index(axis=1)
     with tmpfile('.json') as fn:
