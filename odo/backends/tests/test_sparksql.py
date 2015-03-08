@@ -125,6 +125,18 @@ def test_dshape_to_schema():
         False)
 
 
+@pytest.mark.xfail(raises=py4j.protocol.Py4JJavaError,
+                   reason='bug in sparksql')
+def test_append(ctx):
+    """Add support for odo(SparkDataFrame, SparkDataFrame) when this is fixed.
+    """
+    a = ctx.table('t2')
+    a.insertInto('t2')
+    result = odo(odo(a, pd.DataFrame), set)
+    expected = odo(pd.concat([odo(a, pd.DataFrame)]) * 2, set)
+    assert result == expected
+
+
 def test_load_from_jsonlines(ctx):
     with tmpfile('.json') as fn:
         js = odo(df, 'jsonlines://%s' % fn)
