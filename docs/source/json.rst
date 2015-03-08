@@ -1,7 +1,7 @@
 JSON
 ====
 
-Into interacts with local JSON files through the standard ``json`` library.
+Odo interacts with local JSON files through the standard ``json`` library.
 
 
 URIs
@@ -18,7 +18,7 @@ Simple examples of JSON uris::
 Line Delimited JSON
 -------------------
 
-Internally ``into`` can deal with both traditional "single blob per file" JSON
+Internally ``odo`` can deal with both traditional "single blob per file" JSON
 as well as line-delimited "one blob per line" JSON.  We inspect existing files
 to see which format it is.  On new files we default to line-delimited however
 this can be overruled by using the following protocols::

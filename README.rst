@@ -1,7 +1,13 @@
-Into
-====
+Odo
+===
 
 |Build Status| |Doc Status|
+
+.. image:: https://binstar.org/blaze/odo/badges/build.svg
+   :target: https://binstar.org/blaze/odo/builds
+
+.. image:: https://binstar.org/blaze/odo/badges/version.svg
+   :target: https://binstar.org/blaze/odo
 
 Data migration in Python
 
@@ -10,13 +16,12 @@ Documentation_
 Example
 -------
 
-Into migrates data between different containers
+Odo migrates data between different containers
 
 .. code-block:: python
 
-   >>> from into import into
-
-   >>> into(list, (1, 2, 3))
+   >>> from odo import odo
+   >>> odo((1, 2, 3), list)
    [1, 2, 3]
 
 It operates on small, in-memory containers (as above) and large, out-of-core
@@ -24,34 +29,34 @@ containers (as below)
 
 .. code-block:: python
 
-   >>> into('postgresql://user:pass@host::my-table', 'myfile.hdf5::/data')
+   >>> odo('myfile.hdf5::/data', 'postgresql://user:pass@host::my-table')
    Table('my-table', MetaData(bind=Engine(postgresql://user:****@host)), ...)
 
-Into leverages the existing Python ecosystem.  The example above uses
+Odo leverages the existing Python ecosystem.  The example above uses
 ``sqlalchemy`` for SQL interation and ``h5py`` for HDF5 interaction.
 
 
 Method
 ------
 
-Into migrates data using network of small data conersion functions between
+Odo migrates data using network of small data conversion functions between
 type pairs. That network is below:
 
-.. image:: https://raw.githubusercontent.com/ContinuumIO/into/master/docs/source/images/conversions.png
-   :alt: into conversions
+.. image:: https://raw.githubusercontent.com/ContinuumIO/odo/master/docs/source/images/conversions.png
+   :alt: odo conversions
 
 Each node is a container type (like ``pandas.DataFrame`` or
 ``sqlalchemy.Table``) and each directed edge is a function that transforms or
 appends one container into or onto another.  We annotate these functions/edges
 with relative costs.
 
-This network approach allows ``into`` to select the shortest path between any
+This network approach allows ``odo`` to select the shortest path between any
 two types (thank you networkx_).  For performance reasons these functions often
 leverage non-Pythonic systems like NumPy arrays or native ``CSV->SQL`` loading
-functions.  Into is not dependent on only Python iterators.
+functions.  Odo is not dependent on only Python iterators.
 
 This network approach is also robust.  When libraries go missing or runtime
-errors occur ``into`` can work around these holes and find new paths.
+errors occur ``odo`` can work around these holes and find new paths.
 
 This network approach is extensible.  It is easy to write small functions and
 register them to the overall graph.  In the following example showing how we
@@ -59,7 +64,7 @@ convert from ``pandas.DataFrame`` to a ``numpy.ndarray``.
 
 .. code-block:: python
 
-   from into import convert
+   from odo import convert
 
    @convert.register(np.ndarray, pd.DataFrame, cost=1.0)
    def dataframe_to_numpy(df, **kwargs):
@@ -74,11 +79,11 @@ method.  Similar functions exist for ``append``, to add to existing data, and
 * ``convert``: Transform dataset into new container
 * ``append``: Add dataset onto existing container
 * ``resource``: Given a URI find the appropriate data resource
-* ``into``: Call one of the above based on inputs.
-  E.g. ``into(list, (1, 2, 3)) -> convert(list, (1, 2, 3))``
-  while ``L = []; into(L, (1, 2, 3)) -> append(L, (1, 2, 3))``
+* ``odo``: Call one of the above based on inputs.
+  E.g. ``odo((1, 2, 3), list) -> convert(list, (1, 2, 3))``
+  while ``L = []; odo((1, 2, 3), L) -> append(L, (1, 2, 3))``
 
-Finally, ``into`` is also aware of which containers must reside in memory and
+Finally, ``odo`` is also aware of which containers must reside in memory and
 which do not.  In the graph above the *red-colored* nodes are robust to
 larger-than-memory datasets.  Transformations between two out-of-core datasets
 operate only on the subgraph of the red nodes.
@@ -87,19 +92,19 @@ operate only on the subgraph of the red nodes.
 LICENSE
 -------
 
-New BSD. See `License File <https://github.com/ContinuumIO/into/blob/master/LICENSE.txt>`__.
+New BSD. See `License File <https://github.com/ContinuumIO/odo/blob/master/LICENSE.txt>`__.
 
 History
 -------
 
-Into was factored out from the Blaze_ project.
+Odo was factored out from the Blaze_ project.
 
 
 .. _Blaze: http://blaze.pydata.org/
 .. _networkx: https://networkx.github.io/
-.. _Documentation: https://into.readthedocs.org/en/latest/
-.. |Build Status| image:: https://travis-ci.org/ContinuumIO/into.png
-   :target: https://travis-ci.org/ContinuumIO/into
-.. |Doc Status| image:: https://readthedocs.org/projects/into/badge/?version=latest
-   :target: https://readthedocs.org/projects/into/?badge=latest
+.. _Documentation: https://odo.readthedocs.org/en/latest/
+.. |Build Status| image:: https://travis-ci.org/ContinuumIO/odo.png
+   :target: https://travis-ci.org/ContinuumIO/odo
+.. |Doc Status| image:: https://readthedocs.org/projects/odo/badge/?version=latest
+   :target: https://readthedocs.org/projects/odo/?badge=latest
    :alt: Documentation Status

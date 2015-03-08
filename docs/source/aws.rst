@@ -25,7 +25,7 @@ Now that you have a boto config, we're ready to interact with AWS.
 Interface
 ---------
 
-``into`` provides access to the following AWS services:
+``odo`` provides access to the following AWS services:
 
 * `S3 <http://aws.amazon.com/s3>`_ via boto.
 * `Redshift <http://aws.amazon.com/redshift>`_ via a `SQLAlchemy dialect <https://github.com/cpcloud/redshift_sqlalchemy>`_
@@ -58,22 +58,25 @@ To access an individual table simply append ``::`` plus the table name
 Conversions
 -----------
 
-``into`` can take advantage of Redshift's fast S3 ``COPY`` command. It works
-transparently. For example, to upload a local CSV to a Redshift table
+``odo`` can take advantage of Redshift's fast S3 ``COPY`` command. It works
+transparently. For example, to upload a local CSV file called ``users.csv`` to a
+Redshift table
 
     .. code-block:: python
 
-       >>> table = into('redshift://user:pass@host:port/db::users', 'users.csv')
+       >>> table = odo('users.csv', 'redshift://user:pass@host:port/db::users')
 
 
-Remember that these are just additional nodes in the ``into`` network, and as
+Remember that these are just additional nodes in the ``odo`` network, and as
 such, they are able to take advantage of conversions to types that don't have
 an explicit path defined for them. This allows us to do things like convert an
 S3 CSV to a pandas DataFrame
 
     .. code-block:: python
 
-       >>> df = into(pandas.DataFrame, 's3://mybucket/myfile.csv')
+       >>> import pandas as pd
+       >>> from odo import odo
+       >>> df = odo('s3://mybucket/myfile.csv', pd.DataFrame)
 
 
 TODO
