@@ -3,12 +3,17 @@ from __future__ import print_function, absolute_import, division
 import pytest
 
 pyspark = pytest.importorskip('pyspark')
+py4j = pytest.importorskip('py4j')
 
+import os
 import shutil
+import json
 import tempfile
 from contextlib import contextmanager
 
 import toolz
+from toolz import compose, second
+from operator import methodcaller
 
 from pyspark.sql import Row
 from pyspark.sql.types import ArrayType, StructField, StructType, IntegerType
@@ -16,6 +21,7 @@ from pyspark.sql.types import StringType
 
 import numpy as np
 import pandas as pd
+import pandas.util.testing as tm
 
 import datashape
 from datashape import dshape

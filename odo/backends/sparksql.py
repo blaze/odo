@@ -1,15 +1,25 @@
 from __future__ import division, print_function, absolute_import
 
-from datetime import datetime, date
+import os
+import glob
 import itertools
+import tempfile
+import shutil
+
+from functools import partial
+from datetime import datetime, date
+
+import pandas as pd
 
 import datashape
 from datashape import dshape, Record, DataShape, Option, Tuple
-from datashape.predicates import isdimension, isrecord
+from datashape.predicates import isdimension, isrecord, iscollection
+from toolz.curried import get, map
+from toolz import pipe, concat
 
 from .. import append, discover, convert
 from ..directory import Directory
-from .json import JSONLines
+from .json import JSONLines, JSON
 from .spark import RDD, SparkDataFrame, Dummy
 
 
@@ -47,6 +57,20 @@ def jsonlines_to_sparksql(ctx, json, dshape=None, name=None, schema=None,
     srdd = ctx.jsonFile(json.path, schema=schema, samplingRatio=samplingRatio)
     ctx.registerDataFrameAsTable(srdd, name or next(_names))
     return srdd
+
+
+@convert.register(list, SparkDataFrame, cost=200.0)
+def sparksql_dataframe_to_list(df, dshape=None, **kwargs):
+    result = df.collect()
+    if (dshape is not None and iscollection(dshape) and
+            not isrecord(dshape.measure)):
+        return list(map(get(0), result))
+    return result
+
+
+@convert.register(base, SparkDataFrame, cost=200.0)
+def spark_df_to_base(df, **kwargs):
+    return df.collect()[0][0]
 
 
 @append.register(SQLContext, RDD)
@@ -117,11 +141,6 @@ def dshape_to_schema(ds):
     if ds in dshape_to_sparksql:
         return dshape_to_sparksql[ds]
     raise NotImplementedError()
-
-
-@convert.register(base, SparkDataFrame, cost=100.0)
-def spark_df_to_base(df, **kwargs):
-    return df.collect()[0][0]
 
 
 def schema_to_dshape(schema):
