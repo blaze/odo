@@ -1,3 +1,5 @@
+import os
+import shutil
 import pytest
 
 
@@ -7,7 +9,17 @@ def sc():
     return pyspark.SparkContext('local', 'into-test')
 
 
-@pytest.fixture(scope='session')
+@pytest.yield_fixture(scope='session')
 def sqlctx(sc):
     sparksql = pytest.importorskip('pyspark.sql')
-    return sparksql.SQLContext(sc)
+    try:
+        yield sparksql.HiveContext(sc)
+    finally:
+        dbpath = 'metastore_db'
+        logpath = 'derby.log'
+        if os.path.exists(dbpath):
+            assert os.path.isdir(dbpath)
+            shutil.rmtree(dbpath)
+        if os.path.exists(logpath):
+            assert os.path.isfile(logpath)
+            os.remove(logpath)
