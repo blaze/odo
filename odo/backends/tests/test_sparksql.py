@@ -142,8 +142,6 @@ def test_append_spark_df_to_json_lines(ctx):
         uri = 'jsonlines://%s' % fn
         odo(sdf, uri)
         result = odo(uri, pd.DataFrame).sort('amount').reset_index(drop=True)
-        print(result)
-        print(expected)
         tm.assert_frame_equal(result, expected)
 
 
