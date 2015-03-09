@@ -172,6 +172,8 @@ hive_types = {
 def dshape_to_hive(ds):
     """ Convert datashape measure to Hive dtype string
 
+    >>> dshape_to_hive('var * {name: string, balance: int32}')
+    ['name  STRING', 'balance  INT']
     >>> dshape_to_hive('int16')
     'SMALLINT'
     >>> dshape_to_hive('?int32')  # Ignore option types
@@ -183,6 +185,10 @@ def dshape_to_hive(ds):
         ds = datashape.dshape(ds)
     if isinstance(ds, ct.DataShape):
         ds = ds.measure
+    if isinstance(ds, ct.Record):
+        columns = [(name, dshape_to_hive(typ))
+                for name, typ in zip(ds.measure.names, ds.measure.types)]
+        return ['%s  %s' % col for col in columns]
     if isinstance(ds, ct.Option):
         ds = ds.ty
     if isinstance(ds, ct.String):
@@ -252,9 +258,9 @@ def create_hive_statement(tbl_name, dshape, path=None, table_type='',
     # Column names and types from datashape
     ds = dshape or discover(data)
     assert isinstance(ds.measure, ct.Record)
-    columns = [(name, dshape_to_hive(typ))
-            for name, typ in zip(ds.measure.names, ds.measure.types)]
-    column_text = ',\n    '.join('%20s  %s' % col for col in columns).lstrip()
+    columns = dshape_to_hive(ds)
+    column_text = ',\n    '.join('%20s  %s' % tuple(col.split())
+                                 for col in columns).lstrip()
 
     statement = """
         CREATE {table_type} TABLE {db_name}{tbl_name} (
