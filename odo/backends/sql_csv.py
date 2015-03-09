@@ -63,7 +63,7 @@ def execute_copy_sqlite(dialect, engine, statement):
 def copy_postgres(dialect, tbl, csv, **kwargs):
     abspath = os.path.abspath(csv.path)
     if sys.platform == 'win32':
-        abspath = abspath.encode('unicode_escape')
+        abspath = abspath.encode('unicode_escape').decode()
     tblname = tbl.name
     format_str = 'csv'
     delimiter = csv.dialect.get('delimiter', ',')
@@ -91,7 +91,7 @@ def copy_mysql(dialect, tbl, csv, **kwargs):
     mysql_local = ''
     abspath = os.path.abspath(csv.path)
     if sys.platform == 'win32':
-        abspath = abspath.encode('unicode_escape')
+        abspath = abspath.encode('unicode_escape').decode()
     tblname = tbl.name
     delimiter = csv.dialect.get('delimiter', ',')
     quotechar = csv.dialect.get('quotechar', '"')
