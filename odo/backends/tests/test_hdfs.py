@@ -17,7 +17,7 @@ import numpy as np
 import uuid
 from odo.backends.hdfs import discover, HDFS, CSV, SSH, dialect_of
 from odo.backends.sql import resource
-from odo import into, drop, JSONLines
+from odo import into, drop, JSONLines, odo
 from odo.utils import filetext, ignoring, tmpfile
 import sqlalchemy as sa
 from datashape import dshape
@@ -72,6 +72,21 @@ def accounts_data():
         hdfs.delete_file_dir(b)
         hdfs.delete_file_dir(c)
 
+@contextmanager
+def accounts_ssh(text):
+    local = 'tmp.csv'
+    remote = 'ssh://ubuntu@%s:accounts.csv' % host
+
+    with open(local, 'w') as f:
+        f.write(text)
+
+    odo(local, remote, key_filename=os.path.expanduser('~/.ssh/cdh_testing.key'))
+
+    try:
+        yield remote
+    except:
+        drop(local)
+        drop(remote)
 
 
 def test_discover():
@@ -211,18 +226,19 @@ def test_ssh_directory_hive_creation():
 
 def test_ssh_hive_creation_with_full_urls():
     with hive_table(host) as uri:
-        t = into(uri, 'ssh://ubuntu@%s:accounts.csv' % host,
+        with accounts_ssh(accounts_1_csv) as remote:
+            t = into(uri, remote,
+                     key_filename=os.path.expanduser('~/.ssh/cdh_testing.key'))
+            assert isinstance(t, sa.Table)
+            n = len(into(list, t))
+            assert n > 0
+
+            # Load it again
+            into(t, remote,
                  key_filename=os.path.expanduser('~/.ssh/cdh_testing.key'))
-        assert isinstance(t, sa.Table)
-        n = len(into(list, t))
-        assert n > 0
 
-        # Load it again
-        into(t, 'ssh://ubuntu@%s:accounts.csv' % host,
-             key_filename=os.path.expanduser('~/.ssh/cdh_testing.key'))
-
-        # Doubles length
-        assert len(into(list, t)) == 2 * n
+            # Doubles length
+            assert len(into(list, t)) == 2 * n
 
 
 def test_hive_resource():
