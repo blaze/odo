@@ -9,10 +9,15 @@ from odo.backends.csv import CSV
 from odo import resource, odo
 import sqlalchemy
 import os
+import sys
 import csv as csv_module
 import getpass
 from odo import drop, discover
 from odo.utils import tmpfile
+
+
+pytestmark = pytest.mark.skipif(sys.platform == 'win32',
+                                reason='not well tested on win32 mysql')
 
 username = getpass.getuser()
 url = 'mysql+pymysql://{0}@localhost:3306/test'.format(username)
