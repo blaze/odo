@@ -7,7 +7,6 @@ import subprocess
 
 import sqlalchemy
 
-from toolz.compatibility import PY3
 from multipledispatch import MDNotImplementedError
 
 from ..regex import RegexDispatcher
@@ -24,8 +23,8 @@ execute_copy = RegexDispatcher('execute_copy')
 @copy_command.register('.*sqlite')
 def copy_sqlite(dialect, tbl, csv, has_header=None, **kwargs):
     abspath = os.path.abspath(csv.path)
-    if os.name == 'nt':
-        abspath = abspath.replace('\\', '\\\\')
+    if sys.platform == 'win32':
+        abspath = abspath.encode('unicode_escape').decode()
     tblname = tbl.name
     dbpath = str(tbl.bind.url).split('///')[-1]
     delim = csv.dialect.get('delimiter', ',')
@@ -97,10 +96,8 @@ def copy_mysql(dialect, tbl, csv, **kwargs):
     delimiter = csv.dialect.get('delimiter', ',')
     quotechar = csv.dialect.get('quotechar', '"')
     escapechar = csv.dialect.get('escapechar', r'\\')
-    lineterminator = csv.dialect.get('lineterminator',
-                                     os.linesep).encode('unicode_escape')
-    if PY3:
-        lineterminator = lineterminator.decode()
+    lineterminator = csv.dialect.get('lineterminator', os.linesep)
+    lineterminator = lineterminator.encode('unicode_escape').decode()
     skiprows = 1 if csv.has_header else 0
     encoding = {'utf-8': 'utf8'}.get(csv.encoding.lower() or 'utf8',
                                      csv.encoding)
