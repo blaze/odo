@@ -15,6 +15,7 @@ import toolz
 import datashape
 from datashape import dshape, Record, DataShape, Option, Tuple
 from datashape.predicates import isdimension, isrecord, iscollection
+from multipledispatch import MDNotImplementedError
 from toolz.curried import get, map
 from toolz import pipe, concat, curry
 
@@ -22,6 +23,7 @@ from .. import append, discover, convert
 from ..directory import Directory
 from .json import JSONLines
 from .spark import RDD, SparkDataFrame, Dummy
+from .hdfs import HDFS
 
 
 try:
@@ -146,6 +148,11 @@ def spark_df_to_jsonlines(js, df,
     finally:
         shutil.rmtree(tmpd)
     return js
+
+
+@append.register(HDFS(JSONLines), SparkDataFrame)
+def spark_df_to_hdfs(hdfs, df, **kwargs):
+    raise MDNotImplementedError()
 
 
 def dshape_to_schema(ds):
