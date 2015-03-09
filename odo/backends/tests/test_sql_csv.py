@@ -12,15 +12,10 @@ from odo.utils import tmpfile, ignoring
 
 
 def normalize(s):
-    s2 = ' '.join(s.strip().split()).lower().replace('_', '')
-    return s2
+    return ' '.join(s.strip().split()).lower().replace('_', '')
 
 
 fn = os.path.abspath('myfile.csv')
-if os.name == 'nt':
-    escaped_fn = fn.replace('\\', '\\\\')
-else:
-    escaped_fn = fn
 
 csv = CSV(fn, delimiter=',', has_header=True)
 ds = datashape.dshape('var * {name: string, amount: int}')
@@ -37,7 +32,7 @@ def test_postgres_load():
          ESCAPE '\\',
          HEADER True,
          ENCODING 'utf-8');
-    """ % escaped_fn)
+    """ % fn)
 
 
 def test_mysql_load():
@@ -51,7 +46,7 @@ def test_mysql_load():
                 ENCLOSED BY '"'
                 ESCAPED BY '\\\\'
             LINES TERMINATED BY '\\n'
-            IGNORE 1 LINES;""" % escaped_fn)
+            IGNORE 1 LINES;""" % fn)
     assert result == expected
 
 
