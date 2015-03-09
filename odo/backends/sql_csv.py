@@ -62,8 +62,6 @@ def execute_copy_sqlite(dialect, engine, statement):
 @copy_command.register('postgresql')
 def copy_postgres(dialect, tbl, csv, **kwargs):
     abspath = os.path.abspath(csv.path)
-    if os.name == 'nt':
-        abspath = abspath.replace('\\', '\\\\')
     tblname = tbl.name
     format_str = 'csv'
     delimiter = csv.dialect.get('delimiter', ',')
@@ -90,8 +88,6 @@ def copy_postgres(dialect, tbl, csv, **kwargs):
 def copy_mysql(dialect, tbl, csv, **kwargs):
     mysql_local = ''
     abspath = os.path.abspath(csv.path)
-    if os.name == 'nt':
-        abspath = abspath.replace('\\', '\\\\')
     tblname = tbl.name
     delimiter = csv.dialect.get('delimiter', ',')
     quotechar = csv.dialect.get('quotechar', '"')
