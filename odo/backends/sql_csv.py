@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import sys
 import re
 import subprocess
 
@@ -17,6 +18,8 @@ from .aws import S3
 
 copy_command = RegexDispatcher('copy_command')
 execute_copy = RegexDispatcher('execute_copy')
+
+PY2 = sys.version_info[0] == 2
 
 
 @copy_command.register('.*sqlite')
@@ -95,8 +98,9 @@ def copy_mysql(dialect, tbl, csv, **kwargs):
     delimiter = csv.dialect.get('delimiter', ',')
     quotechar = csv.dialect.get('quotechar', '"')
     escapechar = csv.dialect.get('escapechar', r'\\')
-    lineterminator = csv.dialect.get('lineterminator',
-                                     os.linesep).encode('unicode_escape')
+    lineterminator = csv.dialect.get('lineterminator', os.linesep)
+    if PY2:
+        lineterminator = lineterminator.encode('unicode_escape')
     skiprows = 1 if csv.has_header else 0
     encoding = {'utf-8': 'utf8'}.get(csv.encoding.lower() or 'utf8',
                                      csv.encoding)
