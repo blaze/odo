@@ -58,8 +58,5 @@ before_script:
 script:
     - py.test --doctest-modules odo
 
-after_success:
-    - pip install coveralls --use-mirrors ; coveralls
-
 notifications:
   email: false
