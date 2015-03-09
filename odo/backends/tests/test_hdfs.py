@@ -15,7 +15,7 @@ from pywebhdfs.webhdfs import PyWebHdfsClient
 import pandas as pd
 import numpy as np
 import uuid
-from odo.backends.hdfs import discover, HDFS, CSV, SSH
+from odo.backends.hdfs import discover, HDFS, CSV, SSH, dialect_of
 from odo.backends.sql import resource
 from odo import into, drop, JSONLines
 from odo.utils import filetext, ignoring, tmpfile
@@ -239,3 +239,20 @@ def test_append_object_to_HDFS_foo():
     with tmpfile_hdfs('json') as fn:
         js = into('hdfs://%s:%s' % (host, fn), df, hdfs=hdfs)
         assert (into(np.ndarray, js) == into(np.ndarray, df)).all()
+
+
+def test_dialect_of():
+    with filetext(accounts_1_csv) as fn:
+        d = dialect_of(CSV(fn))
+        assert d['delimiter'] == ','
+        assert d['has_header'] is True
+
+    with accounts_data() as (directory, (a, b, c)):
+        directory2 = HDFS(Directory(CSV))(directory.path, hdfs=directory.hdfs)
+        d = dialect_of(directory2)
+        assert d['has_header'] is True
+
+        directory2 = HDFS(Directory(CSV))(directory.path, hdfs=directory.hdfs,
+                                          has_header=False)
+        d = dialect_of(directory2)
+        assert d['has_header'] is False

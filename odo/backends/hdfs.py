@@ -459,6 +459,8 @@ def dialect_of(data, **kwargs):
 
         if data.has_header is None:
             d['has_header'] = sniffer.has_header(text)
+        else:
+            d['has_header'] = data.has_header
 
         d.update(data.dialect)
 
