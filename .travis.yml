@@ -24,8 +24,8 @@ install:
   - conda update conda
 
   # Install dependencies
-  - conda create -n test-environment python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python pymongo paramiko boto
-  - source activate test-environment
+  - conda create -n odo-test python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python pymongo paramiko boto
+  - source activate odo-test
 
   # Install various deps
   - pip install pymysql psycopg2 sas7bdat
@@ -37,7 +37,7 @@ install:
   - pip install --upgrade git+git://github.com/cpcloud/redshift_sqlalchemy
 
   # install pyspark
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then conda install -c blaze spark; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then conda install -c blaze -c https://conda.binstar.org/blaze/channel/dev spark; fi
 
   # Install Bokeh
   - if [[ $TRAVIS_PYTHON_VERSION > '2.6' ]]; then conda install bokeh; fi
