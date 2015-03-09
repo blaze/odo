@@ -202,7 +202,7 @@ def dshape_to_hive(ds):
 
 
 def create_hive_statement(tbl_name, dshape, path=None, table_type='',
-        db_name='default', **dialect):
+        db_name='default', stored_as='TEXTFILE', **kwargs):
     """ Generic CREATE TABLE statement for hive
 
     Parameters
@@ -218,8 +218,10 @@ def create_hive_statement(tbl_name, dshape, path=None, table_type='',
         Table Modifier like EXTERNAL or LOCAL
     db_name : string
         Specifies database name.  Defaults to "default"
+    stored_as: string
+        Target storage format like TEXTFILE or PARQUET
 
-    **dialect : keyword arguments dict
+    **kwargs: keyword arguments dict
         CSV dialect with keys delimiter, has_header, etc.
 
     Example
@@ -248,6 +250,14 @@ def create_hive_statement(tbl_name, dshape, path=None, table_type='',
     STORED AS TEXTFILE
     LOCATION '/data/accounts/'
     TBLPROPERTIES ("skip.header.line.count"="1")
+
+    >>> print(create_hive_statement('accounts', ds, stored_as='PARQUET'))  # doctest: +NORMALIZE_WHITESPACE
+    CREATE  TABLE default.accounts (
+            name  STRING,
+         balance  BIGINT,
+            when  TIMESTAMP
+    )
+    STORED AS PARQUET
     """
     if db_name:
         db_name = db_name + '.'
@@ -266,9 +276,16 @@ def create_hive_statement(tbl_name, dshape, path=None, table_type='',
         CREATE {table_type} TABLE {db_name}{tbl_name} (
             {column_text}
         )
+        """
+
+    if 'delimiter' in kwargs:
+        statement += """
         ROW FORMAT DELIMITED
             FIELDS TERMINATED BY '{delimiter}'
-        STORED AS TEXTFILE
+        """
+
+    statement += """
+        STORED AS {stored_as}
         """
 
     if path:
@@ -276,11 +293,11 @@ def create_hive_statement(tbl_name, dshape, path=None, table_type='',
         LOCATION '{path}'
         """
 
-    if dialect.get('has_header'):
+    if kwargs.get('has_header'):
         statement = statement + """
         TBLPROPERTIES ("skip.header.line.count"="1")"""
 
-    return statement.format(**merge(dialect, locals())).strip('\n')
+    return statement.format(**merge(kwargs, locals())).strip('\n')
 
 
 """
