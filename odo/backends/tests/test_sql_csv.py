@@ -11,8 +11,7 @@ from odo.utils import tmpfile, ignoring
 
 
 def normalize(s):
-    s2 = ' '.join(s.strip().split()).lower().replace('_', '')
-    return s2
+    return ' '.join(s.strip().split()).lower().replace('_', '')
 
 
 fn = os.path.abspath('myfile.csv')
