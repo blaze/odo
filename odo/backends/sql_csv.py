@@ -96,9 +96,10 @@ def copy_mysql(dialect, tbl, csv, **kwargs):
     delimiter = csv.dialect.get('delimiter', ',')
     quotechar = csv.dialect.get('quotechar', '"')
     escapechar = csv.dialect.get('escapechar', r'\\')
-    lineterminator = csv.dialect.get('lineterminator', os.linesep)
+    lineterminator = csv.dialect.get('lineterminator',
+                                     os.linesep).encode('unicode_escape')
     if PY3:
-        lineterminator = lineterminator.encode('unicode_escape').decode()
+        lineterminator = lineterminator.decode()
     skiprows = 1 if csv.has_header else 0
     encoding = {'utf-8': 'utf8'}.get(csv.encoding.lower() or 'utf8',
                                      csv.encoding)
