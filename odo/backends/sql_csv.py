@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import sys
 import re
 import subprocess
 
@@ -22,8 +23,8 @@ execute_copy = RegexDispatcher('execute_copy')
 @copy_command.register('.*sqlite')
 def copy_sqlite(dialect, tbl, csv, has_header=None, **kwargs):
     abspath = os.path.abspath(csv.path)
-    if os.name == 'nt':
-        abspath = abspath.replace('\\', '\\\\')
+    if sys.platform == 'win32':
+        abspath = abspath.encode('unicode_escape').decode()
     tblname = tbl.name
     dbpath = str(tbl.bind.url).split('///')[-1]
     delim = csv.dialect.get('delimiter', ',')
@@ -61,8 +62,8 @@ def execute_copy_sqlite(dialect, engine, statement):
 @copy_command.register('postgresql')
 def copy_postgres(dialect, tbl, csv, **kwargs):
     abspath = os.path.abspath(csv.path)
-    if os.name == 'nt':
-        abspath = abspath.replace('\\', '\\\\')
+    if sys.platform == 'win32':
+        abspath = abspath.encode('unicode_escape')
     tblname = tbl.name
     format_str = 'csv'
     delimiter = csv.dialect.get('delimiter', ',')
@@ -89,16 +90,17 @@ def copy_postgres(dialect, tbl, csv, **kwargs):
 def copy_mysql(dialect, tbl, csv, **kwargs):
     mysql_local = ''
     abspath = os.path.abspath(csv.path)
-    if os.name == 'nt':
-        abspath = abspath.replace('\\', '\\\\')
+    if sys.platform == 'win32':
+        abspath = abspath.encode('unicode_escape')
     tblname = tbl.name
     delimiter = csv.dialect.get('delimiter', ',')
     quotechar = csv.dialect.get('quotechar', '"')
-    escapechar = csv.dialect.get('escapechar', '\\')
-    lineterminator = csv.dialect.get('lineterminator', '\\n\\r')
+    escapechar = csv.dialect.get('escapechar', r'\\')
+    lineterminator = csv.dialect.get('lineterminator', os.linesep)
+    lineterminator = lineterminator.encode('unicode_escape').decode()
     skiprows = 1 if csv.has_header else 0
-    encoding = csv.encoding or 'utf-8'
-
+    encoding = {'utf-8': 'utf8'}.get(csv.encoding.lower() or 'utf8',
+                                     csv.encoding)
     statement = u"""
         LOAD DATA {mysql_local} INFILE '{abspath}'
         INTO TABLE {tblname}
@@ -107,7 +109,7 @@ def copy_mysql(dialect, tbl, csv, **kwargs):
             TERMINATED BY '{delimiter}'
             ENCLOSED BY '{quotechar}'
             ESCAPED BY '{escapechar}'
-        LINES TERMINATED by '{lineterminator}'
+        LINES TERMINATED BY '{lineterminator}'
         IGNORE {skiprows} LINES;
     """
 

@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-import pytest
 import os
 
 import pandas as pd
@@ -17,10 +16,7 @@ def normalize(s):
 
 
 fn = os.path.abspath('myfile.csv')
-if os.name == 'nt':
-    escaped_fn = fn.replace('\\', '\\\\')
-else:
-    escaped_fn = fn
+escaped_fn = fn.encode('unicode_escape').decode() if os.name == 'nt' else fn
 
 csv = CSV(fn, delimiter=',', has_header=True)
 ds = datashape.dshape('var * {name: string, amount: int}')
@@ -41,16 +37,19 @@ def test_postgres_load():
 
 
 def test_mysql_load():
-    assert normalize(copy_command('mysql', tbl, csv)) == normalize("""
+    result = normalize(copy_command('mysql', tbl, csv))
+    expected = normalize("""
             LOAD DATA  INFILE '%s'
             INTO TABLE my_table
-            CHARACTER SET utf-8
+            CHARACTER SET utf8
             FIELDS
                 TERMINATED BY ','
                 ENCLOSED BY '"'
-                ESCAPED BY '\\'
-            LINES TERMINATED BY '\\n\\r'
-            IGNORE 1 LINES;""" % escaped_fn)
+                ESCAPED BY '\\\\'
+            LINES TERMINATED BY '%s'
+            IGNORE 1 LINES;""" % (escaped_fn,
+                                  os.linesep.encode('unicode_escape').decode()))
+    assert result == expected
 
 
 def test_into_sqlite():
