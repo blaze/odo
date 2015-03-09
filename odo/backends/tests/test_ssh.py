@@ -164,7 +164,7 @@ def test_convert_through_temporary_local_storage():
 def test_ssh_csv_to_s3_csv():
     # for some reason this can only be run in the same file as other ssh tests
     # and must be a Temp(SSH(CSV)) otherwise tests above this one fail
-    s3_bucket = pytest.importorskip('into.backends.tests.test_aws').s3_bucket
+    s3_bucket = pytest.importorskip('odo.backends.tests.test_aws').s3_bucket
 
     with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
         remote = into(Temp(SSH(CSV)), CSV(fn), hostname='localhost')

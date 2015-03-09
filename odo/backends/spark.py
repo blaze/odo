@@ -1,5 +1,10 @@
 from __future__ import division, print_function, absolute_import
 
+from toolz import memoize
+from datashape import var
+
+from .. import convert, append, discover
+
 
 class Dummy(object):
     pass
@@ -9,17 +14,15 @@ try:
     import pyspark
     from pyspark import RDD
     from pyspark.rdd import PipelinedRDD
-    from pyspark.sql import SchemaRDD, SQLContext
+    from pyspark.sql import (DataFrame as SparkDataFrame, SQLContext,
+                             HiveContext)
     RDD.min
 except (AttributeError, ImportError):
-    SchemaRDD = PipelinedRDD = RDD = SparkContext = SQLContext = Dummy
+    SparkDataFrame = PipelinedRDD = RDD = SparkContext = SQLContext = Dummy
+    HiveContext = Dummy
     pyspark = Dummy()
-
-
-from toolz import memoize
-from datashape import var
-
-from .. import convert, append, discover
+else:
+    HiveContext = memoize(HiveContext)
 
 
 @append.register(SparkContext, list)
@@ -32,7 +35,7 @@ def anything_to_spark_context(sc, o, **kwargs):
     return append(sc, convert(list, o, **kwargs), **kwargs)
 
 
-@convert.register(list, (RDD, PipelinedRDD, SchemaRDD))
+@convert.register(list, (RDD, PipelinedRDD))
 def rdd_to_list(rdd, **kwargs):
     return rdd.collect()
 
@@ -43,9 +46,6 @@ def discover_rdd(rdd, n=50, **kwargs):
     return var * discover(data).subshape[0]
 
 
-SQLContext = memoize(SQLContext)
-
-
-@convert.register(SchemaRDD, (RDD, PipelinedRDD))
+@convert.register(SparkDataFrame, (RDD, PipelinedRDD))
 def rdd_to_schema_rdd(rdd, **kwargs):
-    return append(SQLContext(rdd.context), rdd, **kwargs)
+    return append(HiveContext(rdd.context), rdd, **kwargs)

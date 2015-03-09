@@ -1,30 +1,46 @@
 from __future__ import division, print_function, absolute_import
 
+import os
+import glob
 import itertools
+import tempfile
+import shutil
+
+from functools import partial
+from datetime import datetime, date
+
+import pandas as pd
+
+import toolz
 import datashape
 from datashape import dshape, Record, DataShape, Option, Tuple
-from datashape.predicates import isdimension, isrecord
-from toolz import valmap
+from datashape.predicates import isdimension, isrecord, iscollection
+from multipledispatch import MDNotImplementedError
+from toolz.curried import get, map
+from toolz import pipe, concat, curry
 
-from .. import append, discover
+from .. import append, discover, convert
 from ..directory import Directory
 from .json import JSONLines
-from .spark import RDD, SchemaRDD, Dummy
+from .spark import RDD, SparkDataFrame, Dummy
+from .hdfs import HDFS
 
 
 try:
-    from pyspark.sql import SQLContext
-    from pyspark.sql import (ByteType, ShortType, IntegerType, LongType,
-                             FloatType, DoubleType, StringType, BinaryType,
-                             BooleanType, TimestampType, DateType, ArrayType,
-                             StructType, StructField, MapType)
+    from pyspark import SQLContext
+    from pyspark.sql.types import (ByteType, ShortType, IntegerType, LongType,
+                                   FloatType, DoubleType, StringType,
+                                   BinaryType, BooleanType, TimestampType,
+                                   DateType, ArrayType, StructType,
+                                   StructField, MapType)
 except ImportError:
-    SchemaRDD = SQLContext = Dummy
+    SparkDataFrame = SQLContext = Dummy
     ByteType = ShortType = IntegerType = LongType = FloatType = Dummy
     MapType = DoubleType = StringType = BinaryType = BooleanType = Dummy
     TimestampType = DateType = StructType = ArrayType = StructField = Dummy
 
 
+base = (int, float, datetime, date, bool, str, type(None))
 _names = ('tmp%d' % i for i in itertools.count())
 
 
@@ -42,8 +58,27 @@ def jsonlines_to_sparksql(ctx, json, dshape=None, name=None, schema=None,
         schema = dshape_to_schema(dshape.measure
                                   if isrecord(dshape.measure) else dshape)
     srdd = ctx.jsonFile(json.path, schema=schema, samplingRatio=samplingRatio)
-    ctx.registerRDDAsTable(srdd, name or next(_names))
+    ctx.registerDataFrameAsTable(srdd, name or next(_names))
     return srdd
+
+
+@convert.register(list, SparkDataFrame, cost=200.0)
+def sparksql_dataframe_to_list(df, dshape=None, **kwargs):
+    result = df.collect()
+    if (dshape is not None and iscollection(dshape) and
+            not isrecord(dshape.measure)):
+        return list(map(get(0), result))
+    return result
+
+
+@convert.register(base, SparkDataFrame, cost=200.0)
+def spark_df_to_base(df, **kwargs):
+    return df.collect()[0][0]
+
+
+@convert.register(pd.DataFrame, SparkDataFrame, cost=150.0)
+def spark_df_to_pandas_df(df, **kwargs):
+    return df.toPandas()
 
 
 @append.register(SQLContext, RDD)
@@ -58,19 +93,66 @@ def rdd_to_sqlcontext(ctx, rdd, name=None, dshape=None, **kwargs):
         dshape = dshape.measure
     sql_schema = dshape_to_schema(dshape)
     sdf = ctx.applySchema(rdd, sql_schema)
-    ctx.registerRDDAsTable(sdf, name or next(_names))
+    if name is None:
+        name = next(_names)
+    ctx.registerDataFrameAsTable(sdf, name)
+    ctx.cacheTable(name)
     return sdf
 
 
 @discover.register(SQLContext)
 def discover_sqlcontext(ctx):
-    dshapes = valmap(discover, get_catalog(ctx))
-    return datashape.DataShape(datashape.Record(sorted(dshapes.items())))
+    table_names = list(map(str, ctx.tableNames()))
+    dshapes = sorted(zip(table_names,
+                         map(discover, map(ctx.table, table_names))))
+    return datashape.DataShape(datashape.Record(dshapes))
 
 
-@discover.register(SchemaRDD)
+@discover.register(SparkDataFrame)
 def discover_spark_data_frame(df):
-    return datashape.var * schema_to_dshape(df.schema())
+    return datashape.var * schema_to_dshape(df.schema)
+
+
+def chunk_file(filename, chunksize):
+    """Stream `filename` in chunks of size `chunksize`.
+
+    Parameters
+    ----------
+    filename : str
+        File to chunk
+    chunksize : int
+        Number of bytes to hold in memory at a single time
+    """
+    with open(filename, mode='rb') as f:
+        for chunk in iter(partial(f.read, chunksize), ''):
+            yield chunk
+
+
+@append.register(JSONLines, SparkDataFrame)
+def spark_df_to_jsonlines(js, df,
+                          pattern='part-*', chunksize=1 << 23,  # 8MB
+                          **kwargs):
+    tmpd = tempfile.mkdtemp()
+    try:
+        df.save(tmpd, source='org.apache.spark.sql.json', mode='overwrite')
+    except:
+        raise
+    else:
+        files = glob.glob(os.path.join(tmpd, pattern))
+        with open(js.path, mode='ab') as f:
+            pipe(files,
+                 map(curry(chunk_file, chunksize=chunksize)),
+                 concat,
+                 map(f.write),
+                 toolz.count)
+    finally:
+        shutil.rmtree(tmpd)
+    return js
+
+
+@append.register(HDFS(JSONLines), SparkDataFrame)
+def spark_df_to_hdfs(hdfs, df, **kwargs):
+    raise MDNotImplementedError()
 
 
 def dshape_to_schema(ds):
@@ -149,11 +231,6 @@ def deoption(ds):
         return ds
 
 
-@discover.register(SchemaRDD)
-def discover_spark_data_frame(df):
-    return datashape.var * schema_to_dshape(df.schema())
-
-
 # see http://spark.apache.org/docs/latest/sql-programming-guide.html#spark-sql-datatype-reference
 sparksql_to_dshape = {
     ByteType: datashape.int8,
@@ -185,22 +262,3 @@ dshape_to_sparksql = {
     datashape.bool_: BooleanType(),
     datashape.string: StringType()
 }
-
-
-def scala_set_to_set(ctx, x):
-    from py4j.java_gateway import java_import
-
-    # import scala
-    java_import(ctx._jvm, 'scala')
-
-    # grab Scala's set converter and convert to a Python set
-    return set(ctx._jvm.scala.collection.JavaConversions.setAsJavaSet(x))
-
-
-def get_catalog(ctx):
-    # the .catalog() method yields a SimpleCatalog instance. This class is
-    # hidden from the Python side, but is present in the public Scala API
-    java_names = ctx._ssql_ctx.catalog().tables().keySet()
-    table_names = scala_set_to_set(ctx, java_names)
-    tables = map(ctx.table, table_names)
-    return dict(zip(table_names, tables))
