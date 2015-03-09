@@ -94,11 +94,12 @@ def copy_mysql(dialect, tbl, csv, **kwargs):
     tblname = tbl.name
     delimiter = csv.dialect.get('delimiter', ',')
     quotechar = csv.dialect.get('quotechar', '"')
-    escapechar = csv.dialect.get('escapechar', '\\')
-    lineterminator = csv.dialect.get('lineterminator', '\\n\\r')
+    escapechar = csv.dialect.get('escapechar', r'\\')
+    lineterminator = csv.dialect.get('lineterminator',
+                                     os.linesep).encode('unicode_escape')
     skiprows = 1 if csv.has_header else 0
-    encoding = csv.encoding or 'utf-8'
-
+    encoding = {'utf-8': 'utf8'}.get(csv.encoding.lower() or 'utf8',
+                                     csv.encoding)
     statement = u"""
         LOAD DATA {mysql_local} INFILE '{abspath}'
         INTO TABLE {tblname}
@@ -107,7 +108,7 @@ def copy_mysql(dialect, tbl, csv, **kwargs):
             TERMINATED BY '{delimiter}'
             ENCLOSED BY '{quotechar}'
             ESCAPED BY '{escapechar}'
-        LINES TERMINATED by '{lineterminator}'
+        LINES TERMINATED BY '{lineterminator}'
         IGNORE {skiprows} LINES;
     """
 

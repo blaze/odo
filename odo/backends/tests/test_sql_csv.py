@@ -41,16 +41,18 @@ def test_postgres_load():
 
 
 def test_mysql_load():
-    assert normalize(copy_command('mysql', tbl, csv)) == normalize("""
+    result = normalize(copy_command('mysql', tbl, csv))
+    expected = normalize(r"""
             LOAD DATA  INFILE '%s'
             INTO TABLE my_table
-            CHARACTER SET utf-8
+            CHARACTER SET utf8
             FIELDS
                 TERMINATED BY ','
                 ENCLOSED BY '"'
                 ESCAPED BY '\\'
-            LINES TERMINATED BY '\\n\\r'
+            LINES TERMINATED BY '\n'
             IGNORE 1 LINES;""" % escaped_fn)
+    assert result == expected
 
 
 def test_into_sqlite():
