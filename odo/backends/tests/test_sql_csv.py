@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-import pytest
 import os
 
 import pandas as pd
@@ -17,10 +16,7 @@ def normalize(s):
 
 
 fn = os.path.abspath('myfile.csv')
-if os.name == 'nt':
-    escaped_fn = fn.replace('\\', '\\\\')
-else:
-    escaped_fn = fn
+escaped_fn = fn.encode('unicode_escape').decode() if os.name == 'nt' else fn
 
 csv = CSV(fn, delimiter=',', has_header=True)
 ds = datashape.dshape('var * {name: string, amount: int}')
@@ -50,8 +46,9 @@ def test_mysql_load():
                 TERMINATED BY ','
                 ENCLOSED BY '"'
                 ESCAPED BY '\\\\'
-            LINES TERMINATED BY '\\n'
-            IGNORE 1 LINES;""" % escaped_fn)
+            LINES TERMINATED BY '%s'
+            IGNORE 1 LINES;""" % (escaped_fn,
+                                  os.linesep.encode('unicode_escape').decode()))
     assert result == expected
 
 
