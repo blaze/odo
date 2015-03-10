@@ -63,16 +63,24 @@ def engine():
 
 @pytest.yield_fixture
 def sql(engine, csv, name):
-    t = resource('%s::%s' % (url, name), dshape=discover(csv))
-    yield t
-    drop(t)
+    try:
+        t = resource('%s::%s' % (url, name), dshape=discover(csv))
+    except sqlalchemy.exc.OperationalError as e:
+        pytest.skip(str(e))
+    else:
+        yield t
+        drop(t)
 
 
 @pytest.yield_fixture
 def fsql(engine, fcsv, name):
-    t = resource('%s::%s' % (url, name), dshape=discover(fcsv))
-    yield t
-    drop(t)
+    try:
+        t = resource('%s::%s' % (url, name), dshape=discover(fcsv))
+    except sqlalchemy.exc.OperationalError as e:
+        pytest.skip(str(e))
+    else:
+        yield t
+        drop(t)
 
 
 @pytest.fixture
