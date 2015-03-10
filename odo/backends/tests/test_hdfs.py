@@ -15,8 +15,9 @@ from pywebhdfs.webhdfs import PyWebHdfsClient
 import pandas as pd
 import numpy as np
 import uuid
-from odo.backends.hdfs import discover, HDFS, CSV, SSH, dialect_of
+from odo.backends.hdfs import discover, HDFS, CSV, SSH, dialect_of, TableProxy
 from odo.backends.sql import resource
+from odo.backends.ssh import sftp
 from odo import into, drop, JSONLines, odo
 from odo.utils import filetext, ignoring, tmpfile
 import sqlalchemy as sa
@@ -73,20 +74,27 @@ def accounts_data():
         hdfs.delete_file_dir(c)
 
 @contextmanager
-def accounts_ssh(text):
-    local = 'tmp.csv'
-    remote = 'ssh://ubuntu@%s:accounts.csv' % host
+def accounts_ssh():
+    """ Three csv files on the remote host in a directory """
+    dirname = str(uuid.uuid1())
+    conn = sftp(**auth)
+    conn.mkdir(dirname)
+    with filetext(accounts_1_csv) as fn:
+        conn.put(fn, dirname + '/accounts.1.csv')
+    with filetext(accounts_2_csv) as fn:
+        conn.put(fn, dirname + '/accounts.2.csv')
+    with filetext(accounts_3_csv) as fn:
+        conn.put(fn, dirname + '/accounts.3.csv')
 
-    with open(local, 'w') as f:
-        f.write(text)
-
-    odo(local, remote, key_filename=os.path.expanduser('~/.ssh/cdh_testing.key'))
+    filenames = [dirname + '/accounts.%d.csv' % i for i in [1, 2, 3]]
+    uris = ['ssh://ubuntu@%s:%s' % (host, fn) for fn in filenames]
 
     try:
-        yield remote
-    except:
-        drop(local)
-        drop(remote)
+        yield 'ssh://ubuntu@%s:%s/*.csv' % (host, dirname),  uris
+    finally:
+        for fn in filenames:
+            conn.remove(fn)
+        conn.rmdir(dirname)
 
 
 def test_discover():
@@ -162,9 +170,6 @@ auth = {'hostname': host,
         'key_filename': os.path.expanduser('~/.ssh/cdh_testing.key'),
         'username': 'ubuntu'}
 
-ssh_csv= SSH(CSV)('/home/ubuntu/into-testing/accounts1.csv', **auth)
-ssh_directory = SSH(Directory(CSV))('/home/ubuntu/into-testing/', **auth)
-
 
 @contextmanager
 def hive_table(host):
@@ -193,15 +198,15 @@ def test_hdfs_directory_hive_creation():
 
 def test_ssh_hive_creation():
     with hive_table(host) as uri:
-        t = into(uri, ssh_csv, raise_on_errors=True)
-        assert isinstance(t, sa.Table)
-        assert into(set, t) == into(set, ssh_csv)
+        with accounts_ssh() as (_, (remote, _, _)):
+            t = into(uri, remote, raise_on_errors=True, **auth)
+            assert isinstance(t, sa.Table)
+            assert into(set, t) == into(set, remote, **auth)
 
-        # Load again
-        t2 = into(uri, ssh_csv, raise_on_errors=True)
-        assert isinstance(t2, sa.Table)
-        assert len(into(list, t2)) == 2 * len(into(list, ssh_csv))
-
+            # Load again
+            t2 = into(uri, remote, raise_on_errors=True, **auth)
+            assert isinstance(t2, sa.Table)
+            assert len(into(list, t2)) == 2 * len(into(list, remote, **auth))
 
 
 def test_hive_creation_from_local_file():
@@ -218,15 +223,16 @@ def test_hive_creation_from_local_file():
 
 def test_ssh_directory_hive_creation():
     with hive_table(host) as uri:
-        t = into(uri, ssh_directory)
-        assert isinstance(t, sa.Table)
-        assert discover(t) == ds
-        assert len(into(list, t)) > 0
+        with accounts_ssh() as (directory, _):
+            t = odo(directory, uri, **auth)
+            assert isinstance(t, sa.Table)
+            assert discover(t) == ds
+            assert len(into(list, t)) > 0
 
 
 def test_ssh_hive_creation_with_full_urls():
     with hive_table(host) as uri:
-        with accounts_ssh(accounts_1_csv) as remote:
+        with accounts_ssh() as (_, (remote, _, _)):
             t = into(uri, remote,
                      key_filename=os.path.expanduser('~/.ssh/cdh_testing.key'))
             assert isinstance(t, sa.Table)
