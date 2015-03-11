@@ -36,8 +36,14 @@ def discover_hdfstore_storer(storer):
 
 
 @convert.register(chunks(pd.DataFrame), pd.io.pytables.AppendableFrameTable)
-def hdfstore_to_chunks_dataframes(data, chunksize=1000000, **kwargs):
-    return chunks(pd.DataFrame)(data.parent.select(data.pathname, chunksize=chunksize))
+def hdfstore_to_chunks_dataframes(data, chunksize=100000, **kwargs):
+    def f():
+        k = min(chunksize, 100)
+        yield data.parent.select(data.pathname, start=0, stop=k)
+        for chunk in data.parent.select(data.pathname, chunksize=chunksize,
+                                        start=k):
+            yield chunk
+    return chunks(pd.DataFrame)(f)
 
 
 @convert.register(pd.DataFrame, (pd.io.pytables.AppendableFrameTable,
