@@ -311,6 +311,14 @@ def append_anything_to_sql_Table(t, o, **kwargs):
 
 @append.register(sa.Table, sa.Table)
 def append_table_to_sql_Table(t, o, **kwargs):
+    # This condition is an ugly kludge and should be removed once
+    # https://github.com/dropbox/PyHive/issues/15 is resolved
+    if t.bind.name == o.bind.name == 'hive':
+        with t.bind.connect() as conn:
+            conn.execute('INSERT INTO TABLE %s SELECT * FROM %s' %
+                         (t.name, o.name))
+        return t
+
     s = sa.select([o])
     return append(t, s, **kwargs)
 
