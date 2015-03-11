@@ -309,6 +309,10 @@ def append_anything_to_sql_Table(t, c, **kwargs):
 def append_anything_to_sql_Table(t, o, **kwargs):
     return append(t, convert(Iterator, o, **kwargs), **kwargs)
 
+@append.register(sa.Table, sa.Table)
+def append_table_to_sql_Table(t, o, **kwargs):
+    s = sa.select([o])
+    return append(t, s, **kwargs)
 
 @append.register(sa.Table, sa.sql.Select)
 def append_select_statement_to_sql_Table(t, o, **kwargs):

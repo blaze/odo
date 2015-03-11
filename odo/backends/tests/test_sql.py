@@ -9,7 +9,7 @@ import datashape
 from odo.backends.sql import (dshape_to_table, create_from_datashape,
                                dshape_to_alchemy)
 from odo.utils import tmpfile, raises
-from odo import convert, append, resource, discover, into
+from odo import convert, append, resource, discover, into, odo
 
 
 def test_resource():
@@ -250,6 +250,25 @@ def test_append_from_select(sqlite_file):
     s = into('%s::s' % sqlite_file, raw2)
     t = append(t, s.select())
     result = into(list, t)
+    expected = np.concatenate((raw, raw2)).tolist()
+    assert result == expected
+
+
+def test_append_from_table(sqlite_file):
+    # we can't test in memory here because that creates two independent
+    # databases
+    raw = np.array([(200.0, 'Glenn'),
+                    (314.14, 'Hope'),
+                    (235.43, 'Bob')], dtype=[('amount', 'float64'),
+                                             ('name', 'S5')])
+    raw2 = np.array([(800.0, 'Joe'),
+                     (914.14, 'Alice'),
+                     (1235.43, 'Ratso')], dtype=[('amount', 'float64'),
+                                                 ('name', 'S5')])
+    t = odo(raw, '%s::t' % sqlite_file)
+    s = odo(raw2, '%s::s' % sqlite_file)
+    t = append(t, s)
+    result = odo(t, list)
     expected = np.concatenate((raw, raw2)).tolist()
     assert result == expected
 
