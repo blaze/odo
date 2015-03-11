@@ -254,23 +254,24 @@ def test_append_from_select(sqlite_file):
     assert result == expected
 
 
-def test_append_from_table(sqlite_file):
+def test_append_from_table():
     # we can't test in memory here because that creates two independent
     # databases
-    raw = np.array([(200.0, 'Glenn'),
-                    (314.14, 'Hope'),
-                    (235.43, 'Bob')], dtype=[('amount', 'float64'),
-                                             ('name', 'S5')])
-    raw2 = np.array([(800.0, 'Joe'),
-                     (914.14, 'Alice'),
-                     (1235.43, 'Ratso')], dtype=[('amount', 'float64'),
+    with tmpfile('db') as fn:
+        raw = np.array([(200.0, 'Glenn'),
+                        (314.14, 'Hope'),
+                        (235.43, 'Bob')], dtype=[('amount', 'float64'),
                                                  ('name', 'S5')])
-    t = odo(raw, '%s::t' % sqlite_file)
-    s = odo(raw2, '%s::s' % sqlite_file)
-    t = append(t, s)
-    result = odo(t, list)
-    expected = np.concatenate((raw, raw2)).tolist()
-    assert result == expected
+        raw2 = np.array([(800.0, 'Joe'),
+                         (914.14, 'Alice'),
+                         (1235.43, 'Ratso')], dtype=[('amount', 'float64'),
+                                                     ('name', 'S5')])
+        t = into('sqlite:///%s::t' % fn, raw)
+        s = into('sqlite:///%s::s' % fn, raw2)
+        t = append(t, s)
+        result = odo(t, list)
+        expected = np.concatenate((raw, raw2)).tolist()
+        assert result == expected
 
 
 def test_engine_metadata_caching():
