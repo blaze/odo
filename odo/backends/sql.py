@@ -12,7 +12,7 @@ from datetime import datetime, date
 import datashape
 from toolz import partition_all, keyfilter, first, pluck, memoize, map
 
-from ..utils import keywords
+from ..utils import keywords, ignoring
 from ..convert import convert, ooc_types
 from ..append import append
 from ..resource import resource
@@ -333,22 +333,22 @@ def resource_sql(uri, *args, **kwargs):
     kwargs2 = keyfilter(keywords(sa.create_engine).__contains__, kwargs)
     engine = create_engine(uri, **kwargs2)
     ds = kwargs.get('dshape')
+
+    # we were also given a table name
     if args and isinstance(args[0], str):
         table_name, args = args[0], args[1:]
         metadata = metadata_of_engine(engine)
-        try:
-            metadata.reflect(views=engine.dialect.supports_views)
-        except NotImplementedError:
-            metadata.reflect()
-        if table_name not in metadata.tables:
-            if ds:
-                t = dshape_to_table(table_name, ds, metadata)
-                t.create()
-                return t
-            else:
-                raise ValueError("Table does not exist and no dshape provided")
-        return metadata.tables[table_name]
+        with ignoring(sa.exc.NoSuchTableError):
+            return sa.Table(table_name, metadata, autoload=True,
+                            autoload_with=engine)
+        if ds:
+            t = dshape_to_table(table_name, ds, metadata)
+            t.create()
+            return t
+        else:
+            raise ValueError("Table does not exist and no dshape provided")
 
+    # We were not given a table name
     if ds:
         create_from_datashape(engine, ds)
     return engine
