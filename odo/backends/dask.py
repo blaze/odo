@@ -6,7 +6,6 @@ from toolz import merge, accumulate
 from datashape.dispatch import dispatch
 from datashape import DataShape
 from operator import add
-import itertools
 
 from dask.array.core import rec_concatenate, Array, getem, get, names, from_array
 from dask.core import flatten
@@ -14,7 +13,6 @@ from dask.compatibility import long
 
 from ..append import append
 from ..convert import convert
-from ..resource import resource
 
 @discover.register(Array)
 def discover_dask_array(a, **kwargs):
