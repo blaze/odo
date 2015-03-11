@@ -63,6 +63,7 @@ Formats
    mongo
    ssh
    hdfs
+   hive
    aws
    spark
 
