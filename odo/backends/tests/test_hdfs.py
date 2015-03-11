@@ -278,3 +278,28 @@ def test_dialect_of():
                                           has_header=False)
         d = dialect_of(directory2)
         assert d['has_header'] is False
+
+
+def test_hive_resource_with_internal_external():
+    with hive_table(host) as uri:
+        r = resource(uri, external=False, stored_as='PARQUET',
+                     dshape='var * {name: string, balance: int32}')
+        assert isinstance(r, sa.Table)
+
+    with hive_table(host) as uri:
+        r = resource(uri, external=False, stored_as='PARQUET')
+        assert not isinstance(r, sa.Table)
+
+    with hive_table(host) as uri:
+        r = resource(uri, external=True, stored_as='PARQUET')
+        assert not isinstance(r, sa.Table)
+
+
+def test_copy_hive_csv_table_to_parquet():
+    with hive_table(host) as csv:
+        with hive_table(host) as parquet:
+            with accounts_ssh() as (_, (remote, _, _)):
+                c = odo(remote, csv, **auth)
+                p = odo(csv, parquet, stored_as='PARQUET', external=False)
+
+                assert odo(c, list) == odo(p, list)

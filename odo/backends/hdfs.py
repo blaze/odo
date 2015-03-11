@@ -134,7 +134,7 @@ This breaks the current odo model a bit because we usually create things with
 same time.  Enter a convenient hack, a token for a proxy table
 """
 
-TableProxy = namedtuple('TableProxy', 'engine,name')
+TableProxy = namedtuple('TableProxy', 'engine,name,stored_as')
 
 """
 resource('hive://...::tablename') now gives us one of these.  The
@@ -144,16 +144,29 @@ We're looking for better solutions.  For the moment, this works.
 """
 
 @resource.register('hive://.+::.+', priority=16)
-def resource_hive_table(uri, **kwargs):
+def resource_hive_table(uri, stored_as='TEXTFILE', external=True, dshape=None, **kwargs):
+    if dshape:
+        dshape = datashape.dshape(dshape)
     uri, table = uri.split('::')
     engine = resource(uri)
     metadata = metadata_of_engine(engine)
-    if table in metadata.tables:
-        return metadata.tables[table]
-    metadata.reflect(engine, views=False)
-    if table in metadata.tables:
-        return metadata.tables[table]
-    return TableProxy(engine, table)
+
+    # If table exists then return it
+    with ignoring(sa.exc.NoSuchTableError):
+        return sa.Table(table, metadata, autoload=True,
+                        autoload_with=engine)
+
+    # Enough information to make an internal table
+    if dshape and not external:
+        statement = create_hive_statement(table, dshape,
+                db_name=engine.url.database, stored_as=stored_as, **kwargs)
+        with engine.connect() as conn:
+            conn.execute(statement)
+        return sa.Table(table, metadata, autoload=True,
+                        autoload_with=engine)
+
+    else:
+        return TableProxy(engine, table, stored_as)
 
 
 hive_types = {
