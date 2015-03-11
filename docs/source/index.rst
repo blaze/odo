@@ -48,6 +48,7 @@ General
    uri
    datashape
    drop
+   add-new-backend
 
 
 Formats
