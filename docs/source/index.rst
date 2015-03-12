@@ -1,6 +1,5 @@
 Odo: Shapeshifting for your data
 ================================
-
 ``odo`` takes two arguments, a target and a source for a data transfer.
 
 .. code-block:: python
@@ -48,6 +47,7 @@ General
    uri
    datashape
    drop
+   add-new-backend
 
 
 Formats
@@ -56,19 +56,20 @@ Formats
 .. toctree::
    :maxdepth: 1
 
+   aws
    csv
    json
    hdf5
-   sql
-   mongo
-   ssh
    hdfs
    hive
-   aws
+   mongo
    spark
+   sas
+   sql
+   ssh
 
 
-Developer documentation
+Developer Documentation
 ```````````````````````
 
 .. toctree::

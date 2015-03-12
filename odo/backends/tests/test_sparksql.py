@@ -3,23 +3,31 @@ from __future__ import print_function, absolute_import, division
 import pytest
 
 pyspark = pytest.importorskip('pyspark')
+py4j = pytest.importorskip('py4j')
 
+import os
 import shutil
+import json
 import tempfile
 from contextlib import contextmanager
 
-from pyspark.sql import SchemaRDD, Row
-from pyspark.sql import ArrayType, StructField, StructType, IntegerType
-from pyspark.sql import StringType
+import toolz
+from toolz.compatibility import map
+
+from pyspark.sql import Row
+from pyspark.sql.types import ArrayType, StructField, StructType, IntegerType
+from pyspark.sql.types import StringType
 
 import numpy as np
 import pandas as pd
+import pandas.util.testing as tm
 
 import datashape
 from datashape import dshape
-from odo import into, discover, Directory, JSONLines
+from odo import odo, discover, Directory, JSONLines
 from odo.utils import tmpfile, ignoring
 from odo.backends.sparksql import schema_to_dshape, dshape_to_schema
+from odo.backends.sparksql import SparkDataFrame
 
 
 data = [['Alice', 100.0, 1],
@@ -43,33 +51,41 @@ def people(sc):
 
 @pytest.fixture(scope='module')
 def ctx(sqlctx, people):
-    schema = sqlctx.inferSchema(people)
-    schema.registerTempTable('t')
+    df = sqlctx.createDataFrame(people)
+    df2 = sqlctx.createDataFrame(people)
+    sqlctx.registerDataFrameAsTable(df, 't')
+    sqlctx.registerDataFrameAsTable(df2, 't2')
     return sqlctx
 
 
 def test_pyspark_to_sparksql(ctx, people):
-    sdf = into(ctx, data, dshape=discover(df))
-    assert isinstance(sdf, SchemaRDD)
-    assert (list(map(set, into(list, people))) ==
-            list(map(set, into(list, sdf))))
+    sdf = odo(data, ctx, dshape=discover(df))
+    assert isinstance(sdf, SparkDataFrame)
+    assert (list(map(set, odo(people, list))) ==
+            list(map(set, odo(sdf, list))))
 
 
 def test_pyspark_to_sparksql_raises_on_tuple_dshape(ctx, people):
     with pytest.raises(TypeError):
-        into(ctx, data)
+        odo(data, ctx)
 
 
 def test_dataframe_to_sparksql(ctx):
-    sdf = into(ctx, df)
-    assert isinstance(sdf, SchemaRDD)
-    assert into(list, sdf) == into(list, df)
+    sdf = odo(df, ctx)
+    assert isinstance(sdf, SparkDataFrame)
+    assert odo(sdf, list) == odo(df, list)
 
 
 def test_sparksql_to_frame(ctx):
-    result = into(pd.DataFrame, ctx.table('t'))
+    result = odo(ctx.table('t'), pd.DataFrame)
     np.testing.assert_array_equal(result.sort_index(axis=1).values,
                                   df.sort_index(axis=1).values)
+
+
+def test_reduction_to_scalar(ctx):
+    result = odo(ctx.sql('select sum(amount) from t'), float)
+    assert isinstance(result, float)
+    assert result == sum(map(toolz.second, data))
 
 
 def test_discover_context(ctx):
@@ -110,12 +126,38 @@ def test_dshape_to_schema():
         False)
 
 
+def test_append_spark_df_to_json_lines(ctx):
+    out = os.linesep.join(map(json.dumps, df.to_dict('records')))
+    sdf = ctx.table('t')
+    expected = pd.concat([df, df]).sort('amount').reset_index(drop=True).sort_index(axis=1)
+    with tmpfile('.json') as fn:
+        with open(fn, mode='wb') as f:
+            f.write(out + os.linesep)
+
+        uri = 'jsonlines://%s' % fn
+        odo(sdf, uri)
+        result = odo(uri, pd.DataFrame).sort('amount').reset_index(drop=True).sort_index(axis=1)
+        tm.assert_frame_equal(result, expected)
+
+
+@pytest.mark.xfail(raises=py4j.protocol.Py4JJavaError,
+                   reason='bug in sparksql')
+def test_append(ctx):
+    """Add support for odo(SparkDataFrame, SparkDataFrame) when this is fixed.
+    """
+    a = ctx.table('t2')
+    a.insertInto('t2')
+    result = odo(odo(a, pd.DataFrame), set)
+    expected = odo(pd.concat([odo(a, pd.DataFrame)]) * 2, set)
+    assert result == expected
+
+
 def test_load_from_jsonlines(ctx):
     with tmpfile('.json') as fn:
-        js = into('jsonlines://%s' % fn, df)
-        result = into(ctx, js, name='r')
-        assert (list(map(set, into(list, result))) ==
-                list(map(set, into(list, df))))
+        js = odo(df, 'jsonlines://%s' % fn)
+        result = odo(js, ctx, name='r')
+        assert (list(map(set, odo(result, list))) ==
+                list(map(set, odo(df, list))))
 
 
 @contextmanager
@@ -126,7 +168,7 @@ def jslines(n=3):
     for i in range(n):
         _, fn = tempfile.mkstemp(suffix='.json', dir=d)
         dfc['id'] += i
-        into('jsonlines://%s' % fn, dfc)
+        odo(dfc, 'jsonlines://%s' % fn)
         files.append(fn)
 
     yield d
@@ -143,6 +185,6 @@ def test_load_from_dir_of_jsonlines(ctx):
         dfs.append(dfc.copy())
     expected = pd.concat(dfs, axis=0, ignore_index=True)
     with jslines() as d:
-        result = into(ctx, Directory(JSONLines)(d))
-        assert (set(map(frozenset, into(list, result))) ==
-                set(map(frozenset, into(list, expected))))
+        result = odo(Directory(JSONLines)(d), ctx)
+        assert (set(map(frozenset, odo(result, list))) ==
+                set(map(frozenset, odo(expected, list))))
