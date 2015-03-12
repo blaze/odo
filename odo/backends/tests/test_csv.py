@@ -38,7 +38,6 @@ def test_csv_append():
             assert 'Alice' in s
             assert '100' in s
 
-
 def test_pandas_read():
     with filetext('Alice,1\nBob,2') as fn:
         ds = datashape.dshape('var * {name: string, amount: int}')
@@ -311,3 +310,7 @@ def test_infer_header():
         assert infer_header(CSV(fn)) == True
     with filetext('Alice,100\nNA,200', extension='csv') as fn:
         assert infer_header(CSV(fn)) == False
+
+
+def test_csv_supports_sep():
+    assert CSV('foo.csv', sep=';').dialect['delimiter'] == ';'

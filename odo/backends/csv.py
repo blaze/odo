@@ -5,7 +5,7 @@ import datashape
 from datashape import discover, Record, Option
 from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
-from toolz import concat, keyfilter
+from toolz import concat, keyfilter, keymap
 import pandas
 import pandas as pd
 import os
@@ -25,6 +25,17 @@ from .pandas import coerce_datetimes
 
 dialect_terms = '''delimiter doublequote escapechar lineterminator quotechar
 quoting skipinitialspace strict'''.split()
+
+aliases = {'sep': 'delimiter'}
+
+def alias(key):
+    """ Alias kwarg dialect keys to normalized set
+
+    >>> alias('sep')
+    'delimiter'
+    """
+    key = key.lower()
+    return aliases.get(key, key)
 
 
 class CSV(object):
@@ -54,6 +65,7 @@ class CSV(object):
         else:
             self.has_header = has_header
         self.encoding = encoding
+        kwargs = keymap(alias, kwargs)
         self.dialect = dict((d, kwargs[d]) for d in dialect_terms
                                            if d in kwargs)
 
