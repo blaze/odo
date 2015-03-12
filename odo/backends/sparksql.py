@@ -9,12 +9,10 @@ import shutil
 from functools import partial
 from datetime import datetime, date
 
-import pandas as pd
-
 import toolz
 import datashape
 from datashape import dshape, Record, DataShape, Option, Tuple
-from datashape.predicates import isdimension, isrecord, iscollection, isscalar
+from datashape.predicates import isdimension, isrecord, iscollection
 from toolz.curried import get, map
 from toolz import pipe, concat, curry
 
@@ -71,11 +69,6 @@ def sparksql_dataframe_to_list(df, dshape=None, **kwargs):
 @convert.register(base, SparkDataFrame, cost=200.0)
 def spark_df_to_base(df, **kwargs):
     return df.collect()[0][0]
-
-
-@convert.register(pd.DataFrame, SparkDataFrame, cost=200.0)
-def spark_df_to_pandas_df(df, **kwargs):
-    return df.toPandas()
 
 
 @append.register(SQLContext, RDD)
