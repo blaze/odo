@@ -14,7 +14,7 @@ import pandas as pd
 import toolz
 import datashape
 from datashape import dshape, Record, DataShape, Option, Tuple
-from datashape.predicates import isdimension, isrecord, iscollection
+from datashape.predicates import isdimension, isrecord, iscollection, isscalar
 from toolz.curried import get, map
 from toolz import pipe, concat, curry
 
@@ -59,7 +59,7 @@ def jsonlines_to_sparksql(ctx, json, dshape=None, name=None, schema=None,
     return srdd
 
 
-@convert.register(list, SparkDataFrame, cost=200.0)
+@convert.register(list, SparkDataFrame, cost=150.0)
 def sparksql_dataframe_to_list(df, dshape=None, **kwargs):
     result = df.collect()
     if (dshape is not None and iscollection(dshape) and
@@ -68,8 +68,9 @@ def sparksql_dataframe_to_list(df, dshape=None, **kwargs):
     return result
 
 
-@convert.register(base, SparkDataFrame, cost=200.0)
-def spark_df_to_base(df, **kwargs):
+@convert.register(base, SparkDataFrame, cost=150.0)
+def spark_df_to_base(df, dshape=None, **kwargs):
+    assert isscalar(dshape), 'dshape must be a scalar type, got %s' % dshape
     return df.collect()[0][0]
 
 
