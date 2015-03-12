@@ -20,7 +20,7 @@ package_data = [x.replace('odo' + os.sep, '') for x in
 
 
 setup(name='odo',
-      version='0.3.0',
+      version='0.3.1',
       description='Data migration utilities',
       url='http://github.com/ContinuumIO/odo',
       author='Blaze development deam',
