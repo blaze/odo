@@ -70,7 +70,6 @@ def sparksql_dataframe_to_list(df, dshape=None, **kwargs):
 
 @convert.register(base, SparkDataFrame, cost=150.0)
 def spark_df_to_base(df, dshape=None, **kwargs):
-    assert isscalar(dshape), 'dshape must be a scalar type, got %s' % dshape
     return df.collect()[0][0]
 
 
