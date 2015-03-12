@@ -50,6 +50,8 @@ except ImportError:
 
 @convert.register(Array, tuple(arrays), cost=1.)
 def array_to_dask(x, name=None, blockshape=None, **kwargs):
+    if blockshape is None:
+        raise NotImplementedError("blockshape cannot be None")
     return from_array(x, blockshape=blockshape, name=name, **kwargs)
 
 
