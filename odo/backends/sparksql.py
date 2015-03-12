@@ -59,7 +59,7 @@ def jsonlines_to_sparksql(ctx, json, dshape=None, name=None, schema=None,
     return srdd
 
 
-@convert.register(list, SparkDataFrame, cost=150.0)
+@convert.register(list, SparkDataFrame, cost=200.0)
 def sparksql_dataframe_to_list(df, dshape=None, **kwargs):
     result = df.collect()
     if (dshape is not None and iscollection(dshape) and
@@ -68,12 +68,12 @@ def sparksql_dataframe_to_list(df, dshape=None, **kwargs):
     return result
 
 
-@convert.register(base, SparkDataFrame, cost=150.0)
+@convert.register(base, SparkDataFrame, cost=200.0)
 def spark_df_to_base(df, **kwargs):
     return df.collect()[0][0]
 
 
-@convert.register(pd.DataFrame, SparkDataFrame, cost=150.0)
+@convert.register(pd.DataFrame, SparkDataFrame, cost=200.0)
 def spark_df_to_pandas_df(df, **kwargs):
     return df.toPandas()
 
