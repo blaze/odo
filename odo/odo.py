@@ -32,6 +32,7 @@ def odo(source, target, **kwargs):
     *   HDF5  - http://odo.pydata.org/en/latest/hdf5.html
     *   HDFS  - http://odo.pydata.org/en/latest/hdfs.html
     *   Hive  - http://odo.pydata.org/en/latest/hive.html
+    *   SAS   - http://odo.pydata.org/en/latest/sas.html
     *   SQL   - http://odo.pydata.org/en/latest/sql.html
     *   SSH   - http://odo.pydata.org/en/latest/ssh.html
     *   Mongo - http://odo.pydata.org/en/latest/mongo.html
