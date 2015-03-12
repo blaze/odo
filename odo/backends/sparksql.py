@@ -41,7 +41,7 @@ except ImportError:
     TimestampType = DateType = StructType = ArrayType = StructField = Dummy
 
 
-base = (int, float, datetime, date, bool, str, type(None))
+base = (int, float, datetime, date, bool, str)
 _names = ('tmp%d' % i for i in itertools.count())
 
 
