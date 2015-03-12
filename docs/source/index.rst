@@ -57,18 +57,18 @@ Formats
 .. toctree::
    :maxdepth: 1
 
+   aws
    csv
    json
    hdf5
-   sql
-   mongo
-   ssh
    hdfs
-   aws
+   mongo
    spark
+   sql
+   ssh
 
 
-Developer documentation
+Developer Documentation
 ```````````````````````
 
 .. toctree::
