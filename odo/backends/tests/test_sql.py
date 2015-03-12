@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
 import pytest
+pytest.importorskip('sqlalchemy')
+
 import os
 import numpy as np
 import sqlalchemy as sa
