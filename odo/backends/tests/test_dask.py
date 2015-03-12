@@ -1,5 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
+import pytest
+pytest.importorskip('dask')
+
 from odo.backends.dask import append, Array, merge
 from dask.array.core import insert_to_ooc
 from dask import core
