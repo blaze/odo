@@ -498,7 +498,7 @@ def resource_hdfs(uri, **kwargs):
 
 
 @append.register(HDFS(TextFile), (Iterator, object))
-@append.register(HDFS(JSONLines), (Iterator, object))
+@append.register(HDFS(JSONLines), (Iterator, object, SparkDataFrame))
 @append.register(HDFS(JSON), (list, object))
 @append.register(HDFS(CSV), (chunks(pd.DataFrame), pd.DataFrame, object))
 def append_object_to_hdfs(target, source, **kwargs):
