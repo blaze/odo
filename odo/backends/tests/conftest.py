@@ -13,7 +13,10 @@ def sc():
 def sqlctx(sc):
     pyspark = pytest.importorskip('pyspark')
     try:
-        yield pyspark.HiveContext(sc)
+        if hasattr(pyspark.sql, 'types'):
+            yield pyspark.HiveContext(sc)
+        else:
+            yield pyspark.SQLContext(sc)
     finally:
         dbpath = 'metastore_db'
         logpath = 'derby.log'

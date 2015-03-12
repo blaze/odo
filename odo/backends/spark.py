@@ -14,12 +14,16 @@ try:
     import pyspark
     from pyspark import RDD
     from pyspark.rdd import PipelinedRDD
-    from pyspark.sql import (DataFrame as SparkDataFrame, SQLContext,
-                             HiveContext)
+    try:
+        from pyspark.sql import DataFrame as SparkDataFrame
+    except ImportError:
+        SparkDataFrame = Dummy
+    from pyspark.sql import SchemaRDD
+    from pyspark.sql import SQLContext, HiveContext
     RDD.min
 except (AttributeError, ImportError):
     SparkDataFrame = PipelinedRDD = RDD = SparkContext = SQLContext = Dummy
-    HiveContext = Dummy
+    HiveContext = SchemaRDD = Dummy
     pyspark = Dummy()
 else:
     HiveContext = memoize(HiveContext)
@@ -46,6 +50,6 @@ def discover_rdd(rdd, n=50, **kwargs):
     return var * discover(data).subshape[0]
 
 
-@convert.register(SparkDataFrame, (RDD, PipelinedRDD))
-def rdd_to_schema_rdd(rdd, **kwargs):
+@convert.register((SparkDataFrame, SchemaRDD), (RDD, PipelinedRDD))
+def rdd_to_spark_df_or_srdd(rdd, **kwargs):
     return append(HiveContext(rdd.context), rdd, **kwargs)
