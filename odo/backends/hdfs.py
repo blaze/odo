@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 from toolz import memoize, merge, partition_all
-from functools import wraps
 from multipledispatch import MDNotImplementedError
 import re
 import os
@@ -13,11 +12,12 @@ import pandas as pd
 import uuid
 import datashape
 import sqlalchemy as sa
-from datashape import discover, dshape
+from datashape import discover
 from datashape import coretypes as ct
 from collections import namedtuple, Iterator
 from contextlib import contextmanager
-from .ssh import SSH, _SSH
+from .ssh import SSH
+from .spark import SparkDataFrame
 from .sql import metadata_of_engine, sa
 from ..utils import tmpfile, sample, ignoring, raises
 from ..temp import Temp
@@ -25,7 +25,7 @@ from ..append import append
 from ..convert import convert
 from ..chunks import chunks
 from ..resource import resource
-from ..directory import _Directory, Directory
+from ..directory import Directory
 from ..compatibility import unicode
 
 
@@ -219,6 +219,7 @@ def create_hive_statement(tbl_name, dshape, path=None, table_type='',
     Example
     -------
 
+    >>> from datashape import dshape
     >>> ds = dshape('var * {name: string, balance: int64, when: datetime}')
     >>> print(create_hive_statement('accounts', ds, delimiter=','))  # doctest: +NORMALIZE_WHITESPACE
     CREATE  TABLE default.accounts (
@@ -497,7 +498,7 @@ def resource_hdfs(uri, **kwargs):
 
 
 @append.register(HDFS(TextFile), (Iterator, object))
-@append.register(HDFS(JSONLines), (Iterator, object))
+@append.register(HDFS(JSONLines), (Iterator, object, SparkDataFrame))
 @append.register(HDFS(JSON), (list, object))
 @append.register(HDFS(CSV), (chunks(pd.DataFrame), pd.DataFrame, object))
 def append_object_to_hdfs(target, source, **kwargs):
