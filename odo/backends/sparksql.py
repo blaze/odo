@@ -9,13 +9,10 @@ import shutil
 from functools import partial
 from datetime import datetime, date
 
-import pandas as pd
-
 import toolz
 import datashape
 from datashape import dshape, Record, DataShape, Option, Tuple
 from datashape.predicates import isdimension, isrecord, iscollection
-from multipledispatch import MDNotImplementedError
 from toolz.curried import get, map
 from toolz import pipe, concat, curry
 
@@ -24,8 +21,6 @@ from ..core import ooc_types
 from ..directory import Directory
 from .json import JSONLines
 from .spark import RDD, SparkDataFrame, Dummy
-from .hdfs import HDFS
-
 
 try:
     from pyspark import SQLContext
@@ -75,11 +70,6 @@ def sparksql_dataframe_to_list(df, dshape=None, **kwargs):
 @convert.register(base, SparkDataFrame, cost=200.0)
 def spark_df_to_base(df, **kwargs):
     return df.collect()[0][0]
-
-
-@convert.register(pd.DataFrame, SparkDataFrame, cost=150.0)
-def spark_df_to_pandas_df(df, **kwargs):
-    return df.toPandas()
 
 
 @append.register(SQLContext, RDD)
@@ -149,11 +139,6 @@ def spark_df_to_jsonlines(js, df,
     finally:
         shutil.rmtree(tmpd)
     return js
-
-
-@append.register(HDFS(JSONLines), SparkDataFrame)
-def spark_df_to_hdfs(hdfs, df, **kwargs):
-    raise MDNotImplementedError()
 
 
 def dshape_to_schema(ds):
