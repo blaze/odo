@@ -134,7 +134,7 @@ This breaks the current odo model a bit because we usually create things with
 same time.  Enter a convenient hack, a token for a proxy table
 """
 
-TableProxy = namedtuple('TableProxy', 'engine,name')
+TableProxy = namedtuple('TableProxy', 'engine,name,stored_as')
 
 """
 resource('hive://...::tablename') now gives us one of these.  The
@@ -144,16 +144,29 @@ We're looking for better solutions.  For the moment, this works.
 """
 
 @resource.register('hive://.+::.+', priority=16)
-def resource_hive_table(uri, **kwargs):
+def resource_hive_table(uri, stored_as='TEXTFILE', external=True, dshape=None, **kwargs):
+    if dshape:
+        dshape = datashape.dshape(dshape)
     uri, table = uri.split('::')
     engine = resource(uri)
     metadata = metadata_of_engine(engine)
-    if table in metadata.tables:
-        return metadata.tables[table]
-    metadata.reflect(engine, views=False)
-    if table in metadata.tables:
-        return metadata.tables[table]
-    return TableProxy(engine, table)
+
+    # If table exists then return it
+    with ignoring(sa.exc.NoSuchTableError):
+        return sa.Table(table, metadata, autoload=True,
+                        autoload_with=engine)
+
+    # Enough information to make an internal table
+    if dshape and not external:
+        statement = create_hive_statement(table, dshape,
+                db_name=engine.url.database, stored_as=stored_as, **kwargs)
+        with engine.connect() as conn:
+            conn.execute(statement)
+        return sa.Table(table, metadata, autoload=True,
+                        autoload_with=engine)
+
+    else:
+        return TableProxy(engine, table, stored_as)
 
 
 hive_types = {
@@ -172,6 +185,8 @@ hive_types = {
 def dshape_to_hive(ds):
     """ Convert datashape measure to Hive dtype string
 
+    >>> dshape_to_hive('var * {name: string, balance: int32}')
+    ['name  STRING', 'balance  INT']
     >>> dshape_to_hive('int16')
     'SMALLINT'
     >>> dshape_to_hive('?int32')  # Ignore option types
@@ -183,6 +198,10 @@ def dshape_to_hive(ds):
         ds = datashape.dshape(ds)
     if isinstance(ds, ct.DataShape):
         ds = ds.measure
+    if isinstance(ds, ct.Record):
+        columns = [(name, dshape_to_hive(typ))
+                for name, typ in zip(ds.measure.names, ds.measure.types)]
+        return ['%s  %s' % col for col in columns]
     if isinstance(ds, ct.Option):
         ds = ds.ty
     if isinstance(ds, ct.String):
@@ -196,7 +215,7 @@ def dshape_to_hive(ds):
 
 
 def create_hive_statement(tbl_name, dshape, path=None, table_type='',
-        db_name='default', **dialect):
+        db_name='default', stored_as='TEXTFILE', **kwargs):
     """ Generic CREATE TABLE statement for hive
 
     Parameters
@@ -212,8 +231,10 @@ def create_hive_statement(tbl_name, dshape, path=None, table_type='',
         Table Modifier like EXTERNAL or LOCAL
     db_name : string
         Specifies database name.  Defaults to "default"
+    stored_as: string
+        Target storage format like TEXTFILE or PARQUET
 
-    **dialect : keyword arguments dict
+    **kwargs: keyword arguments dict
         CSV dialect with keys delimiter, has_header, etc.
 
     Example
@@ -243,6 +264,14 @@ def create_hive_statement(tbl_name, dshape, path=None, table_type='',
     STORED AS TEXTFILE
     LOCATION '/data/accounts/'
     TBLPROPERTIES ("skip.header.line.count"="1")
+
+    >>> print(create_hive_statement('accounts', ds, stored_as='PARQUET'))  # doctest: +NORMALIZE_WHITESPACE
+    CREATE  TABLE default.accounts (
+            name  STRING,
+         balance  BIGINT,
+            when  TIMESTAMP
+    )
+    STORED AS PARQUET
     """
     if db_name:
         db_name = db_name + '.'
@@ -251,19 +280,25 @@ def create_hive_statement(tbl_name, dshape, path=None, table_type='',
         table_type = ''
 
     # Column names and types from datashape
-    ds = dshape or discover(data)
-    assert isinstance(ds.measure, ct.Record)
-    columns = [(name, dshape_to_hive(typ))
-            for name, typ in zip(ds.measure.names, ds.measure.types)]
-    column_text = ',\n    '.join('%20s  %s' % col for col in columns).lstrip()
+    assert isinstance(dshape.measure, ct.Record)
+    columns = dshape_to_hive(dshape)
+    column_text = ',\n    '.join('%20s  %s' % tuple(col.split())
+                                 for col in columns).lstrip()
 
     statement = """
         CREATE {table_type} TABLE {db_name}{tbl_name} (
             {column_text}
         )
+        """
+
+    if 'delimiter' in kwargs:
+        statement += """
         ROW FORMAT DELIMITED
             FIELDS TERMINATED BY '{delimiter}'
-        STORED AS TEXTFILE
+        """
+
+    statement += """
+        STORED AS {stored_as}
         """
 
     if path:
@@ -271,11 +306,11 @@ def create_hive_statement(tbl_name, dshape, path=None, table_type='',
         LOCATION '{path}'
         """
 
-    if dialect.get('has_header'):
+    if kwargs.get('has_header'):
         statement = statement + """
         TBLPROPERTIES ("skip.header.line.count"="1")"""
 
-    return statement.format(**merge(dialect, locals())).strip('\n')
+    return statement.format(**merge(kwargs, locals())).strip('\n')
 
 
 """
@@ -460,6 +495,8 @@ def dialect_of(data, **kwargs):
 
         if data.has_header is None:
             d['has_header'] = sniffer.has_header(text)
+        else:
+            d['has_header'] = data.has_header
 
         d.update(data.dialect)
 

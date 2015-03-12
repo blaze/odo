@@ -61,6 +61,7 @@ Formats
    json
    hdf5
    hdfs
+   hive
    mongo
    spark
    sas
