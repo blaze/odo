@@ -14,9 +14,14 @@ from contextlib import contextmanager
 import toolz
 from toolz.compatibility import map
 
-from pyspark.sql import Row
-from pyspark.sql.types import ArrayType, StructField, StructType, IntegerType
-from pyspark.sql.types import StringType
+from pyspark.sql import Row, SchemaRDD
+try:
+    from pyspark.sql.types import (ArrayType, StructField, StructType,
+                                   IntegerType)
+    from pyspark.sql.types import StringType
+except ImportError:
+    from pyspark.sql import ArrayType, StructField, StructType, IntegerType
+    from pyspark.sql import StringType
 
 import numpy as np
 import pandas as pd
@@ -51,16 +56,22 @@ def people(sc):
 
 @pytest.fixture(scope='module')
 def ctx(sqlctx, people):
-    df = sqlctx.createDataFrame(people)
-    df2 = sqlctx.createDataFrame(people)
-    sqlctx.registerDataFrameAsTable(df, 't')
-    sqlctx.registerDataFrameAsTable(df2, 't2')
+    try:
+        df = sqlctx.createDataFrame(people)
+    except AttributeError:
+        schema = sqlctx.inferSchema(people)
+        schema.registerTempTable('t')
+        schema.registerTempTable('t2')
+    else:
+        df2 = sqlctx.createDataFrame(people)
+        sqlctx.registerDataFrameAsTable(df, 't')
+        sqlctx.registerDataFrameAsTable(df2, 't2')
     return sqlctx
 
 
 def test_pyspark_to_sparksql(ctx, people):
     sdf = odo(data, ctx, dshape=discover(df))
-    assert isinstance(sdf, SparkDataFrame)
+    assert isinstance(sdf, (SparkDataFrame, SchemaRDD))
     assert (list(map(set, odo(people, list))) ==
             list(map(set, odo(sdf, list))))
 
@@ -72,7 +83,7 @@ def test_pyspark_to_sparksql_raises_on_tuple_dshape(ctx, people):
 
 def test_dataframe_to_sparksql(ctx):
     sdf = odo(df, ctx)
-    assert isinstance(sdf, SparkDataFrame)
+    assert isinstance(sdf, (SparkDataFrame, SchemaRDD))
     assert odo(sdf, list) == odo(df, list)
 
 
