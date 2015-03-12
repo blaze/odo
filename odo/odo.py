@@ -18,6 +18,25 @@ def odo(source, target, **kwargs):
     **kwargs:
         keyword arguments to pass through to conversion functions.
 
+    Optional Keyword Arguments
+    --------------------------
+
+    Odo passes keyword arguments (like ``sep=';'``) down to the functions
+    that it uses to perform conversions (like ``pandas.read_csv``).  Due to the
+    quantity of possible optional keyword arguments we can not list them here.
+    See the following documentation for your format
+
+    *   AWS   - http://odo.pydata.org/en/latest/aws.html
+    *   CSV   - http://odo.pydata.org/en/latest/csv.html
+    *   JSON  - http://odo.pydata.org/en/latest/json.html
+    *   HDF5  - http://odo.pydata.org/en/latest/hdf5.html
+    *   HDFS  - http://odo.pydata.org/en/latest/hdfs.html
+    *   Hive  - http://odo.pydata.org/en/latest/hive.html
+    *   SQL   - http://odo.pydata.org/en/latest/sql.html
+    *   SSH   - http://odo.pydata.org/en/latest/ssh.html
+    *   Mongo - http://odo.pydata.org/en/latest/mongo.html
+    *   Spark - http://odo.pydata.org/en/latest/spark.html
+
     Examples
     --------
 
