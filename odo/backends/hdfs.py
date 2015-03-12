@@ -279,9 +279,8 @@ def create_hive_statement(tbl_name, dshape, path=None, table_type='',
         table_type = ''
 
     # Column names and types from datashape
-    ds = dshape or discover(data)
-    assert isinstance(ds.measure, ct.Record)
-    columns = dshape_to_hive(ds)
+    assert isinstance(dshape.measure, ct.Record)
+    columns = dshape_to_hive(dshape)
     column_text = ',\n    '.join('%20s  %s' % tuple(col.split())
                                  for col in columns).lstrip()
 
