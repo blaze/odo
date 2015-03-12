@@ -48,17 +48,17 @@ except ImportError:
 
 
 
-@convert.register(Array, tuple(arrays), cost=0.01)
+@convert.register(Array, tuple(arrays), cost=1.)
 def array_to_dask(x, name=None, blockshape=None, **kwargs):
     return from_array(x, blockshape=blockshape, name=name, **kwargs)
 
 
-@convert.register(np.ndarray, Array, cost=0.5)
+@convert.register(np.ndarray, Array, cost=10.)
 def dask_to_numpy(x, **kwargs):
     return rec_concatenate(get(x.dask, x._keys(), **kwargs))
 
 
-@convert.register(float, Array, cost=0.5)
+@convert.register(float, Array, cost=10.)
 def dask_to_float(x, **kwargs):
     return x.compute()
 
