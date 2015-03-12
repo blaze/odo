@@ -17,6 +17,7 @@ from toolz.curried import get, map
 from toolz import pipe, concat, curry
 
 from .. import append, discover, convert
+from ..core import ooc_types
 from ..directory import Directory
 from .json import JSONLines
 from .spark import RDD, SparkDataFrame, Dummy
@@ -35,7 +36,7 @@ except ImportError:
     TimestampType = DateType = StructType = ArrayType = StructField = Dummy
 
 
-base = (int, float, datetime, date, bool, str, type(None))
+base = (int, float, datetime, date, bool, str)
 _names = ('tmp%d' % i for i in itertools.count())
 
 
@@ -247,3 +248,5 @@ dshape_to_sparksql = {
     datashape.bool_: BooleanType(),
     datashape.string: StringType()
 }
+
+ooc_types |= set([SparkDataFrame])

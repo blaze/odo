@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import networkx as nx
 from datashape import discover
-from .utils import expand_tuples, cls_name, ignoring
+from .utils import expand_tuples, ignoring
 from contextlib import contextmanager
 
 
@@ -16,6 +16,7 @@ class NetworkDispatcher(object):
 
     def register(self, a, b, cost=1.0):
         sigs = expand_tuples([a, b])
+
         def _(func):
             for a, b in sigs:
                 self.graph.add_edge(b, a, cost=cost, func=func)
@@ -30,7 +31,7 @@ class NetworkDispatcher(object):
 
 
 def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types,
-        **kwargs):
+               **kwargs):
     """ Transform source to target type using graph of transformations """
     x = source
     excluded_edges = excluded_edges or set()
@@ -42,17 +43,16 @@ def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types,
                ooc_types=ooc_types)
     try:
         for (A, B, f) in pth:
-            oldx = x
             x = f(x, excluded_edges=excluded_edges, **kwargs)
         return x
     except NotImplementedError as e:
         if kwargs.get('raise_on_errors'):
             raise
-        print("Failed on %s -> %s. Working around" %
-                    (A.__name__,  B.__name__))
+        print("Failed on %s -> %s. Working around" % (A.__name__, B.__name__))
         print("Error message:\n%s" % e)
         new_exclusions = excluded_edges | set([(A, B)])
-        return _transform(graph, target, source, excluded_edges=new_exclusions, **kwargs)
+        return _transform(graph, target, source, excluded_edges=new_exclusions,
+                          **kwargs)
 
 
 def path(graph, source, target, excluded_edges=None, ooc_types=ooc_types):
@@ -73,12 +73,12 @@ def path(graph, source, target, excluded_edges=None, ooc_types=ooc_types):
     if ooc_types:
         oocs = tuple(ooc_types)
         if issubclass(source, oocs) and issubclass(target, oocs):
-            oldgraph = graph
-            graph = graph.subgraph([n for n in graph.nodes() if issubclass(n, oocs)])
+            graph = graph.subgraph([n for n in graph.nodes()
+                                    if issubclass(n, oocs)])
     with without_edges(graph, excluded_edges) as g:
         pth = nx.shortest_path(g, source=source, target=target, weight='cost')
-        result = [(source, target, graph.edge[source][target]['func'])
-                    for source, target in zip(pth, pth[1:])]
+        result = [(src, tgt, graph.edge[src][tgt]['func'])
+                  for src, tgt in zip(pth, pth[1:])]
     return result
 
 
