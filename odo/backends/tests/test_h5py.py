@@ -213,6 +213,13 @@ def test_resource_with_option_types():
             r.file.close()
 
 
+def test_resource_with_h5py_protocol():
+    with tmpfile('.hdf5') as fn:
+        assert isinstance(resource('h5py://' + fn), h5py.File)
+    with tmpfile('.xyz') as fn:
+        assert isinstance(resource('h5py://' + fn), h5py.File)
+
+
 def test_copy_with_into():
     with tmpfile('.hdf5') as fn:
         dset = into(fn + '::/data', [1, 2, 3])
