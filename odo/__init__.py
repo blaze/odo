@@ -64,7 +64,7 @@ with ignoring(ImportError):
 
 restart_ordering()  # Restart multipledispatch ordering and do ordering
 
-__version__ = '0.2.2'
+__version__ = '0.3.1'
 
 
 def test(verbose=False, junitfile=None, exit=False):
