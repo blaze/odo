@@ -297,9 +297,17 @@ def test_hive_resource_with_internal_external():
 
 def test_copy_hive_csv_table_to_parquet():
     with hive_table(host) as csv:
-        with hive_table(host) as parquet:
-            with accounts_ssh() as (_, (remote, _, _)):
-                c = odo(remote, csv, **auth)
+        with accounts_ssh() as (_, (remote, _, _)):
+            c = odo(remote, csv, **auth)
+            with hive_table(host) as parquet:
                 p = odo(csv, parquet, stored_as='PARQUET', external=False)
-
                 assert odo(c, list) == odo(p, list)
+
+            with hive_table(host) as parquet:
+                try:
+                    fn = '/home/hdfs/%s.parquet' % str(uuid.uuid1()).replace('-', '')[:20]
+                    p = odo(csv, parquet, stored_as='PARQUET',
+                            external=True, path=fn)
+                    assert odo(c, list) == odo(p, list)
+                finally:
+                    hdfs.delete_file_dir(fn)

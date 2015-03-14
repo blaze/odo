@@ -157,9 +157,11 @@ def resource_hive_table(uri, stored_as='TEXTFILE', external=True, dshape=None, *
                         autoload_with=engine)
 
     # Enough information to make an internal table
-    if dshape and not external:
+    if dshape and (not external or external and kwargs.get('path')):
+        table_type = 'EXTERNAL' if external else ''
         statement = create_hive_statement(table, dshape,
-                db_name=engine.url.database, stored_as=stored_as, **kwargs)
+                db_name=engine.url.database, stored_as=stored_as,
+                table_type=table_type, **kwargs)
         with engine.connect() as conn:
             conn.execute(statement)
         return sa.Table(table, metadata, autoload=True,
