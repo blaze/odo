@@ -47,7 +47,6 @@ except ImportError:
     pass
 
 
-
 @convert.register(Array, tuple(arrays), cost=1.)
 def array_to_dask(x, name=None, blockshape=None, **kwargs):
     if blockshape is None:
