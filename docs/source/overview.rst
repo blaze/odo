@@ -20,32 +20,15 @@ It efficiently migrates data from the source to the target.
 
 The target and source can take on the following forms
 
-.. raw:: html
+.. table:: Valid Input Types
 
-   <table>
-       <thead>
-       <tr>
-           <td> Target </td>
-           <td> Source </td>
-           <td> Example </td>
-       </tr>
-       </thead>
-       <tr>
-           <td> Object </td>
-           <td> Object </td>
-           <td> A particular DataFrame or list </td>
-       </tr>
-       <tr>
-           <td> String </td>
-           <td> String </td>
-           <td> 'file.csv', 'postgresql://hostname::tablename' </td>
-       </tr>
-       <tr>
-           <td> Type </td>
-           <td>        </td>
-           <td> Like list or pd.DataFrame </td>
-       </tr>
-   </table>
+   ====== ====== ======================================================
+   Target Source Example
+   ====== ====== ======================================================
+   Object Object An instance of a ``DataFrame`` or ``list``
+   String String ``'file.csv'``, ``'postgresql://hostname::tablename'``
+   Type          ``list``, ``DataFrame``
+   ====== ====== ======================================================
 
 So the following lines would be valid inputs to ``odo``
 
