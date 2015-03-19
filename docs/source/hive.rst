@@ -70,7 +70,7 @@ While Impala connects to the same metastore it must connect to one of the
 worker nodes, not the same head node to which Hive connects.  After you load
 data in to hive you need to send the ``invalidate metadata`` to Impala.
 
-.. code-block:: Python
+.. code-block:: python
 
    >>> odo('hdfs://hostname::/path/to/data/*.csv', 'hive://hostname::table')
 
@@ -84,7 +84,7 @@ You may want to transform your data in to Parquet format for efficient
 querying.  A two minute query on Hive in CSV might take one minute on Hive in
 Parquet and only three seconds in Impala in Parquet.
 
-.. code-block:: Python
+.. code-block:: python
 
    >>> odo('hive://hostname::table', 'hive://hostname::table_parquet',
    ...     external=False, stored_as='PARQUET')

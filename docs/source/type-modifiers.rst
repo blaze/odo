@@ -56,7 +56,7 @@ Python lists and ``chunks(pd.DataFrame)`` an iterable of DataFrames.  The
 via an in-core format.  This is also a nice mechanism to interact with data in
 an online fashion
 
-.. code-block:: Python
+.. code-block:: python
 
    >>> from odo import odo, pd, chunks
    >>> seq = odo('postgresql://localhost::mytable', chunks(pd.DataFrame))
