@@ -20,7 +20,7 @@ It efficiently migrates data from the source to the target.
 
 The target and source can take on the following forms
 
-.. table:: Valid Input Types
+.. table:: Valid Input to ``odo``
 
    ====== ====== ======================================================
    Target Source Example
