@@ -181,6 +181,14 @@ def test_dshape_to_table():
     assert [c.name for c in t.c] == ['name', 'amount']
 
 
+def test_dshape_to_table_with_timedelta():
+    ds = '{name: string, amount: int, duration: timedelta[unit="us"]}'
+    t = dshape_to_table('td_bank', ds)
+    assert isinstance(t, sa.Table)
+    assert t.name == 'td_bank'
+    assert isinstance(t.c.duration.type, sa.types.Interval)
+
+
 def test_create_from_datashape():
     engine = sa.create_engine('sqlite:///:memory:')
     ds = dshape('''{bank: var * {name: string, amount: int},

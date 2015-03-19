@@ -23,26 +23,28 @@ base = (int, float, datetime, date, bool, str)
 
 # http://docs.sqlalchemy.org/en/latest/core/types.html
 
-types = {'int64': sa.types.BigInteger,
-         'int32': sa.types.Integer,
-         'int': sa.types.Integer,
-         'int16': sa.types.SmallInteger,
-         'float32': sa.types.Float(precision=24), # sqlalchemy uses mantissa
-         'float64': sa.types.Float(precision=53), # for precision
-         'float': sa.types.Float(precision=53),
-         'real': sa.types.Float(precision=53),
-         'string': sa.types.Text,
-         'date': sa.types.Date,
-         'time': sa.types.Time,
-         'datetime': sa.types.DateTime,
-         'bool': sa.types.Boolean,
-#         ??: sa.types.LargeBinary,
-#         Decimal: sa.types.Numeric,
-#         ??: sa.types.PickleType,
-#         unicode: sa.types.Unicode,
-#         unicode: sa.types.UnicodeText,
-#         str: sa.types.Text,  # ??
-         }
+types = {
+    'int64': sa.types.BigInteger,
+    'int32': sa.types.Integer,
+    'int': sa.types.Integer,
+    'int16': sa.types.SmallInteger,
+    'float32': sa.types.Float(precision=24),  # sqlalchemy uses mantissa
+    'float64': sa.types.Float(precision=53),  # for precision
+    'float': sa.types.Float(precision=53),
+    'real': sa.types.Float(precision=53),
+    'string': sa.types.Text,
+    'date': sa.types.Date,
+    'time': sa.types.Time,
+    'datetime': sa.types.DateTime,
+    'bool': sa.types.Boolean,
+    "timedelta[unit='us']": sa.types.Interval,  # not actually microseconds in sql
+    # ??: sa.types.LargeBinary,
+    # Decimal: sa.types.Numeric,
+    # ??: sa.types.PickleType,
+    # unicode: sa.types.Unicode,
+    # unicode: sa.types.UnicodeText,
+    # str: sa.types.Text,  # ??
+}
 
 revtypes = dict(map(reversed, types.items()))
 
@@ -51,6 +53,7 @@ revtypes.update({sa.types.VARCHAR: 'string',
                  sa.types.Unicode: 'string',
                  sa.types.DATETIME: 'datetime',
                  sa.types.TIMESTAMP: 'datetime',
+                 sa.types.Interval: "timedelta[unit='us']",
                  sa.types.FLOAT: 'float64',
                  sa.types.DATE: 'date',
                  sa.types.BIGINT: 'int64',
@@ -205,9 +208,9 @@ def dshape_to_alchemy(dshape):
         return types[str(dshape)]
     if isinstance(dshape, datashape.Record):
         return [sa.Column(name,
-                           dshape_to_alchemy(typ),
-                           nullable=isinstance(typ[0], Option))
-                    for name, typ in dshape.parameters[0]]
+                          dshape_to_alchemy(typ),
+                          nullable=isinstance(typ[0], Option))
+                for name, typ in dshape.parameters[0]]
     if isinstance(dshape, datashape.DataShape):
         if isdimension(dshape[0]):
             return dshape_to_alchemy(dshape[1])
