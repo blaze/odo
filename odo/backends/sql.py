@@ -10,7 +10,8 @@ from datashape import discover
 from datashape.dispatch import dispatch
 from datetime import datetime, date
 import datashape
-from toolz import partition_all, keyfilter, first, pluck, memoize, map
+from toolz import (partition_all, keyfilter, first, pluck, memoize, map,
+                   valfilter)
 
 from ..utils import keywords, ignoring
 from ..convert import convert, ooc_types
@@ -48,20 +49,21 @@ types = {
 
 revtypes = dict(map(reversed, types.items()))
 
-revtypes.update({sa.types.VARCHAR: 'string',
-                 sa.types.String: 'string',
-                 sa.types.Unicode: 'string',
-                 sa.types.DATETIME: 'datetime',
-                 sa.types.TIMESTAMP: 'datetime',
-                 sa.types.Interval: "timedelta[unit='us']",
-                 sa.types.FLOAT: 'float64',
-                 sa.types.DATE: 'date',
-                 sa.types.BIGINT: 'int64',
-                 sa.types.INTEGER: 'int',
-                 sa.types.NUMERIC: 'float64',  # TODO: extend datashape to decimal
-                 sa.types.BIGINT: 'int64',
-                 sa.types.NullType: 'string',
-                 sa.types.Float: 'float64'})
+revtypes.update({
+    sa.types.VARCHAR: 'string',
+    sa.types.String: 'string',
+    sa.types.Unicode: 'string',
+    sa.types.DATETIME: 'datetime',
+    sa.types.TIMESTAMP: 'datetime',
+    sa.types.FLOAT: 'float64',
+    sa.types.DATE: 'date',
+    sa.types.BIGINT: 'int64',
+    sa.types.INTEGER: 'int',
+    sa.types.NUMERIC: 'float64',  # TODO: extend datashape to decimal
+    sa.types.BIGINT: 'int64',
+    sa.types.NullType: 'string',
+    sa.types.Float: 'float64'
+})
 
 
 @discover.register(sa.sql.type_api.TypeEngine)
@@ -73,7 +75,8 @@ def discover_typeengine(typ):
     else:
         for k, v in revtypes.items():
             if isinstance(k, type) and (isinstance(typ, k) or
-                            hasattr(typ, 'impl') and isinstance(typ.impl, k)):
+                                        hasattr(typ, 'impl') and
+                                        isinstance(typ.impl, k)):
                 return v
             if k == typ:
                 return v
@@ -90,13 +93,13 @@ def discover_sqlalchemy_column(col):
 
 @discover.register(sa.Table)
 def discover_sqlalchemy_table(t):
-    return var * Record(list(sum([discover(c).parameters[0] for c in t.columns], ())))
+    params = [discover(c).parameters[0] for c in t.columns]
+    return var * Record(list(sum(params, ())))
 
 
 @memoize
 def metadata_of_engine(engine):
-    metadata = sa.MetaData(engine)
-    return metadata
+    return sa.MetaData(engine)
 
 
 def create_engine(uri, *args, **kwargs):
@@ -114,7 +117,8 @@ def discover(engine, tablename):
     metadata = metadata_of_engine(engine)
     if tablename not in metadata.tables:
         try:
-            metadata.reflect(engine, views=metadata.bind.dialect.supports_views)
+            metadata.reflect(engine,
+                             views=metadata.bind.dialect.supports_views)
         except NotImplementedError:
             metadata.reflect(engine)
     table = metadata.tables[tablename]
@@ -139,12 +143,12 @@ def discover(metadata):
             pairs.append([name, discover(table)])
         except sa.exc.CompileError as e:
             print("Can not discover type of table %s.\n" % name +
-                "SQLAlchemy provided this error message:\n\t%s" % e.message +
-                "\nSkipping.")
+                  "SQLAlchemy provided this error message:\n\t%s" % e.message +
+                  "\nSkipping.")
         except NotImplementedError as e:
             print("Blaze does not understand a SQLAlchemy type.\n"
-                "Blaze provided the following error:\n\t%s" % "\n\t".join(e.args) +
-                "\nSkipping.")
+                  "Blaze provided the following error:\n\t%s" % "\n\t".join(e.args) +
+                  "\nSkipping.")
     return DataShape(Record(pairs))
 
 
@@ -174,6 +178,7 @@ def dshape_to_table(name, ds, metadata=None):
 @dispatch(object, str)
 def create_from_datashape(o, ds, **kwargs):
     return create_from_datashape(o, dshape(ds), **kwargs)
+
 
 @dispatch(sa.engine.base.Engine, DataShape)
 def create_from_datashape(engine, ds, **kwargs):
@@ -229,7 +234,7 @@ def dshape_to_alchemy(dshape):
         else:
             return sa.types.DateTime(timezone=False)
     raise NotImplementedError("No SQLAlchemy dtype match for datashape: %s"
-            % dshape)
+                              % dshape)
 
 
 @convert.register(Iterator, sa.Table, cost=300.0)
@@ -284,12 +289,12 @@ def append_iterator_to_table(t, rows, dshape=None, **kwargs):
     if isinstance(row, (tuple, list)):
         if dshape and isinstance(dshape.measure, datashape.Record):
             names = dshape.measure.names
-            if not set(names) == set(discover(t).measure.names):
+            if set(names) != set(discover(t).measure.names):
                 raise ValueError("Column names of incoming data don't match "
-                "column names of existing SQL table\n"
-                "Names in SQL table: %s\n"
-                "Names from incoming data: %s\n" %
-                (discover(t).measure.names, names))
+                                 "column names of existing SQL table\n"
+                                 "Names in SQL table: %s\n"
+                                 "Names from incoming data: %s\n" %
+                                 (discover(t).measure.names, names))
         else:
             names = discover(t).measure.names
         rows = (dict(zip(names, row)) for row in rows)
@@ -312,6 +317,7 @@ def append_anything_to_sql_Table(t, c, **kwargs):
 def append_anything_to_sql_Table(t, o, **kwargs):
     return append(t, convert(Iterator, o, **kwargs), **kwargs)
 
+
 @append.register(sa.Table, sa.Table)
 def append_table_to_sql_Table(t, o, **kwargs):
     # This condition is an ugly kludge and should be removed once
@@ -324,6 +330,7 @@ def append_table_to_sql_Table(t, o, **kwargs):
 
     s = sa.select([o])
     return append(t, s, **kwargs)
+
 
 @append.register(sa.Table, sa.sql.Select)
 def append_select_statement_to_sql_Table(t, o, **kwargs):
@@ -399,12 +406,13 @@ def resource_hive(uri, *args, **kwargs):
     for k, v in d.items():
         if not v:
             d[k] = defaults[k]
+
     if d['user']:
-        d['user'] = d['user'] + '@'
+        d['user'] += '@'
 
     uri2 = 'hive://%(user)s%(host)s:%(port)s/%(database)s' % d
     if '::' in uri:
-        uri2 = uri2 + '::' + uri.split('::')[1]
+        uri2 += '::' + uri.split('::')[1]
 
     return resource_sql(uri2, *args, **kwargs)
 
