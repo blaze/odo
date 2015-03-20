@@ -5,11 +5,12 @@ import numpy as np
 from toolz import memoize
 
 from ..convert import convert
-#This import will fail if iopro is not installed.
-#The goal is to simply have all iopro converters
+# This import will fail if iopro is not installed.
+# The goal is to simply have all iopro converters
 #  be missing if iopro isn't around
 import iopro
 import iopro.pyodbc
+
 
 @memoize
 def get_iopro_db_engine(engine):
@@ -26,7 +27,7 @@ def get_iopro_db_engine(engine):
     NotImplementedError exception will be raised so that a calling
     "convert()" or "into()" will be able to use a different
     sql->ndarray conversion path.
-    
+
     Notes
     -----
     This function will try to make a db connection
@@ -60,26 +61,26 @@ def get_iopro_db_engine(engine):
     url = engine.url
     connect_args = url.translate_connect_args()
 
-    server = connect_args.get('host','')
-    uid = connect_args.get('username','')
-    password = connect_args.get('password','')
-    database = connect_args.get('database','')
-    port = connect_args.get('port','')
-    option = connect_args.get('option','')
+    server = connect_args.get('host', '')
+    uid = connect_args.get('username', '')
+    password = connect_args.get('password', '')
+    database = connect_args.get('database', '')
+    port = connect_args.get('port', '')
+    option = connect_args.get('option', '')
 
     driver = dialect = url.get_backend_name()
-    
+
     if driver == "mysql":
-        #option=3 is required by mysql
+        # option=3 is required by mysql
         option = "3"
         dialect = "mysql+pyodbc"
     elif driver == "mssql":
         dialect = "mssql+pyodbc"
     else:
-        raise NotImplementedError("sqlalchemy does not support the {} database "\
+        raise NotImplementedError("sqlalchemy does not support the {} database "
                                   "with the pyodbc dialect yet.".format(driver))
-        
-    #Note: It appears to be OK to leave parameters empty. Default
+
+    # Note: It appears to be OK to leave parameters empty. Default
     #  values will be filled in by the odbc driver.
     connection_string = "DRIVER={{{}}};SERVER={};PORT={};DATABASE={};UID={};"\
                         "PASSWORD={};OPTION={};".format(driver, server, port,
@@ -87,7 +88,7 @@ def get_iopro_db_engine(engine):
                                                         option)
 
     def getconn():
-        #If the odbc connection cannot be made, raising the
+        # If the odbc connection cannot be made, raising the
         #  NotImplementedError exception should make the convert
         #  dispatch manager fall back to a working conversion path.
         try:
@@ -102,8 +103,8 @@ def get_iopro_db_engine(engine):
 
     return new_sa_engine
 
-    
-#The cost=26.0 comes from adding up all of the costs from the original
+
+# The cost=26.0 comes from adding up all of the costs from the original
 #  convert() path and dividing by 15 (15x is the new speedup)
 @convert.register(np.ndarray, sa.sql.Select, cost=26.0)
 def iopro_sqlselect_to_ndarray(sqlselect, **kwargs):
@@ -124,7 +125,7 @@ def iopro_sqlselect_to_ndarray(sqlselect, **kwargs):
     range.
     """
 
-    #Remake the database engine so that iopro can use fetchsarray()
+    # Remake the database engine so that iopro can use fetchsarray()
     orig_engine = sqlselect.bind
     iopro_db_engine = get_iopro_db_engine(orig_engine)
 
@@ -138,7 +139,7 @@ def iopro_sqlselect_to_ndarray(sqlselect, **kwargs):
     return results
 
 
-#The cost=26.0 comes from adding up all of the costs from the original
+# The cost=26.0 comes from adding up all of the costs from the original
 #  convert() path and dividing by 15 (15x is the new speedup)
 @convert.register(np.ndarray, sa.Table, cost=26.0)
 def iopro_sqltable_to_ndarray(table, **kwargs):
@@ -152,8 +153,7 @@ def iopro_sqltable_to_ndarray(table, **kwargs):
     ------
     A numpy struct array with the sql results
     """
-    
+
     results = iopro_sqlselect_to_ndarray(sa.sql.select([table]))
 
     return results
-
