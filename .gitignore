@@ -1,3 +1,6 @@
 *.pyc
 *.dot
 docs/build
+build/
+odo.egg-info/
+dist

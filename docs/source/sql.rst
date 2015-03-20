@@ -1,7 +1,7 @@
 SQL
 ===
 
-Into interacts with SQL databases through SQLAlchemy.  As a result, ``into``
+Odo interacts with SQL databases through SQLAlchemy.  As a result, ``odo``
 supports all databases that SQLAlchemy supports.  Through third-party
 extensions, SQLAlchemy supports *most* databases.
 

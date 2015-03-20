@@ -1,5 +1,5 @@
 Spark/SparkSQL
-==================
+==============
 
 Dependencies
 ------------
@@ -26,7 +26,7 @@ Arch Linux.
 Interface
 ---------
 
-Spark diverges a bit from other areas of ``into`` due to the way it works. With
+Spark diverges a bit from other areas of ``odo`` due to the way it works. With
 Spark, all objects are attached to a special object called ``SparkContext``.
 There can only be *one* of these running at a time. In contrast, SparkSQL
 objects all live inside of *one or more* ``SQLContext`` objects. ``SQLContext``
@@ -49,23 +49,24 @@ Next we create a ``SQLContext``:
    >>> sql = SQLContext(sc)  # from the previous code block
 
 
-From here, you can start using ``into`` to create ``SchemaRDD`` objects, which
+From here, you can start using ``odo`` to create ``SchemaRDD`` objects, which
 are the SparkSQL version of a table:
 
 .. code-block:: python
 
+   >>> from odo import odo
    >>> data = [('Alice', 300.0), ('Bob', 200.0), ('Donatello', -100.0)]
    >>> type(sql)
    <class 'pyspark.sql.SQLContext'>
-   >>> srdd = into(sql, data, dshape='var * {name: string, amount: float64}')
+   >>> srdd = odo(data, sql, dshape='var * {name: string, amount: float64}')
    >>> type(srdd)
    <class 'pyspark.sql.SchemaRDD'>
 
 
-Note the type of ``srdd``. Usually ``into(A, B)`` will return an instance of
-``A`` if ``A`` is a ``type``. With Spark and SparkSQL, we need to attach whatever
+Note the type of ``srdd``. Usually ``odo(A, B)`` will return an instance of
+``B`` if ``B`` is a ``type``. With Spark and SparkSQL, we need to attach whatever
 we make to a context, so we "append" to an existing ``SparkContext``/``SQLContext``.
-Instead of returning the context object, ``into`` will return the ``SchemaRDD``
+Instead of returning the context object, ``odo`` will return the ``SchemaRDD``
 that we just created. This makes it more convenient to do things with the result.
 
 This functionality is nascent, so try it out and don't hesitate to
