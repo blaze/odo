@@ -1,4 +1,4 @@
-sudo: False
+sudo: false
 
 language: python
 
@@ -21,6 +21,13 @@ services:
     - mysql
 
 install:
+  # install mysql odbc drivers
+
+  - apt-get install libmyodbc
+  - echo '[mysql]' >> /etc/odbcinst.ini
+  - echo 'Description=MySQL Driver' >> /etc/odbcinst.ini
+  - echo 'Driver=/usr/lib/odbc/libmyodbc.so' >> /etc/odbcinst.ini
+
   # Install conda
   - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
   - bash miniconda.sh -b -p $HOME/miniconda
