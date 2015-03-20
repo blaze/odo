@@ -23,7 +23,7 @@ services:
 install:
   # install mysql odbc drivers
 
-  - apt-get install libmyodbc
+  - sudo apt-get install libmyodbc
   - echo '[mysql]' >> /etc/odbcinst.ini
   - echo 'Description=MySQL Driver' >> /etc/odbcinst.ini
   - echo 'Driver=/usr/lib/odbc/libmyodbc.so' >> /etc/odbcinst.ini
