@@ -38,7 +38,20 @@ types = {
     'time': sa.types.Time,
     'datetime': sa.types.DateTime,
     'bool': sa.types.Boolean,
-    "timedelta[unit='us']": sa.types.Interval,  # not actually microseconds in sql
+    "timedelta[unit='D']": sa.types.Interval(day_precision=9,
+                                             second_precision=0),
+    "timedelta[unit='h']": sa.types.Interval(second_precision=0,
+                                             day_precision=0),
+    "timedelta[unit='m']": sa.types.Interval(second_precision=0,
+                                             day_precision=0),
+    "timedelta[unit='s']": sa.types.Interval(second_precision=0,
+                                             day_precision=0),
+    "timedelta[unit='ms']": sa.types.Interval(second_precision=3,
+                                              day_precision=0),
+    "timedelta[unit='us']": sa.types.Interval(second_precision=6,
+                                              day_precision=0),
+    "timedelta[unit='ns']": sa.types.Interval(second_precision=9,
+                                              day_precision=0),
     # ??: sa.types.LargeBinary,
     # Decimal: sa.types.Numeric,
     # ??: sa.types.PickleType,
@@ -65,9 +78,34 @@ revtypes.update({
     sa.types.Float: 'float64'
 })
 
+# interval types are special cased in discover_typeengine so remove them from
+# revtypes
+revtypes = valfilter(lambda x: not isinstance(x, sa.types.Interval), revtypes)
+
+
+units_of_power = {
+    0: 's',
+    3: 'ms',
+    6: 'us',
+    9: 'ns'
+}
+
 
 @discover.register(sa.sql.type_api.TypeEngine)
 def discover_typeengine(typ):
+    if isinstance(typ, sa.types.Interval):
+        if not (typ.second_precision or typ.day_precision):
+            return datashape.TimeDelta(units='us')
+
+        if typ.second_precision in units_of_power:
+            units = units_of_power[typ.second_precision]
+        elif typ.day_precision > 0:
+            units = 'D'
+        else:
+            raise ValueError('Cannot infer INTERVAL type with parameters'
+                             'second_precision=%d, day_precision=%d' %
+                             (typ.second_precision, typ.day_precision))
+        return datashape.TimeDelta(units=units)
     if typ in revtypes:
         return dshape(revtypes[typ])[0]
     if type(typ) in revtypes:
