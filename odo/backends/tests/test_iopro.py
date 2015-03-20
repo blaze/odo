@@ -2,53 +2,73 @@ from __future__ import absolute_import, print_function
 
 import pytest
 
-import subprocess
+sa = pytest.importorskip('sqlalchemy')
+iopro = pytest.importorskip('iopro')
+pytest.importorskip('pyodbc')
 
-# skip_mysql will decorate functions that needs mysql to run correctly
-ps = subprocess.Popen("ps aux | grep '[m]ysql'", shell=True,
-                      stdout=subprocess.PIPE)
-output = ps.stdout.read()
-num_processes = len(output.splitlines())
-skip_missing_mysql = pytest.mark.skipif(num_processes < 1,
-                                        reason="MySQL not running")
-# skip_postgresql will decorate functions that need postgres to run
-ps = subprocess.Popen("ps aux | grep '[p]ostgres'", shell=True,
-                      stdout=subprocess.PIPE)
-output = ps.stdout.read()
-num_processes = len(output.splitlines())
-skip_missing_postgresql = pytest.mark.skipif(num_processes < 10,
-                                             reason="PostgreSQL not running")
-
-import sqlalchemy as sa
-from into import into, resource, convert
-from into.core import path
-from into.backends.sql import dshape_to_table
-from into.backends.iopro import (iopro_sqltable_to_ndarray,
-                                 iopro_sqlselect_to_ndarray)
+from odo import into, convert, drop
+from odo.core import path
+from odo.backends.sql import dshape_to_table
+from odo.backends.iopro import (iopro_sqltable_to_ndarray,
+                                iopro_sqlselect_to_ndarray)
 import numpy as np
 from numpy import ndarray, random, around
-from datashape import discover, dshape
+from datashape import discover
 import getpass
 
-import iopro
 import iopro.pyodbc
-
-username = getpass.getuser()
-mysql_url = 'mysql+pymysql://{0}@localhost:3306/test'.format(username)
-mysql_url = 'mysql+pymysql://continuum:continuum_test@localhost:3306/continuum'.format(
-    username)
-pyodbc_mysql_url = 'DRIVER={{mysql}};SERVER=localhost;DATABASE=test;'\
-                   'UID={};OPTION=3;'.format(username)
-pyodbc_mysql_url = 'DRIVER={{mysql}};SERVER=localhost;DATABASE=continuum;'\
-                   'UID={};PASSWORD={};OPTION=3;'.format(
-                       "continuum", "continuum_test")
 
 # WARNING: pyodbc has no problem connecting to postgres,
 #  but sqlalchemy doesn't have a dialect to do so.
 #  So, we can't actually use a postgres database in this "convert" testing
-postgres_url = 'postgresql://postgres:postgres@localhost'
-pyodbc_postgres_url = 'DRIVER={postgresql};SERVER=localhost;'\
-                      'UID=postgres;PASSWORD=postgres;PORT=;OPTION=;'
+
+
+@pytest.fixture
+def postgres():
+    try:
+        engine = sa.create_engine('postgresql://postgres:postgres@localhost')
+        engine.connect()
+    except sa.exc.OperationalError as e:
+        pytest.skip("Cannot connect to postgres database with error: %s" % e)
+    else:
+        return engine
+
+
+@pytest.fixture
+def pyodbc_postgres():
+    pyodbc_postgres_url = ('DRIVER={postgresql};SERVER=localhost;UID=postgres;'
+                           'PASSWORD=postgres;PORT=;OPTION=;')
+    try:
+        return iopro.pyodbc.connect(pyodbc_postgres_url)
+    except (sa.exc.OperationalError, iopro.pyodbc.Error) as e:
+        pytest.skip("Cannot connect to postgres database using pyodbc with error: %s" % e)
+
+
+@pytest.fixture
+def mysql():
+    try:
+        engine = sa.create_engine('mysql+pymysql://{0}@localhost:3306/test'
+                                  ''.format(getpass.getuser()))
+        engine.connect()
+    except sa.exc.OperationalError as e:
+        pytest.skip("Cannot connect to postgres database with error: %s" % e)
+    else:
+        return engine
+
+
+@pytest.fixture
+def pyodbc_mysql():
+    pyodbc_mysql_url = ('DRIVER={mysql};'
+                        'SERVER=localhost;'
+                        'DATABASE=test;'
+                        'UID=%s;'
+                        'PORT=3306;'
+                        'OPTION=3;' % getpass.getuser())
+    try:
+        return iopro.pyodbc.connect(pyodbc_mysql_url)
+    except (sa.exc.OperationalError, iopro.pyodbc.Error) as e:
+        pytest.skip("Cannot connect to mysql database using pyodbc with error:"
+                    " %s" % e)
 
 
 def make_market_data(N=1000, randomize=True):
@@ -79,50 +99,28 @@ def make_market_data(N=1000, randomize=True):
 
 
 def populate_db(sql_engine, tablename, array):
-
-    try:
-        table = sa.Table(tablename, sa.MetaData(sql_engine))
-        table.drop()
-    except:
-        pass
-
+    drop(sa.Table(tablename, sa.MetaData(sql_engine)))
     table = dshape_to_table(
         tablename, discover(array), sa.MetaData(sql_engine))
     table.create(sql_engine)
-    into(table, array)
-
-    return table
+    return into(table, array)
 
 
-def drop_table(table):
-    """drop the sa.Table table
-
-    This assumes that the table already exists.
-    Perhaps because populate_db() created it not long ago.
-    """
-    try:
-        table.drop()
-    except:
-        pass
-
-
-@skip_missing_mysql
-def test_pyodbc_mysql_connection():
-    odbc = iopro.pyodbc.connect(pyodbc_mysql_url)
+def test_pyodbc_mysql_connection(pyodbc_mysql):
+    odbc = pyodbc_mysql
     cursor = odbc.cursor()
     cursor.execute("show tables")
-    res = cursor.fetchall()
+    cursor.fetchall()
     cursor.close()
     odbc.close()
 
 
-@skip_missing_postgresql
-def test_pyodbc_postgresql_connection():
-    odbc = iopro.pyodbc.connect(pyodbc_postgres_url)
+def test_pyodbc_postgresql_connection(pyodbc_postgres):
+    odbc = pyodbc_postgres
     cursor = odbc.cursor()
     cursor.execute(
         "select tablename from pg_tables where schemaname = 'public'")
-    res = cursor.fetchall()
+    cursor.fetchall()
     cursor.close()
     odbc.close()
 
@@ -159,10 +157,10 @@ def iopro_sqltable_to_ndarray_example(sql_engine):
     res2 = iopro_sqltable_to_ndarray(table)
     res3 = into(np.ndarray, table)
 
-    drop_table(table)
+    drop(table)
 
-    assert all(res == res2)
-    assert all(res2 == res3)
+    np.testing.assert_array_equal(res, res2)
+    np.testing.assert_array_equal(res2, res3)
     assert np.allclose(res2['low_'], data['low_'])
     assert np.allclose(res2['high_'], data['high_'])
     assert np.allclose(res2['open_'], data['open_'])
@@ -185,24 +183,18 @@ def iopro_sqlselect_to_ndarray_example(sql_engine):
     res2 = iopro_sqlselect_to_ndarray(select)
     res3 = into(np.ndarray, select)
 
-    drop_table(table)
+    drop(table)
 
     assert all(res == res2)
     assert all(res2 == res3)
     assert np.allclose(res2['high_'], data['high_'])
 
 
-@skip_missing_mysql
-def test_iopro_mysql():
-    sql_engine = sa.create_engine(mysql_url)
-
-    iopro_sqltable_to_ndarray_example(sql_engine)
-    iopro_sqlselect_to_ndarray_example(sql_engine)
+def test_iopro_mysql(mysql):
+    iopro_sqltable_to_ndarray_example(mysql)
+    iopro_sqlselect_to_ndarray_example(mysql)
 
 
-@skip_missing_postgresql
-def test_iopro_postgresql():
-    sql_engine = sa.create_engine(postgres_url)
-
-    iopro_sqltable_to_ndarray_example(sql_engine)
-    iopro_sqlselect_to_ndarray_example(sql_engine)
+def test_iopro_postgresql(postgres):
+    iopro_sqltable_to_ndarray_example(postgres)
+    iopro_sqlselect_to_ndarray_example(postgres)
