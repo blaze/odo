@@ -1,110 +1,72 @@
 from __future__ import absolute_import, division, print_function
 
 import pytest
-import subprocess
-import itertools
-import re
 
 sa = pytest.importorskip('sqlalchemy')
 psycopg2 = pytest.importorskip('psycopg2')
 
-ps = subprocess.Popen("ps aux | grep postgres",
-                      shell=True, stdout=subprocess.PIPE)
-output = ps.stdout.read()
-num_processes = len(output.splitlines())
-pytestmark = pytest.mark.skipif(num_processes < 6,
-                                reason="No Postgres Installation")
+import itertools
 
-
-from datashape import dshape
 from odo.backends.csv import CSV
-from odo.backends.sql import create_from_datashape
-from odo import into, resource
-from odo.utils import assert_allclose
+from odo import into, resource, drop, discover
+from odo.utils import assert_allclose, tmpfile
 import os
-import csv as csv_module
+import getpass
 
 
-url = 'postgresql://postgres:postgres@localhost'
-file_name = 'test.csv'
-
-_names = ('table%d' % i for i in itertools.count())
+names = ('tbl%d' % i for i in itertools.count())
+data = [(1, 2), (10, 20), (100, 200)]
 
 
-try:
-    engine = sa.create_engine(url)
-    name = 'tmpschema'
-    create = sa.schema.CreateSchema(name)
-    engine.execute(create)
-    metadata = sa.MetaData()
-    metadata.reflect(engine, schema=name)
-    drop = sa.schema.DropSchema(name)
-    engine.execute(drop)
-except sa.exc.OperationalError:
-    pytest.skip("Cannot connect to postgres")
+@pytest.yield_fixture(scope='module')
+def csv():
+    with tmpfile('.csv') as fn:
+        with open(fn, 'w') as f:
+            f.write('\n'.join(','.join(map(str, row)) for row in data))
+        yield CSV(fn)
 
 
 @pytest.fixture
-def tbl():
-    return next(_names)
+def complex_csv():
+    this_dir = os.path.dirname(__file__)
+    return CSV(os.path.join(this_dir, 'dummydata.csv'), has_header=True)
 
 
-data = [(1, 2), (10, 20), (100, 200)]
-ds = dshape('var * {a: int32, b: int32}')
+@pytest.yield_fixture
+def sql():
+    url = 'postgresql://%s@localhost/test::%s' % (getpass.getuser(),
+                                                  next(names))
+    try:
+        t = resource(url, dshape='var * {a: int32, b: int32}')
+    except sa.exc.OperationalError as e:
+        pytest.skip(str(e))
+    else:
+        yield t
+        drop(t)
 
 
-def setup_function(function):
-    with open(file_name, 'w') as f:
-        csv_writer = csv_module.writer(f)
-        for row in data:
-            csv_writer.writerow(row)
+@pytest.yield_fixture
+def complex_sql():
+    ds = """var * {
+        Name: string, RegistrationDate: date, ZipCode: int32, Consts: float64
+    }"""
+    url = 'postgresql://%s@localhost/test::%s' % (getpass.getuser(),
+                                                  next(names))
+    try:
+        t = resource(url, dshape=ds)
+    except sa.exc.OperationalError as e:
+        pytest.skip(str(e))
+    else:
+        yield t
+        drop(t)
 
 
-def teardown_function(function):
-    os.remove(file_name)
-    engine = sa.create_engine(url)
-    metadata = sa.MetaData()
-    metadata.reflect(engine)
-
-    for t in metadata.tables:
-        if re.match(r'^table\d+$', t) is not None:
-            metadata.tables[t].drop(engine)
-
-
-def test_csv_postgres_load(tbl):
-    engine = sa.create_engine(url)
-
-    if engine.has_table(tbl):
-        metadata = sa.MetaData()
-        metadata.reflect(engine)
-        t = metadata.tables[tbl]
-        t.drop(engine)
-
-    create_from_datashape(engine, dshape('{%s: %s}' % (tbl, ds)))
-    metadata = sa.MetaData()
-    metadata.reflect(engine)
-    conn = engine.raw_connection()
-
-    cursor = conn.cursor()
-    full_path = os.path.abspath(file_name)
-    load = '''copy {0} from '{1}'(FORMAT CSV, DELIMITER ',', NULL '');'''.format(tbl, full_path)
-    cursor.execute(load)
-    conn.commit()
-
-
-def test_simple_into(tbl):
-    csv = CSV(file_name)
-    sql = resource(url, tbl, dshape=ds)
-
-    into(sql, csv, dshape=ds)
-
+def test_simple_into(csv, sql):
+    into(sql, csv, dshape=discover(sql))
     assert into(list, sql) == data
 
 
-def test_append(tbl):
-    csv = CSV(file_name)
-    sql = resource(url, tbl, dshape=ds)
-
+def test_append(csv, sql):
     into(sql, csv)
     assert into(list, sql) == data
 
@@ -112,44 +74,22 @@ def test_append(tbl):
     assert into(list, sql) == data + data
 
 
-def test_tryexcept_into(tbl):
-    csv = CSV(file_name)
-    sql = resource(url, tbl, dshape=ds)
-
+def test_tryexcept_into(csv, sql):
     into(sql, csv, quotechar="alpha")  # uses multi-byte character
     assert into(list, sql) == data
 
 
-def test_failing_argument(tbl):
+def test_failing_argument(csv, sql):
     # this will start to fail if we ever restrict kwargs
-    csv = CSV(file_name)
-    sql = resource(url, tbl, dshape=ds)
-
     into(sql, csv, skipinitialspace="alpha")  # failing call
 
 
-def test_no_header_no_columns(tbl):
-    csv = CSV(file_name)
-    sql = resource(url, tbl, dshape=ds)
-
-    into(sql, csv, dshape=ds)
-
+def test_no_header_no_columns(csv, sql):
+    into(sql, csv, dshape=discover(sql))
     assert into(list, sql) == data
 
 
-def test_complex_into(tbl):
+def test_complex_into(complex_csv, complex_sql):
     # data from: http://dummydata.me/generate
-    this_dir = os.path.dirname(__file__)
-    file_name = os.path.join(this_dir, 'dummydata.csv')
-
-    ds = dshape("""
-    var * {
-        Name: string, RegistrationDate: date, ZipCode: int32, Consts: float64
-    }""")
-
-    csv = CSV(file_name, has_header=True)
-    sql = resource(url, tbl, dshape=ds)
-
-    into(sql, csv)
-
-    assert_allclose(into(list, sql), into(list, csv))
+    into(complex_sql, complex_csv, dshape=discover(complex_sql))
+    assert_allclose(into(list, complex_sql), into(list, complex_csv))
