@@ -22,9 +22,12 @@ install:
   # install mysql odbc drivers
 
   - sudo apt-get install libmyodbc
-  - echo '[mysql]' >> /etc/odbcinst.ini
-  - echo 'Description=MySQL Driver' >> /etc/odbcinst.ini
-  - echo 'Driver=/usr/lib/odbc/libmyodbc.so' >> /etc/odbcinst.ini
+  - tmp=$(mktemp -t odbcinst)
+  - echo '[mysql]' >> $tmp
+  - echo 'Description=MySQL Driver' >> $tmp
+  - echo 'Driver=/usr/lib/odbc/libmyodbc.so' >> $tmp
+  - sudo cp -f $tmp /etc/odbcinst.ini
+  - rm -f $tmp
 
   # Install conda
   - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
