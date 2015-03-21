@@ -164,7 +164,7 @@ def iopro_sqlselect_to_ndarray_example(sql_engine):
     tablename = "market"
     data = make_market_data(10)
     table = populate_db(sql_engine, tablename, data)
-    select = sa.sql.select([table.c.high_])
+    select = sa.sql.select([table.c.high])
 
     # convert() will automatically figure out how to
     #  go from a table to np.ndarray
