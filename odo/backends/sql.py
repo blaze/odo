@@ -411,4 +411,4 @@ ooc_types.add(sa.Table)
 
 @dispatch(sa.Table)
 def drop(table):
-    table.drop(table.bind)
+    table.drop(table.bind, checkfirst=True)
