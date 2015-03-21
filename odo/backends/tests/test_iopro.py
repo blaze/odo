@@ -5,6 +5,7 @@ import pytest
 sa = pytest.importorskip('sqlalchemy')
 iopro = pytest.importorskip('iopro')
 pytest.importorskip('pyodbc')
+pytest.importorskip('psycopg2')
 
 from odo import into, convert, drop
 from odo.core import path
@@ -25,8 +26,9 @@ import iopro.pyodbc
 
 @pytest.fixture
 def postgres():
+    url = 'postgresql+psycopg2://postgres@localhost/test'
     try:
-        engine = sa.create_engine('postgresql://postgres:postgres@localhost')
+        engine = sa.create_engine(url)
         engine.connect()
     except sa.exc.OperationalError as e:
         pytest.skip("Cannot connect to postgres database with error: %s" % e)
@@ -37,11 +39,13 @@ def postgres():
 @pytest.fixture
 def pyodbc_postgres():
     pyodbc_postgres_url = ('DRIVER={postgresql};SERVER=localhost;UID=postgres;'
-                           'PASSWORD=postgres;PORT=;OPTION=;')
+                           'DATABASE=test;')
     try:
         return iopro.pyodbc.connect(pyodbc_postgres_url)
-    except (sa.exc.OperationalError, iopro.pyodbc.Error) as e:
-        pytest.skip("Cannot connect to postgres database using pyodbc with error: %s" % e)
+    except sa.exc.OperationalError as e:
+        pytest.skip(
+            "Cannot connect to postgres database using pyodbc with error: %s" %
+            e)
 
 
 @pytest.fixture
@@ -71,29 +75,21 @@ def pyodbc_mysql():
                     " %s" % e)
 
 
-def make_market_data(N=1000, randomize=True):
-    """
-    This function is intended to make a large amount of fake market data
-    It will return a struct-array/rec-array that can be inserted into
-      the db for later querying and processing
-    """
+def make_market_data(n):
+    """Make some fake market data"""
+    low = random.rand(n)
+    high = random.rand(n) + 1
 
-    if randomize:
-        low_multiplier = random.rand(N)
-        high_multiplier = random.rand(N) + 1
+    nums = np.arange(n)
+    syms = np.random.choice(['AAPL', 'GOOG', 'MSFT', 'FB', 'AMZN'], size=n)
 
-    nums = np.arange(N)
-
-    arr = np.zeros(N, dtype=[('symbol_', 'S21'), ('open_', 'f4'),
-                             ('low_', 'f4'), ('high_', 'f4'),
-                             ('close_', 'f4'), ('volume_', 'int')])
-
-    arr['symbol_'] = nums.astype(str)
-    arr['open_'] = nums
-    arr['low_'] = around(nums * low_multiplier, decimals=2)
-    arr['high_'] = around(nums * high_multiplier, decimals=2)
-    arr['close_'] = nums
-    arr['volume_'] = nums
+    arr = np.rec.fromarrays([syms,
+                             nums,
+                             around(nums * low, decimals=2),
+                             around(nums * high, decimals=2),
+                             nums,
+                             nums],
+                            names='symbol,open,low,high,close,volume')
 
     return arr
 
@@ -107,22 +103,20 @@ def populate_db(sql_engine, tablename, array):
 
 
 def test_pyodbc_mysql_connection(pyodbc_mysql):
-    odbc = pyodbc_mysql
-    cursor = odbc.cursor()
+    cursor = pyodbc_mysql.cursor()
     cursor.execute("show tables")
     cursor.fetchall()
     cursor.close()
-    odbc.close()
+    pyodbc_mysql.close()
 
 
 def test_pyodbc_postgresql_connection(pyodbc_postgres):
-    odbc = pyodbc_postgres
-    cursor = odbc.cursor()
+    cursor = pyodbc_postgres.cursor()
     cursor.execute(
         "select tablename from pg_tables where schemaname = 'public'")
     cursor.fetchall()
     cursor.close()
-    odbc.close()
+    pyodbc_postgres.close()
 
 
 def test_iopro_convert_path():
@@ -147,7 +141,7 @@ def test_iopro_convert_path():
 def iopro_sqltable_to_ndarray_example(sql_engine):
 
     tablename = "market"
-    data = make_market_data(N=10000)
+    data = make_market_data(10)
     table = populate_db(sql_engine, tablename, data)
 
     # convert() will automatically figure out how to
@@ -161,18 +155,14 @@ def iopro_sqltable_to_ndarray_example(sql_engine):
 
     np.testing.assert_array_equal(res, res2)
     np.testing.assert_array_equal(res2, res3)
-    assert np.allclose(res2['low_'], data['low_'])
-    assert np.allclose(res2['high_'], data['high_'])
-    assert np.allclose(res2['open_'], data['open_'])
-    assert np.allclose(res2['close_'], data['close_'])
+
+    for name in ('low', 'high', 'open', 'close'):
+        assert np.allclose(res2[name], data[name])
 
 
-# This function shouldn't be run by pytest.
-# It should be run by other functions
 def iopro_sqlselect_to_ndarray_example(sql_engine):
-
     tablename = "market"
-    data = make_market_data(N=10000)
+    data = make_market_data(10)
     table = populate_db(sql_engine, tablename, data)
     select = sa.sql.select([table.c.high_])
 
@@ -187,7 +177,7 @@ def iopro_sqlselect_to_ndarray_example(sql_engine):
 
     assert all(res == res2)
     assert all(res2 == res3)
-    assert np.allclose(res2['high_'], data['high_'])
+    assert np.allclose(res2['high'], data['high'])
 
 
 def test_iopro_mysql(mysql):
