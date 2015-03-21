@@ -12,6 +12,16 @@ from ..convert import convert
 import iopro
 import iopro.pyodbc
 
+port_defaults = {
+    'mysql': 3306,
+    'postgresql': 5432
+}
+
+
+db_defaults = {
+    'postgresql': 'public'
+}
+
 
 @memoize
 def get_iopro_db_engine(engine):
@@ -63,26 +73,21 @@ def get_iopro_db_engine(engine):
       sqlalchemy engine.
     """
     url = engine.url
+    driver = dialect = url.get_backend_name()
     connect_args = url.translate_connect_args()
 
     server = connect_args.get('host', 'localhost')
     uid = connect_args.get('username', getpass.getuser())
     password = connect_args.get('password', '')
-    database = connect_args.get('database', '')  # TODO: default to backend specific
-    port = connect_args.get('port', 3306)
-    option = connect_args.get('option', '')
+    database = connect_args.get('database', db_defaults.get(driver, ''))
+    port = connect_args.get('port', port_defaults.get(driver, ''))
+    option = connect_args.get('option', 3 if driver == 'mysql' else '')
 
-    driver = dialect = url.get_backend_name()
+    if driver not in ('mysql', 'mssql'):
+        raise NotImplementedError("sqlalchemy does not support the %s database"
+                                  " with the pyodbc dialect yet." % driver)
 
-    if driver == "mysql":
-        # option=3 is required by mysql
-        option = 3
-        dialect = "mysql+pyodbc"
-    elif driver == "mssql":
-        dialect = "mssql+pyodbc"
-    else:
-        raise NotImplementedError("sqlalchemy does not support the {} database "
-                                  "with the pyodbc dialect yet.".format(driver))
+    dialect = '%s+pyodbc' % driver
 
     # Note: It appears to be OK to leave parameters empty. Default
     #  values will be filled in by the odbc driver.
@@ -98,7 +103,7 @@ def get_iopro_db_engine(engine):
     def getconn():
         return iopro.pyodbc.connect(connection_string)
 
-    return sa.create_engine("{}://".format(dialect), creator=getconn)
+    return sa.create_engine("%s://" % dialect, creator=getconn)
 
 
 # The cost=26.0 comes from adding up all of the costs from the original
