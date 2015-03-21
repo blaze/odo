@@ -22,7 +22,7 @@ install:
   # install mysql odbc drivers
 
   - sudo apt-get install libmyodbc
-  - tmp=$(mktemp -t odbcinst)
+  - tmp=$(mktemp -t odbcinst.XXXXXXXXXX)
   - echo '[mysql]' >> $tmp
   - echo 'Description=MySQL Driver' >> $tmp
   - echo 'Driver=/usr/lib/odbc/libmyodbc.so' >> $tmp
