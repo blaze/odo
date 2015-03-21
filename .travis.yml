@@ -25,9 +25,10 @@ install:
   - tmp=$(mktemp -t odbcinst.XXXXXXXXXX)
   - echo '[mysql]' >> $tmp
   - echo 'Description=MySQL Driver' >> $tmp
-  - echo 'Driver=/usr/lib/odbc/libmyodbc.so' >> $tmp
+  - echo 'Driver=/usr/lib/x86_64-linux-gnu/odbc/libmyodbc.so' >> $tmp
   - echo '[postgresql]' >> $tmp
   - echo 'Description=PostgreSQL Driver' >> $tmp
+  - echo 'Driver=/usr/lib/x86_64-linux-gnu/odbc/psqlodbca.so' >> $tmp
   - echo 'Driver=/usr/lib/odbc/psqlodbca.so' >> $tmp
   - sudo cp -f $tmp /etc/odbcinst.ini
   - rm -f $tmp
