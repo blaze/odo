@@ -83,7 +83,7 @@ def get_iopro_db_engine(engine):
     port = connect_args.get('port', port_defaults.get(driver, ''))
     option = connect_args.get('option', 3 if driver == 'mysql' else '')
 
-    if driver not in ('mysql', 'mssql'):
+    if driver not in ('mysql', 'mssql', 'sybase'):
         raise NotImplementedError("sqlalchemy does not support the %s database"
                                   " with the pyodbc dialect yet." % driver)
 
