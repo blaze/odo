@@ -5,6 +5,7 @@ import pytest
 sa = pytest.importorskip('sqlalchemy')
 iopro = pytest.importorskip('iopro')
 pytest.importorskip('pyodbc')
+pytest.importorskip('psycopg2')
 
 from odo import into, convert, drop
 from odo.core import path
@@ -185,7 +186,7 @@ def test_iopro_mysql(mysql):
 
 
 @pytest.mark.xfail(not hasattr(sa.dialects.postgresql, 'pyodbc'),
-                   reason="There's no postgresql+pyodbc driver for SQLAlchemy")
+                   reason="No postgresql+pyodbc driver for SQLAlchemy")
 def test_iopro_postgresql(postgres):
     iopro_sqltable_to_ndarray_example(postgres)
     iopro_sqlselect_to_ndarray_example(postgres)
