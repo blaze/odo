@@ -32,10 +32,13 @@ def complex_csv():
     return CSV(os.path.join(this_dir, 'dummydata.csv'), has_header=True)
 
 
+@pytest.fixture
+def url():
+    return 'postgresql://postgres@localhost/test::%s' % next(names)
+
+
 @pytest.yield_fixture
-def sql():
-    url = 'postgresql://%s@localhost/test::%s' % (getpass.getuser(),
-                                                  next(names))
+def sql(url):
     try:
         t = resource(url, dshape='var * {a: int32, b: int32}')
     except sa.exc.OperationalError as e:
@@ -46,12 +49,10 @@ def sql():
 
 
 @pytest.yield_fixture
-def complex_sql():
+def complex_sql(url):
     ds = """var * {
         Name: string, RegistrationDate: date, ZipCode: int32, Consts: float64
     }"""
-    url = 'postgresql://%s@localhost/test::%s' % (getpass.getuser(),
-                                                  next(names))
     try:
         t = resource(url, dshape=ds)
     except sa.exc.OperationalError as e:
