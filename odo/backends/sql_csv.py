@@ -53,8 +53,9 @@ def execute_copy_sqlite(dialect, engine, statement):
     ps = subprocess.Popen(statement, shell=True,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     stdout, stderr = ps.communicate()
-    # Windows sometimes doesn't have sqlite3.exe
-    if os.name == 'nt' and (stderr or 'not recognized' in str(stdout)):
+    # If we don't have sqlite3.exe
+    if any(b and a in b.lower() for a in ['not recognized', 'not found']
+                                for b in [stdout, stderr]):
         raise MDNotImplementedError(stderr)
     return stdout
 
