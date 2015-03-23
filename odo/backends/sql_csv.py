@@ -4,6 +4,7 @@ import os
 import sys
 import re
 import subprocess
+from distutils.spawn import find_executable
 
 import sqlalchemy
 
@@ -50,13 +51,12 @@ def copy_sqlite(dialect, tbl, csv, has_header=None, **kwargs):
 
 @execute_copy.register('sqlite')
 def execute_copy_sqlite(dialect, engine, statement):
+    # If we don't have sqlite3.exe
+    if not find_executable('sqlite3'):
+        raise MDNotImplementedError("Could not find sqlite executable")
     ps = subprocess.Popen(statement, shell=True,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     stdout, stderr = ps.communicate()
-    # If we don't have sqlite3.exe
-    if any(b and a in b.lower() for a in ['not recognized', 'not found']
-                                for b in [stdout, stderr]):
-        raise MDNotImplementedError(stderr)
     return stdout
 
 
