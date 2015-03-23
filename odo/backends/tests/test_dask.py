@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import pytest
 pytest.importorskip('dask')
+pytest.importorskip('dask.bag')
 
 from odo.backends.dask import append, merge
 from dask.array.core import insert_to_ooc, Array
