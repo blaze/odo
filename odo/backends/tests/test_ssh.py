@@ -3,11 +3,14 @@ from __future__ import absolute_import, division, print_function
 import pytest
 paramiko = pytest.importorskip('paramiko')
 
-import pandas as pd
-import numpy as np
+import getpass
 import re
 import os
 import sys
+import socket
+
+import pandas as pd
+import numpy as np
 
 from odo.utils import tmpfile, filetext
 from odo.directory import _Directory, Directory
@@ -16,7 +19,6 @@ from odo.backends.csv import CSV
 from odo import into, discover, CSV, JSONLines, JSON, convert
 from odo.temp import _Temp, Temp
 from odo.compatibility import ON_TRAVIS_CI
-import socket
 
 skipif = pytest.mark.skipif
 
@@ -50,12 +52,18 @@ def test_connect():
 
 
 def test_resource_directory():
-    r = resource('ssh://joe@localhost:/path/to/')
+    user = getpass.getuser()
+    r = resource('ssh://%s@localhost:%s/*.json.bz' % (user, os.path.dirname(__file__)))
     assert issubclass(r.subtype, _Directory)
 
-    r = resource('ssh://joe@localhost:/path/to/*.csv')
+    with pytest.raises(AssertionError):
+        resource('ssh://%s@localhost:/path/to/' % user)
+
+    r = resource('ssh://%s@localhost:%s/*.csv' %
+                 (user, os.path.dirname(__file__)))
     assert r.subtype == Directory(CSV)
-    assert r.path == '/path/to/'
+    assert r.path == os.path.dirname(__file__)
+    assert r.pattern == '*.csv'
 
 
 def test_discover():

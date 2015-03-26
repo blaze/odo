@@ -1,17 +1,23 @@
 from __future__ import absolute_import, division, print_function
 
 import re
-import datashape
-from datashape import discover, Record, Option
-from datashape.predicates import isrecord
-from datashape.dispatch import dispatch
-from toolz import concat, keyfilter, keymap
-import pandas
-import pandas as pd
 import os
 import gzip
 import bz2
 import uuid
+
+from glob import glob
+
+import datashape
+
+from datashape import discover, Record, Option
+from datashape.predicates import isrecord
+from datashape.dispatch import dispatch
+
+from toolz import concat, keyfilter, keymap
+
+import pandas
+import pandas as pd
 
 from ..compatibility import unicode
 from ..utils import keywords, ext
@@ -20,13 +26,17 @@ from ..convert import convert, ooc_types
 from ..resource import resource
 from ..chunks import chunks
 from ..temp import Temp
+from ..directory import Directory
 from ..numpy_dtype import dshape_to_pandas
 from .pandas import coerce_datetimes
 
 dialect_terms = '''delimiter doublequote escapechar lineterminator quotechar
 quoting skipinitialspace strict'''.split()
 
-aliases = {'sep': 'delimiter'}
+aliases = {
+    'sep': 'delimiter'
+}
+
 
 def alias(key):
     """ Alias kwarg dialect keys to normalized set
@@ -205,18 +215,18 @@ def discover_csv(c, nrows=1000, **kwargs):
     df = csv_to_DataFrame(c, nrows=nrows, **kwargs)
     df = coerce_datetimes(df)
 
-    if (not list(df.columns) == list(range(len(df.columns)))
-        and any(re.match('^[-\d_]*$', c) for c in df.columns)):
+    if (list(df.columns) != list(range(len(df.columns))) and
+            any(re.match('^[-\d_]*$', c) for c in df.columns)):
         df = csv_to_DataFrame(c, chunksize=50, has_header=False).get_chunk()
         df = coerce_datetimes(df)
 
-    columns = [str(c) if not isinstance(c, (str, unicode)) else c
-                for c in df.columns]
-    df.columns = [c.strip() for c in columns]
+    columns = [str(col) if not isinstance(col, (str, unicode)) else col
+               for col in df.columns]
+    df.columns = [col.strip() for col in columns]
 
     # Replace np.nan with None.  Forces type string rather than flaot
     for col in df.columns:
-        if df[col].count() == 0:
+        if not df[col].count():
             df[col] = [None] * len(df)
 
     measure = discover(df).measure
@@ -235,23 +245,20 @@ def resource_csv(uri, **kwargs):
     return CSV(uri, **kwargs)
 
 
-from glob import glob
 @resource.register('.*\*.+', priority=12)
 def resource_glob(uri, **kwargs):
     filenames = sorted(glob(uri))
     r = resource(filenames[0], **kwargs)
     return chunks(type(r))([resource(u, **kwargs) for u in sorted(glob(uri))])
 
-    # Alternatively check each time we iterate?
-    def _():
-        return (resource(u, **kwargs) for u in glob(uri))
-    return chunks(type(r))(_)
 
-
-@convert.register(chunks(pd.DataFrame), (chunks(CSV), chunks(Temp(CSV))), cost=10.0)
+@convert.register(chunks(pd.DataFrame), (chunks(CSV), chunks(Temp(CSV)),
+                                         Directory(CSV), Directory(Temp(CSV))),
+                  cost=10.0)
 def convert_glob_of_csvs_to_chunks_of_dataframes(csvs, **kwargs):
     def _():
-        return concat(convert(chunks(pd.DataFrame), csv, **kwargs) for csv in csvs)
+        return concat(convert(chunks(pd.DataFrame), csv, **kwargs)
+                      for csv in csvs)
     return chunks(pd.DataFrame)(_)
 
 
@@ -264,7 +271,7 @@ def convert_dataframes_to_temporary_csv(data, **kwargs):
 
 @dispatch(CSV)
 def drop(c):
-    os.unlink(c.path)
+    os.remove(c.path)
 
 
 def infer_header(csv, encoding='utf-8', **kwargs):
@@ -276,14 +283,13 @@ def infer_header(csv, encoding='utf-8', **kwargs):
     Returns True or False
     """
     compression = kwargs.pop('compression',
-            {'gz': 'gzip', 'bz2': 'bz2'}.get(ext(csv.path)))
+                             dict(gz='gzip', bz2='bz2').get(ext(csv.path)))
     # See read_csv docs for header for reasoning
     try:
         df = pd.read_csv(csv.path, encoding=encoding,
                          compression=compression, nrows=5)
     except StopIteration:
-        df = pd.read_csv(csv.path, encoding=encoding,
-                                  compression=compression)
+        df = pd.read_csv(csv.path, encoding=encoding, compression=compression)
     return (len(df) > 0 and
             all(re.match('^\s*\D\w*\s*$', n) for n in df.columns) and
             not all(dt == 'O' for dt in df.dtypes))
