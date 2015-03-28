@@ -12,6 +12,7 @@ from datetime import datetime, date
 import datashape
 from toolz import (partition_all, keyfilter, first, pluck, memoize, map,
                    valfilter)
+from toolz import identity
 
 from ..utils import keywords, ignoring
 from ..convert import convert, ooc_types
@@ -125,16 +126,14 @@ def discover_typeengine(typ):
 
 @discover.register(sa.Column)
 def discover_sqlalchemy_column(col):
-    if col.nullable:
-        return Record([[col.name, Option(discover(col.type))]])
-    else:
-        return Record([[col.name, discover(col.type)]])
+    optionify = Option if col.nullable else identity
+    return Record([[col.name, optionify(discover(col.type))]])
 
 
-@discover.register(sa.Table)
-def discover_sqlalchemy_table(t):
-    params = [discover(c).parameters[0] for c in t.columns]
-    return var * Record(list(sum(params, ())))
+@discover.register(sa.sql.FromClause)
+def discover_sqlalchemy_selectable(t):
+    records = list(sum([discover(c).parameters[0] for c in t.columns], ()))
+    return var * Record(records)
 
 
 @memoize
