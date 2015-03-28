@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from datashape import discover, dshape
 import datashape
 from odo.backends.sql import (dshape_to_table, create_from_datashape,
-                               dshape_to_alchemy)
+                              dshape_to_alchemy)
 from odo.utils import tmpfile, raises
 from odo import convert, append, resource, discover, into, odo
 
@@ -82,7 +82,8 @@ def test_discover():
                  sa.Column('timestamp', sa.DateTime, primary_key=True))
 
     assert discover(s) == \
-            dshape('var * {name: ?string, amount: ?int32, timestamp: datetime}')
+        dshape('var * {name: ?string, amount: ?int32, timestamp: datetime}')
+
 
 def test_discover_numeric_column():
     assert discover(sa.String()) == datashape.string
@@ -95,14 +96,14 @@ def test_discover_numeric_column():
 
 def test_discover_null_columns():
     assert dshape(discover(sa.Column('name', sa.String, nullable=True))) == \
-            dshape('{name: ?string}')
+        dshape('{name: ?string}')
     assert dshape(discover(sa.Column('name', sa.String, nullable=False))) == \
-            dshape('{name: string}')
+        dshape('{name: string}')
 
 
 def test_discover_selectable():
     t = resource('sqlite:///:memory:::mytable',
-                   dshape='var * {x: int, y: int}')
+                 dshape='var * {x: int, y: int}')
     q = sa.select([t.c.x]).limit(5)
     assert discover(q) == dshape('var * {x: int}')
 
@@ -159,7 +160,8 @@ def test_discover_views():
                         FROM accounts
                         WHERE amount > 0''')
 
-    assert str(discover(metadata)) == str(discover({'accounts': t, 'myview': t}))
+    assert str(discover(metadata)) == str(
+        discover({'accounts': t, 'myview': t}))
 
 
 def test_extend_empty():
@@ -286,8 +288,10 @@ def test_append_from_table():
 def test_engine_metadata_caching():
     with tmpfile('db') as fn:
         engine = resource('sqlite:///' + fn)
-        a = resource('sqlite:///' + fn + '::a', dshape=dshape('var * {x: int}'))
-        b = resource('sqlite:///' + fn + '::b', dshape=dshape('var * {y: int}'))
+        a = resource(
+            'sqlite:///' + fn + '::a', dshape=dshape('var * {x: int}'))
+        b = resource(
+            'sqlite:///' + fn + '::b', dshape=dshape('var * {y: int}'))
 
         assert a.metadata is b.metadata
         assert engine is a.bind is b.bind
@@ -300,7 +304,7 @@ def test_copy_one_table_to_a_foreign_engine():
         with tmpfile('db') as fn2:
             src = into('sqlite:///%s::points' % fn1, data, dshape=ds)
             tgt = into('sqlite:///%s::points' % fn2 + '::points',
-                    sa.select([src]), dshape=ds)
+                       sa.select([src]), dshape=ds)
 
             assert into(set, src) == into(set, tgt)
             assert into(set, data) == into(set, tgt)
