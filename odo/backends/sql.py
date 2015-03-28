@@ -94,10 +94,12 @@ units_of_power = {
 @discover.register(sa.sql.type_api.TypeEngine)
 def discover_typeengine(typ):
     if isinstance(typ, sa.types.Interval):
-        if not (typ.second_precision or typ.day_precision):
-            return datashape.TimeDelta(units='us')
+        if typ.second_precision is None and typ.day_precision is None:
+            return datashape.TimeDelta(unit='us')
+        elif typ.second_precision == 0 and typ.day_precision == 0:
+            return datashape.TimeDelta(unit='s')
 
-        if typ.second_precision in units_of_power:
+        if typ.second_precision in units_of_power and not typ.day_precision:
             units = units_of_power[typ.second_precision]
         elif typ.day_precision > 0:
             units = 'D'
@@ -105,7 +107,7 @@ def discover_typeengine(typ):
             raise ValueError('Cannot infer INTERVAL type with parameters'
                              'second_precision=%d, day_precision=%d' %
                              (typ.second_precision, typ.day_precision))
-        return datashape.TimeDelta(units=units)
+        return datashape.TimeDelta(unit=units)
     if typ in revtypes:
         return dshape(revtypes[typ])[0]
     if type(typ) in revtypes:
