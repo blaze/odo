@@ -73,7 +73,7 @@ def test_resource_to_engine_to_create_tables():
         assert discover(r) == ds
 
 
-def test_discovery():
+def test_discover():
     assert discover(sa.String()) == datashape.string
     metadata = sa.MetaData()
     s = sa.Table('accounts', metadata,
@@ -84,7 +84,7 @@ def test_discovery():
     assert discover(s) == \
             dshape('var * {name: ?string, amount: ?int32, timestamp: datetime}')
 
-def test_discovery_numeric_column():
+def test_discover_numeric_column():
     assert discover(sa.String()) == datashape.string
     metadata = sa.MetaData()
     s = sa.Table('name', metadata,
@@ -98,6 +98,13 @@ def test_discover_null_columns():
             dshape('{name: ?string}')
     assert dshape(discover(sa.Column('name', sa.String, nullable=False))) == \
             dshape('{name: string}')
+
+
+def test_discover_selectable():
+    t = resource('sqlite:///:memory:::mytable',
+                   dshape='var * {x: int, y: int}')
+    q = sa.select([t.c.x]).limit(5)
+    assert discover(q) == dshape('var * {x: int}')
 
 
 def single_table_engine():
