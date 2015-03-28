@@ -235,8 +235,6 @@ def test_timedelta_sql_discovery_hour_minute(freq):
     assert discover(t).measure['duration'] == datashape.TimeDelta('s')
 
 
-freqs = 's', 'ms', 'us', 'ns'
-
 prec = {
     's': 0,
     'ms': 3,
@@ -245,7 +243,7 @@ prec = {
 }
 
 
-@pytest.mark.parametrize('freq', freqs)
+@pytest.mark.parametrize('freq', list(prec.keys()))
 def test_discover_postgres_intervals(freq):
     precision = prec.get(freq)
     typ = sa.dialects.postgresql.base.INTERVAL(precision=precision)
@@ -253,7 +251,7 @@ def test_discover_postgres_intervals(freq):
     assert discover(t) == dshape('var * {dur: ?timedelta[unit="%s"]}' % freq)
 
 
-@pytest.mark.parametrize('freq', freqs)
+@pytest.mark.parametrize('freq', list(prec.keys()))
 def test_discover_oracle_intervals(freq):
     typ = sa.dialects.oracle.base.INTERVAL(day_precision=0,
                                            second_precision=prec.get(freq))
