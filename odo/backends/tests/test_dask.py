@@ -2,15 +2,19 @@ from __future__ import absolute_import, division, print_function
 
 import pytest
 pytest.importorskip('dask')
+pytest.importorskip('dask.bag')
 
-from odo.backends.dask import append, Array, merge
-from dask.array.core import insert_to_ooc
+from odo.backends.dask import append, merge
+from dask.array.core import insert_to_ooc, Array
+from dask.bag.core import Bag
 from dask import core
-from odo import convert, into
-from odo.utils import tmpfile
+from odo import chunks, convert, into, TextFile
+from odo.utils import tmpfile, filetexts
 import numpy as np
-import bcolz
 
+####################
+# dask.array tests #
+####################
 
 def eq(a, b):
     c = a == b
@@ -35,6 +39,7 @@ def test_convert_to_numpy_array():
 
 
 def test_append_to_array():
+    bcolz = pytest.importorskip('bcolz')
     x = np.arange(600).reshape((20, 30))
     a = into(Array, x, blockshape=(4, 5))
     b = bcolz.zeros(shape=(0, 30), dtype=x.dtype)
@@ -49,6 +54,7 @@ def test_append_to_array():
 
 
 def test_into_inplace():
+    bcolz = pytest.importorskip('bcolz')
     x = np.arange(600).reshape((20, 30))
     a = into(Array, x, blockshape=(4, 5))
     b = bcolz.zeros(shape=(20, 30), dtype=x.dtype)
@@ -73,3 +79,35 @@ def test__array__():
     d = convert(Array, x, blockshape=(4, 5))
 
     assert eq(x, np.array(d))
+
+##################
+# dask.bag tests #
+##################
+
+
+def inc(x):
+    return x + 1
+
+dsk = {('x', 0): (range, 5),
+       ('x', 1): (range, 5),
+       ('x', 2): (range, 5)}
+
+L = list(range(5)) * 3
+
+b = Bag(dsk, 'x', 3)
+
+def test_convert_bag_to_list():
+    assert convert(list, b) == L
+
+def test_convert_logfiles_to_bag():
+    with filetexts({'a1.log': 'Hello\nWorld', 'a2.log': 'Hola\nMundo'}) as fns:
+        logs = chunks(TextFile)(list(map(TextFile, fns)))
+        b = convert(Bag, logs)
+        assert isinstance(b, Bag)
+        assert 'a1.log' in str(b.dask.values())
+        assert convert(list, b) == convert(list, logs)
+
+
+def test_sequence():
+    b = into(Bag, [1, 2, 3])
+    assert set(b.map(inc)) == set([2, 3, 4])
