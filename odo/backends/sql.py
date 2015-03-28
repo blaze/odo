@@ -85,7 +85,7 @@ def discover_sqlalchemy_column(col):
     return Record([[col.name, optionify(discover(col.type))]])
 
 
-@discover.register(sa.sql.Selectable)
+@discover.register(sa.sql.FromClause)
 def discover_sqlalchemy_selectable(t):
     records = list(sum([discover(c).parameters[0] for c in t.columns], ()))
     return var * Record(records)
