@@ -76,7 +76,7 @@ revtypes.update({
     sa.types.NUMERIC: 'float64',  # TODO: extend datashape to decimal
     sa.types.BIGINT: 'int64',
     sa.types.NullType: 'string',
-    sa.types.Float: 'float64'
+    sa.types.Float: 'float64',
 })
 
 # interval types are special cased in discover_typeengine so remove them from
@@ -90,6 +90,21 @@ units_of_power = {
     6: 'us',
     9: 'ns'
 }
+
+# these aren't loaded by sqlalchemy by default
+sa.dialects.registry.load('oracle')
+sa.dialects.registry.load('postgresql')
+
+
+@discover.register(sa.dialects.postgresql.base.INTERVAL)
+def discover_postgresql_interval(t):
+    return discover(sa.types.Interval(day_precision=0,
+                                      second_precision=t.precision))
+
+
+@discover.register(sa.dialects.oracle.base.INTERVAL)
+def discover_oracle_interval(t):
+    return discover(t.adapt(sa.types.Interval))
 
 
 @discover.register(sa.sql.type_api.TypeEngine)
