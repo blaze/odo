@@ -235,6 +235,32 @@ def test_timedelta_sql_discovery_hour_minute(freq):
     assert discover(t).measure['duration'] == datashape.TimeDelta('s')
 
 
+freqs = 's', 'ms', 'us', 'ns'
+
+prec = {
+    's': 0,
+    'ms': 3,
+    'us': 6,
+    'ns': 9
+}
+
+
+@pytest.mark.parametrize('freq', freqs)
+def test_discover_postgres_intervals(freq):
+    precision = prec.get(freq)
+    typ = sa.dialects.postgresql.base.INTERVAL(precision=precision)
+    t = sa.Table('t', sa.MetaData(), sa.Column('dur', typ))
+    assert discover(t) == dshape('var * {dur: ?timedelta[unit="%s"]}' % freq)
+
+
+@pytest.mark.parametrize('freq', freqs)
+def test_discover_oracle_intervals(freq):
+    typ = sa.dialects.oracle.base.INTERVAL(day_precision=0,
+                                           second_precision=prec.get(freq))
+    t = sa.Table('t', sa.MetaData(), sa.Column('dur', typ))
+    assert discover(t) == dshape('var * {dur: ?timedelta[unit="%s"]}' % freq)
+
+
 def test_create_from_datashape():
     engine = sa.create_engine('sqlite:///:memory:')
     ds = dshape('''{bank: var * {name: string, amount: int},
