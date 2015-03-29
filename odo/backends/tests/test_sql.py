@@ -251,10 +251,12 @@ def test_discover_postgres_intervals(freq):
     assert discover(t) == dshape('var * {dur: ?timedelta[unit="%s"]}' % freq)
 
 
-@pytest.mark.parametrize('freq', list(prec.keys()))
+# between postgresql and oracle, only oracle has support for day intervals
+
+@pytest.mark.parametrize('freq', ['D'] + list(prec.keys()))
 def test_discover_oracle_intervals(freq):
-    typ = sa.dialects.oracle.base.INTERVAL(day_precision=0,
-                                           second_precision=prec.get(freq))
+    typ = sa.dialects.oracle.base.INTERVAL(day_precision={'D': 9}.get(freq),
+                                           second_precision=prec.get(freq, 0))
     t = sa.Table('t', sa.MetaData(), sa.Column('dur', typ))
     assert discover(t) == dshape('var * {dur: ?timedelta[unit="%s"]}' % freq)
 
