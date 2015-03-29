@@ -295,9 +295,8 @@ def dshape_to_alchemy(dshape):
 def sql_to_iterator(t, **kwargs):
     engine = t.bind
     with engine.connect() as conn:
-        result = conn.execute(sa.sql.select([t]))
-        result = map(tuple, result)  # Turn RowProxy into tuple
-        for item in result:
+        result = conn.execute(sa.sql.select([t])).fetchall()
+        for item in map(tuple, result):  # Turn RowProxy into tuple
             yield item
 
 
@@ -306,7 +305,7 @@ def select_to_iterator(sel, dshape=None, **kwargs):
     engine = sel.bind  # TODO: get engine from select
 
     with engine.connect() as conn:
-        result = conn.execute(sel)
+        result = conn.execute(sel).fetchall()
         if dshape and isscalar(dshape.measure):
             result = pluck(0, result)
         else:
@@ -321,7 +320,7 @@ def select_to_base(sel, dshape=None, **kwargs):
     engine = sel.bind  # TODO: get engine from select
 
     with engine.connect() as conn:
-        result = conn.execute(sel)
+        result = conn.execute(sel).fetchall()
         assert not dshape or isscalar(dshape)
         result = list(result)[0][0]
 
