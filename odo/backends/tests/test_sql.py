@@ -190,6 +190,77 @@ def test_dshape_to_table():
     assert [c.name for c in t.c] == ['name', 'amount']
 
 
+td_freqs = list(zip(['D', 'h', 'm', 's', 'ms', 'us', 'ns'],
+                    [0, 0, 0, 0, 3, 6, 9],
+                    [9, 0, 0, 0, 0, 0, 0]))
+
+
+@pytest.mark.parametrize(['freq', 'secp', 'dayp'], td_freqs)
+def test_dshape_to_table_with_timedelta(freq, secp, dayp):
+    ds = '{name: string, amount: int, duration: timedelta[unit="%s"]}' % freq
+    t = dshape_to_table('td_bank', ds)
+    assert isinstance(t, sa.Table)
+    assert t.name == 'td_bank'
+    assert isinstance(t.c.duration.type, sa.types.Interval)
+    assert t.c.duration.type.second_precision == secp
+    assert t.c.duration.type.day_precision == dayp
+
+
+@pytest.mark.xfail(raises=NotImplementedError)
+def test_dshape_to_table_month():
+    ds = '{name: string, amount: int, duration: timedelta[unit="M"]}'
+    dshape_to_table('td_bank', ds)
+
+
+@pytest.mark.xfail(raises=NotImplementedError)
+def test_dshape_to_table_year():
+    ds = '{name: string, amount: int, duration: timedelta[unit="Y"]}'
+    dshape_to_table('td_bank', ds)
+
+
+@pytest.mark.parametrize('freq', ['D', 's', 'ms', 'us', 'ns'])
+def test_timedelta_sql_discovery(freq):
+    ds = '{name: string, amount: int, duration: timedelta[unit="%s"]}' % freq
+    t = dshape_to_table('td_bank', ds)
+    assert discover(t).measure['duration'] == datashape.TimeDelta(freq)
+
+
+@pytest.mark.parametrize('freq', ['h', 'm'])
+def test_timedelta_sql_discovery_hour_minute(freq):
+    # these always compare equal to a seconds timedelta, because no data loss
+    # will occur with this heuristic. this implies that the sa.Table was
+    # constructed with day_precision == 0 and second_precision == 0
+    ds = '{name: string, amount: int, duration: timedelta[unit="%s"]}' % freq
+    t = dshape_to_table('td_bank', ds)
+    assert discover(t).measure['duration'] == datashape.TimeDelta('s')
+
+
+prec = {
+    's': 0,
+    'ms': 3,
+    'us': 6,
+    'ns': 9
+}
+
+
+@pytest.mark.parametrize('freq', list(prec.keys()))
+def test_discover_postgres_intervals(freq):
+    precision = prec.get(freq)
+    typ = sa.dialects.postgresql.base.INTERVAL(precision=precision)
+    t = sa.Table('t', sa.MetaData(), sa.Column('dur', typ))
+    assert discover(t) == dshape('var * {dur: ?timedelta[unit="%s"]}' % freq)
+
+
+# between postgresql and oracle, only oracle has support for day intervals
+
+@pytest.mark.parametrize('freq', ['D'] + list(prec.keys()))
+def test_discover_oracle_intervals(freq):
+    typ = sa.dialects.oracle.base.INTERVAL(day_precision={'D': 9}.get(freq),
+                                           second_precision=prec.get(freq, 0))
+    t = sa.Table('t', sa.MetaData(), sa.Column('dur', typ))
+    assert discover(t) == dshape('var * {dur: ?timedelta[unit="%s"]}' % freq)
+
+
 def test_create_from_datashape():
     engine = sa.create_engine('sqlite:///:memory:')
     ds = dshape('''{bank: var * {name: string, amount: int},

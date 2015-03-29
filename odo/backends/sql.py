@@ -10,7 +10,8 @@ from datashape import discover
 from datashape.dispatch import dispatch
 from datetime import datetime, date
 import datashape
-from toolz import partition_all, keyfilter, first, pluck, memoize, map
+from toolz import (partition_all, keyfilter, first, pluck, memoize, map,
+                   valfilter)
 from toolz import identity
 
 from ..utils import keywords, ignoring
@@ -24,46 +25,105 @@ base = (int, float, datetime, date, bool, str)
 
 # http://docs.sqlalchemy.org/en/latest/core/types.html
 
-types = {'int64': sa.types.BigInteger,
-         'int32': sa.types.Integer,
-         'int': sa.types.Integer,
-         'int16': sa.types.SmallInteger,
-         'float32': sa.types.Float(precision=24), # sqlalchemy uses mantissa
-         'float64': sa.types.Float(precision=53), # for precision
-         'float': sa.types.Float(precision=53),
-         'real': sa.types.Float(precision=53),
-         'string': sa.types.Text,
-         'date': sa.types.Date,
-         'time': sa.types.Time,
-         'datetime': sa.types.DateTime,
-         'bool': sa.types.Boolean,
-#         ??: sa.types.LargeBinary,
-#         Decimal: sa.types.Numeric,
-#         ??: sa.types.PickleType,
-#         unicode: sa.types.Unicode,
-#         unicode: sa.types.UnicodeText,
-#         str: sa.types.Text,  # ??
-         }
+types = {
+    'int64': sa.types.BigInteger,
+    'int32': sa.types.Integer,
+    'int': sa.types.Integer,
+    'int16': sa.types.SmallInteger,
+    'float32': sa.types.Float(precision=24),  # sqlalchemy uses mantissa
+    'float64': sa.types.Float(precision=53),  # for precision
+    'float': sa.types.Float(precision=53),
+    'real': sa.types.Float(precision=53),
+    'string': sa.types.Text,
+    'date': sa.types.Date,
+    'time': sa.types.Time,
+    'datetime': sa.types.DateTime,
+    'bool': sa.types.Boolean,
+    "timedelta[unit='D']": sa.types.Interval(second_precision=0,
+                                             day_precision=9),
+    "timedelta[unit='h']": sa.types.Interval(second_precision=0,
+                                             day_precision=0),
+    "timedelta[unit='m']": sa.types.Interval(second_precision=0,
+                                             day_precision=0),
+    "timedelta[unit='s']": sa.types.Interval(second_precision=0,
+                                             day_precision=0),
+    "timedelta[unit='ms']": sa.types.Interval(second_precision=3,
+                                              day_precision=0),
+    "timedelta[unit='us']": sa.types.Interval(second_precision=6,
+                                              day_precision=0),
+    "timedelta[unit='ns']": sa.types.Interval(second_precision=9,
+                                              day_precision=0),
+    # ??: sa.types.LargeBinary,
+    # Decimal: sa.types.Numeric,
+    # ??: sa.types.PickleType,
+    # unicode: sa.types.Unicode,
+    # unicode: sa.types.UnicodeText,
+    # str: sa.types.Text,  # ??
+}
 
 revtypes = dict(map(reversed, types.items()))
 
-revtypes.update({sa.types.VARCHAR: 'string',
-                 sa.types.String: 'string',
-                 sa.types.Unicode: 'string',
-                 sa.types.DATETIME: 'datetime',
-                 sa.types.TIMESTAMP: 'datetime',
-                 sa.types.FLOAT: 'float64',
-                 sa.types.DATE: 'date',
-                 sa.types.BIGINT: 'int64',
-                 sa.types.INTEGER: 'int',
-                 sa.types.NUMERIC: 'float64',  # TODO: extend datashape to decimal
-                 sa.types.BIGINT: 'int64',
-                 sa.types.NullType: 'string',
-                 sa.types.Float: 'float64'})
+revtypes.update({
+    sa.types.VARCHAR: 'string',
+    sa.types.String: 'string',
+    sa.types.Unicode: 'string',
+    sa.types.DATETIME: 'datetime',
+    sa.types.TIMESTAMP: 'datetime',
+    sa.types.FLOAT: 'float64',
+    sa.types.DATE: 'date',
+    sa.types.BIGINT: 'int64',
+    sa.types.INTEGER: 'int',
+    sa.types.NUMERIC: 'float64',  # TODO: extend datashape to decimal
+    sa.types.BIGINT: 'int64',
+    sa.types.NullType: 'string',
+    sa.types.Float: 'float64',
+})
+
+# interval types are special cased in discover_typeengine so remove them from
+# revtypes
+revtypes = valfilter(lambda x: not isinstance(x, sa.types.Interval), revtypes)
+
+
+units_of_power = {
+    0: 's',
+    3: 'ms',
+    6: 'us',
+    9: 'ns'
+}
+
+# these aren't loaded by sqlalchemy by default
+sa.dialects.registry.load('oracle')
+sa.dialects.registry.load('postgresql')
+
+
+@discover.register(sa.dialects.postgresql.base.INTERVAL)
+def discover_postgresql_interval(t):
+    return discover(sa.types.Interval(day_precision=0,
+                                      second_precision=t.precision))
+
+
+@discover.register(sa.dialects.oracle.base.INTERVAL)
+def discover_oracle_interval(t):
+    return discover(t.adapt(sa.types.Interval))
 
 
 @discover.register(sa.sql.type_api.TypeEngine)
 def discover_typeengine(typ):
+    if isinstance(typ, sa.types.Interval):
+        if typ.second_precision is None and typ.day_precision is None:
+            return datashape.TimeDelta(unit='us')
+        elif typ.second_precision == 0 and typ.day_precision == 0:
+            return datashape.TimeDelta(unit='s')
+
+        if typ.second_precision in units_of_power and not typ.day_precision:
+            units = units_of_power[typ.second_precision]
+        elif typ.day_precision > 0:
+            units = 'D'
+        else:
+            raise ValueError('Cannot infer INTERVAL type with parameters'
+                             'second_precision=%d, day_precision=%d' %
+                             (typ.second_precision, typ.day_precision))
+        return datashape.TimeDelta(unit=units)
     if typ in revtypes:
         return dshape(revtypes[typ])[0]
     if type(typ) in revtypes:
@@ -93,8 +153,7 @@ def discover_sqlalchemy_selectable(t):
 
 @memoize
 def metadata_of_engine(engine):
-    metadata = sa.MetaData(engine)
-    return metadata
+    return sa.MetaData(engine)
 
 
 def create_engine(uri, *args, **kwargs):
@@ -112,7 +171,8 @@ def discover(engine, tablename):
     metadata = metadata_of_engine(engine)
     if tablename not in metadata.tables:
         try:
-            metadata.reflect(engine, views=metadata.bind.dialect.supports_views)
+            metadata.reflect(engine,
+                             views=metadata.bind.dialect.supports_views)
         except NotImplementedError:
             metadata.reflect(engine)
     table = metadata.tables[tablename]
@@ -137,12 +197,12 @@ def discover(metadata):
             pairs.append([name, discover(table)])
         except sa.exc.CompileError as e:
             print("Can not discover type of table %s.\n" % name +
-                "SQLAlchemy provided this error message:\n\t%s" % e.message +
-                "\nSkipping.")
+                  "SQLAlchemy provided this error message:\n\t%s" % e.message +
+                  "\nSkipping.")
         except NotImplementedError as e:
             print("Blaze does not understand a SQLAlchemy type.\n"
-                "Blaze provided the following error:\n\t%s" % "\n\t".join(e.args) +
-                "\nSkipping.")
+                  "Blaze provided the following error:\n\t%s" % "\n\t".join(e.args) +
+                  "\nSkipping.")
     return DataShape(Record(pairs))
 
 
@@ -172,6 +232,7 @@ def dshape_to_table(name, ds, metadata=None):
 @dispatch(object, str)
 def create_from_datashape(o, ds, **kwargs):
     return create_from_datashape(o, dshape(ds), **kwargs)
+
 
 @dispatch(sa.engine.base.Engine, DataShape)
 def create_from_datashape(engine, ds, **kwargs):
@@ -206,9 +267,9 @@ def dshape_to_alchemy(dshape):
         return types[str(dshape)]
     if isinstance(dshape, datashape.Record):
         return [sa.Column(name,
-                           dshape_to_alchemy(typ),
-                           nullable=isinstance(typ[0], Option))
-                    for name, typ in dshape.parameters[0]]
+                          dshape_to_alchemy(typ),
+                          nullable=isinstance(typ[0], Option))
+                for name, typ in dshape.parameters[0]]
     if isinstance(dshape, datashape.DataShape):
         if isdimension(dshape[0]):
             return dshape_to_alchemy(dshape[1])
@@ -227,7 +288,7 @@ def dshape_to_alchemy(dshape):
         else:
             return sa.types.DateTime(timezone=False)
     raise NotImplementedError("No SQLAlchemy dtype match for datashape: %s"
-            % dshape)
+                              % dshape)
 
 
 @convert.register(Iterator, sa.Table, cost=300.0)
@@ -282,12 +343,12 @@ def append_iterator_to_table(t, rows, dshape=None, **kwargs):
     if isinstance(row, (tuple, list)):
         if dshape and isinstance(dshape.measure, datashape.Record):
             names = dshape.measure.names
-            if not set(names) == set(discover(t).measure.names):
+            if set(names) != set(discover(t).measure.names):
                 raise ValueError("Column names of incoming data don't match "
-                "column names of existing SQL table\n"
-                "Names in SQL table: %s\n"
-                "Names from incoming data: %s\n" %
-                (discover(t).measure.names, names))
+                                 "column names of existing SQL table\n"
+                                 "Names in SQL table: %s\n"
+                                 "Names from incoming data: %s\n" %
+                                 (discover(t).measure.names, names))
         else:
             names = discover(t).measure.names
         rows = (dict(zip(names, row)) for row in rows)
@@ -310,6 +371,7 @@ def append_anything_to_sql_Table(t, c, **kwargs):
 def append_anything_to_sql_Table(t, o, **kwargs):
     return append(t, convert(Iterator, o, **kwargs), **kwargs)
 
+
 @append.register(sa.Table, sa.Table)
 def append_table_to_sql_Table(t, o, **kwargs):
     # This condition is an ugly kludge and should be removed once
@@ -322,6 +384,7 @@ def append_table_to_sql_Table(t, o, **kwargs):
 
     s = sa.select([o])
     return append(t, s, **kwargs)
+
 
 @append.register(sa.Table, sa.sql.Select)
 def append_select_statement_to_sql_Table(t, o, **kwargs):
@@ -397,12 +460,13 @@ def resource_hive(uri, *args, **kwargs):
     for k, v in d.items():
         if not v:
             d[k] = defaults[k]
+
     if d['user']:
-        d['user'] = d['user'] + '@'
+        d['user'] += '@'
 
     uri2 = 'hive://%(user)s%(host)s:%(port)s/%(database)s' % d
     if '::' in uri:
-        uri2 = uri2 + '::' + uri.split('::')[1]
+        uri2 += '::' + uri.split('::')[1]
 
     return resource_sql(uri2, *args, **kwargs)
 
