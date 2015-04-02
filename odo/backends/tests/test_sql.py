@@ -391,3 +391,14 @@ def test_select_to_series_retains_name():
         series = odo(sel, pd.Series)
     assert series.name == 'x'
     assert odo(series, list) == [x + 1 for x, _ in data]
+
+
+def test_empty_select_to_empty_frame():
+    # data = [(1, 1), (2, 4), (3, 9)]
+    ds = dshape('var * {x: int, y: int}')
+    with tmpfile('db') as fn1:
+        points = resource('sqlite:///%s::points' % fn1, dshape=ds)
+        sel = sa.select([points])
+        df = odo(sel, pd.DataFrame)
+    assert df.empty
+    assert df.columns.tolist() == ['x', 'y']

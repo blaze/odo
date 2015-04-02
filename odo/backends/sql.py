@@ -16,7 +16,7 @@ from datashape import discover
 from datashape.dispatch import dispatch
 
 from toolz import (partition_all, keyfilter, first, memoize, valfilter,
-                   identity, concat)
+                   identity, concat, second)
 from toolz.curried import pluck, map
 
 from ..utils import keywords, ignoring
@@ -115,12 +115,15 @@ def batch(sel, chunksize=10000):
     def rowterator(sel, chunksize=chunksize):
         with sel.bind.connect() as conn:
             result = conn.execute(sel)
+            yield result.keys()
+
             while True:
                 try:
                     yield result.fetchmany(size=chunksize)
                 except sa.exc.ResourceClosedError:
                     return
-    return concat(rowterator(sel))
+    terator = rowterator(sel)
+    return next(terator), concat(terator)
 
 
 @discover.register(sa.dialects.postgresql.base.INTERVAL)
@@ -320,13 +323,13 @@ def dshape_to_alchemy(dshape):
 
 @convert.register(Iterator, sa.Table, cost=300.0)
 def sql_to_iterator(t, **kwargs):
-    return map(tuple, batch(sa.select([t])))
+    return map(tuple, second(batch(sa.select([t]))))
 
 
 @convert.register(Iterator, sa.sql.Select, cost=300.0)
 def select_to_iterator(sel, dshape=None, **kwargs):
     func = pluck(0) if dshape and isscalar(dshape.measure) else map(tuple)
-    return func(batch(sel))
+    return func(second(batch(sel)))
 
 
 @convert.register(base, sa.sql.Select, cost=300.0)
@@ -488,21 +491,11 @@ def drop(table):
     table.drop(table.bind, checkfirst=True)
 
 
-@convert.register(pd.Series, (sa.sql.Select, sa.sql.Selectable))
-def select_or_selectable_to_series(el, **kwargs):
-    if len(el.columns.keys()) > 1:
-        # we're coming from another iterator that doesn't know that Series is
-        # one dimensional
-        raise NotImplementedError('Selectable'
-                                  '\n\n%s\n\n'
-                                  'has more than one column but is trying to '
-                                  'go to a Series' % el)
-
-    name, = el.columns.keys()
-
-    try:
-        data = [row[name] for row in batch(el)]
-    except sa.exc.NoSuchColumnError as e:  # columns whose keys are expressions
-        raise NotImplementedError(e)
-    else:
-        return pd.Series(data, name=name, dtype=object if not data else None)
+@convert.register(pd.DataFrame, (sa.sql.Select, sa.sql.Selectable), cost=200.0)
+def select_or_selectable_to_frame(el, **kwargs):
+    keys, rows = batch(el)
+    row = next(rows, None)
+    if row is None:
+        return pd.DataFrame(columns=keys)
+    return pd.DataFrame(list(chain([tuple(row)], map(tuple, rows))),
+                        columns=keys)
