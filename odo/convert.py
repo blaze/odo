@@ -3,9 +3,10 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 import pandas as pd
 from datashape.predicates import isscalar
-from toolz import concat, curry, partition_all
+from toolz import concat, partition_all
 from collections import Iterator, Iterable
 import datashape
+from datashape import discover
 from .core import NetworkDispatcher, ooc_types
 from .chunks import chunks, Chunks
 from .numpy_dtype import dshape_to_numpy
@@ -65,14 +66,16 @@ higher_precision_freqs = frozenset(('ns', 'ps', 'fs', 'as'))
 
 @convert.register(np.ndarray, pd.Series, cost=0.1)
 def series_to_array(s, dshape=None, **kwargs):
-    dtype = dshape_to_numpy(datashape.dshape(dshape))
+    # if we come from a node that can't be discovered we need to discover
+    # on s
+    dtype = dshape_to_numpy(datashape.dshape(dshape or discover(s)))
     sdtype = s.dtype
     values = s.values
 
     # don't lose precision of datetime64 more precise than microseconds
     if ((issubclass(sdtype.type, np.datetime64) and
-            np.datetime_data(sdtype)[0] in higher_precision_freqs)
-            or s.dtype == dtype):
+            np.datetime_data(sdtype)[0] in higher_precision_freqs) or
+            s.dtype == dtype):
         return values
     try:
         return values.astype(dtype)
@@ -84,10 +87,10 @@ def series_to_array(s, dshape=None, **kwargs):
 def numpy_to_list(x, **kwargs):
     dt = None
     if x.dtype == 'M8[ns]':
-        dt = 'M8[us]' # lose precision when going to Python datetime
+        dt = 'M8[us]'  # lose precision when going to Python datetime
     if x.dtype.fields and any(x.dtype[n] == 'M8[ns]' for n in x.dtype.names):
         dt = [(n, 'M8[us]' if x.dtype[n] == 'M8[ns]' else x.dtype[n])
-                for n in x.dtype.names]
+              for n in x.dtype.names]
     if dt:
         return x.astype(dt).tolist()
     else:
