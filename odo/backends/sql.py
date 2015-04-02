@@ -502,7 +502,8 @@ def select_or_selectable_to_series(el, **kwargs):
     name, = el.columns.keys()
 
     try:
-        data = [row[name] for row in batch(el)]
+        with el.bind.connect() as conn:
+            data = [row[name] for row in conn.execute(el).fetchall()]
     except sa.exc.NoSuchColumnError as e:  # columns whose keys are expressions
         raise NotImplementedError(e)
     else:
