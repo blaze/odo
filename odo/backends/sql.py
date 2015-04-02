@@ -334,7 +334,7 @@ def select_to_base(sel, dshape=None, **kwargs):
     assert not dshape or isscalar(dshape), \
         'dshape should be None or scalar, got %s' % dshape
     with sel.bind.connect() as conn:
-        return conn.execute(sel).fetchall()[0][0]
+        return conn.execute(sel).scalar()
 
 
 @append.register(sa.Table, Iterator)
