@@ -6,6 +6,7 @@ from datashape.predicates import isscalar
 from toolz import concat, curry, partition_all
 from collections import Iterator, Iterable
 import datashape
+from datashape import discover
 from .core import NetworkDispatcher, ooc_types
 from .chunks import chunks, Chunks
 from .numpy_dtype import dshape_to_numpy
@@ -65,7 +66,9 @@ higher_precision_freqs = frozenset(('ns', 'ps', 'fs', 'as'))
 
 @convert.register(np.ndarray, pd.Series, cost=0.1)
 def series_to_array(s, dshape=None, **kwargs):
-    dtype = dshape_to_numpy(datashape.dshape(dshape))
+    # if we come from a node that can't be discovered we need to discover
+    # on s
+    dtype = dshape_to_numpy(datashape.dshape(dshape or discover(s)))
     sdtype = s.dtype
     values = s.values
 
