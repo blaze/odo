@@ -18,7 +18,7 @@ convert = NetworkDispatcher('convert')
 
 @convert.register(np.ndarray, pd.DataFrame, cost=0.2)
 def dataframe_to_numpy(df, dshape=None, **kwargs):
-    dtype = dshape_to_numpy(dshape)
+    dtype = dshape_to_numpy(dshape or discover(df))
     x = df.to_records(index=False)
     if x.dtype != dtype:
         x = x.astype(dtype)
