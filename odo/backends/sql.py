@@ -487,3 +487,23 @@ ooc_types.add(sa.Table)
 @dispatch(sa.Table)
 def drop(table):
     table.drop(table.bind, checkfirst=True)
+
+
+@convert.register(pd.Series, (sa.sql.Select, sa.sql.Selectable))
+def select_or_selectable_to_series(el, **kwargs):
+    if len(el.columns.keys()) > 1:
+        # we're coming from another iterator that doesn't know that Series is
+        # one dimensional
+        raise NotImplementedError('Selectable'
+                                  '\n\n%s\n\n'
+                                  'has more than one column but is trying to '
+                                  'go to a Series' % el)
+
+    name, = el.columns.keys()
+
+    try:
+        data = [row[name] for row in batch(el)]
+    except sa.exc.NoSuchColumnError as e:  # columns whose keys are expressions
+        raise NotImplementedError(e)
+    else:
+        return pd.Series(data, name=name)

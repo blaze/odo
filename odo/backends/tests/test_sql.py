@@ -5,6 +5,7 @@ pytest.importorskip('sqlalchemy')
 
 import os
 import numpy as np
+import pandas as pd
 import sqlalchemy as sa
 from datashape import discover, dshape
 import datashape
@@ -379,3 +380,14 @@ def test_copy_one_table_to_a_foreign_engine():
 
             assert into(set, src) == into(set, tgt)
             assert into(set, data) == into(set, tgt)
+
+
+def test_select_to_series_retains_name():
+    data = [(1, 1), (2, 4), (3, 9)]
+    ds = dshape('var * {x: int, y: int}')
+    with tmpfile('db') as fn1:
+        points = odo(data, 'sqlite:///%s::points' % fn1, dshape=ds)
+        sel = sa.select([(points.c.x + 1).label('x')])
+        series = odo(sel, pd.Series)
+    assert series.name == 'x'
+    assert odo(series, list) == [x + 1 for x, _ in data]
