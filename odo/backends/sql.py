@@ -3,7 +3,6 @@ from __future__ import absolute_import, division, print_function
 import re
 
 from itertools import chain
-from functools import partial
 from collections import Iterator
 from datetime import datetime, date
 
@@ -16,9 +15,9 @@ from datashape.predicates import isdimension, isrecord, isscalar
 from datashape import discover
 from datashape.dispatch import dispatch
 
-from toolz import partition_all, keyfilter, first, memoize, valfilter
+from toolz import (partition_all, keyfilter, first, memoize, valfilter,
+                   identity, concat)
 from toolz.curried import pluck, map
-from toolz import identity, concat
 
 from ..utils import keywords, ignoring
 from ..convert import convert, ooc_types
