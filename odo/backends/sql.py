@@ -1,18 +1,24 @@
 from __future__ import absolute_import, division, print_function
 
 import re
-import sqlalchemy as sa
+
 from itertools import chain
+from functools import partial
 from collections import Iterator
-from datashape import (DataShape, Record, Option, var, dshape)
+from datetime import datetime, date
+
+import pandas as pd
+import sqlalchemy as sa
+
+import datashape
+from datashape import DataShape, Record, Option, var, dshape
 from datashape.predicates import isdimension, isrecord, isscalar
 from datashape import discover
 from datashape.dispatch import dispatch
-from datetime import datetime, date
-import datashape
-from toolz import (partition_all, keyfilter, first, pluck, memoize, map,
-                   valfilter)
-from toolz import identity
+
+from toolz import partition_all, keyfilter, first, memoize, valfilter
+from toolz.curried import pluck, map
+from toolz import identity, concat
 
 from ..utils import keywords, ignoring
 from ..convert import convert, ooc_types
@@ -94,6 +100,28 @@ units_of_power = {
 # these aren't loaded by sqlalchemy by default
 sa.dialects.registry.load('oracle')
 sa.dialects.registry.load('postgresql')
+
+
+def batch(sel, chunksize=10000):
+    """Execute `sel`, streaming row at a time and fetching from the database in
+    batches of size `chunksize`.
+
+    Parameters
+    ----------
+    sel : sa.sql.Selectable
+        Selectable to execute
+    chunksize : int, optional, default 10000
+        Number of rows to fetch from the database
+    """
+    def rowterator(sel, chunksize=chunksize):
+        with sel.bind.connect() as conn:
+            result = conn.execute(sel)
+            while True:
+                try:
+                    yield result.fetchmany(size=chunksize)
+                except sa.exc.ResourceClosedError:
+                    return
+    return concat(rowterator(sel))
 
 
 @discover.register(sa.dialects.postgresql.base.INTERVAL)
@@ -293,39 +321,21 @@ def dshape_to_alchemy(dshape):
 
 @convert.register(Iterator, sa.Table, cost=300.0)
 def sql_to_iterator(t, **kwargs):
-    engine = t.bind
-    with engine.connect() as conn:
-        result = conn.execute(sa.sql.select([t]))
-        result = map(tuple, result)  # Turn RowProxy into tuple
-        for item in result:
-            yield item
+    return map(tuple, batch(sa.select([t])))
 
 
 @convert.register(Iterator, sa.sql.Select, cost=300.0)
 def select_to_iterator(sel, dshape=None, **kwargs):
-    engine = sel.bind  # TODO: get engine from select
-
-    with engine.connect() as conn:
-        result = conn.execute(sel)
-        if dshape and isscalar(dshape.measure):
-            result = pluck(0, result)
-        else:
-            result = map(tuple, result)  # Turn RowProxy into tuple
-
-        for item in result:
-            yield item
+    func = pluck(0) if dshape and isscalar(dshape.measure) else map(tuple)
+    return func(batch(sel))
 
 
 @convert.register(base, sa.sql.Select, cost=300.0)
 def select_to_base(sel, dshape=None, **kwargs):
-    engine = sel.bind  # TODO: get engine from select
-
-    with engine.connect() as conn:
-        result = conn.execute(sel)
-        assert not dshape or isscalar(dshape)
-        result = list(result)[0][0]
-
-    return result
+    assert not dshape or isscalar(dshape), \
+        'dshape should be None or scalar, got %s' % dshape
+    with sel.bind.connect() as conn:
+        return conn.execute(sel).fetchall()[0][0]
 
 
 @append.register(sa.Table, Iterator)
