@@ -506,4 +506,4 @@ def select_or_selectable_to_series(el, **kwargs):
     except sa.exc.NoSuchColumnError as e:  # columns whose keys are expressions
         raise NotImplementedError(e)
     else:
-        return pd.Series(data, name=name)
+        return pd.Series(data, name=name, dtype=object if not data else None)
