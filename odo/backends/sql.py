@@ -16,7 +16,7 @@ from datashape import discover
 from datashape.dispatch import dispatch
 
 from toolz import (partition_all, keyfilter, first, memoize, valfilter,
-                   identity, concat, second)
+                   identity, concat, curry)
 from toolz.curried import pluck, map
 
 from ..utils import keywords, ignoring
@@ -101,6 +101,45 @@ sa.dialects.registry.load('oracle')
 sa.dialects.registry.load('postgresql')
 
 
+def iter_except(func, exception, first=None):
+    """Call a `func` repeatedly until `exception` is raised. Optionally call
+    `first` first.
+
+    Parameters
+    ----------
+    func : callable
+        Repeatedly call this until `exception` is raised.
+    exception : Exception
+        Stop calling `func` when this is raised.
+    first : callable, optional, default ``None``
+        Call this first if it isn't ``None``.
+
+    Examples
+    --------
+    >>> x = {'a': 1, 'b': 2}
+    >>> def iterate():
+    ...     yield 'a'
+    ...     yield 'b'
+    ...     yield 'c'
+    ...
+    >>> keys = iterate()
+    >>> diter = iter_except(lambda: x[next(keys)], KeyError)
+    >>> list(diter)
+    [1, 2]
+
+    Notes
+    -----
+    * Taken from https://docs.python.org/2/library/itertools.html#recipes
+    """
+    try:
+        if first is not None:
+            yield first()
+        while 1:  # True isn't a reserved word in Python 2.x
+            yield func()
+    except exception:
+        pass
+
+
 def batch(sel, chunksize=10000):
     """Execute `sel`, streaming row at a time and fetching from the database in
     batches of size `chunksize`.
@@ -117,11 +156,9 @@ def batch(sel, chunksize=10000):
             result = conn.execute(sel)
             yield result.keys()
 
-            while True:
-                try:
-                    yield result.fetchmany(size=chunksize)
-                except sa.exc.ResourceClosedError:
-                    return
+            for rows in iter_except(curry(result.fetchmany, size=chunksize),
+                                    sa.exc.ResourceClosedError):
+                yield rows
     terator = rowterator(sel)
     return next(terator), concat(terator)
 
@@ -323,13 +360,15 @@ def dshape_to_alchemy(dshape):
 
 @convert.register(Iterator, sa.Table, cost=300.0)
 def sql_to_iterator(t, **kwargs):
-    return map(tuple, second(batch(sa.select([t]))))
+    _, rows = batch(sa.select([t]))
+    return map(tuple, rows)
 
 
 @convert.register(Iterator, sa.sql.Select, cost=300.0)
 def select_to_iterator(sel, dshape=None, **kwargs):
     func = pluck(0) if dshape and isscalar(dshape.measure) else map(tuple)
-    return func(second(batch(sel)))
+    _, rows = batch(sel)
+    return func(rows)
 
 
 @convert.register(base, sa.sql.Select, cost=300.0)
@@ -493,9 +532,9 @@ def drop(table):
 
 @convert.register(pd.DataFrame, (sa.sql.Select, sa.sql.Selectable), cost=200.0)
 def select_or_selectable_to_frame(el, **kwargs):
-    keys, rows = batch(el)
+    columns, rows = batch(el)
     row = next(rows, None)
     if row is None:
-        return pd.DataFrame(columns=keys)
+        return pd.DataFrame(columns=columns)
     return pd.DataFrame(list(chain([tuple(row)], map(tuple, rows))),
-                        columns=keys)
+                        columns=columns)
