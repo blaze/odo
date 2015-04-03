@@ -4,8 +4,7 @@ import pytest
 pymongo = pytest.importorskip('pymongo')
 
 from contextlib import contextmanager
-import datashape
-from odo import discover, convert, append, resource, dshape
+from odo import discover, convert, append, resource, dshape, odo
 from odo.backends.mongo import *
 from toolz import pluck
 from copy import deepcopy
@@ -46,11 +45,24 @@ def test_discover():
         assert discover(bank) == discover(c)
 
 
+def test_discover_db():
+    with coll(bank):
+        assert set(discover(db).measure.names) == set(['system.indexes',
+                                                       'my_collection'])
+    assert discover(db).measure.names == ['system.indexes']
+
+
+def test_resource_db():
+    db = resource('mongodb://localhost:27017/_test_db')
+    assert db.name == '_test_db'
+    assert len(discover(db).measure.names) == 1
+
+
 def test_append_convert():
     with coll([]) as c:
         append(c, bank, dshape=ds)
 
-        assert convert(list, c, dshape=ds) == list(pluck(['name', 'amount'], bank))
+        assert odo(c, list, dshape=ds) == list(pluck(['name', 'amount'], bank))
 
 
 def test_resource():
