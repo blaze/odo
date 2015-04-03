@@ -13,6 +13,45 @@ import numpy as np
 from .compatibility import unicode
 
 
+def iter_except(func, exception, first=None):
+    """Call a `func` repeatedly until `exception` is raised. Optionally call
+    `first` first.
+
+    Parameters
+    ----------
+    func : callable
+        Repeatedly call this until `exception` is raised.
+    exception : Exception
+        Stop calling `func` when this is raised.
+    first : callable, optional, default ``None``
+        Call this first if it isn't ``None``.
+
+    Examples
+    --------
+    >>> x = {'a': 1, 'b': 2}
+    >>> def iterate():
+    ...     yield 'a'
+    ...     yield 'b'
+    ...     yield 'c'
+    ...
+    >>> keys = iterate()
+    >>> diter = iter_except(lambda: x[next(keys)], KeyError)
+    >>> list(diter)
+    [1, 2]
+
+    Notes
+    -----
+    * Taken from https://docs.python.org/2/library/itertools.html#recipes
+    """
+    try:
+        if first is not None:
+            yield first()
+        while 1:  # True isn't a reserved word in Python 2.x
+            yield func()
+    except exception:
+        pass
+
+
 def ext(filename):
     _, e = os.path.splitext(filename)
     return e.lstrip(os.extsep)
