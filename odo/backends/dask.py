@@ -1,18 +1,23 @@
 from __future__ import absolute_import, division, print_function
+from operator import add
+from collections import Iterator
 
 import numpy as np
-from datashape import discover
 from toolz import merge, accumulate
 from datashape.dispatch import dispatch
 from datashape import DataShape
-from operator import add
 
 from dask.array.core import rec_concatenate, Array, getem, get, names, from_array
+from dask.bag.core import Bag
 from dask.core import flatten
 from dask.compatibility import long
 
-from ..append import append
-from ..convert import convert
+from odo import append, chunks, convert, discover, into, TextFile
+from ..utils import keywords
+
+##############
+# dask.Array #
+##############
 
 @discover.register(Array)
 def discover_dask_array(a, **kwargs):
@@ -71,3 +76,23 @@ def store_Array_in_ooc_data(out, arr, inplace=False, **kwargs):
         assert out.shape[1:] == arr.shape[1:]
         resize(out, out.shape[0] + arr.shape[0])  # elongate
     return arr.store(out)
+
+############
+# dask.bag #
+############
+
+@convert.register(Iterator, Bag)
+def bag_to_iterator(x, **kwargs):
+    return iter(x)
+
+
+@convert.register(Bag, chunks(TextFile))
+def bag_to_iterator(x, **kwargs):
+    return Bag.from_filenames([tf.path for tf in x])
+
+
+@convert.register(Bag, list)
+def bag_to_iterator(x, **kwargs):
+    keys = keywords(Bag.from_sequence)
+    kwargs2 = dict((k, v) for k, v in kwargs.items() if k in keys)
+    return Bag.from_sequence(x, **kwargs2)

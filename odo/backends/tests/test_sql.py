@@ -5,11 +5,12 @@ pytest.importorskip('sqlalchemy')
 
 import os
 import numpy as np
+import pandas as pd
 import sqlalchemy as sa
 from datashape import discover, dshape
 import datashape
 from odo.backends.sql import (dshape_to_table, create_from_datashape,
-                               dshape_to_alchemy)
+                              dshape_to_alchemy)
 from odo.utils import tmpfile, raises
 from odo import convert, append, resource, discover, into, odo
 
@@ -73,7 +74,7 @@ def test_resource_to_engine_to_create_tables():
         assert discover(r) == ds
 
 
-def test_discovery():
+def test_discover():
     assert discover(sa.String()) == datashape.string
     metadata = sa.MetaData()
     s = sa.Table('accounts', metadata,
@@ -82,9 +83,10 @@ def test_discovery():
                  sa.Column('timestamp', sa.DateTime, primary_key=True))
 
     assert discover(s) == \
-            dshape('var * {name: ?string, amount: ?int32, timestamp: datetime}')
+        dshape('var * {name: ?string, amount: ?int32, timestamp: datetime}')
 
-def test_discovery_numeric_column():
+
+def test_discover_numeric_column():
     assert discover(sa.String()) == datashape.string
     metadata = sa.MetaData()
     s = sa.Table('name', metadata,
@@ -95,9 +97,16 @@ def test_discovery_numeric_column():
 
 def test_discover_null_columns():
     assert dshape(discover(sa.Column('name', sa.String, nullable=True))) == \
-            dshape('{name: ?string}')
+        dshape('{name: ?string}')
     assert dshape(discover(sa.Column('name', sa.String, nullable=False))) == \
-            dshape('{name: string}')
+        dshape('{name: string}')
+
+
+def test_discover_selectable():
+    t = resource('sqlite:///:memory:::mytable',
+                 dshape='var * {x: int, y: int}')
+    q = sa.select([t.c.x]).limit(5)
+    assert discover(q) == dshape('var * {x: int}')
 
 
 def single_table_engine():
@@ -152,7 +161,8 @@ def test_discover_views():
                         FROM accounts
                         WHERE amount > 0''')
 
-    assert str(discover(metadata)) == str(discover({'accounts': t, 'myview': t}))
+    assert str(discover(metadata)) == str(
+        discover({'accounts': t, 'myview': t}))
 
 
 def test_extend_empty():
@@ -179,6 +189,77 @@ def test_dshape_to_table():
     assert isinstance(t, sa.Table)
     assert t.name == 'bank'
     assert [c.name for c in t.c] == ['name', 'amount']
+
+
+td_freqs = list(zip(['D', 'h', 'm', 's', 'ms', 'us', 'ns'],
+                    [0, 0, 0, 0, 3, 6, 9],
+                    [9, 0, 0, 0, 0, 0, 0]))
+
+
+@pytest.mark.parametrize(['freq', 'secp', 'dayp'], td_freqs)
+def test_dshape_to_table_with_timedelta(freq, secp, dayp):
+    ds = '{name: string, amount: int, duration: timedelta[unit="%s"]}' % freq
+    t = dshape_to_table('td_bank', ds)
+    assert isinstance(t, sa.Table)
+    assert t.name == 'td_bank'
+    assert isinstance(t.c.duration.type, sa.types.Interval)
+    assert t.c.duration.type.second_precision == secp
+    assert t.c.duration.type.day_precision == dayp
+
+
+@pytest.mark.xfail(raises=NotImplementedError)
+def test_dshape_to_table_month():
+    ds = '{name: string, amount: int, duration: timedelta[unit="M"]}'
+    dshape_to_table('td_bank', ds)
+
+
+@pytest.mark.xfail(raises=NotImplementedError)
+def test_dshape_to_table_year():
+    ds = '{name: string, amount: int, duration: timedelta[unit="Y"]}'
+    dshape_to_table('td_bank', ds)
+
+
+@pytest.mark.parametrize('freq', ['D', 's', 'ms', 'us', 'ns'])
+def test_timedelta_sql_discovery(freq):
+    ds = '{name: string, amount: int, duration: timedelta[unit="%s"]}' % freq
+    t = dshape_to_table('td_bank', ds)
+    assert discover(t).measure['duration'] == datashape.TimeDelta(freq)
+
+
+@pytest.mark.parametrize('freq', ['h', 'm'])
+def test_timedelta_sql_discovery_hour_minute(freq):
+    # these always compare equal to a seconds timedelta, because no data loss
+    # will occur with this heuristic. this implies that the sa.Table was
+    # constructed with day_precision == 0 and second_precision == 0
+    ds = '{name: string, amount: int, duration: timedelta[unit="%s"]}' % freq
+    t = dshape_to_table('td_bank', ds)
+    assert discover(t).measure['duration'] == datashape.TimeDelta('s')
+
+
+prec = {
+    's': 0,
+    'ms': 3,
+    'us': 6,
+    'ns': 9
+}
+
+
+@pytest.mark.parametrize('freq', list(prec.keys()))
+def test_discover_postgres_intervals(freq):
+    precision = prec.get(freq)
+    typ = sa.dialects.postgresql.base.INTERVAL(precision=precision)
+    t = sa.Table('t', sa.MetaData(), sa.Column('dur', typ))
+    assert discover(t) == dshape('var * {dur: ?timedelta[unit="%s"]}' % freq)
+
+
+# between postgresql and oracle, only oracle has support for day intervals
+
+@pytest.mark.parametrize('freq', ['D'] + list(prec.keys()))
+def test_discover_oracle_intervals(freq):
+    typ = sa.dialects.oracle.base.INTERVAL(day_precision={'D': 9}.get(freq),
+                                           second_precision=prec.get(freq, 0))
+    t = sa.Table('t', sa.MetaData(), sa.Column('dur', typ))
+    assert discover(t) == dshape('var * {dur: ?timedelta[unit="%s"]}' % freq)
 
 
 def test_create_from_datashape():
@@ -279,8 +360,10 @@ def test_append_from_table():
 def test_engine_metadata_caching():
     with tmpfile('db') as fn:
         engine = resource('sqlite:///' + fn)
-        a = resource('sqlite:///' + fn + '::a', dshape=dshape('var * {x: int}'))
-        b = resource('sqlite:///' + fn + '::b', dshape=dshape('var * {y: int}'))
+        a = resource(
+            'sqlite:///' + fn + '::a', dshape=dshape('var * {x: int}'))
+        b = resource(
+            'sqlite:///' + fn + '::b', dshape=dshape('var * {y: int}'))
 
         assert a.metadata is b.metadata
         assert engine is a.bind is b.bind
@@ -293,7 +376,29 @@ def test_copy_one_table_to_a_foreign_engine():
         with tmpfile('db') as fn2:
             src = into('sqlite:///%s::points' % fn1, data, dshape=ds)
             tgt = into('sqlite:///%s::points' % fn2 + '::points',
-                    sa.select([src]), dshape=ds)
+                       sa.select([src]), dshape=ds)
 
             assert into(set, src) == into(set, tgt)
             assert into(set, data) == into(set, tgt)
+
+
+def test_select_to_series_retains_name():
+    data = [(1, 1), (2, 4), (3, 9)]
+    ds = dshape('var * {x: int, y: int}')
+    with tmpfile('db') as fn1:
+        points = odo(data, 'sqlite:///%s::points' % fn1, dshape=ds)
+        sel = sa.select([(points.c.x + 1).label('x')])
+        series = odo(sel, pd.Series)
+    assert series.name == 'x'
+    assert odo(series, list) == [x + 1 for x, _ in data]
+
+
+def test_empty_select_to_empty_frame():
+    # data = [(1, 1), (2, 4), (3, 9)]
+    ds = dshape('var * {x: int, y: int}')
+    with tmpfile('db') as fn1:
+        points = resource('sqlite:///%s::points' % fn1, dshape=ds)
+        sel = sa.select([points])
+        df = odo(sel, pd.DataFrame)
+    assert df.empty
+    assert df.columns.tolist() == ['x', 'y']
