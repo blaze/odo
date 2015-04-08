@@ -9,7 +9,8 @@ try:
 except ImportError:
     from urllib.request import urlopen
 
-from toolz import memoize, take
+from toolz import memoize
+from toolz.curried import take, map, pipe
 
 from .. import (discover, CSV, resource, append, convert, drop, Temp, JSON,
                 JSONLines, chunks)
@@ -81,7 +82,7 @@ def sample_url_line_delimited(data, lines=5):
 
     with closing(urlopen(data.url)) as r:
 
-        raw = '\n'.join(take(lines, r.readline()))
+        raw = pipe(r, map(bytes.decode), take(10), list, '\n'.join)
         with tmpfile(data.filename) as fn:
             with open(fn, 'wb') as f:
                 f.write(raw)
