@@ -1,14 +1,15 @@
 from __future__ import print_function, division, absolute_import
 
 import os
-import uuid
-import zlib
-import re
 
-from contextlib import contextmanager
+from contextlib import contextmanager, closing
 
-import requests
-from toolz import memoize
+try:
+    from urllib2 import urlopen
+except ImportError:
+    from urllib.request import urlopen
+
+from toolz import memoize, take
 
 from .. import (discover, CSV, resource, append, convert, drop, Temp, JSON,
                 JSONLines, chunks)
@@ -63,7 +64,7 @@ def URL(cls):
     return type('URL(%s)' % cls.__name__, (_URL, cls), {'subtype': cls})
 
 URL.__doc__ = _URL.__doc__
-URL = memoize(URL) # what's happening here
+URL = memoize(URL)
 
 @sample.register((URL(CSV), URL(JSONLines)))
 @contextmanager
@@ -74,24 +75,18 @@ def sample_url_line_delimited(data, lines=5):
     ----------
     data : URL(CSV)
         A hosted CSV
-    lines : int, optional, default ``5``
-        Number of lines to read into memory
+    lines : int, optional, default ``8192``
+        Number of bytes to read into memory
     """
 
-    r = requests.get(data.url, stream=True)
+    with closing(urlopen(data.url)) as r:
 
-    raw = []
-    if r.status_code == 200:
-        for i, l in enumerate(r.iter_lines()):
-            if i == lines:
-                break
-            raw.append(l)
-    raw = '\n'.join(raw)
+        raw = '\n'.join(take(lines, r.readline()))
+        with tmpfile(data.filename) as fn:
+            with open(fn, 'wb') as f:
+                f.write(raw)
+            yield fn
 
-    with tmpfile(data.filename) as fn:
-        with open(fn, 'wb') as f:
-            f.write(raw)
-        yield fn
 
 @discover.register((URL(CSV), URL(JSONLines)))
 def discover_url_line_delimited(c, lines=5, **kwargs):
@@ -99,7 +94,7 @@ def discover_url_line_delimited(c, lines=5, **kwargs):
     with sample(c, lines=lines) as fn:
         return discover(c.subtype(fn, **kwargs), **kwargs)
 
-types_by_extension = {'csv': CSV, 'json': JSONLines}
+types_by_extension = {'csv': CSV, 'json': JSONLines, 'txt': TextFile}
 
 @resource.register('ftp://.+', priority=16)
 @resource.register('http://.+', priority=16)
@@ -107,7 +102,7 @@ types_by_extension = {'csv': CSV, 'json': JSONLines}
 def resource_url(uri, **kwargs):
     path = os.path.basename(urlparse(uri).path)
     try:
-        subtype = types_by_extension[path.split('.')[-1]]
+        subtype = types_by_extension[ext(path)]
     except KeyError:
         subtype = type(resource(path))
 
@@ -119,11 +114,13 @@ def resource_url(uri, **kwargs):
 @append.register(JSON, URL(JSON))
 @append.register(CSV, URL(CSV))
 def append_urlX_to_X(target, source, **kwargs):
-    r = requests.get(source.url, stream=True)
 
-    if r.status_code == 200:
-        with open(target.path, 'wb') as f:
-            for chunk in r.iter_content(source.chunk_size, source.decode_unicode):
-                f.write(chunk)
-            f.flush()
+    with closing(urlopen(source.url)) as r:
+        chunk_size = 16 * source.chunk_size
+        with open(target.path, 'wb') as fp:
+          while True:
+            chunk = r.read(chunk_size)
+            if not chunk: break
+            fp.write(chunk)
+
     return target
