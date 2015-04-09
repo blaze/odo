@@ -89,11 +89,10 @@ def sample_url_line_delimited(data, lines=5):
     """
 
     with closing(urlopen(data.url)) as r:
-
         raw = pipe(r, map(bytes.decode), take(10), list, '\n'.join)
         with tmpfile(data.filename) as fn:
             with open(fn, 'wb') as f:
-                f.write(raw)
+                f.write(raw.encode('utf-8'))
             yield fn
 
 
@@ -165,7 +164,6 @@ else:
     @append.register(HDFS(JSON), URL(JSON))
     @append.register(HDFS(TextFile), URL(TextFile))
     @append.register(HDFS(TextFile), URL(TextFile))
-    @append.register(S3(JSONLines), URL(JSONLines))
     @append.register(HDFS(JSONLines), URL(JSONLines))
     @append.register(HDFS(JSONLines), URL(JSONLines))
     @append.register(HDFS(JSON), URL(JSON))
@@ -174,6 +172,7 @@ else:
     @append.register(S3(TextFile), URL(TextFile))
     @append.register(S3(JSON), URL(JSON))
     @append.register(S3(CSV), URL(CSV))
+    @append.register(S3(JSONLines), URL(JSONLines))
     def other_remote_text_to_url_text(a, b, **kwargs):
         raise MDNotImplementedError()
 
