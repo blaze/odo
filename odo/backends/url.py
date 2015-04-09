@@ -1,6 +1,7 @@
 from __future__ import print_function, division, absolute_import
 
 import os
+import uuid
 
 from contextlib import contextmanager, closing
 
@@ -12,8 +13,15 @@ except ImportError:
 from toolz import memoize
 from toolz.curried import take, map, pipe
 
-from .. import (discover, CSV, resource, append, convert, drop, Temp, JSON,
-                JSONLines, chunks)
+from .. import discover
+from ..resource import resource
+from ..append import append
+from ..convert import convert
+from ..temp import Temp, _Temp
+from .csv import CSV
+from .json import JSON, JSONLines
+from .text import TextFile
+
 
 from multipledispatch import MDNotImplementedError
 
@@ -125,3 +133,47 @@ def append_urlX_to_X(target, source, **kwargs):
             fp.write(chunk)
 
     return target
+
+@convert.register(Temp(TextFile), (Temp(URL(TextFile)), URL(TextFile)))
+@convert.register(Temp(JSONLines), (Temp(URL(JSONLines)), URL(JSONLines)))
+@convert.register(Temp(JSON), (Temp(URL(JSON)), URL(JSON)))
+@convert.register(Temp(CSV), (Temp(URL(CSV)), URL(CSV)))
+def url_file_to_temp_file(data, **kwargs):
+    fn = '.%s' % uuid.uuid1()
+    target = Temp(data.subtype)(fn, **kwargs)
+    return append(target, data, **kwargs)
+
+
+@convert.register(Temp(URL(TextFile)), (TextFile, Temp(TextFile)))
+@convert.register(Temp(URL(JSONLines)), (JSONLines, Temp(JSONLines)))
+@convert.register(Temp(URL(JSON)), (JSON, Temp(JSON)))
+@convert.register(Temp(URL(CSV)), (CSV, Temp(CSV)))
+def file_to_temp_ssh_file(data, **kwargs):
+    fn = '%s' % uuid.uuid1()
+    if isinstance(data, _Temp):
+        target = Temp(URL(data.persistent_type))(fn, **kwargs)
+    else:
+        target = Temp(URL(type(data)))(fn, **kwargs)
+    return append(target, data, **kwargs)
+
+try:
+    from .hdfs import HDFS
+    from .aws import S3
+except ImportError:
+    pass
+else:
+    @append.register(HDFS(JSON), URL(JSON))
+    @append.register(HDFS(TextFile), URL(TextFile))
+    @append.register(HDFS(TextFile), URL(TextFile))
+    @append.register(S3(JSONLines), URL(JSONLines))
+    @append.register(HDFS(JSONLines), URL(JSONLines))
+    @append.register(HDFS(JSONLines), URL(JSONLines))
+    @append.register(HDFS(JSON), URL(JSON))
+    @append.register(HDFS(CSV), URL(CSV))
+    @append.register(HDFS(CSV), URL(CSV))
+    @append.register(S3(TextFile), URL(TextFile))
+    @append.register(S3(JSON), URL(JSON))
+    @append.register(S3(CSV), URL(CSV))
+    def other_remote_text_to_url_text(a, b, **kwargs):
+        raise MDNotImplementedError()
+

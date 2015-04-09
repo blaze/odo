@@ -4,10 +4,12 @@ import pytest
 
 import os
 
-from odo import into, resource, URL, discover, CSV, TextFile
+from odo import into, resource, URL, discover, CSV, TextFile, convert
+from odo.temp import _Temp, Temp
 from odo.utils import tmpfile
 
 import datashape
+import pandas as pd
 
 try:
     from urllib2 import urlopen
@@ -59,3 +61,13 @@ def test_ftp_to_local_txt():
         txt = into(fn, ftp_url)
         path = os.path.abspath(txt.path)
         assert os.path.exists(path)
+
+def test_convert():
+    # df = into(pd.DataFrame, iris_url)
+    # print(df)
+    with tmpfile('.csv') as fn:
+        url_csv = resource(iris_url)
+        t_csv = convert(Temp(CSV), url_csv)
+        assert discover(url_csv) == discover(t_csv)
+
+        assert isinstance(t_csv, _Temp)
