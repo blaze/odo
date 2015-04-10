@@ -11,7 +11,7 @@ except ImportError:
     from urllib.request import urlopen
 
 from toolz import memoize
-from toolz.curried import take, map, pipe
+from toolz.curried import take, map, pipe, curry
 
 from .. import discover
 from ..resource import resource
@@ -89,7 +89,7 @@ def sample_url_line_delimited(data, lines=5):
     """
 
     with closing(urlopen(data.url)) as r:
-        raw = pipe(r, map(bytes.decode), take(10), list, '\n'.join)
+        raw = pipe(r, map(bytes.decode), take(10), '\n'.join)
         with tmpfile(data.filename) as fn:
             with open(fn, 'wb') as f:
                 f.write(raw.encode('utf-8'))
@@ -126,12 +126,9 @@ def append_urlX_to_X(target, source, **kwargs):
     with closing(urlopen(source.url)) as r:
         chunk_size = 16 * source.chunk_size
         with open(target.path, 'wb') as fp:
-          while True:
-            chunk = r.read(chunk_size)
-            if not chunk: break
-            fp.write(chunk)
-
-    return target
+            for chunk in iter(curry(r.read, chunk_size), ''):
+                fp.write(chunk)
+                return target
 
 @convert.register(Temp(TextFile), (Temp(URL(TextFile)), URL(TextFile)))
 @convert.register(Temp(JSONLines), (Temp(URL(JSONLines)), URL(JSONLines)))
@@ -147,12 +144,9 @@ def url_file_to_temp_file(data, **kwargs):
 @convert.register(Temp(URL(JSONLines)), (JSONLines, Temp(JSONLines)))
 @convert.register(Temp(URL(JSON)), (JSON, Temp(JSON)))
 @convert.register(Temp(URL(CSV)), (CSV, Temp(CSV)))
-def file_to_temp_ssh_file(data, **kwargs):
+def file_to_temp_url_file(data, **kwargs):
     fn = '%s' % uuid.uuid1()
-    if isinstance(data, _Temp):
-        target = Temp(URL(data.persistent_type))(fn, **kwargs)
-    else:
-        target = Temp(URL(type(data)))(fn, **kwargs)
+    target = Temp(URL(getattr(data, 'persistent_type', type(data))))(fn, **kwargs)
     return append(target, data, **kwargs)
 
 try:
@@ -163,11 +157,8 @@ except ImportError:
 else:
     @append.register(HDFS(JSON), URL(JSON))
     @append.register(HDFS(TextFile), URL(TextFile))
-    @append.register(HDFS(TextFile), URL(TextFile))
-    @append.register(HDFS(JSONLines), URL(JSONLines))
     @append.register(HDFS(JSONLines), URL(JSONLines))
     @append.register(HDFS(JSON), URL(JSON))
-    @append.register(HDFS(CSV), URL(CSV))
     @append.register(HDFS(CSV), URL(CSV))
     @append.register(S3(TextFile), URL(TextFile))
     @append.register(S3(JSON), URL(JSON))
