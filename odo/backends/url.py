@@ -155,15 +155,29 @@ try:
 except ImportError:
     pass
 else:
-    @append.register(HDFS(JSON), URL(JSON))
-    @append.register(HDFS(TextFile), URL(TextFile))
-    @append.register(HDFS(JSONLines), URL(JSONLines))
-    @append.register(HDFS(JSON), URL(JSON))
-    @append.register(HDFS(CSV), URL(CSV))
     @append.register(S3(TextFile), URL(TextFile))
     @append.register(S3(JSON), URL(JSON))
     @append.register(S3(CSV), URL(CSV))
     @append.register(S3(JSONLines), URL(JSONLines))
     def other_remote_text_to_url_text(a, b, **kwargs):
         raise MDNotImplementedError()
+
+@append.register(HDFS(JSON), URL(JSON))
+@append.register(HDFS(TextFile), URL(TextFile))
+@append.register(HDFS(JSONLines), URL(JSONLines))
+@append.register(HDFS(JSON), URL(JSON))
+@append.register(HDFS(CSV), URL(CSV))
+def append_url_to_hdfs(target, source, **kwargs):
+
+    path = os.path.basename(urlparse(source.url).path)
+    try:
+        subtype = types_by_extension[ext(path)]
+    except KeyError:
+        subtype = type(resource(path))
+
+    t_url = resource(source.url)
+    t_data = convert(Temp(subtype), t_url)
+    append(target, t_data, **kwargs)
+
+
 

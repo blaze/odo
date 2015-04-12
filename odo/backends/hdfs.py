@@ -453,7 +453,7 @@ def convert_hdfs_file_to_temp_local(source, **kwargs):
 @append.register(HDFS(TextFile), TextFile)
 @append.register(HDFS(JSONLines), JSONLines)
 @append.register(HDFS(JSON), JSON)
-@append.register(HDFS(CSV), CSV)
+@append.register(HDFS(CSV), (CSV, Temp(CSV)))
 def append_local_file_to_hdfs(target, source, blocksize=100000, **kwargs):
     if raises(FileNotFound,
               lambda: target.hdfs.list_dir(target.path.lstrip('/'))):
@@ -543,6 +543,7 @@ def resource_hdfs(uri, **kwargs):
 @append.register(HDFS(CSV), (chunks(pd.DataFrame), pd.DataFrame, object))
 def append_object_to_hdfs(target, source, **kwargs):
     tmp = convert(Temp(target.subtype), source, **kwargs)
+    print(tmp)
     return append(target, tmp, **kwargs)
 
 
