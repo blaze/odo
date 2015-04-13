@@ -175,7 +175,8 @@ else:
     @append.register(HDFS(CSV), URL(CSV))
     def append_url_to_hdfs(target, source, **kwargs):
 
-        path = os.path.basename(urlparse(source.url).path)
+        path = source.filename
+
         try:
             subtype = types_by_extension[ext(path)]
         except KeyError:

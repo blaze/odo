@@ -84,14 +84,14 @@ def test_url_to_hdfs():
     if not host:
         pytest.skip('No HDFS_TEST_HOST envar defined')
 
-    def _test():
-        with tmpfile_hdfs() as target:
-            url_csv = resource(iris_url)
-            csv = convert(Temp(CSV), url_csv)
-            scsv = HDFS(CSV)(target, hdfs=hdfs)
-            into(scsv, csv)
+    with tmpfile_hdfs() as target:
 
-            assert discover(scsv) == discover(csv)
+        # build temp csv for assertion check
+        url_csv = resource(iris_url)
+        csv = convert(Temp(CSV), url_csv)
 
-    _test()
+        # test against url
+        scsv = HDFS(CSV)(target, hdfs=hdfs)
+        into(scsv, iris_url)
 
+        assert discover(scsv) == discover(csv)
