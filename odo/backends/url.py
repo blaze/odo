@@ -42,7 +42,8 @@ class _URL(object):
     chunk_size : int (default 1024)
         Size of chunks streamed into memory
     decode_unicode : bool (default False)
-        If True, content will be decoded using the best available encoding based on the response.
+        If True, content will be decoded using the best available
+        encoding based on the response.
 
      Examples
     --------
@@ -75,6 +76,7 @@ def URL(cls):
 URL.__doc__ = _URL.__doc__
 URL = memoize(URL)
 
+
 @sample.register((URL(CSV), URL(JSONLines)))
 @contextmanager
 def sample_url_line_delimited(data, lines=5):
@@ -102,7 +104,9 @@ def discover_url_line_delimited(c, lines=5, **kwargs):
     with sample(c, lines=lines) as fn:
         return discover(c.subtype(fn, **kwargs), **kwargs)
 
+
 types_by_extension = {'csv': CSV, 'json': JSONLines, 'txt': TextFile}
+
 
 @resource.register('ftp://.+', priority=16)
 @resource.register('http://.+', priority=16)
@@ -129,6 +133,7 @@ def append_urlX_to_X(target, source, **kwargs):
             for chunk in iter(curry(r.read, chunk_size), ''):
                 fp.write(chunk)
                 return target
+
 
 @convert.register(Temp(TextFile), (Temp(URL(TextFile)), URL(TextFile)))
 @convert.register(Temp(JSONLines), (Temp(URL(JSONLines)), URL(JSONLines)))
@@ -162,6 +167,7 @@ else:
     def other_remote_text_to_url_text(a, b, **kwargs):
         raise MDNotImplementedError()
 
+
 @append.register(HDFS(JSON), URL(JSON))
 @append.register(HDFS(TextFile), URL(TextFile))
 @append.register(HDFS(JSONLines), URL(JSONLines))
@@ -178,6 +184,3 @@ def append_url_to_hdfs(target, source, **kwargs):
     t_url = resource(source.url)
     t_data = convert(Temp(subtype), t_url)
     append(target, t_data, **kwargs)
-
-
-

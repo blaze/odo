@@ -27,8 +27,10 @@ except URLError:
     pytest.skip('Could not connect')
 
 
-iris_url = 'https://raw.githubusercontent.com/ContinuumIO/blaze/master/blaze/examples/data/iris.csv'
+iris_url = 'https://raw.githubusercontent.com/' \
+           'ContinuumIO/blaze/master/blaze/examples/data/iris.csv'
 ftp_url = "ftp://athena-dist.mit.edu/pub/XNeXT/README.txt"
+
 
 def test_url_resource():
     csv = resource(iris_url)
@@ -41,6 +43,7 @@ def test_failed_url():
     with tmpfile('.csv') as fn:
         into(fn, failed_url)
 
+
 def test_url_discover():
     csv = resource(iris_url)
     assert isinstance(discover(csv), datashape.DataShape)
@@ -52,6 +55,7 @@ def test_url_to_local_csv():
         path = os.path.abspath(csv.path)
         assert os.path.exists(path)
 
+
 def test_url_txt_resource():
     txt = resource(ftp_url)
     assert isinstance(txt, URL(TextFile))
@@ -62,6 +66,7 @@ def test_ftp_to_local_txt():
         txt = into(fn, ftp_url)
         path = os.path.abspath(txt.path)
         assert os.path.exists(path)
+
 
 def test_convert():
     # df = into(pd.DataFrame, iris_url)
@@ -76,6 +81,7 @@ def test_convert():
 
 from test_hdfs import tmpfile_hdfs, hdfs, host
 from odo.backends.hdfs import HDFS
+
 
 @pytest.mark.skipif(host is None, reason='No HDFS_TEST_HOST envar defined')
 def test_url_to_hdfs():
