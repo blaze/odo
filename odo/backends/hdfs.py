@@ -543,7 +543,6 @@ def resource_hdfs(uri, **kwargs):
 @append.register(HDFS(CSV), (chunks(pd.DataFrame), pd.DataFrame, object))
 def append_object_to_hdfs(target, source, **kwargs):
     tmp = convert(Temp(target.subtype), source, **kwargs)
-    print(tmp)
     return append(target, tmp, **kwargs)
 
 
