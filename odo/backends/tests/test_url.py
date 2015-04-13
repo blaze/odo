@@ -7,10 +7,9 @@ import uuid
 
 from odo import into, resource, URL, discover, CSV, TextFile, convert
 from odo.temp import _Temp, Temp
-from odo.utils import tmpfile
+from odo.utils import tmpfile, ignoring
 
 import datashape
-import pandas as pd
 
 try:
     from urllib2 import urlopen
@@ -78,17 +77,21 @@ def test_convert():
 
         assert isinstance(t_csv, _Temp)
 
-
-from test_hdfs import tmpfile_hdfs, hdfs, host
-from odo.backends.hdfs import HDFS
-
-
-@pytest.mark.skipif(host is None, reason='No HDFS_TEST_HOST envar defined')
 def test_url_to_hdfs():
-    with tmpfile_hdfs() as target:
-        url_csv = resource(iris_url)
-        csv = convert(Temp(CSV), url_csv)
-        scsv = HDFS(CSV)(target, hdfs=hdfs)
-        into(scsv, csv)
+    from odo.backends.hdfs import HDFS
+    from .test_hdfs import tmpfile_hdfs, hdfs, host
 
-        assert discover(scsv) == discover(csv)
+    if not host:
+        pytest.skip('No HDFS_TEST_HOST envar defined')
+
+    def _test():
+        with tmpfile_hdfs() as target:
+            url_csv = resource(iris_url)
+            csv = convert(Temp(CSV), url_csv)
+            scsv = HDFS(CSV)(target, hdfs=hdfs)
+            into(scsv, csv)
+
+            assert discover(scsv) == discover(csv)
+
+    _test()
+
