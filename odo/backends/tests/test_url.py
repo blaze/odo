@@ -3,6 +3,7 @@ from __future__ import print_function
 import pytest
 
 import os
+import uuid
 
 from odo import into, resource, URL, discover, CSV, TextFile, convert
 from odo.temp import _Temp, Temp
@@ -71,3 +72,17 @@ def test_convert():
         assert discover(url_csv) == discover(t_csv)
 
         assert isinstance(t_csv, _Temp)
+
+
+from test_hdfs import tmpfile_hdfs, hdfs, host
+from odo.backends.hdfs import HDFS
+
+@pytest.mark.skipif(host is None, reason='No HDFS_TEST_HOST envar defined')
+def test_url_to_hdfs():
+    with tmpfile_hdfs() as target:
+        url_csv = resource(iris_url)
+        csv = convert(Temp(CSV), url_csv)
+        scsv = HDFS(CSV)(target, hdfs=hdfs)
+        into(scsv, csv)
+
+        assert discover(scsv) == discover(csv)
