@@ -77,7 +77,7 @@ URL.__doc__ = _URL.__doc__
 URL = memoize(URL)
 
 
-@sample.register((URL(CSV), URL(JSONLines), URL(TextFile)))
+@sample.register((URL(CSV), URL(JSONLines)))
 @contextmanager
 def sample_url_line_delimited(data, lines=5, encoding='utf-8'):
     """Get a size `length` sample from an URL CSV or URL line-delimited JSON.
