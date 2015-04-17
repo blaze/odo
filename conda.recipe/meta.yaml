@@ -39,7 +39,7 @@ test:
     - pymongo
 
   commands:
-    - py.test -x -v --doctest-modules --pyargs odo
+    - py.test -x -v --pyargs odo
 
 about:
   home: http://github.com/ContinuumIO/into/
