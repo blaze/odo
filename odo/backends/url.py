@@ -2,6 +2,7 @@ from __future__ import print_function, division, absolute_import
 
 import os
 import uuid
+import codecs
 
 from contextlib import contextmanager, closing
 
@@ -11,24 +12,23 @@ except ImportError:
     from urllib.request import urlopen
 
 from toolz import memoize
-from toolz.curried import take, map, pipe, curry
+from toolz.curried import take, pipe, curry, map
 
 from .. import discover
 from ..resource import resource
 from ..append import append
 from ..convert import convert
-from ..temp import Temp, _Temp
+from ..temp import Temp
 from .csv import CSV
 from .json import JSON, JSONLines
 from .text import TextFile
-
 
 from multipledispatch import MDNotImplementedError
 
 from .text import TextFile
 
 from ..compatibility import urlparse
-from ..utils import tmpfile, ext, sample, filter_kwargs
+from ..utils import tmpfile, ext, sample
 
 
 class _URL(object):
@@ -77,31 +77,33 @@ URL.__doc__ = _URL.__doc__
 URL = memoize(URL)
 
 
-@sample.register((URL(CSV), URL(JSONLines)))
+@sample.register((URL(CSV), URL(JSONLines), URL(TextFile)))
 @contextmanager
-def sample_url_line_delimited(data, lines=5):
+def sample_url_line_delimited(data, lines=5, encoding='utf-8'):
     """Get a size `length` sample from an URL CSV or URL line-delimited JSON.
 
     Parameters
     ----------
     data : URL(CSV)
         A hosted CSV
-    lines : int, optional, default ``8192``
-        Number of bytes to read into memory
+    lines : int, optional, default ``5``
+        Number of lines to read into memory
     """
 
     with closing(urlopen(data.url)) as r:
-        raw = pipe(r, map(bytes.decode), take(10), '\n'.join)
+        raw = pipe(r, take(lines), map(bytes.strip),
+                   curry(codecs.iterdecode, encoding=encoding),
+                   '\n'.decode(encoding).join)
         with tmpfile(data.filename) as fn:
-            with open(fn, 'wb') as f:
-                f.write(raw.encode('utf-8'))
+            with codecs.open(fn, 'wb', encoding=encoding) as f:
+                f.write(raw)
             yield fn
 
 
 @discover.register((URL(CSV), URL(JSONLines)))
-def discover_url_line_delimited(c, lines=5, **kwargs):
+def discover_url_line_delimited(c, lines=5, encoding='utf-8', **kwargs):
     """Discover CSV and JSONLines files from URL."""
-    with sample(c, lines=lines) as fn:
+    with sample(c, lines=lines, encoding=encoding) as fn:
         return discover(c.subtype(fn, **kwargs), **kwargs)
 
 
@@ -166,7 +168,6 @@ else:
     @append.register(S3(JSONLines), URL(JSONLines))
     def other_remote_text_to_url_text(a, b, **kwargs):
         raise MDNotImplementedError()
-
 
     @append.register(HDFS(JSON), URL(JSON))
     @append.register(HDFS(TextFile), URL(TextFile))

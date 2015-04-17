@@ -3,9 +3,11 @@ from __future__ import print_function
 import pytest
 
 from functools import partial
+import codecs
 import os
 
 from odo import odo, resource, URL, discover, CSV, TextFile, convert
+from odo.backends.url import sample
 from odo.temp import _Temp, Temp
 from odo.utils import tmpfile, raises
 
@@ -30,6 +32,24 @@ ftp_url = "ftp://athena-dist.mit.edu/pub/XNeXT/README.txt"
 def test_url_resource():
     csv = resource(iris_url)
     assert isinstance(csv, URL(CSV))
+
+
+def test_sample_different_line_counts():
+    with sample(resource(iris_url), lines=10) as fn:
+        with open(fn, 'r') as f:
+            assert len(list(f)) == 10
+
+    with sample(resource(iris_url), lines=5) as fn:
+        with open(fn, 'r') as f:
+            assert len(list(f)) == 5
+
+
+def test_sample_different_encoding():
+    encoding = 'latin-1'
+    lines = 10
+    with sample(resource(iris_url), lines=lines, encoding=encoding) as fn:
+        with codecs.open(fn, 'r', encoding=encoding) as f:
+            assert len(list(f)) == lines
 
 
 @pytest.mark.xfail(raises=HTTPError)
