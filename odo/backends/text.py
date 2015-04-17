@@ -15,6 +15,7 @@ from ..append import append
 from ..convert import convert
 from ..resource import resource
 
+
 class TextFile(object):
     canonical_extension = 'txt'
 

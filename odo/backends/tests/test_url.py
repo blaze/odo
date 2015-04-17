@@ -2,12 +2,12 @@ from __future__ import print_function
 
 import pytest
 
+from functools import partial
 import os
-import uuid
 
-from odo import into, resource, URL, discover, CSV, TextFile, convert
+from odo import odo, resource, URL, discover, CSV, TextFile, convert
 from odo.temp import _Temp, Temp
-from odo.utils import tmpfile, ignoring
+from odo.utils import tmpfile, raises
 
 import datashape
 
@@ -18,16 +18,12 @@ except ImportError:
     from urllib.request import urlopen
     from urllib.error import HTTPError, URLError
 
-skipif = pytest.mark.skipif
+pytestmark = pytest.mark.skipif(raises(URLError,
+                                       partial(urlopen, "http://google.com")),
+                                reason='unable to connect to google.com')
 
-try:
-    r = urlopen("http://google.com")
-except URLError:
-    pytest.skip('Could not connect')
-
-
-iris_url = 'https://raw.githubusercontent.com/' \
-           'ContinuumIO/blaze/master/blaze/examples/data/iris.csv'
+iris_url = ('https://raw.githubusercontent.com/'
+            'ContinuumIO/blaze/master/blaze/examples/data/iris.csv')
 ftp_url = "ftp://athena-dist.mit.edu/pub/XNeXT/README.txt"
 
 
@@ -40,7 +36,7 @@ def test_url_resource():
 def test_failed_url():
     failed_url = "http://foo.com/myfile.csv"
     with tmpfile('.csv') as fn:
-        into(fn, failed_url)
+        odo(failed_url, fn)
 
 
 def test_url_discover():
@@ -50,7 +46,7 @@ def test_url_discover():
 
 def test_url_to_local_csv():
     with tmpfile('.csv') as fn:
-        csv = into(fn, iris_url)
+        csv = odo(iris_url, fn)
         path = os.path.abspath(csv.path)
         assert os.path.exists(path)
 
@@ -62,27 +58,23 @@ def test_url_txt_resource():
 
 def test_ftp_to_local_txt():
     with tmpfile('.txt') as fn:
-        txt = into(fn, ftp_url)
+        txt = odo(ftp_url, fn)
         path = os.path.abspath(txt.path)
         assert os.path.exists(path)
 
 
 def test_convert():
-    # df = into(pd.DataFrame, iris_url)
-    # print(df)
-    with tmpfile('.csv') as fn:
-        url_csv = resource(iris_url)
-        t_csv = convert(Temp(CSV), url_csv)
-        assert discover(url_csv) == discover(t_csv)
+    url_csv = resource(iris_url)
+    t_csv = convert(Temp(CSV), url_csv)
+    assert discover(url_csv) == discover(t_csv)
 
-        assert isinstance(t_csv, _Temp)
+    assert isinstance(t_csv, _Temp)
 
+
+@pytest.mark.skipif(os.environ.get('HDFS_TEST_HOST') is None,
+                    reason='No HDFS_TEST_HOST envar defined')
 def test_url_to_hdfs():
-    from odo.backends.hdfs import HDFS
-    from .test_hdfs import tmpfile_hdfs, hdfs, host
-
-    if not host:
-        pytest.skip('No HDFS_TEST_HOST envar defined')
+    from .test_hdfs import tmpfile_hdfs, hdfs, HDFS
 
     with tmpfile_hdfs() as target:
 
@@ -92,6 +84,6 @@ def test_url_to_hdfs():
 
         # test against url
         scsv = HDFS(CSV)(target, hdfs=hdfs)
-        into(scsv, iris_url)
+        odo(iris_url, scsv)
 
         assert discover(scsv) == discover(csv)
