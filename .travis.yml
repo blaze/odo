@@ -63,7 +63,7 @@ before_script:
  - psql -c "create database test;" -U postgres
 
 script:
-    - py.test --doctest-modules odo
+    - py.test -x -v --doctest-modules odo
 
 notifications:
   email: false
