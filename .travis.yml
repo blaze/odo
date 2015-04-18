@@ -29,7 +29,7 @@ install:
   - conda update conda
 
   # Install dependencies
-  - conda create -n odo-test python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python pymongo paramiko boto dask
+  - conda create -n odo-test python=$TRAVIS_PYTHON_VERSION pytest numpy pandas 'sqlalchemy<1.0.0' h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python pymongo paramiko boto dask
   - source activate odo-test
 
   # Install various deps

@@ -34,7 +34,7 @@ test:
     - coverage
     - h5py
     - pytables
-    - sqlalchemy
+    - sqlalchemy <1.0.0
     - bcolz
     - pymongo
 
