@@ -93,7 +93,7 @@ def sample_url_line_delimited(data, lines=5, encoding='utf-8'):
     with closing(urlopen(data.url)) as r:
         raw = pipe(r, take(lines), map(bytes.strip),
                    curry(codecs.iterdecode, encoding=encoding),
-                   '\n'.decode(encoding).join)
+                   b'\n'.decode(encoding).join)
         with tmpfile(data.filename) as fn:
             with codecs.open(fn, 'wb', encoding=encoding) as f:
                 f.write(raw)
