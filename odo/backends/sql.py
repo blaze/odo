@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import os
 import re
 
 from itertools import chain
@@ -8,6 +9,9 @@ from datetime import datetime, date
 
 import pandas as pd
 import sqlalchemy as sa
+from sqlalchemy.ext.compiler import compiles
+
+from multipledispatch import MDNotImplementedError
 
 import datashape
 from datashape import DataShape, Record, Option, var, dshape
@@ -24,6 +28,7 @@ from ..convert import convert, ooc_types
 from ..append import append
 from ..resource import resource
 from ..chunks import Chunks
+from .csv import CSV
 
 base = (int, float, datetime, date, bool, str)
 
@@ -502,3 +507,42 @@ def select_or_selectable_to_frame(el, **kwargs):
         return pd.DataFrame(columns=columns)
     return pd.DataFrame(list(chain([tuple(row)], map(tuple, rows))),
                         columns=columns)
+
+
+class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
+    def __init__(self, element, path):
+        self.element = element
+        self.path = path
+
+
+@compiles(CopyToCSV, 'postgresql')
+def compile_copy_to_csv_postgres(element, compiler, **kwargs):
+    istable = isinstance(element.element, sa.Table)
+    template = 'COPY {0} to %r WITH CSV HEADER'
+    selectable_format = '(%s)' if not istable else '%s'
+    if istable:
+        processed = element.element.name
+    else:
+        processed = compiler.process(element.element)
+    assert processed, \
+        ('got empty string from processing element of type %r' %
+         type(element.element).__name__)
+    return template.format(selectable_format) % (processed,
+                                                 os.path.abspath(element.path))
+
+
+@append.register(CSV, sa.sql.Selectable)
+def append_table_to_csv(csv, selectable, **kwargs):
+    with selectable.bind.connect() as conn:
+        conn.execute(CopyToCSV(selectable, csv.path))
+    return csv
+
+
+try:
+    from .hdfs import HDFS
+except ImportError:
+    pass
+else:
+    @append.register(HDFS(CSV), sa.sql.Selectable)
+    def append_selectable_to_hdfs_csv(*args, **kwargs):
+        raise MDNotImplementedError()
