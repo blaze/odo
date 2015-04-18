@@ -35,11 +35,13 @@ test:
     - dynd-python
     - paramiko
     - bokeh
-    - pytables
+    - pytables >=3.0.0
     - boto
+    - pip
 
   commands:
-    - python -c 'import odo; assertion odo.__version__ != "unknown"'
+    - pip install sas7bdat
+    - python -c 'import odo; assert odo.__version__ != "unknown"'
     - py.test -x -v --doctest-modules --pyargs odo
 
 about:
