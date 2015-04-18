@@ -38,12 +38,16 @@ test:
     - bokeh # [not py26]
     - pytables >=3.0.0
     - pip
+    - pymysql # [not py26]
+    - psycopg2 # [unix and not py26]
     - spark >=1.3.0 # [osx and py27]
 
   commands:
     - pip install sas7bdat
     - pip install git+git://github.com/cpcloud/redshift_sqlalchemy # [not win]
+    - pip install pymysql psycopg2 # [win or py26]
     - py.test -vx --pyargs odo -rsxX # [win or py26]
+    - py.test -vx --doctest-modules --pyargs odo -rsxX # [unix and not py26]
 
 about:
   home: http://github.com/ContinuumIO/into/
