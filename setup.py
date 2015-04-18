@@ -2,7 +2,7 @@
 
 import os
 from fnmatch import fnmatch
-from setuptools import setup, find_packages
+from distutils.core import setup
 
 import versioneer
 versioneer.VCS = 'git'
@@ -10,6 +10,12 @@ versioneer.versionfile_source = os.path.join('odo', '_version.py')
 versioneer.versionfile_build = versioneer.versionfile_source
 versioneer.tag_prefix = ''  # tags are like 1.2.0
 versioneer.parentdir_prefix = 'odo-'  # dirname like 'myproject-1.2.0'
+
+
+def find_packages(path, prefix):
+    for root, _, filenames in filter(lambda x: '__init__.py' in x[2],
+                                     os.walk(path)):
+        yield os.path.relpath(root).replace(os.sep, '.')
 
 
 def find_data_files(where, exts):
@@ -31,6 +37,10 @@ def read(filename):
         return f.read()
 
 
+packages = list(find_packages(os.path.abspath('odo'), 'odo'))
+import pdb; pdb.set_trace()
+
+
 setup(name='odo',
       version=versioneer.get_version(),
       cmdclass=versioneer.get_cmdclass(),
@@ -40,7 +50,7 @@ setup(name='odo',
       author_email='blaze-dev@continuum.io',
       license='BSD',
       keywords='odo data conversion hdf5 sql blaze',
-      packages=find_packages(),
+      packages=packages,
       install_requires=read('requirements.txt').strip().split('\n'),
       long_description=read('README.rst'),
       package_data={'odo': package_data},

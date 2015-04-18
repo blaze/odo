@@ -13,13 +13,6 @@ source:
 requirements:
   build:
     - python
-    - setuptools
-    - datashape >=0.4.4
-    - numpy >=1.7
-    - pandas >=0.15.0
-    - toolz
-    - multipledispatch >=0.4.7
-    - networkx
 
   run:
     - python
@@ -35,12 +28,14 @@ test:
     - pytest
     - h5py
     - pytables >=3.0.0
-    - sqlalchemy >=0.8.0
+    - sqlalchemy >=0.8.0,<1.0.0
     - bcolz
     - pymongo >=2.8
+    - dask
 
   commands:
-    - py.test -x -v --pyargs odo
+    - python -c 'import odo; assertion odo.__version__ != "unknown"'
+    - py.test -x -v --doctest-modules --pyargs odo
 
 about:
   home: http://github.com/ContinuumIO/into/
