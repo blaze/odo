@@ -28,12 +28,15 @@ test:
     - dask
     - dynd-python
     - paramiko
-    - bokeh
+    - bokeh # [not py26]
     - pytables >=3.0.0
     - pip
+    - pymysql # [not py26]
+    - psycopg2 # [not py26]
 
   commands:
     - pip install sas7bdat
+    - pip install pymysql psycopg2 # [py26]
     - py.test -vx --pyargs odo -rs
 
 about:
