@@ -32,6 +32,7 @@ test:
     - bcolz
     - pymongo >=2.8
     - dask
+    - dynd-python
 
   commands:
     - python -c 'import odo; assertion odo.__version__ != "unknown"'
