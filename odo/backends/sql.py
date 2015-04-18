@@ -119,7 +119,10 @@ def batch(sel, chunksize=10000):
 
             for rows in iter_except(curry(result.fetchmany, size=chunksize),
                                     sa.exc.ResourceClosedError):
-                yield rows
+                if rows:
+                    yield rows
+                else:
+                    return
     terator = rowterator(sel)
     return next(terator), concat(terator)
 
