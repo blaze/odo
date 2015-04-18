@@ -57,7 +57,7 @@ before_script:
  - mysql -e "create database if not exists test;" -u root
 
 script:
-    - py.test --doctest-modules odo
+    - py.test -v --doctest-modules odo
 
 notifications:
   email: false
