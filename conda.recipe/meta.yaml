@@ -43,8 +43,7 @@ test:
     - spark >=1.3.0 # [osx and py27]
 
   commands:
-    - pip install sas7bdat
-    - py.test -vx --pyargs odo -rsxX
+    - pip install sas7bdat && py.test -vx --pyargs odo -rsxX
 
 about:
   home: http://github.com/ContinuumIO/into/
