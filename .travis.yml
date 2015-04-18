@@ -29,7 +29,7 @@ install:
   - conda update conda
 
   # Install dependencies
-  - conda create -n odo-test python=$TRAVIS_PYTHON_VERSION pytest numpy pandas 'sqlalchemy<1.0.0' h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python pymongo paramiko boto dask pymysql
+  - conda create -n odo-test python=$TRAVIS_PYTHON_VERSION pytest numpy pandas 'sqlalchemy<1.0.0' h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python pymongo paramiko boto dask
   - source activate odo-test
 
   # Install various deps
@@ -45,10 +45,10 @@ install:
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then conda install spark=$SPARK_VERSION -c blaze -c https://conda.binstar.org/blaze/channel/dev; fi
 
   # Install Bokeh
-  - if [[ $TRAVIS_PYTHON_VERSION > '2.6' ]]; then conda install bokeh psycopg2; fi
+  - if [[ $TRAVIS_PYTHON_VERSION > '2.6' ]]; then conda install bokeh psycopg2 pymysql; fi
 
   # For bcolz
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda install unittest2 && pip install psycopg2; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda install unittest2 && pip install psycopg2 pymysql; fi
 
 # Before_script section stolen from fabric
 # See license https://github.com/fabric/fabric/blob/master/LICENSE
