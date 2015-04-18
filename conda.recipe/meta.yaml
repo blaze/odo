@@ -38,11 +38,14 @@ test:
     - pytables >=3.0.0
     - boto
     - pip
+    - pymysql
+    - psycopg2
 
   commands:
     - pip install sas7bdat
+    - pip install git+git://github.com/cpcloud/redshift_sqlalchemy
     - python -c 'import odo; assert odo.__version__ != "unknown"'
-    - py.test -x -v --doctest-modules --pyargs odo
+    - py.test -vx --doctest-modules --pyargs odo -rs
 
 about:
   home: http://github.com/ContinuumIO/into/
