@@ -44,8 +44,8 @@ test:
 
   commands:
     - pip install sas7bdat
-    - pip install git+git://github.com/cpcloud/redshift_sqlalchemy # [not win]
     - pip install pymysql psycopg2 # [win or py26]
+    - pip install git+git://github.com/cpcloud/redshift_sqlalchemy # [not win]
     - py.test -vx --pyargs odo -rsxX # [win or py26]
     - py.test -vx --doctest-modules --pyargs odo -rsxX # [unix and not py26]
 
