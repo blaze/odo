@@ -34,7 +34,6 @@ test:
 
   commands:
     - pip install sas7bdat
-    - python -c "import odo; assert odo.__version__ != 'unknown'"
     - py.test -vx --pyargs odo -rs
 
 about:
