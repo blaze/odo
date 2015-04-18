@@ -46,8 +46,8 @@ test:
     - pip install sas7bdat
     - pip install git+git://github.com/cpcloud/redshift_sqlalchemy # [not win]
     - pip install pymysql psycopg2 # [py26]
-    - py.test -vx --pyargs odo -rs # [win or py26]
-    - py.test -vx --doctest-modules --pyargs odo -rs # [unix and not py26]
+    - py.test -vx --pyargs odo -rsxX # [win or py26]
+    - py.test -vx --doctest-modules --pyargs odo -rsxX # [unix and not py26]
 
 about:
   home: http://github.com/ContinuumIO/into/
