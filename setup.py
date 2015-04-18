@@ -12,9 +12,8 @@ versioneer.tag_prefix = ''  # tags are like 1.2.0
 versioneer.parentdir_prefix = 'odo-'  # dirname like 'myproject-1.2.0'
 
 
-def find_packages(path, prefix):
-    for root, _, filenames in filter(lambda x: '__init__.py' in x[2],
-                                     os.walk(path)):
+def find_packages(path):
+    for root, _, _ in filter(lambda x: '__init__.py' in x[2], os.walk(path)):
         yield os.path.relpath(root).replace(os.sep, '.')
 
 
@@ -37,8 +36,7 @@ def read(filename):
         return f.read()
 
 
-packages = list(find_packages(os.path.abspath('odo'), 'odo'))
-import pdb; pdb.set_trace()
+packages = list(find_packages(os.path.abspath('odo')))
 
 
 setup(name='odo',
