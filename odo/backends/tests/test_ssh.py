@@ -25,8 +25,10 @@ try:
     ssh.close()
 except socket.error:
     pytest.skip('Could not connect')
-except paramiko.PasswordRequiredException:
-    pytest.skip('password required for connection')
+except paramiko.PasswordRequiredException as e:
+    pytest.skip(str(e))
+except paramiko.SSHException as e:
+    pytest.skip(str(e))
 
 
 def test_resource():
