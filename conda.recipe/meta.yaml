@@ -40,7 +40,6 @@ test:
     - pip
     - pymysql # [not py26]
     - psycopg2 # [unix and not py26]
-    - spark >=1.3.0 # [osx and py27]
 
   commands:
     - pip install sas7bdat && py.test -vx --pyargs odo -rsxX
