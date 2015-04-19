@@ -20,7 +20,7 @@ from datashape import discover
 from datashape.dispatch import dispatch
 
 from toolz import (partition_all, keyfilter, first, memoize, valfilter,
-                   identity, concat, curry)
+                   identity, concat, curry, merge)
 from toolz.curried import pluck, map
 
 from ..utils import keywords, ignoring, iter_except
@@ -533,7 +533,7 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
         ('got empty string from processing element of type %r' %
          type(element.element).__name__)
     return template.format(selectable_format) % (processed,
-                                                 os.path.abspath(element.path),
+                                                 element.path,
                                                  'HEADER'
                                                  if element.header
                                                  else '',
@@ -559,7 +559,7 @@ def compile_copy_to_csv_mysql(element, compiler, **kwargs):
     columns = ', '.join(map(repr, element.element.c.keys()))
     select_template = ('SELECT %s UNION ALL %s' %
                        (columns,
-                        template % (processed, os.path.abspath(element.path),
+                        template % (processed, element.path,
                                     element.delimiter, element.quote,
                                     element.lineterminator)))
     return select_template
@@ -567,8 +567,11 @@ def compile_copy_to_csv_mysql(element, compiler, **kwargs):
 
 @append.register(CSV, sa.sql.Selectable)
 def append_table_to_csv(csv, selectable, **kwargs):
+    kwargs = keyfilter(keywords(CopyToCSV).__contains__,
+                       merge(csv.dialect, kwargs))
+    stmt = CopyToCSV(selectable, os.path.abspath(csv.path), **kwargs)
     with selectable.bind.connect() as conn:
-        conn.execute(CopyToCSV(selectable, csv.path, **csv.dialect))
+        conn.execute(stmt)
     return csv
 
 
