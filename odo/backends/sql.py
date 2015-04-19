@@ -510,15 +510,20 @@ def select_or_selectable_to_frame(el, **kwargs):
 
 
 class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
-    def __init__(self, element, path):
+    def __init__(self, element, path, delimiter=',', quote='"',
+                 lineterminator=r'\n', header=True):
         self.element = element
         self.path = path
+        self.delimiter = delimiter
+        self.quote = quote
+        self.lineterminator = lineterminator
+        self.header = header
 
 
 @compiles(CopyToCSV, 'postgresql')
 def compile_copy_to_csv_postgres(element, compiler, **kwargs):
     istable = isinstance(element.element, sa.Table)
-    template = 'COPY {0} to %r WITH CSV HEADER'
+    template = 'COPY {0} TO %r WITH CSV %s DELIMITER %r QUOTE %r'
     selectable_format = '(%s)' if not istable else '%s'
     if istable:
         processed = element.element.name
@@ -528,13 +533,42 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
         ('got empty string from processing element of type %r' %
          type(element.element).__name__)
     return template.format(selectable_format) % (processed,
-                                                 os.path.abspath(element.path))
+                                                 os.path.abspath(element.path),
+                                                 'HEADER'
+                                                 if element.header
+                                                 else '',
+                                                 element.delimiter,
+                                                 element.quote)
+
+
+@compiles(CopyToCSV, 'mysql')
+def compile_copy_to_csv_mysql(element, compiler, **kwargs):
+    istable = isinstance(element.element, sa.Table)
+    template = """
+    %s INTO OUTFILE %r
+    FIELDS TERMINATED BY %r
+    ENCLOSED BY %r
+    LINES TERMINATED BY '%s'"""
+    if istable:
+        processed = 'SELECT * FROM %s' % element.element.name
+    else:
+        processed = compiler.process(element.element)
+    assert processed, \
+        ('got empty string from processing element of type %r' %
+         type(element.element).__name__)
+    columns = ', '.join(map(repr, element.element.c.keys()))
+    select_template = ('SELECT %s UNION ALL %s' %
+                       (columns,
+                        template % (processed, os.path.abspath(element.path),
+                                    element.delimiter, element.quote,
+                                    element.lineterminator)))
+    return select_template
 
 
 @append.register(CSV, sa.sql.Selectable)
 def append_table_to_csv(csv, selectable, **kwargs):
     with selectable.bind.connect() as conn:
-        conn.execute(CopyToCSV(selectable, csv.path))
+        conn.execute(CopyToCSV(selectable, csv.path, **csv.dialect))
     return csv
 
 
