@@ -9,6 +9,7 @@ import itertools
 from odo.backends.csv import CSV
 from odo import resource, odo
 import sqlalchemy
+import sqlalchemy as sa
 import os
 import sys
 import csv as csv_module
@@ -177,3 +178,11 @@ def test_sql_to_csv(sql, csv):
         csv = odo(sql, fn)
         assert odo(csv, list) == data
         assert discover(csv).measure.names == discover(sql).measure.names
+
+
+def test_sql_select_to_csv(sql, csv):
+    sql = odo(csv, sql)
+    query = sa.select([sql.c.a])
+    with tmpfile('.csv') as fn:
+        csv = odo(query, fn)
+        assert odo(csv, list) == [(x,) for x, _ in data]
