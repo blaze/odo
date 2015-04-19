@@ -176,3 +176,4 @@ def test_sql_to_csv(sql, csv):
     with tmpfile('.csv') as fn:
         csv = odo(sql, fn)
         assert odo(csv, list) == data
+        assert discover(csv).measure.names == discover(sql).measure.names
