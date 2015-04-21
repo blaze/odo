@@ -157,7 +157,6 @@ def file_to_temp_url_file(data, **kwargs):
     return append(target, data, **kwargs)
 
 try:
-    from .hdfs import HDFS
     from .aws import S3
 except ImportError:
     pass
@@ -168,7 +167,11 @@ else:
     @append.register(S3(JSONLines), URL(JSONLines))
     def other_remote_text_to_url_text(a, b, **kwargs):
         raise MDNotImplementedError()
-
+try:
+    from .hdfs import HDFS
+except ImportError:
+    pass
+else:
     @append.register(HDFS(JSON), URL(JSON))
     @append.register(HDFS(TextFile), URL(TextFile))
     @append.register(HDFS(JSONLines), URL(JSONLines))
