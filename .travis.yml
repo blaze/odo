@@ -32,11 +32,11 @@ install:
   - conda create -n odo-test python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python pymongo paramiko boto dask
   - source activate odo-test
 
+  # datashape
+  - conda install datashape -c blaze
+
   # Install various deps
   - pip install sas7bdat
-
-  # Install DataShape
-  - pip install --upgrade git+http://github.com/ContinuumIO/datashape
 
   # install pyspark
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then conda install spark=$SPARK_VERSION -c blaze -c https://conda.binstar.org/blaze/channel/dev; fi
