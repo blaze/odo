@@ -1,20 +1,17 @@
 from __future__ import absolute_import, division, print_function
 
 import pytest
-pytest.importorskip('dask')
-pytest.importorskip('dask.bag')
 
-from odo.backends.dask import append, merge
+pytest.importorskip('dask')
+
+from toolz import merge
+from odo.backends.dask import append
 from dask.array.core import insert_to_ooc, Array
-from dask.bag.core import Bag
 from dask import core
-from odo import chunks, convert, into, TextFile
-from odo.utils import tmpfile, filetexts
+from odo import convert, into
+from odo.utils import tmpfile
 import numpy as np
 
-####################
-# dask.array tests #
-####################
 
 def eq(a, b):
     c = a == b
@@ -25,30 +22,28 @@ def eq(a, b):
 
 def test_convert():
     x = np.arange(600).reshape((20, 30))
-    d = convert(Array, x, blockshape=(4, 5))
-
+    d = convert(Array, x, chunks=(4, 5))
     assert isinstance(d, Array)
 
 
 def test_convert_to_numpy_array():
     x = np.arange(600).reshape((20, 30))
-    d = convert(Array, x, blockshape=(4, 5))
+    d = convert(Array, x, chunks=(4, 5))
     x2 = convert(np.ndarray, d)
-
     assert eq(x, x2)
 
 
 def test_append_to_array():
     bcolz = pytest.importorskip('bcolz')
     x = np.arange(600).reshape((20, 30))
-    a = into(Array, x, blockshape=(4, 5))
+    a = into(Array, x, chunks=(4, 5))
     b = bcolz.zeros(shape=(0, 30), dtype=x.dtype)
 
     append(b, a)
     assert eq(b[:], x)
 
     with tmpfile('hdf5') as fn:
-        h = into(fn+'::/data', a)
+        h = into(fn + '::/data', a)
         assert eq(h[:], x)
         h.file.close()
 
@@ -56,7 +51,7 @@ def test_append_to_array():
 def test_into_inplace():
     bcolz = pytest.importorskip('bcolz')
     x = np.arange(600).reshape((20, 30))
-    a = into(Array, x, blockshape=(4, 5))
+    a = into(Array, x, chunks=(4, 5))
     b = bcolz.zeros(shape=(20, 30), dtype=x.dtype)
 
     append(b, a, inplace=True)
@@ -66,7 +61,7 @@ def test_into_inplace():
 def test_insert_to_ooc():
     x = np.arange(600).reshape((20, 30))
     y = np.empty(shape=x.shape, dtype=x.dtype)
-    a = convert(Array, x, blockshape=(4, 5))
+    a = convert(Array, x, chunks=(4, 5))
 
     dsk = insert_to_ooc(y, a)
     core.get(merge(dsk, a.dask), list(dsk.keys()))
@@ -74,40 +69,8 @@ def test_insert_to_ooc():
     assert eq(y, x)
 
 
-def test__array__():
+def test_array_interface():
     x = np.arange(600).reshape((20, 30))
-    d = convert(Array, x, blockshape=(4, 5))
+    d = convert(Array, x, chunks=(4, 5))
 
     assert eq(x, np.array(d))
-
-##################
-# dask.bag tests #
-##################
-
-
-def inc(x):
-    return x + 1
-
-dsk = {('x', 0): (range, 5),
-       ('x', 1): (range, 5),
-       ('x', 2): (range, 5)}
-
-L = list(range(5)) * 3
-
-b = Bag(dsk, 'x', 3)
-
-def test_convert_bag_to_list():
-    assert convert(list, b) == L
-
-def test_convert_logfiles_to_bag():
-    with filetexts({'a1.log': 'Hello\nWorld', 'a2.log': 'Hola\nMundo'}) as fns:
-        logs = chunks(TextFile)(list(map(TextFile, fns)))
-        b = convert(Bag, logs)
-        assert isinstance(b, Bag)
-        assert 'a1.log' in str(b.dask.values())
-        assert convert(list, b) == convert(list, logs)
-
-
-def test_sequence():
-    b = into(Bag, [1, 2, 3])
-    assert set(b.map(inc)) == set([2, 3, 4])
