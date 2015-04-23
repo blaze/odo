@@ -8,7 +8,7 @@ from toolz import merge
 from odo.backends.dask import append
 from dask.array.core import insert_to_ooc, Array
 from dask import core
-from odo import convert, into
+from odo import convert, into, odo
 from odo.utils import tmpfile
 import numpy as np
 
@@ -42,8 +42,8 @@ def test_append_to_array():
     append(b, a)
     assert eq(b[:], x)
 
-    with tmpfile('hdf5') as fn:
-        h = into(fn + '::/data', a)
+    with tmpfile('.hdf5') as fn:
+        h = odo(a, fn + '::/data')
         assert eq(h[:], x)
         h.file.close()
 
