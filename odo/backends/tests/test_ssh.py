@@ -27,8 +27,10 @@ try:
     ssh.close()
 except socket.error:
     pytest.skip('Could not connect')
-except paramiko.PasswordRequiredException:
-    pytest.skip('password required for connection')
+except paramiko.PasswordRequiredException as e:
+    pytest.skip(str(e))
+except paramiko.SSHException as e:
+    pytest.skip(str(e))
 
 
 def test_resource():
@@ -167,8 +169,8 @@ def test_convert_through_temporary_local_storage():
         assert (into(np.ndarray, sjson) == into(np.ndarray, df)).all()
 
 
-@skipif(ON_TRAVIS_CI and sys.version_info[:2] == (3, 3),
-        reason='Strange hanging on travis for python33')
+@skipif(ON_TRAVIS_CI and sys.version_info[0] == 3,
+        reason='Strange hanging on travis for python33 and python34')
 def test_ssh_csv_to_s3_csv():
     # for some reason this can only be run in the same file as other ssh tests
     # and must be a Temp(SSH(CSV)) otherwise tests above this one fail
@@ -181,8 +183,8 @@ def test_ssh_csv_to_s3_csv():
             assert discover(result) == discover(resource(b))
 
 
-@skipif(ON_TRAVIS_CI and sys.version_info[:2] == (3, 3),
-        reason='windows does not have an SSH daemon on localhost')
+@skipif(ON_TRAVIS_CI and sys.version_info[0] == 3,
+        reason='Strange hanging on travis for python33 and python34')
 def test_s3_to_ssh():
     pytest.importorskip('boto')
 

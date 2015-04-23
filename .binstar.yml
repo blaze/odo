@@ -16,6 +16,9 @@ engine:
 before_script:
   - python -V
 
+install:
+  - conda config --add channels blaze
+
 script:
   - conda build conda.recipe
 

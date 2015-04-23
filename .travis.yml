@@ -32,23 +32,23 @@ install:
   - conda create -n odo-test python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python pymongo paramiko boto dask
   - source activate odo-test
 
+  # datashape
+  - conda install datashape -c blaze
+
   # Install various deps
-  - pip install pymysql psycopg2 sas7bdat
-
-  # Install DataShape
-  - pip install --upgrade git+http://github.com/ContinuumIO/datashape
-
-  # redshift sqlalchemy dialect
-  - pip install --upgrade git+git://github.com/cpcloud/redshift_sqlalchemy
+  - pip install sas7bdat
 
   # install pyspark
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then conda install spark=$SPARK_VERSION -c blaze -c https://conda.binstar.org/blaze/channel/dev; fi
 
   # Install Bokeh
-  - if [[ $TRAVIS_PYTHON_VERSION > '2.6' ]]; then conda install bokeh; fi
+  - if [[ $TRAVIS_PYTHON_VERSION > '2.6' ]]; then conda install bokeh psycopg2 pymysql; fi
 
   # For bcolz
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda install unittest2; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda install unittest2 && pip install psycopg2 pymysql; fi
+
+  # redshift sqlalchemy dialect
+  - pip install --upgrade git+git://github.com/cpcloud/redshift_sqlalchemy
 
 # Before_script section stolen from fabric
 # See license https://github.com/fabric/fabric/blob/master/LICENSE
@@ -63,7 +63,7 @@ before_script:
  - psql -c "create database test;" -U postgres
 
 script:
-    - py.test --doctest-modules odo
+    - py.test -v --doctest-modules odo
 
 notifications:
   email: false
