@@ -6,7 +6,9 @@ from datetime import datetime, date
 
 import pandas as pd
 
-from toolz import merge, keyfilter, take
+from toolz import merge, keyfilter
+from toolz.compatibility import zip, map
+from cytoolz import take
 
 from graphlab import SFrame, SArray
 
@@ -50,25 +52,20 @@ def discover_sarray(sa, n=1000):
     return var * measure
 
 
-@convert.register(pd.DataFrame, SFrame)
+@convert.register(pd.DataFrame, SFrame, cost=5.0)
 def convert_sframe_to_dataframe(sf, **kwargs):
     return sf.to_dataframe()
 
 
-@convert.register(pd.Series, SArray)
-def convert_sarray_to_series(sa, **kwargs):
-    return pd.Series(sa)
-
-
-@convert.register(SFrame, CSV)
+@convert.register(SFrame, CSV, cost=10.0)
 def convert_csv_to_sframe(csv, **kwargs):
     kwd_names = set(keywords(SFrame.read_csv))
     dialect = merge(csv.dialect, keyfilter(kwd_names.__contains__, kwargs))
-    header = (dialect.pop('has_header', False)
-              if csv.has_header is None else bool(csv.has_header))
     return SFrame.read_csv(csv.path,
                            delimiter=dialect.pop('delimiter', ','),
-                           header=header,
+                           header=dialect.pop('header',
+                                              dialect.pop('has_header',
+                                                          False)),
                            escape_char=dialect.pop('escapechar', '\\'),
                            double_quote=dialect.pop('doublequote', True),
                            quote_char=dialect.pop('quotechar', '"'),
@@ -78,7 +75,8 @@ def convert_csv_to_sframe(csv, **kwargs):
 
 
 @convert.register(Temp(CSV), SFrame)
-def convert_sframe_to_temp_csv(sf, **kwargs):
+def convert_sframe_to_temp_csv(sf, dshape=None, **kwargs):
+    assert not kwargs, 'no keyword arguments allowed'
     filename = '.%s' % uuid.uuid1()
     sf.save(filename, format='csv')
     return Temp(CSV)(filename)

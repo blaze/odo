@@ -46,6 +46,6 @@ def test_csv_to_sframe(tf):
     with tmpfile('.csv') as fn:
         with open(fn, 'wb') as f:
             odo(tf, pd.DataFrame).to_csv(f, index=False, header=True)
-        result = odo(fn, gl.SFrame, has_header=True)
+        result = odo(fn, gl.SFrame, header=True)
     tm.assert_frame_equal(odo(result, pd.DataFrame),
                           odo(tf, pd.DataFrame))
