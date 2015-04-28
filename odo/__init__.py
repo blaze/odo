@@ -62,6 +62,8 @@ with ignoring(ImportError):
     from .backends.sparksql import SparkDataFrame
 with ignoring(ImportError):
     from .backends.url import URL
+with ignoring(ImportError):
+    from .backends.graphlab import SFrame, SArray
 
 
 restart_ordering()  # Restart multipledispatch ordering and do ordering
