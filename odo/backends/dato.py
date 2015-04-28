@@ -63,9 +63,7 @@ def convert_csv_to_sframe(csv, **kwargs):
     dialect = merge(csv.dialect, keyfilter(kwd_names.__contains__, kwargs))
     return SFrame.read_csv(csv.path,
                            delimiter=dialect.pop('delimiter', ','),
-                           header=dialect.pop('header',
-                                              dialect.pop('has_header',
-                                                          False)),
+                           header=dialect.pop('header', bool(csv.has_header)),
                            escape_char=dialect.pop('escapechar', '\\'),
                            double_quote=dialect.pop('doublequote', True),
                            quote_char=dialect.pop('quotechar', '"'),
