@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import array
 import uuid
+from datetime import datetime, date
 
 import pandas as pd
 
@@ -9,7 +10,8 @@ from toolz import merge, keyfilter, take
 
 from graphlab import SFrame, SArray
 
-from datashape import string, int64, float64, var, Record, Option
+from datashape import (string, int64, float64, var, Record, Option, datetime_,
+                       date_)
 
 from ..convert import convert
 from .csv import CSV
@@ -25,6 +27,8 @@ python_type_to_datashape = {
     str: string,
     int: int64,
     float: float64,
+    datetime: datetime_,
+    date: date_
 }
 
 
