@@ -57,6 +57,11 @@ def convert_sframe_to_dataframe(sf, **kwargs):
     return sf.to_dataframe()
 
 
+@convert.register(pd.Series, SArray, cost=5.0)
+def convert_sframe_to_dataframe(sa, **kwargs):
+    return pd.Series(sa)
+
+
 @convert.register(SFrame, CSV, cost=10.0)
 def convert_csv_to_sframe(csv, **kwargs):
     kwd_names = set(keywords(SFrame.read_csv))
