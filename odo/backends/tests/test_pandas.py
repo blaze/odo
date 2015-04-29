@@ -4,7 +4,7 @@ from datashape import discover, Option
 from odo.backends.pandas import discover
 import pandas as pd
 from datashape import dshape
-from odo import into, append, convert, resource, discover
+from odo import discover
 
 data = [('Alice', 100), ('Bob', 200)]
 
@@ -23,6 +23,6 @@ def test_discover_series():
 
 def test_floats_are_optional():
     df = pd.DataFrame([('Alice', 100), ('Bob', None)],
-                        columns=['name', 'amount'])
+                      columns=['name', 'amount'])
     ds = discover(df)
     assert isinstance(ds[1].types[1], Option)

@@ -12,6 +12,7 @@ import os
 import gzip
 import bz2
 import uuid
+from glob import glob
 
 from ..compatibility import unicode
 from ..utils import keywords, ext
@@ -28,6 +29,7 @@ quoting skipinitialspace strict'''.split()
 
 aliases = {'sep': 'delimiter'}
 
+
 def alias(key):
     """ Alias kwarg dialect keys to normalized set
 
@@ -39,6 +41,7 @@ def alias(key):
 
 
 class CSV(object):
+
     """ Proxy for a CSV file
 
     Parameters
@@ -67,7 +70,7 @@ class CSV(object):
         self.encoding = encoding
         kwargs = keymap(alias, kwargs)
         self.dialect = dict((d, kwargs[d]) for d in dialect_terms
-                                           if d in kwargs)
+                            if d in kwargs)
 
 
 @append.register(CSV, object)
@@ -78,6 +81,7 @@ def append_object_to_csv(c, seq, **kwargs):
 
 compressed_open = {'gz': gzip.open, 'bz2': bz2.BZ2File}
 
+
 @append.register(CSV, pd.DataFrame)
 def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
     if not os.path.exists(c.path) or os.path.getsize(c.path) == 0:
@@ -87,8 +91,9 @@ def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
     if has_header is None:
         has_header = True
 
-    sep = kwargs.get('sep', kwargs.get('delimiter', c.dialect.get('delimiter', ',')))
-    encoding=kwargs.get('encoding', c.encoding)
+    sep = kwargs.get(
+        'sep', kwargs.get('delimiter', c.dialect.get('delimiter', ',')))
+    encoding = kwargs.get('encoding', c.encoding)
 
     if ext(c.path) in compressed_open:
         f = compressed_open[ext(c.path)](c.path, mode='a')
@@ -96,10 +101,10 @@ def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
         f = c.path
 
     df.to_csv(f, mode='a',
-                    header=has_header,
-                    index=False,
-                    sep=sep,
-                    encoding=encoding)
+              header=has_header,
+              index=False,
+              sep=sep,
+              encoding=encoding)
     if hasattr(f, 'flush'):
         f.flush()
         f.close()
@@ -117,13 +122,15 @@ def append_iterator_to_csv(c, cs, **kwargs):
 @convert.register(pd.DataFrame, (Temp(CSV), CSV), cost=20.0)
 def csv_to_DataFrame(c, dshape=None, chunksize=None, nrows=None, **kwargs):
     try:
-        return _csv_to_DataFrame(c, dshape=dshape,
-                chunksize=chunksize, nrows=nrows, **kwargs)
+        return _csv_to_DataFrame(c, dshape=dshape, chunksize=chunksize,
+                                 nrows=nrows, **kwargs)
     except StopIteration:
         if nrows:
-            return _csv_to_DataFrame(c, dshape=dshape, chunksize=chunksize, **kwargs)
+            return _csv_to_DataFrame(c, dshape=dshape, chunksize=chunksize,
+                                     **kwargs)
         else:
             raise
+
 
 def _csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
     has_header = kwargs.pop('has_header', c.has_header)
@@ -134,7 +141,8 @@ def _csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
     else:
         header = 'infer'
 
-    sep = kwargs.pop('sep', kwargs.pop('delimiter', c.dialect.get('delimiter', ',')))
+    sep = kwargs.pop(
+        'sep', kwargs.pop('delimiter', c.dialect.get('delimiter', ',')))
     encoding = kwargs.get('encoding', c.encoding)
 
     if dshape:
@@ -151,7 +159,7 @@ def _csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
         parse_dates = [col for col in parse_dates if col in usecols]
 
     compression = kwargs.pop('compression',
-            {'gz': 'gzip', 'bz2': 'bz2'}.get(ext(c.path)))
+                             {'gz': 'gzip', 'bz2': 'bz2'}.get(ext(c.path)))
 
     # See read_csv docs for header for reasoning
     if names:
@@ -172,27 +180,29 @@ def _csv_to_DataFrame(c, dshape=None, chunksize=None, **kwargs):
 
     kwargs2 = keyfilter(keywords(pandas.read_csv).__contains__, kwargs)
     return pandas.read_csv(c.path,
-                             header=header,
-                             sep=sep,
-                             encoding=encoding,
-                             dtype=dtypes,
-                             parse_dates=parse_dates,
-                             names=names,
-                             compression=compression,
-                             chunksize=chunksize,
-                             usecols=usecols,
-                             **kwargs2)
+                           header=header,
+                           sep=sep,
+                           encoding=encoding,
+                           dtype=dtypes,
+                           parse_dates=parse_dates,
+                           names=names,
+                           compression=compression,
+                           chunksize=chunksize,
+                           usecols=usecols,
+                           **kwargs2)
 
 
 @convert.register(chunks(pd.DataFrame), (Temp(CSV), CSV), cost=10.0)
-def CSV_to_chunks_of_dataframes(c, chunksize=2**20, **kwargs):
+def CSV_to_chunks_of_dataframes(c, chunksize=2 ** 20, **kwargs):
     # Load a small 1000 line DF to start
     # This helps with rapid viewing of a large CSV file
     first = csv_to_DataFrame(c, nrows=1000, **kwargs)
     if len(first) == 1000:
-        rest = csv_to_DataFrame(c, chunksize=chunksize, skiprows=1000, **kwargs)
+        rest = csv_to_DataFrame(
+            c, chunksize=chunksize, skiprows=1000, **kwargs)
     else:
         rest = []
+
     def _():
         yield first
         for df in rest:
@@ -205,14 +215,14 @@ def discover_csv(c, nrows=1000, **kwargs):
     df = csv_to_DataFrame(c, nrows=nrows, **kwargs)
     df = coerce_datetimes(df)
 
-    if (not list(df.columns) == list(range(len(df.columns)))
-        and any(re.match('^[-\d_]*$', c) for c in df.columns)):
+    if (not list(df.columns) == list(range(len(df.columns))) and
+            any(re.match(r'^[-\d_]*$', c) for c in df.columns)):
         df = csv_to_DataFrame(c, chunksize=50, has_header=False).get_chunk()
         df = coerce_datetimes(df)
 
-    columns = [str(c) if not isinstance(c, (str, unicode)) else c
-                for c in df.columns]
-    df.columns = [c.strip() for c in columns]
+    columns = [str(col) if not isinstance(col, (str, unicode)) else col
+               for col in df.columns]
+    df.columns = [col.strip() for col in columns]
 
     # Replace np.nan with None.  Forces type string rather than flaot
     for col in df.columns:
@@ -235,7 +245,6 @@ def resource_csv(uri, **kwargs):
     return CSV(uri, **kwargs)
 
 
-from glob import glob
 @resource.register('.*\*.+', priority=12)
 def resource_glob(uri, **kwargs):
     filenames = sorted(glob(uri))
@@ -276,14 +285,14 @@ def infer_header(csv, encoding='utf-8', **kwargs):
     Returns True or False
     """
     compression = kwargs.pop('compression',
-            {'gz': 'gzip', 'bz2': 'bz2'}.get(ext(csv.path)))
+                             {'gz': 'gzip', 'bz2': 'bz2'}.get(ext(csv.path)))
     # See read_csv docs for header for reasoning
     try:
         df = pd.read_csv(csv.path, encoding=encoding,
                          compression=compression, nrows=5)
     except StopIteration:
         df = pd.read_csv(csv.path, encoding=encoding,
-                                  compression=compression)
+                         compression=compression)
     return (len(df) > 0 and
             all(re.match('^\s*\D\w*\s*$', n) for n in df.columns) and
             not all(dt == 'O' for dt in df.dtypes))

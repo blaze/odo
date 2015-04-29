@@ -1,8 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
-from datashape import *
+from datashape import (DataShape, dshape, Option, String, to_numpy_dtype,
+                       date_, datetime_, string, isrecord, Tuple)
 from datashape.predicates import isscalar, isnumeric
+
 
 def unit_to_dtype(ds):
     """
@@ -51,10 +53,10 @@ def dshape_to_numpy(ds):
         ds = ds.measure
     if isrecord(ds):
         return np.dtype([(str(name), unit_to_dtype(typ))
-            for name, typ in zip(ds.names, ds.types)])
+                         for name, typ in zip(ds.names, ds.types)])
     if isinstance(ds, Tuple):
         return np.dtype([('f%d' % i, unit_to_dtype(typ))
-            for i, typ in enumerate(ds.parameters[0])])
+                         for i, typ in enumerate(ds.parameters[0])])
     else:
         return unit_to_dtype(ds)
 
@@ -78,9 +80,9 @@ def dshape_to_pandas(ds):
 
     dtypes = dict((name, unit_to_dtype(typ))
                   for name, typ in ds.measure.dict.items()
-                  if not 'date' in str(typ))
+                  if 'date' not in str(typ))
 
     datetimes = [name for name, typ in ds.measure.dict.items()
-                    if 'date' in str(typ)]
+                 if 'date' in str(typ)]
 
     return dtypes, datetimes
