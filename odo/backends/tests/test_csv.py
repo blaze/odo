@@ -348,3 +348,12 @@ def test_trip_small_discovery():
       surcharge: ?float64
     }""")
     assert dshape == expected
+
+
+def test_csv_to_compressed_csv():
+    with tmpfile('.csv') as fn:
+        with open(fn, 'w') as f:
+            f.write('a,1\nb,2\nc,3')
+        with tmpfile('.csv.gz') as gfn:
+            result = odo(fn, gfn)
+            assert odo(result, list) == odo(fn, list)
