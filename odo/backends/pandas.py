@@ -21,7 +21,15 @@ def discover_dataframe(df):
 
 @discover.register(pd.Series)
 def discover_series(s):
-    return len(s) * datashape.CType.from_numpy_dtype(s.dtype)
+    typ = pd.lib.infer_dtype(s)
+    if typ == 'unicode' or typ == 'string':
+        nchars = pd.lib.max_len_string_array(s.values)
+        option = Option if s.isnull().any() else identity
+        measure = String(nchars) if typ == 'unicode' else String(nchars, 'A')
+    else:
+        option = identity
+        measure = from_numpy((), s.dtype)
+    return len(s) * option(measure)
 
 
 def coerce_datetimes(df):
