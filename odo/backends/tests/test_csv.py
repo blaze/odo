@@ -9,17 +9,19 @@ from datashape import Option, string
 from collections import Iterator
 
 from odo.backends.csv import (CSV, append, convert, resource,
-        csv_to_DataFrame, CSV_to_chunks_of_dataframes, infer_header)
+                              csv_to_DataFrame, CSV_to_chunks_of_dataframes,
+                              infer_header)
 from odo.utils import tmpfile, filetext, filetexts, raises
 from odo import (into, append, convert, resource, discover, dshape, Temp,
-        chunks)
+                 chunks, odo)
 from odo.temp import _Temp
 from odo.compatibility import unicode, skipif
 
 
 def test_csv():
     with tmpfile('.csv') as fn:
-        csv = CSV(fn, dshape='var * {name: string, amount: int}', delimiter=',')
+        csv = CSV(
+            fn, dshape='var * {name: string, amount: int}', delimiter=',')
 
         assert csv.dialect['delimiter'] == ','
 
@@ -37,6 +39,7 @@ def test_csv_append():
             s = f.read()
             assert 'Alice' in s
             assert '100' in s
+
 
 def test_pandas_read():
     with filetext('Alice,1\nBob,2') as fn:
@@ -234,7 +237,8 @@ def test_header_disagrees_with_dshape():
         assert convert(list, csv) == [('Alice', 100), ('Bob', 200)]
 
         assert list(convert(pd.DataFrame, csv).columns) == ['name', 'val']
-        assert list(convert(pd.DataFrame, csv, dshape=ds).columns) == ['name', 'bal']
+        assert list(convert(pd.DataFrame, csv, dshape=ds).columns) == [
+            'name', 'bal']
 
 
 def test_raise_errors_quickly_on_into_chunks_dataframe():
@@ -242,7 +246,7 @@ def test_raise_errors_quickly_on_into_chunks_dataframe():
         ds = datashape.dshape('var * {name: string, val: int}')
         csv = CSV(fn, header=True)
         assert raises(Exception,
-                lambda: CSV_to_chunks_of_dataframes(csv, dshape=ds))
+                      lambda: CSV_to_chunks_of_dataframes(csv, dshape=ds))
 
 
 def test_unused_datetime_columns():
@@ -250,7 +254,7 @@ def test_unused_datetime_columns():
     with filetext("val,when\na,2000-01-01\nb,2000-02-02") as fn:
         csv = CSV(fn, has_header=True)
         assert convert(list, csv_to_DataFrame(csv, usecols=['val'],
-            squeeze=True, dshape=ds)) == ['a', 'b']
+                                              squeeze=True, dshape=ds)) == ['a', 'b']
 
 
 def test_empty_dataframe():
@@ -314,3 +318,33 @@ def test_infer_header():
 
 def test_csv_supports_sep():
     assert CSV('foo.csv', sep=';').dialect['delimiter'] == ';'
+
+
+def test_trip_small_discovery():
+    filename = os.path.join(os.path.dirname(__file__), 'tripsmall.csv')
+    csv = resource(filename)
+    dshape = discover(csv)
+    expected = datashape.dshape("""var * {
+      medallion: ?string,
+      hack_license: ?string,
+      vendor_id: ?string,
+      rate_code: int64,
+      store_and_fwd_flag: ?string,
+      pickup_datetime: ?datetime,
+      dropoff_datetime: ?datetime,
+      passenger_count: int64,
+      trip_time_in_secs: int64,
+      trip_distance: ?float64,
+      pickup_longitude: ?float64,
+      pickup_latitude: ?float64,
+      dropoff_longitude: ?float64,
+      dropoff_latitude: ?float64,
+      tolls_amount: ?float64,
+      tip_amount: ?float64,
+      total_amount: ?float64,
+      mta_tax: ?float64,
+      fare_amount: ?float64,
+      payment_type: ?string,
+      surcharge: ?float64
+    }""")
+    assert dshape == expected
