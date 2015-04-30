@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import sys
 from toolz import identity
 from toolz.compatibility import zip
 from datashape import (discover, float32, float64, Option, String, from_numpy,
@@ -25,7 +26,9 @@ def discover_series(s):
     if typ == 'unicode' or typ == 'string':
         nchars = pd.lib.max_len_string_array(s.values)
         option = Option if s.isnull().any() else identity
-        measure = String(nchars) if typ == 'unicode' else String(nchars, 'A')
+        measure = (String(nchars)
+                   if (typ == 'unicode' or sys.version_info[0] >= 3)
+                   else String(nchars, 'A'))
     elif typ.startswith(('timedelta', 'datetime')):
         option = Option if s.isnull().any() else identity
         measure = from_numpy((), s.dtype)
