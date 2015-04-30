@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 from datashape import discover, Option, String
 from odo.backends.pandas import discover
+import numpy as np
 import pandas as pd
 from datashape import dshape
 from odo import discover, odo
@@ -40,14 +41,15 @@ def test_floats_are_optional():
 
 def test_trip_small_csv_discover_not_equal_to_dataframe_discover():
     filename = os.path.join(os.path.dirname(__file__), 'tripsmall.csv')
-    result = discover(odo(filename, pd.DataFrame))
+    result = odo(filename, pd.DataFrame)
+    result.loc[5, 'dropoff_datetime'] = pd.NaT
     expected = dshape("""30 * {
       medallion: string[32],
       hack_license: string[32],
       vendor_id: string[3],
       rate_code: int64,
       store_and_fwd_flag: string[1],
-      pickup_datetime: ?datetime,
+      pickup_datetime: datetime,
       dropoff_datetime: ?datetime,
       passenger_count: int64,
       trip_time_in_secs: int64,
@@ -64,4 +66,16 @@ def test_trip_small_csv_discover_not_equal_to_dataframe_discover():
       payment_type: string[3],
       surcharge: ?float64
     }""")
-    assert result == expected
+    assert discover(result) == expected
+
+
+def test_discover_timedelta_nonnull():
+    df = pd.DataFrame({'a': np.arange(10).astype('timedelta64[ns]')})
+    assert discover(df) == dshape("10 * {a: timedelta[unit='ns']}")
+
+
+def test_discover_timedelta_null():
+    df = pd.DataFrame({'a': np.arange(10).astype('timedelta64[ns]')})
+    df.loc[2, 'a'] = pd.NaT
+    result = discover(df)
+    assert result == dshape("10 * {a: ?timedelta[unit='ns']}")

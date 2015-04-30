@@ -2,13 +2,13 @@ from __future__ import absolute_import, division, print_function
 
 from toolz import identity
 from toolz.compatibility import zip
-from datashape import (discover, float32, float64, Option, datetime_, String,
-                       from_numpy, Record)
+from datashape import (discover, float32, float64, Option, String, from_numpy,
+                       Record)
 
 import pandas as pd
 
 
-possibly_missing = frozenset((datetime_, float32, float64))
+possibly_missing = frozenset((float32, float64))
 
 
 @discover.register(pd.DataFrame)
@@ -26,6 +26,9 @@ def discover_series(s):
         nchars = pd.lib.max_len_string_array(s.values)
         option = Option if s.isnull().any() else identity
         measure = String(nchars) if typ == 'unicode' else String(nchars, 'A')
+    elif typ.startswith(('timedelta', 'datetime')):
+        option = Option if s.isnull().any() else identity
+        measure = from_numpy((), s.dtype)
     else:
         option = identity
         measure = from_numpy((), s.dtype)
