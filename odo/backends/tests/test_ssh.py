@@ -4,11 +4,12 @@ import pytest
 paramiko = pytest.importorskip('paramiko')
 
 import pandas as pd
-import numpy as np
+import pandas.util.testing as tm
 import re
 import os
 import sys
 
+from odo import odo
 from odo.utils import tmpfile, filetext
 from odo.directory import _Directory, Directory
 from odo.backends.ssh import SSH, resource, ssh_pattern, sftp, drop, connect
@@ -158,7 +159,7 @@ def test_convert_through_temporary_local_storage():
         assert into(list, scsv2) == into(list, df)
 
         sjson = into(Temp(SSH(JSONLines)), df, hostname='localhost')
-        assert (into(np.ndarray, sjson) == into(np.ndarray, df)).all()
+        tm.assert_frame_equal(odo(sjson, pd.DataFrame), df)
 
 
 @skipif(ON_TRAVIS_CI and sys.version_info[0] == 3,
