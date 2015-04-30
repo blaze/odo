@@ -8,22 +8,27 @@ import pandas as pd
 from datashape import dshape
 from odo import discover, odo
 
-data = [('Alice', 100), ('Bob', 200)]
+data = [(u'Alice', 100), (u'Bob', 200)]
+bytes_data = [(b'Alice', 100), (b'Bob', 200)]
 
 
-def test_discover_dataframe():
+def test_discover_dataframe_unicode():
     df = pd.DataFrame(data, columns=['name', 'amount'])
+    assert discover(df) == dshape("2 * {name: string[5], amount: int64}")
+
+
+def test_discover_dataframe_bytes():
+    df = pd.DataFrame(bytes_data, columns=['name', 'amount'])
     assert discover(df) == dshape("2 * {name: string[5, 'A'], amount: int64}")
 
 
 def test_discover_series():
     s = pd.Series([1, 2, 3])
-
     assert discover(s) == 3 * discover(s[0])
 
 
 def test_discover_ascii_string_series():
-    s = pd.Series(list('abc'))
+    s = pd.Series(np.array(list(b'abc'), 'S1'))
     assert discover(s) == 3 * String(1, 'A')
 
 
