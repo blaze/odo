@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import re
 import datashape
-from datashape import discover, Record, Option
+from datashape import discover, Record, Option, string, String, object_
 from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
 from toolz import concat, keyfilter, keymap
@@ -231,13 +231,23 @@ def discover_csv(c, nrows=1000, **kwargs):
 
     measure = discover(df).measure
 
-    # Use Series.notnull to determine Option-ness
-    measure2 = Record([[name, Option(typ)
-                              if (~df[name].notnull()).any()
-                              and not isinstance(typ, Option) else typ]
-                      for name, typ in zip(measure.names, measure.types)])
+    types = []
+    for typ in measure.types:
+        isoption = hasattr(typ, 'ty')
+        basetyp = getattr(typ, 'ty', typ)
+        newtyp = (Option(string)
+                  if isinstance(basetyp, String) or basetyp == object_
+                  else basetyp)
+        types.append(Option(newtyp)
+                     if isoption and
+                     not isinstance(newtyp, Option) else newtyp)
 
-    return datashape.var * measure2
+    # Use Series.isnull to determine Option-ness
+    measure = Record([(name, Option(typ)
+                       if not isinstance(typ, Option) and
+                       df[name].isnull().any() else typ)
+                      for name, typ in zip(measure.names, types)])
+    return datashape.var * measure
 
 
 @resource.register('.+\.(csv|tsv|ssv|data|dat)(\.gz|\.bz)?')
