@@ -11,7 +11,7 @@ from datetime import datetime, date
 
 import toolz
 import datashape
-from datashape import dshape, Record, DataShape, Option, Tuple
+from datashape import dshape, Record, DataShape, Option, Tuple, String, string
 from datashape.predicates import isdimension, isrecord, iscollection
 from toolz.curried import get, map
 from toolz import pipe, concat, curry
@@ -227,7 +227,10 @@ def dshape_to_schema(ds):
             return dshape_to_schema(ds[0])
     if ds in dshape_to_sparksql:
         return dshape_to_sparksql[ds]
-    raise NotImplementedError()
+    elif isinstance(ds.measure, String):
+        return StringType()
+    raise NotImplementedError("Couldn't map datashape %s to SparkSQL type" %
+                              ds)
 
 
 def schema_to_dshape(schema):
