@@ -12,7 +12,7 @@ from odo.backends.csv import (CSV, append, convert, resource,
         csv_to_DataFrame, CSV_to_chunks_of_dataframes, infer_header)
 from odo.utils import tmpfile, filetext, filetexts, raises
 from odo import (into, append, convert, resource, discover, dshape, Temp,
-        chunks)
+        chunks, odo)
 from odo.temp import _Temp
 from odo.compatibility import unicode, skipif
 
@@ -314,3 +314,12 @@ def test_infer_header():
 
 def test_csv_supports_sep():
     assert CSV('foo.csv', sep=';').dialect['delimiter'] == ';'
+
+
+def test_csv_to_compressed_csv():
+    with tmpfile('.csv') as fn:
+        with open(fn, 'w') as f:
+            f.write('a,1\nb,2\nc,3')
+        with tmpfile('.csv.gz') as gfn:
+            result = odo(fn, gfn)
+            assert odo(result, list) == odo(fn, list)
