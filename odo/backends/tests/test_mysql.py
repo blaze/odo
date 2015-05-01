@@ -4,10 +4,12 @@ import pytest
 
 pymysql = pytest.importorskip('pymysql')
 
+from datashape import var, DataShape, Record
 import itertools
 from odo.backends.csv import CSV
 from odo import resource, odo
 import sqlalchemy
+import sqlalchemy as sa
 import os
 import sys
 import csv as csv_module
@@ -38,7 +40,7 @@ data_floats = [(1.02, 2.02), (102.02, 202.02), (1002.02, 2002.02)]
 def csv():
     with tmpfile('.csv') as fn:
         create_csv(data, fn)
-        yield CSV(fn, columns=list('ab'))
+        yield CSV(fn)
 
 
 @pytest.yield_fixture
@@ -63,8 +65,12 @@ def engine():
 
 @pytest.yield_fixture
 def sql(engine, csv, name):
+    dshape = discover(csv)
+    dshape = DataShape(var,
+                       Record([(n, typ)
+                               for n, typ in zip('ab', dshape.measure.types)]))
     try:
-        t = resource('%s::%s' % (url, name), dshape=discover(csv))
+        t = resource('%s::%s' % (url, name), dshape=dshape)
     except sqlalchemy.exc.OperationalError as e:
         pytest.skip(str(e))
     else:
@@ -74,8 +80,12 @@ def sql(engine, csv, name):
 
 @pytest.yield_fixture
 def fsql(engine, fcsv, name):
+    dshape = discover(fcsv)
+    dshape = DataShape(var,
+                       Record([(n, typ)
+                               for n, typ in zip('ab', dshape.measure.types)]))
     try:
-        t = resource('%s::%s' % (url, name), dshape=discover(fcsv))
+        t = resource('%s::%s' % (url, name), dshape=dshape)
     except sqlalchemy.exc.OperationalError as e:
         pytest.skip(str(e))
     else:
@@ -160,3 +170,19 @@ def test_complex_into(dsql, dcsv):
     # data from: http://dummydata.me/generate
     odo(dcsv, dsql, if_exists="replace")
     assert odo(dsql, list) == odo(dcsv, list)
+
+
+def test_sql_to_csv(sql, csv):
+    sql = odo(csv, sql)
+    with tmpfile('.csv') as fn:
+        csv = odo(sql, fn)
+        assert odo(csv, list) == data
+        assert discover(csv).measure.names == discover(sql).measure.names
+
+
+def test_sql_select_to_csv(sql, csv):
+    sql = odo(csv, sql)
+    query = sa.select([sql.c.a])
+    with tmpfile('.csv') as fn:
+        csv = odo(query, fn)
+        assert odo(csv, list) == [(x,) for x, _ in data]
