@@ -37,6 +37,7 @@ def isbytes(s):
     --------
     >>> s = pd.Series([u'a', b'a'])
     >>> isbytes(s)
+    False
     """
     try:
         return isinstance(np.sum(s.values), bytes)
