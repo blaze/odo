@@ -28,7 +28,7 @@ def test_discover_series():
 
 
 def test_discover_ascii_string_series():
-    s = pd.Series(np.array(list(b'abc'), 'S1'))
+    s = pd.Series(np.array(['a', 'b', 'c']).astype('S1').astype(object))
     assert discover(s) == 3 * String(1, 'A')
 
 
