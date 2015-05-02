@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import sys
+import numpy as np
 from toolz import identity
 from toolz.compatibility import zip
 from datashape import (discover, float32, float64, Option, String, from_numpy,
@@ -20,14 +21,44 @@ def discover_dataframe(df):
     return len(df) * Record(list(zip(names, odtypes)))
 
 
+def isbytes(s):
+    """Check whether a Series contains all bytes values
+
+    Parameters
+    ----------
+    s : Series
+
+    Returns
+    -------
+    t : bool
+        Whether `s` is either all bytes or all bytes modulo NaNs
+
+    Examples
+    --------
+    >>> s = pd.Series([u'a', b'a'])
+    >>> isbytes(s)
+    """
+    try:
+        return isinstance(np.sum(s.values), bytes)
+    except TypeError:
+        try:
+            return isinstance(np.sum(s.dropna().values), bytes)
+        except TypeError:
+            return False
+
+
 @discover.register(pd.Series)
 def discover_series(s):
     typ = pd.lib.infer_dtype(s)
-    if typ == 'unicode' or typ == 'string':
+
+    if (typ == 'unicode' or typ == 'string' or typ == 'bytes' or
+            typ == 'mixed' and isbytes(s)):
         nchars = pd.lib.max_len_string_array(s.values)
         option = Option if s.isnull().any() else identity
         measure = (String(nchars)
-                   if (typ == 'unicode' or sys.version_info[0] >= 3)
+                   if (typ == 'unicode' or
+                       sys.version_info[0] >= 3 and
+                       typ not in ('mixed', 'bytes'))
                    else String(nchars, 'A'))
     elif typ.startswith(('timedelta', 'datetime')):
         option = Option if s.isnull().any() else identity
