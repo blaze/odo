@@ -580,7 +580,7 @@ def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
     with open(element.path, mode='at') as f:
         subprocess.Popen(cmd, stdout=f, stdin=subprocess.PIPE).communicate(sql)
 
-    # TODO: this will be a no-op since we're doing the write during the compile
+    # This will be a no-op since we're doing the write during the compile
     return ''
 
 
