@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import re
+import subprocess
 
 from itertools import chain
 from collections import Iterator
@@ -565,8 +566,26 @@ def compile_copy_to_csv_mysql(element, compiler, **kwargs):
     return select_template
 
 
+@compiles(CopyToCSV, 'sqlite')
+def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
+    sub = element.element
+    sql = (compiler.process(sa.select([sub])
+                            if isinstance(sub, sa.Table)
+                            else sub) + ';')
+    sql = re.sub(r'\s{2,}', ' ', re.sub(r'\s*\n\s*', ' ', sql)).encode()
+    cmd = ['sqlite3', '-csv',
+           '-%sheader' % ('no' if not element.header else ''),
+           '-separator', element.delimiter,
+           sub.bind.url.database]
+    with open(element.path, mode='at') as f:
+        subprocess.Popen(cmd, stdout=f, stdin=subprocess.PIPE).communicate(sql)
+
+    # This will be a no-op since we're doing the write during the compile
+    return ''
+
+
 @append.register(CSV, sa.sql.Selectable)
-def append_table_to_csv(csv, selectable, **kwargs):
+def append_table_to_csv(csv, selectable, dshape=None, **kwargs):
     kwargs = keyfilter(keywords(CopyToCSV).__contains__,
                        merge(csv.dialect, kwargs))
     stmt = CopyToCSV(selectable, os.path.abspath(csv.path), **kwargs)
