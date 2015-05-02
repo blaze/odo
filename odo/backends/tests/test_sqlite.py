@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+from itertools import product
 import pytest
 pytest.importorskip('sqlalchemy')
 
@@ -59,10 +60,18 @@ def test_csv_infer_header():
             assert odo(t, set) == set([(1, 2), (3, 4)])
 
 
-def test_sqlite_to_csv():
+@pytest.mark.parametrize(['sep', 'header'],
+                         product([',', '|', '\t'], [True, False]))
+def test_sqlite_to_csv(sep, header):
     with tmpfile('db') as dbfilename:
         with filetext('a,b\n1,2\n3,4', extension='csv') as csvfilename:
             t = odo(csvfilename, 'sqlite:///%s::mytable' % dbfilename)
 
         with tmpfile('.csv') as fn:
-            assert odo(odo(t, fn), list) == [(1, 2), (3, 4)]
+            odo(t, fn, header=header, delimiter=sep)
+            with open(fn, 'rt') as f:
+                lines = f.readlines()
+            expected = [tuple(map(int, row))
+                        for row in map(lambda x: x.split(sep), lines[header:])]
+            assert odo(fn, list, delimiter=sep, has_header=header,
+                       dshape=discover(t)) == expected
