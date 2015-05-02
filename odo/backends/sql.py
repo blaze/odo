@@ -578,7 +578,8 @@ def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
            '-separator', element.delimiter,
            sub.bind.url.database]
     with open(element.path, mode='ab') as f:
-        subprocess.Popen(cmd, stdout=f, stdin=subprocess.PIPE).communicate(sql)
+        subprocess.Popen(cmd, stdout=f,
+                         stdin=subprocess.PIPE).communicate(sql.encode())
 
     # TODO: this will be a no-op since we're doing the write during the compile
     return ''
