@@ -92,7 +92,7 @@ def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
     encoding=kwargs.get('encoding', c.encoding)
 
     if ext(c.path) in compressed_open:
-        kwargs = dict(mode='at')
+        kwargs = dict(mode='ab' if sys.platform == 'win32' else 'at')
         if sys.version_info[0] >= 3:
             kwargs['encoding'] = encoding
         f = compressed_open[ext(c.path)](c.path, **kwargs)
