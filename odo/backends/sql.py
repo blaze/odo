@@ -569,15 +569,13 @@ def compile_copy_to_csv_mysql(element, compiler, **kwargs):
 @compiles(CopyToCSV, 'sqlite')
 def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
     sub = element.element
-    sql = compiler.process(sa.select([sub])
-                           if isinstance(sub, sa.Table)
-                           else sub) + ';'
-
-    cmd = ['sqlite3', '-csv', '-header', '-separator', element.delimiter,
     sql = (compiler.process(sa.select([sub])
                             if isinstance(sub, sa.Table)
                             else sub) + ';')
     sql = re.sub(r'\s{2,}', ' ', re.sub(r'\s*\n\s*', ' ', sql))
+    cmd = ['sqlite3', '-csv',
+           '-%sheader' % ('no' if not element.header else ''),
+           '-separator', element.delimiter,
            sub.bind.url.database]
     with open(element.path, mode='ab') as f:
         subprocess.Popen(cmd, stdout=f, stdin=subprocess.PIPE).communicate(sql)
