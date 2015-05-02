@@ -97,7 +97,10 @@ def tmpfile(extension=''):
         if os.path.isdir(filename):
             shutil.rmtree(filename)
         else:
-            os.remove(filename)
+            try:
+                os.remove(filename)
+            except OSError:  # sometimes we can't remove a generated temp file
+                pass
 
 
 def keywords(func):

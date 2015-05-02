@@ -8,10 +8,9 @@ psycopg2 = pytest.importorskip('psycopg2')
 import itertools
 
 from odo.backends.csv import CSV
-from odo import into, resource, drop, discover
+from odo import odo, into, resource, drop, discover
 from odo.utils import assert_allclose, tmpfile
 import os
-import getpass
 
 
 names = ('tbl%d' % i for i in itertools.count())
@@ -94,3 +93,19 @@ def test_complex_into(complex_csv, complex_sql):
     # data from: http://dummydata.me/generate
     into(complex_sql, complex_csv, dshape=discover(complex_sql))
     assert_allclose(into(list, complex_sql), into(list, complex_csv))
+
+
+def test_sql_to_csv(sql, csv):
+    sql = odo(csv, sql)
+    with tmpfile('.csv') as fn:
+        csv = odo(sql, fn)
+        assert odo(csv, list) == data
+        assert discover(csv).measure.names == discover(sql).measure.names
+
+
+def test_sql_select_to_csv(sql, csv):
+    sql = odo(csv, sql)
+    query = sa.select([sql.c.a])
+    with tmpfile('.csv') as fn:
+        csv = odo(query, fn)
+        assert odo(csv, list) == [(x,) for x, _ in data]
