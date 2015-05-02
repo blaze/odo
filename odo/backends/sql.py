@@ -572,14 +572,13 @@ def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
     sql = (compiler.process(sa.select([sub])
                             if isinstance(sub, sa.Table)
                             else sub) + ';')
-    sql = re.sub(r'\s{2,}', ' ', re.sub(r'\s*\n\s*', ' ', sql))
+    sql = re.sub(r'\s{2,}', ' ', re.sub(r'\s*\n\s*', ' ', sql)).encode()
     cmd = ['sqlite3', '-csv',
            '-%sheader' % ('no' if not element.header else ''),
            '-separator', element.delimiter,
            sub.bind.url.database]
     with open(element.path, mode='at') as f:
-        subprocess.Popen(cmd, stdout=f,
-                         stdin=subprocess.PIPE).communicate(sql.encode())
+        subprocess.Popen(cmd, stdout=f, stdin=subprocess.PIPE).communicate(sql)
 
     # TODO: this will be a no-op since we're doing the write during the compile
     return ''
