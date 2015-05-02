@@ -577,6 +577,7 @@ def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
     sql = (compiler.process(sa.select([sub])
                             if isinstance(sub, sa.Table)
                             else sub) + ';')
+    sql = re.sub(r'\s{2,}', ' ', re.sub(r'\s*\n\s*', ' ', sql))
            sub.bind.url.database]
     with open(element.path, mode='ab') as f:
         subprocess.Popen(cmd, stdout=f, stdin=subprocess.PIPE).communicate(sql)
