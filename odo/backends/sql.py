@@ -577,7 +577,7 @@ def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
            '-%sheader' % ('no' if not element.header else ''),
            '-separator', element.delimiter,
            sub.bind.url.database]
-    with open(element.path, mode='ab') as f:
+    with open(element.path, mode='at') as f:
         subprocess.Popen(cmd, stdout=f,
                          stdin=subprocess.PIPE).communicate(sql.encode())
 
