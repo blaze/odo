@@ -54,3 +54,12 @@ def test_csv_infer_header():
             t = into('sqlite:///%s::mytable' % dbfilename, csvfilename)
             assert discover(t) == dshape('var * {a: int64, b: int64}')
             assert into(set, t) == set([(1, 2), (3, 4)])
+
+
+def test_sqlite_to_csv():
+    with tmpfile('db') as dbfilename:
+        with filetext('a,b\n1,2\n3,4', extension='csv') as csvfilename:
+            t = odo(csvfilename, 'sqlite:///%s::mytable' % dbfilename)
+
+        with tmpfile('.csv') as fn:
+            assert odo(odo(t, fn), list) == [(1, 2), (3, 4)]
