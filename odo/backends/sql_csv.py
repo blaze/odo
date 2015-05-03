@@ -92,7 +92,8 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.STDOUT,
                                       stdin=subprocess.PIPE).communicate()
-    assert not stdout and stderr is None, 'bad command line: stdout: %s, %s' % (stdout, ' '.join(cmd))
+    assert not stdout, \
+        'error: %s from command: %s' % (stdout, ' '.join(cmd))
     return ''
 
 
