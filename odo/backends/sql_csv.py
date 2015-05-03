@@ -3,9 +3,9 @@ from __future__ import absolute_import, division, print_function
 import re
 import subprocess
 import uuid
-import mmap as _mmap
+import mmap
 
-from contextlib import contextmanager
+from contextlib import closing
 from functools import partial
 from distutils.spawn import find_executable
 
@@ -50,15 +50,6 @@ class CopyFromCSV(Executable, ClauseElement):
         return self.element.bind
 
 
-@contextmanager
-def mmap(*args, **kwargs):
-    f = _mmap.mmap(*args, **kwargs)
-    try:
-        yield f
-    finally:
-        f.close()
-
-
 @compiles(CopyFromCSV, 'sqlite')
 def compile_from_csv_sqlite(element, compiler, **kwargs):
     if not find_executable('sqlite3'):
@@ -73,7 +64,7 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
         # write to a temporary file after skipping the first line
         chunksize = 2 ** 20
         with open(element.csv.path, 'rU') as f:
-            with mmap(f.fileno(), 0, access=_mmap.ACCESS_READ) as mf:
+            with closing(mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)) as mf:
                 index = mf.find(b'\n')
                 if index < 0:
                     raise ValueError('newline not found')
