@@ -25,7 +25,7 @@ from .aws import S3
 
 class CopyFromCSV(Executable, ClauseElement):
     def __init__(self, element, csv, delimiter=',', header=None, na_value='',
-                 lineterminator=r'\n', quotechar='"', escapechar=r'\\',
+                 lineterminator=r'\n', quotechar='"', escapechar='\\',
                  encoding='utf8', skiprows=0, **kwargs):
         if not isinstance(element, sa.Table):
             raise TypeError('element must be a sqlalchemy.Table instance')
@@ -108,12 +108,13 @@ def compile_from_csv_mysql(element, compiler, **kwargs):
         FIELDS
             TERMINATED BY '{0.delimiter}'
             ENCLOSED BY '{0.quotechar}'
-            ESCAPED BY '{0.escapechar}'
+            ESCAPED BY '{escapechar}'
         LINES TERMINATED BY '{0.lineterminator}'
         IGNORE {0.skiprows} LINES;
     """.format(element,
                local=getattr(element, 'local', ''),
-               encoding=encoding).strip()
+               encoding=encoding,
+               escapechar=element.escapechar.encode('unicode-escape')).strip()
     return result
 
 
@@ -121,6 +122,9 @@ def compile_from_csv_mysql(element, compiler, **kwargs):
 def compile_from_csv_postgres(element, compiler, **kwargs):
     encoding = {'utf8': 'utf-8'}.get(element.encoding.lower(),
                                      element.encoding or 'utf8')
+    if len(element.escapechar) != 1:
+        raise ValueError('postgres does not allow escapechar longer than 1 '
+                         'byte')
     statement = """
     COPY {0.element.name} FROM '{0.csv.path}'
         (FORMAT CSV,
