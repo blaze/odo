@@ -104,3 +104,8 @@ def test_sql_select_to_csv(sql, csv):
     with tmpfile('.csv') as fn:
         csv = odo(query, fn)
         assert odo(csv, list) == [(x,) for x, _ in data]
+
+
+def test_invalid_escapechar(sql, csv):
+    with pytest.raises(ValueError):
+        odo(csv, sql, escapechar='12')
