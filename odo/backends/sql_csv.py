@@ -74,19 +74,19 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
         chunksize = 2 ** 20
         with open(element.csv.path, 'rU') as f:
             with mmap(f.fileno(), 0, access=_mmap.ACCESS_READ) as mf:
-                index = mf.find('\n')
+                index = mf.find(b'\n')
                 if index < 0:
                     raise ValueError('newline not found')
                 mf.seek(index + 1)
-                with open(csv.path, 'w') as g:
-                    for chunk in iter(partial(mf.read, chunksize), ''):
+                with open(csv.path, 'wb') as g:
+                    for chunk in iter(partial(mf.read, chunksize), b''):
                         g.write(chunk)
 
+    fullpath = csv.path.encode('unicode-escape').decode()
     cmd = ['sqlite3',
            '-nullvalue', repr(element.na_value),
            '-separator', element.delimiter,
-           '-cmd', '.import "%s" %s' % (csv.path.encode('unicode-escape'),
-                                        t.name),
+           '-cmd', '.import "%s" %s' % (fullpath, t.name),
            element.bind.url.database]
     stdout, stderr = subprocess.Popen(cmd,
                                       stdout=subprocess.PIPE,
