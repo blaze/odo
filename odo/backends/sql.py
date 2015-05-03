@@ -7,6 +7,7 @@ import subprocess
 from itertools import chain
 from collections import Iterator
 from datetime import datetime, date
+from distutils.spawn import find_executable
 
 import pandas as pd
 import sqlalchemy as sa
@@ -568,6 +569,9 @@ def compile_copy_to_csv_mysql(element, compiler, **kwargs):
 
 @compiles(CopyToCSV, 'sqlite')
 def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
+    if not find_executable('sqlite3'):
+        raise MDNotImplementedError("Could not find sqlite executable")
+
     sub = element.element
     sql = (compiler.process(sa.select([sub])
                             if isinstance(sub, sa.Table)
