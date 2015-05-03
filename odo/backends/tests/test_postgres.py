@@ -109,3 +109,6 @@ def test_sql_select_to_csv(sql, csv):
 def test_invalid_escapechar(sql, csv):
     with pytest.raises(ValueError):
         odo(csv, sql, escapechar='12')
+
+    with pytest.raises(ValueError):
+        odo(csv, sql, escapechar='')
