@@ -103,6 +103,7 @@ def compile_from_csv_mysql(element, compiler, **kwargs):
         raise ValueError('MySQL does not support custom NULL values')
     encoding = {'utf-8': 'utf8'}.get(element.encoding.lower(),
                                      element.encoding or 'utf8')
+    escapechar = element.escapechar.encode('unicode-escape').decode()
     result = """
         LOAD DATA {local} INFILE '{0.csv.path}'
         INTO TABLE {0.element.name}
@@ -116,7 +117,7 @@ def compile_from_csv_mysql(element, compiler, **kwargs):
     """.format(element,
                local=getattr(element, 'local', ''),
                encoding=encoding,
-               escapechar=element.escapechar.encode('unicode-escape')).strip()
+               escapechar=escapechar).strip()
     return result
 
 
