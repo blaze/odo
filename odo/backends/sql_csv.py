@@ -103,9 +103,6 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
                             encoding=encoding).strip()
 
 
-    return CopyCommand()
-
-
 try:
     import boto
     from odo.backends.aws import S3
@@ -162,9 +159,4 @@ def append_csv_to_sql_table(tbl, csv, **kwargs):
     stmt = CopyFromCSV(tbl, csv, **kwargs)
     with tbl.bind.begin() as conn:
         conn.execute(stmt)
-    return sa.Table(tbl.name,
-                    sa.MetaData(bind=tbl.bind),
-                    extend_existing=True,
-                    autoload=True,
-                    schema=tbl.schema)
     return tbl
