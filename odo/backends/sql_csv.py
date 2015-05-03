@@ -2,6 +2,11 @@ from __future__ import absolute_import, division, print_function
 
 import re
 import subprocess
+import uuid
+import mmap as _mmap
+
+from contextlib import contextmanager
+from functools import partial
 from distutils.spawn import find_executable
 
 import sqlalchemy as sa
@@ -45,15 +50,42 @@ class CopyFromCSV(Executable, ClauseElement):
         return self.element.bind
 
 
+@contextmanager
+def mmap(*args, **kwargs):
+    f = _mmap.mmap(*args, **kwargs)
+    try:
+        yield f
+    finally:
+        f.close()
+
+
 @compiles(CopyFromCSV, 'sqlite')
 def compile_from_csv_sqlite(element, compiler, **kwargs):
     if not find_executable('sqlite3'):
         raise MDNotImplementedError("Could not find sqlite executable")
+
+    t = element.element
+    if not element.header:
+        csv = element.csv
+    else:
+        csv = Temp(CSV)('.%s' % uuid.uuid1())
+
+        # write to a temporary file after skipping the first line
+        chunksize = 2 ** 20
+        with open(element.csv.path, 'rU') as f:
+            with mmap(f.fileno(), 0, access=_mmap.ACCESS_READ) as mf:
+                index = mf.find('\n')
+                if index < 0:
+                    raise ValueError('newline not found')
+                mf.seek(index + 1)
+                with open(csv.path, 'w') as g:
+                    for chunk in iter(partial(mf.read, chunksize), ''):
+                        g.write(chunk)
+
     cmd = ['sqlite3',
            '-nullvalue', repr(element.na_value),
-           '-%sheader' % ('no' if not element.header else ''),
            '-separator', element.delimiter,
-           '-cmd', '.import %s %s' % (element.csv.path, element.element.name),
+           '-cmd', '.import %s %s' % (csv.path, t.name),
            element.bind.url.database]
     stdout, stderr = subprocess.Popen(cmd,
                                       stdout=subprocess.PIPE,
