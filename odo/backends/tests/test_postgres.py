@@ -3,14 +3,14 @@ from __future__ import absolute_import, division, print_function
 import pytest
 
 sa = pytest.importorskip('sqlalchemy')
-psycopg2 = pytest.importorskip('psycopg2')
+pytest.importorskip('psycopg2')
 
+import os
 import itertools
 
 from odo.backends.csv import CSV
 from odo import odo, into, resource, drop, discover
 from odo.utils import assert_allclose, tmpfile
-import os
 
 
 names = ('tbl%d' % i for i in itertools.count())
@@ -75,13 +75,8 @@ def test_append(csv, sql):
 
 
 def test_tryexcept_into(csv, sql):
-    into(sql, csv, quotechar="alpha")  # uses multi-byte character
-    assert into(list, sql) == data
-
-
-def test_failing_argument(csv, sql):
-    # this will start to fail if we ever restrict kwargs
-    into(sql, csv, skipinitialspace="alpha")  # failing call
+    with pytest.raises(sa.exc.NotSupportedError):
+        into(sql, csv, quotechar="alpha")  # uses multi-byte character
 
 
 def test_no_header_no_columns(csv, sql):
@@ -109,3 +104,11 @@ def test_sql_select_to_csv(sql, csv):
     with tmpfile('.csv') as fn:
         csv = odo(query, fn)
         assert odo(csv, list) == [(x,) for x, _ in data]
+
+
+def test_invalid_escapechar(sql, csv):
+    with pytest.raises(ValueError):
+        odo(csv, sql, escapechar='12')
+
+    with pytest.raises(ValueError):
+        odo(csv, sql, escapechar='')
