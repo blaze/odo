@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import sys
 import re
 import os
 import gzip
@@ -101,7 +102,12 @@ def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
     encoding=kwargs.get('encoding', c.encoding)
 
     if ext(c.path) in compressed_open:
-        f = compressed_open[ext(c.path)](c.path, mode='a')
+        if sys.version_info[0] >= 3:
+            kwargs['mode'] = 'at'
+            kwargs['encoding'] = encoding
+        elif sys.version_info[0] == 2:
+            kwargs['mode'] = 'ab' if sys.platform == 'win32' else 'at'
+        f = compressed_open[ext(c.path)](c.path, **kwargs)
     else:
         f = c.path
 
