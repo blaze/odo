@@ -55,8 +55,7 @@ def open_file(path, *args, **kwargs):
 def infer_header(path, nbytes=10000, encoding='utf-8', **kwargs):
     with open_file(path, 'rb') as f:
         raw = f.read(nbytes)
-    return csv.Sniffer().has_header(raw.encode()
-                                    if PY26 else raw.decode(encoding))
+    return csv.Sniffer().has_header(raw if PY26 else raw.decode(encoding))
 
 
 def sniff_dialect(path, nbytes, encoding='utf-8'):
