@@ -332,6 +332,6 @@ def test_csv_to_compressed_csv():
 def test_has_header_on_tsv():
     with tmpfile('.csv') as fn:
         with open(fn, 'wb') as f:
-            f.write('a\tb\n1\t2\n3\t4')
+            f.write(b'a\tb\n1\t2\n3\t4')
         csv = CSV(fn)
         assert csv.has_header
