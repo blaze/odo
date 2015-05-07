@@ -73,7 +73,8 @@ def test_pandas_read_supports_missing_integers():
         assert df.dtypes['val'] == 'f4'
 
 
-@pytest.mark.xfail(sys.platform == 'win32', reason="Doesn't work on Windows")
+@pytest.mark.xfail(sys.platform == 'win32' and sys.version_info[0] < 3,
+                   reason="Doesn't work on Windows")
 def test_pandas_read_supports_gzip():
     with filetext('Alice,1\nBob,2', open=gzip.open,
                   mode='wt', extension='.csv.gz') as fn:
@@ -147,7 +148,8 @@ def test_pandas_loads_in_datetimes_naively():
         assert df.dtypes['when'] == 'M8[ns]'
 
 
-@pytest.mark.xfail(sys.platform == 'win32', reason="Doesn't work on Windows")
+@pytest.mark.xfail(sys.platform == 'win32' and sys.version_info[0] < 3,
+                   reason="Doesn't work on Windows")
 def test_pandas_discover_on_gzipped_files():
     with filetext('name,when\nAlice,2014-01-01\nBob,2014-02-02',
                   open=gzip.open, mode='wt', extension='.csv.gz') as fn:
