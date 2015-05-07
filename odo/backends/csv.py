@@ -17,7 +17,7 @@ import uuid
 import csv
 from glob import glob
 
-from ..compatibility import unicode
+from ..compatibility import unicode, PY26
 from ..utils import keywords, ext
 from ..append import append
 from ..convert import convert, ooc_types
@@ -52,12 +52,19 @@ def open_file(path, *args, **kwargs):
         f.close()
 
 
+def infer_header(path, nbytes=10000, encoding='utf-8', **kwargs):
+    with open_file(path, 'rb') as f:
+        raw = f.read(nbytes)
+    return csv.Sniffer().has_header(raw.encode()
+                                    if PY26 else raw.decode(encoding))
+
+
 def sniff_dialect(path, nbytes, encoding='utf-8'):
     if not os.path.exists(path):
         return {}
     with open_file(path, 'rb') as f:
-        raw = f.read(nbytes).decode(encoding)
-    return dialect_to_dict(csv.Sniffer().sniff(raw))
+        raw = f.read(nbytes)
+    return dialect_to_dict(csv.Sniffer().sniff(raw.decode(encoding)))
 
 
 def dialect_to_dict(dialect):
@@ -297,12 +304,6 @@ def convert_dataframes_to_temporary_csv(data, **kwargs):
 @dispatch(CSV)
 def drop(c):
     os.unlink(c.path)
-
-
-def infer_header(path, nbytes=10000, encoding='utf-8', **kwargs):
-    with open_file(path, 'rb') as f:
-        raw = f.read(nbytes)
-    return csv.Sniffer().has_header(raw.decode(encoding))
 
 
 ooc_types.add(CSV)
