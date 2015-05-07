@@ -17,7 +17,7 @@ from odo.utils import tmpfile, filetext, filetexts, raises
 from odo import (into, append, convert, resource, discover, dshape, Temp,
                  chunks, odo)
 from odo.temp import _Temp
-from odo.compatibility import unicode, skipif
+from odo.compatibility import unicode
 
 
 def test_csv():
@@ -73,7 +73,7 @@ def test_pandas_read_supports_missing_integers():
         assert df.dtypes['val'] == 'f4'
 
 
-@pytest.mark.skip(sys.platform == 'win32', reason="Doesn't work on Windows")
+@pytest.mark.xfail(sys.platform == 'win32', reason="Doesn't work on Windows")
 def test_pandas_read_supports_gzip():
     with filetext('Alice,1\nBob,2', open=gzip.open,
                   mode='wt', extension='.csv.gz') as fn:
@@ -122,7 +122,7 @@ def test_pandas_writes_header_by_default():
             assert 'name' in f.read()
 
 
-@skipif(sys.version_info[0] == 3)
+@pytest.mark.xfail(sys.version_info[0] == 3, reason="Doesn't work on Python 3")
 def test_pandas_write_gzip():
     with tmpfile('.csv.gz') as fn:
         ds = datashape.dshape('var * {name: string, amount: int}')
@@ -147,7 +147,7 @@ def test_pandas_loads_in_datetimes_naively():
         assert df.dtypes['when'] == 'M8[ns]'
 
 
-@skipif(os.name == 'nt')
+@pytest.mark.xfail(sys.platform == 'win32', reason="Doesn't work on Windows")
 def test_pandas_discover_on_gzipped_files():
     with filetext('name,when\nAlice,2014-01-01\nBob,2014-02-02',
                   open=gzip.open, mode='wt', extension='.csv.gz') as fn:
@@ -304,7 +304,7 @@ def test_convert_to_csv():
     assert isinstance(csv, _Temp)
 
 
-@pytest.mark.skip(sys.platform == 'win32', reason="Doesn't work on Windows")
+@pytest.mark.xfail(sys.platform == 'win32', reason="Doesn't work on Windows")
 def test_unicode_column_names():
     with filetext('foo\xc4\x87,a\n1,2\n3,4', extension='csv') as fn:
         csv = CSV(fn, has_header=True)
