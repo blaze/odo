@@ -37,8 +37,8 @@ def test_csv_append():
 
         with open(fn) as f:
             s = f.read()
-            assert 'Alice' in s
-            assert '100' in s
+        assert 'Alice' in s
+        assert '100' in s
 
 
 def test_pandas_read():
