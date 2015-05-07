@@ -5,6 +5,7 @@ import pytest
 import sys
 import os
 import pandas as pd
+import pandas.util.testing as tm
 import gzip
 import datashape
 from datashape import Option, string
@@ -306,11 +307,12 @@ def test_convert_to_csv():
     assert isinstance(csv, _Temp)
 
 
-@pytest.mark.xfail(sys.platform == 'win32', reason="Doesn't work on Windows")
 def test_unicode_column_names():
-    with filetext('foo\xc4\x87,a\n1,2\n3,4', extension='csv') as fn:
-        csv = CSV(fn, has_header=True)
-        df = into(pd.DataFrame, csv)
+    with filetext(b'f\xc3\xbc,a\n1,2\n3,4', extension='csv', mode='wb') as fn:
+        df = into(pd.DataFrame, CSV(fn, has_header=True))
+    expected = pd.DataFrame([(1, 2), (3, 4)],
+                            columns=[b'f\xc3\xbc'.decode('utf8'), u'a'])
+    tm.assert_frame_equal(df, expected)
 
 
 def test_infer_header():
