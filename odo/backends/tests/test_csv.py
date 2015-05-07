@@ -315,7 +315,7 @@ def test_unicode_column_names():
     tm.assert_frame_equal(df, expected)
 
 
-def test_bad_unicode_column_names():
+def test_more_unicode_column_names():
     with filetext(b'foo\xc4\x87,a\n1,2\n3,4', extension='csv',
                   mode='wb') as fn:
         df = into(pd.DataFrame, CSV(fn, has_header=True))
