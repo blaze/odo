@@ -315,6 +315,15 @@ def test_unicode_column_names():
     tm.assert_frame_equal(df, expected)
 
 
+def test_bad_unicode_column_names():
+    with filetext(b'foo\xc4\x87,a\n1,2\n3,4', extension='csv',
+                  mode='wb') as fn:
+        df = into(pd.DataFrame, CSV(fn, has_header=True))
+    expected = pd.DataFrame([(1, 2), (3, 4)],
+                            columns=[b'foo\xc4\x87'.decode('utf8'), u'a'])
+    tm.assert_frame_equal(df, expected)
+
+
 def test_infer_header():
     with filetext('name,val\nAlice,100\nNA,200', extension='csv') as fn:
         assert infer_header(CSV(fn).path) == True
