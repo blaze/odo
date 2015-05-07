@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+import pytest
+
 import sys
 import os
 import pandas as pd
@@ -71,7 +73,7 @@ def test_pandas_read_supports_missing_integers():
         assert df.dtypes['val'] == 'f4'
 
 
-@skipif(os.name == 'nt')
+@pytest.mark.skip(sys.platform == 'win32', reason="Doesn't work on Windows")
 def test_pandas_read_supports_gzip():
     with filetext('Alice,1\nBob,2', open=gzip.open,
                   mode='wt', extension='.csv.gz') as fn:
@@ -302,7 +304,7 @@ def test_convert_to_csv():
     assert isinstance(csv, _Temp)
 
 
-@skipif(os.name == 'nt')
+@pytest.mark.skip(sys.platform == 'win32', reason="Doesn't work on Windows")
 def test_unicode_column_names():
     with filetext('foo\xc4\x87,a\n1,2\n3,4', extension='csv') as fn:
         csv = CSV(fn, has_header=True)
