@@ -34,7 +34,7 @@ test:
     - dask
     - dynd-python
     - paramiko
-    - sqlite3 # [win64]
+    - sqlite3 # [win]
     - boto # [not win]
     - bokeh # [not py26]
     - pytables >=3.0.0
