@@ -116,7 +116,7 @@ compressed_open = {'gz': gzip.open, 'bz2': bz2.BZ2File}
 
 @append.register(CSV, pd.DataFrame)
 def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
-    if not os.path.exists(c.path) or os.path.getsize(c.path) == 0:
+    if not os.path.exists(c.path) or not os.path.getsize(c.path):
         has_header = kwargs.pop('has_header', c.has_header)
     else:
         has_header = False
@@ -138,11 +138,8 @@ def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
         df.to_csv(f, mode='a', header=has_header, index=False, sep=sep,
                   encoding=encoding)
     finally:
-        if hasattr(f, 'flush'):
-            f.flush()
         if hasattr(f, 'close'):
             f.close()
-
     return c
 
 
@@ -244,8 +241,8 @@ def discover_csv(c, nrows=1000, **kwargs):
     df = csv_to_dataframe(c, nrows=nrows, **kwargs)
     df = coerce_datetimes(df)
 
-    if (not list(df.columns) == list(range(len(df.columns)))
-            and any(re.match('^[-\d_]*$', c) for c in df.columns)):
+    if (list(df.columns) != list(range(len(df.columns))) and
+            any(re.match(r'^[-\d_]*$', c) is not None for c in df.columns)):
         df = csv_to_dataframe(c, chunksize=50, has_header=False).get_chunk()
         df = coerce_datetimes(df)
 
@@ -253,23 +250,23 @@ def discover_csv(c, nrows=1000, **kwargs):
                for c in df.columns]
     df.columns = [c.strip() for c in columns]
 
-    # Replace np.nan with None.  Forces type string rather than flaot
+    # Replace np.nan with None. Forces type string rather than float
     for col in df.columns:
-        if df[col].count() == 0:
-            df[col] = [None] * len(df)
+        if not df[col].count():
+            df[col] = None
 
     measure = discover(df).measure
 
     # Use Series.notnull to determine Option-ness
-    measure2 = Record([[name, Option(typ)
-                        if (~df[name].notnull()).any()
-                        and not isinstance(typ, Option) else typ]
-                       for name, typ in zip(measure.names, measure.types)])
+    measure = Record([[name, Option(typ)
+                       if df[name].isnull().any() and
+                       not isinstance(typ, Option) else typ]
+                      for name, typ in zip(measure.names, measure.types)])
 
-    return datashape.var * measure2
+    return datashape.var * measure
 
 
-@resource.register('.+\.(csv|tsv|ssv|data|dat)(\.gz|\.bz)?')
+@resource.register('.+\.(csv|tsv|ssv|data|dat)(\.gz|\.bz2?)?')
 def resource_csv(uri, **kwargs):
     return CSV(uri, **kwargs)
 
@@ -280,16 +277,13 @@ def resource_glob(uri, **kwargs):
     r = resource(filenames[0], **kwargs)
     return chunks(type(r))([resource(u, **kwargs) for u in sorted(glob(uri))])
 
-    # Alternatively check each time we iterate?
-    def _():
-        return (resource(u, **kwargs) for u in glob(uri))
-    return chunks(type(r))(_)
 
-
-@convert.register(chunks(pd.DataFrame), (chunks(CSV), chunks(Temp(CSV))), cost=10.0)
+@convert.register(chunks(pd.DataFrame), (chunks(CSV), chunks(Temp(CSV))),
+                  cost=10.0)
 def convert_glob_of_csvs_to_chunks_of_dataframes(csvs, **kwargs):
     def _():
-        return concat(convert(chunks(pd.DataFrame), csv, **kwargs) for csv in csvs)
+        return concat(convert(chunks(pd.DataFrame), csv, **kwargs)
+                      for csv in csvs)
     return chunks(pd.DataFrame)(_)
 
 
