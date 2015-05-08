@@ -1,21 +1,24 @@
 from __future__ import absolute_import, division, print_function
 
+import pytest
+
 import sys
 import os
 import pandas as pd
+import pandas.util.testing as tm
 import gzip
 import datashape
 from datashape import Option, string
 from collections import Iterator
 
 from odo.backends.csv import (CSV, append, convert, resource,
-                              csv_to_DataFrame, CSV_to_chunks_of_dataframes,
+                              csv_to_dataframe, CSV_to_chunks_of_dataframes,
                               infer_header)
 from odo.utils import tmpfile, filetext, filetexts, raises
 from odo import (into, append, convert, resource, discover, dshape, Temp,
                  chunks, odo)
 from odo.temp import _Temp
-from odo.compatibility import unicode, skipif
+from odo.compatibility import unicode
 
 
 def test_csv():
@@ -37,15 +40,16 @@ def test_csv_append():
 
         with open(fn) as f:
             s = f.read()
-            assert 'Alice' in s
-            assert '100' in s
+        assert 'Alice' in s
+        assert '100' in s
+
 
 
 def test_pandas_read():
     with filetext('Alice,1\nBob,2') as fn:
         ds = datashape.dshape('var * {name: string, amount: int}')
         csv = CSV(fn)
-        df = csv_to_DataFrame(csv, dshape=ds)
+        df = csv_to_dataframe(csv, dshape=ds)
         assert isinstance(df, pd.DataFrame)
         assert convert(list, df) == [('Alice', 1), ('Bob', 2)]
         assert list(df.columns) == ['name', 'amount']
@@ -55,7 +59,7 @@ def test_pandas_read_supports_datetimes():
     with filetext('Alice,2014-01-02\nBob,2014-01-03') as fn:
         ds = datashape.dshape('var * {name: string, when: date}')
         csv = CSV(fn)
-        df = csv_to_DataFrame(csv, dshape=ds)
+        df = csv_to_dataframe(csv, dshape=ds)
         assert isinstance(df, pd.DataFrame)
         assert list(df.columns) == ['name', 'when']
         assert df.dtypes['when'] == 'M8[ns]'
@@ -65,19 +69,20 @@ def test_pandas_read_supports_missing_integers():
     with filetext('Alice,1\nBob,') as fn:
         ds = datashape.dshape('var * {name: string, val: ?int32}')
         csv = CSV(fn)
-        df = csv_to_DataFrame(csv, dshape=ds)
+        df = csv_to_dataframe(csv, dshape=ds)
         assert isinstance(df, pd.DataFrame)
         assert list(df.columns) == ['name', 'val']
         assert df.dtypes['val'] == 'f4'
 
 
-@skipif(os.name == 'nt')
+@pytest.mark.xfail(sys.platform == 'win32' and sys.version_info[0] < 3,
+                   reason="Doesn't work on Windows")
 def test_pandas_read_supports_gzip():
     with filetext('Alice,1\nBob,2', open=gzip.open,
                   mode='wt', extension='.csv.gz') as fn:
         ds = datashape.dshape('var * {name: string, amount: int}')
         csv = CSV(fn)
-        df = csv_to_DataFrame(csv, dshape=ds)
+        df = csv_to_dataframe(csv, dshape=ds)
         assert isinstance(df, pd.DataFrame)
         assert convert(list, df) == [('Alice', 1), ('Bob', 2)]
         assert list(df.columns) == ['name', 'amount']
@@ -87,7 +92,7 @@ def test_pandas_read_supports_read_csv_kwargs():
     with filetext('Alice,1\nBob,2') as fn:
         ds = datashape.dshape('var * {name: string, amount: int}')
         csv = CSV(fn)
-        df = csv_to_DataFrame(csv, dshape=ds, usecols=['name'])
+        df = csv_to_dataframe(csv, dshape=ds, usecols=['name'])
         assert isinstance(df, pd.DataFrame)
         assert convert(list, df) == [('Alice',), ('Bob',)]
 
@@ -120,7 +125,7 @@ def test_pandas_writes_header_by_default():
             assert 'name' in f.read()
 
 
-@skipif(sys.version_info[0] == 3)
+@pytest.mark.xfail(sys.version_info[0] == 3, reason="Doesn't work on Python 3")
 def test_pandas_write_gzip():
     with tmpfile('.csv.gz') as fn:
         ds = datashape.dshape('var * {name: string, amount: int}')
@@ -145,7 +150,8 @@ def test_pandas_loads_in_datetimes_naively():
         assert df.dtypes['when'] == 'M8[ns]'
 
 
-@skipif(os.name == 'nt')
+@pytest.mark.xfail(sys.platform == 'win32' and sys.version_info[0] < 3,
+                   reason="Doesn't work on Windows")
 def test_pandas_discover_on_gzipped_files():
     with filetext('name,when\nAlice,2014-01-01\nBob,2014-02-02',
                   open=gzip.open, mode='wt', extension='.csv.gz') as fn:
@@ -219,9 +225,9 @@ def test_first_csv_establishes_consistent_dshape():
     d = {'accounts1.csv': 'name,when\nAlice,one\nBob,two',
          'accounts2.csv': 'name,when\nAlice,300\nBob,400'}
     with filetexts(d) as fns:
-        L = into(list, 'accounts*.csv')
-        assert len(L) == 4
-        assert all(isinstance(val, (str, unicode)) for name, val in L)
+        result = into(list, 'accounts*.csv')
+        assert len(result) == 4
+        assert all(isinstance(val, (str, unicode)) for name, val in result)
 
 
 def test_discover_csv_with_spaces_in_header():
@@ -253,7 +259,7 @@ def test_unused_datetime_columns():
     ds = datashape.dshape('var * {val: string, when: datetime}')
     with filetext("val,when\na,2000-01-01\nb,2000-02-02") as fn:
         csv = CSV(fn, has_header=True)
-        assert convert(list, csv_to_DataFrame(csv, usecols=['val'],
+        assert convert(list, csv_to_dataframe(csv, usecols=['val'],
                                               squeeze=True, dshape=ds)) == ['a', 'b']
 
 
@@ -302,18 +308,28 @@ def test_convert_to_csv():
     assert isinstance(csv, _Temp)
 
 
-@skipif(os.name == 'nt')
 def test_unicode_column_names():
-    with filetext('foo\xc4\x87,a\n1,2\n3,4', extension='csv') as fn:
-        csv = CSV(fn, has_header=True)
-        df = into(pd.DataFrame, csv)
+    with filetext(b'f\xc3\xbc,a\n1,2\n3,4', extension='csv', mode='wb') as fn:
+        df = into(pd.DataFrame, CSV(fn, has_header=True))
+    expected = pd.DataFrame([(1, 2), (3, 4)],
+                            columns=[b'f\xc3\xbc'.decode('utf8'), u'a'])
+    tm.assert_frame_equal(df, expected)
+
+
+def test_more_unicode_column_names():
+    with filetext(b'foo\xc4\x87,a\n1,2\n3,4', extension='csv',
+                  mode='wb') as fn:
+        df = into(pd.DataFrame, CSV(fn, has_header=True))
+    expected = pd.DataFrame([(1, 2), (3, 4)],
+                            columns=[b'foo\xc4\x87'.decode('utf8'), u'a'])
+    tm.assert_frame_equal(df, expected)
 
 
 def test_infer_header():
     with filetext('name,val\nAlice,100\nNA,200', extension='csv') as fn:
-        assert infer_header(CSV(fn)) == True
+        assert infer_header(CSV(fn).path) == True
     with filetext('Alice,100\nNA,200', extension='csv') as fn:
-        assert infer_header(CSV(fn)) == False
+        assert infer_header(CSV(fn).path) == False
 
 
 def test_csv_supports_sep():
@@ -357,3 +373,11 @@ def test_csv_to_compressed_csv():
         with tmpfile('.csv.gz') as gfn:
             result = odo(fn, gfn)
             assert odo(result, list) == odo(fn, list)
+
+
+def test_has_header_on_tsv():
+    with tmpfile('.csv') as fn:
+        with open(fn, 'wb') as f:
+            f.write(b'a\tb\n1\t2\n3\t4')
+        csv = CSV(fn)
+        assert csv.has_header
