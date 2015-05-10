@@ -41,7 +41,7 @@ class CopyFromCSV(Executable, ClauseElement):
         self.quotechar = quotechar
         self.escapechar = escapechar
         self.encoding = encoding
-        self.skiprows = skiprows
+        self.skiprows = int(skiprows or self.header)
 
         for k, v in kwargs.items():
             setattr(self, k, v)
