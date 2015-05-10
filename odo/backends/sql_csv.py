@@ -25,7 +25,7 @@ from .aws import S3
 
 class CopyFromCSV(Executable, ClauseElement):
     def __init__(self, element, csv, delimiter=',', header=None, na_value='',
-                 lineterminator=r'\n', quotechar='"', escapechar='\\',
+                 lineterminator='\n', quotechar='"', escapechar='\\',
                  encoding='utf8', skiprows=0, **kwargs):
         if not isinstance(element, sa.Table):
             raise TypeError('element must be a sqlalchemy.Table instance')
@@ -36,7 +36,7 @@ class CopyFromCSV(Executable, ClauseElement):
                        (csv.has_header
                         if csv.has_header is not None else infer_header(csv)))
         self.na_value = na_value
-        self.lineterminator = lineterminator
+        self.lineterminator = lineterminator.encode('unicode-escape').decode()
         self.quotechar = quotechar
         self.escapechar = escapechar
         self.encoding = encoding
@@ -63,6 +63,7 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
 
         # write to a temporary file after skipping the first line
         chunksize = 2 ** 20
+        lineterminator = element.lineterminator.encode(element.encoding)
         with open(element.csv.path, 'rU') as f:
             with closing(mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)) as mf:
                 index = mf.find(b'\n')
