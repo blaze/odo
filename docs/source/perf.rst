@@ -81,5 +81,8 @@ Pandas
 ``````
 * TODO
 
+
+Final Thoughts
+``````````````
 For getting CSV files into the major open source databases, nothing will beat
 odo, since it's using the native capabilities of the underlying database.
