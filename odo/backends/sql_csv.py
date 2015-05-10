@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import os
 import re
 import subprocess
 import uuid
@@ -66,15 +67,13 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
         lineterminator = element.lineterminator.encode(element.encoding)
         with open(element.csv.path, 'rU') as f:
             with closing(mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)) as mf:
-                index = mf.find(b'\n')
-                if index < 0:
-                    raise ValueError('newline not found')
+                index = mf.index(lineterminator)
                 mf.seek(index + 1)
                 with open(csv.path, 'wb') as g:
                     for chunk in iter(partial(mf.read, chunksize), b''):
                         g.write(chunk)
 
-    fullpath = csv.path.encode('unicode-escape').decode()
+    fullpath = os.path.abspath(csv.path).encode('unicode-escape').decode()
     cmd = ['sqlite3',
            '-nullvalue', repr(element.na_value),
            '-separator', element.delimiter,
@@ -96,8 +95,8 @@ def compile_from_csv_mysql(element, compiler, **kwargs):
     encoding = {'utf-8': 'utf8'}.get(element.encoding.lower(),
                                      element.encoding or 'utf8')
     escapechar = element.escapechar.encode('unicode-escape').decode()
-    result = """
-        LOAD DATA {local} INFILE '{0.csv.path}'
+    result = r"""
+        LOAD DATA {local} INFILE '{path}'
         INTO TABLE {0.element.name}
         CHARACTER SET {encoding}
         FIELDS
@@ -107,6 +106,7 @@ def compile_from_csv_mysql(element, compiler, **kwargs):
         LINES TERMINATED BY '{0.lineterminator}'
         IGNORE {0.skiprows} LINES;
     """.format(element,
+               path=os.path.abspath(element.csv.path),
                local=getattr(element, 'local', ''),
                encoding=encoding,
                escapechar=escapechar).strip()
@@ -121,7 +121,7 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
         raise ValueError('postgres does not allow escapechar longer than 1 '
                          'byte')
     statement = """
-    COPY {0.element.name} FROM '{0.csv.path}'
+    COPY {0.element.name} FROM '{path}'
         (FORMAT CSV,
          DELIMITER E'{0.delimiter}',
          NULL '{0.na_value}',
@@ -130,6 +130,7 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
          HEADER {header},
          ENCODING '{encoding}');"""
     return statement.format(element,
+                            path=os.path.abspath(element.csv.path),
                             header=str(element.header).upper(),
                             encoding=encoding).strip()
 
