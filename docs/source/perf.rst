@@ -7,9 +7,10 @@ Loading CSVs into SQL Databases
 Odo uses the native CSV loading capabilities of the databases it supports.
 These loaders are well tested and high performing. Odo will beat any other pure
 Python approach when loading large datasets. The following is a performance
-comparison of loading the entire NYC taxi trip and fare combined dataset into
-PostgreSQL, MySQL, and SQLite3 using odo. Finally we compare a naive approach
-using pandas chunked ``read_csv`` and calling ``to_sql`` to append to the table
+comparison of loading the entire NYC taxi trip and fare combined dataset (about
+33GB of text) into PostgreSQL, MySQL, and SQLite3 using odo. Finally we compare
+a naive approach using pandas chunked ``read_csv`` and calling ``to_sql`` to
+append to the table.
 
 
 PostgreSQL (22m 64s)
