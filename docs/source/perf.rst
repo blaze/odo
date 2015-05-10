@@ -15,8 +15,8 @@ using pandas chunked ``read_csv`` and calling ``to_sql`` to append to the table
 PostgreSQL (22m 64s)
 ````````````````````
 
-READS: ~50 MB/s
-WRITES: ~50 MB/s
+* READS: ~50 MB/s
+* WRITES: ~50 MB/s
 
 The ``COPY`` command built into postgresql is quite fast. Odo generates code
 for the ``COPY`` command using a custom SQLAlchemy expression.
@@ -57,8 +57,8 @@ MySQL (21m 47s)
    In [1]: %time t = odo('all.csv', 'mysql+pymysql://localhost/test::nyc')
 
 
-READS: ~30 MB/s
-WRITES: ~150 MB/s
+* READS: ~30 MB/s
+* WRITES: ~150 MB/s
 
 SQLite3 (57m 31s\*)
 ```````````````````
