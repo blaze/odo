@@ -37,7 +37,7 @@ class CopyFromCSV(Executable, ClauseElement):
                        (csv.has_header
                         if csv.has_header is not None else infer_header(csv)))
         self.na_value = na_value
-        self.lineterminator = lineterminator.encode('unicode-escape').decode()
+        self.lineterminator = lineterminator
         self.quotechar = quotechar
         self.escapechar = escapechar
         self.encoding = encoding
@@ -63,11 +63,13 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
         csv = Temp(CSV)('.%s' % uuid.uuid1())
 
         # write to a temporary file after skipping the first line
-        chunksize = 2 ** 20
+        chunksize = 1 << 24  # 16 MiB
         lineterminator = element.lineterminator.encode(element.encoding)
-        with open(element.csv.path, 'rU') as f:
+        with open(element.csv.path, 'rb') as f:
             with closing(mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)) as mf:
-                index = mf.index(lineterminator)
+                index = mf.find(lineterminator)
+                if index == -1:
+                    raise ValueError("'%s' not found" % lineterminator)
                 mf.seek(index + 1)
                 with open(csv.path, 'wb') as g:
                     for chunk in iter(partial(mf.read, chunksize), b''):
@@ -95,6 +97,7 @@ def compile_from_csv_mysql(element, compiler, **kwargs):
     encoding = {'utf-8': 'utf8'}.get(element.encoding.lower(),
                                      element.encoding or 'utf8')
     escapechar = element.escapechar.encode('unicode-escape').decode()
+    lineterminator = element.lineterminator.encode('unicode-escape').decode()
     result = r"""
         LOAD DATA {local} INFILE '{path}'
         INTO TABLE {0.element.name}
@@ -109,6 +112,7 @@ def compile_from_csv_mysql(element, compiler, **kwargs):
                path=os.path.abspath(element.csv.path),
                local=getattr(element, 'local', ''),
                encoding=encoding,
+               lineterminator=lineterminator,
                escapechar=escapechar).strip()
     return result
 
