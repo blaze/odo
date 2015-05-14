@@ -7,7 +7,7 @@ import datashape
 from datashape import discover, Record, Option
 from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
-from toolz import concat, keyfilter, keymap, merge, valfilter
+from toolz import concat, keyfilter, keymap, merge, valfilter, second
 import pandas
 import pandas as pd
 import os
@@ -63,7 +63,9 @@ def sniff_dialect(path, nbytes, encoding='utf-8'):
         return {}
     with open_file(path, 'rb') as f:
         raw = f.read(nbytes)
-    return dialect_to_dict(csv.Sniffer().sniff(raw.decode(encoding)))
+    dialect = csv.Sniffer().sniff(raw.decode(encoding))
+    dialect.lineterminator = '\r\n' if b'\r\n' in raw else '\n'
+    return dialect_to_dict(dialect)
 
 
 def dialect_to_dict(dialect):
