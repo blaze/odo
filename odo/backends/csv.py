@@ -7,7 +7,7 @@ import datashape
 from datashape import discover, Record, Option
 from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
-from toolz import concat, keyfilter, keymap, merge, valfilter, second
+from toolz import concat, keyfilter, keymap, merge, valfilter
 import pandas
 import pandas as pd
 import os
@@ -91,10 +91,10 @@ class CSV(object):
     """
     canonical_extension = 'csv'
 
-    def __init__(self, path, has_header='no-input', encoding='utf-8',
+    def __init__(self, path, has_header=None, encoding='utf-8',
                  sniff_nbytes=10000, **kwargs):
         self.path = path
-        if has_header == 'no-input':
+        if has_header is None:
             self.has_header = (not os.path.exists(path) or
                                infer_header(path, sniff_nbytes))
         else:
