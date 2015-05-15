@@ -15,6 +15,7 @@ from odo.utils import assert_allclose, tmpfile
 
 names = ('tbl%d' % i for i in itertools.count())
 data = [(1, 2), (10, 20), (100, 200)]
+null_data = [(1, None), (10, 20), (100, 200)]
 
 
 @pytest.yield_fixture(scope='module')
@@ -39,7 +40,7 @@ def url():
 @pytest.yield_fixture
 def sql(url):
     try:
-        t = resource(url, dshape='var * {a: int32, b: int32}')
+        t = resource(url, dshape='var * {a: int32, b: ?int32}')
     except sa.exc.OperationalError as e:
         pytest.skip(str(e))
     else:
@@ -122,3 +123,12 @@ def test_csv_output_is_not_quoted_by_default(sql, csv):
         with open(fn, 'rt') as f:
             result = f.read()
         assert result == expected
+
+
+def test_na_value(sql, csv):
+    sql = odo(null_data, sql)
+    with tmpfile('.csv') as fn:
+        csv = odo(sql, fn, na_value='NA')
+        with open(csv.path, 'rt') as f:
+            raw = f.read()
+    assert raw == 'a,b\n1,NA\n10,20\n100,200\n'

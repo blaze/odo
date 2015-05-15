@@ -572,15 +572,15 @@ def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
     if not find_executable('sqlite3'):
         raise MDNotImplementedError("Could not find sqlite executable")
 
-    sub = element.element
-    sql = (compiler.process(sa.select([sub])
-                            if isinstance(sub, sa.Table)
-                            else sub) + ';')
+    selectable = element.element
+    sql = (compiler.process(sa.select([selectable])
+                            if isinstance(selectable, sa.Table)
+                            else selectable) + ';')
     sql = re.sub(r'\s{2,}', ' ', re.sub(r'\s*\n\s*', ' ', sql)).encode()
     cmd = ['sqlite3', '-csv',
            '-%sheader' % ('no' if not element.header else ''),
            '-separator', element.delimiter,
-           sub.bind.url.database]
+           selectable.bind.url.database]
     with open(element.path, mode='at') as f:
         subprocess.Popen(cmd, stdout=f, stdin=subprocess.PIPE).communicate(sql)
 
