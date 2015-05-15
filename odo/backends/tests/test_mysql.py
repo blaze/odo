@@ -177,7 +177,9 @@ def test_sql_to_csv(sql, csv):
     with tmpfile('.csv') as fn:
         csv = odo(sql, fn)
         assert odo(csv, list) == data
-        assert discover(csv).measure.names == discover(sql).measure.names
+
+        # explicitly test that we do NOT preserve the header here
+        assert discover(csv).measure.names != discover(sql).measure.names
 
 
 def test_sql_select_to_csv(sql, csv):
@@ -188,11 +190,11 @@ def test_sql_select_to_csv(sql, csv):
         assert odo(csv, list) == [(x,) for x, _ in data]
 
 
-def test_csv_output_is_not_quoted_by_default(sql, csv):
+def test_csv_output_does_not_preserve_header(sql, csv):
     sql = odo(csv, sql)
-    expected = "a,b\n1,2\n10,20\n100,200\n"
+    expected = "1,2\n10,20\n100,200\n"
     with tmpfile('.csv') as fn:
         csv = odo(sql, fn)
-        with open(fn, 'rt') as f:
+        with open(csv.path, 'rt') as f:
             result = f.read()
-        assert result == expected
+    assert result == expected
