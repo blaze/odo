@@ -112,3 +112,13 @@ def test_invalid_escapechar(sql, csv):
 
     with pytest.raises(ValueError):
         odo(csv, sql, escapechar='')
+
+
+def test_csv_output_is_not_quoted_by_default(sql, csv):
+    sql = odo(csv, sql)
+    expected = "a,b\n1,2\n10,20\n100,200\n"
+    with tmpfile('.csv') as fn:
+        csv = odo(sql, fn)
+        with open(fn, 'rt') as f:
+            result = f.read()
+        assert result == expected
