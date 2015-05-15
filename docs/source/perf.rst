@@ -30,12 +30,17 @@ Odo uses the native CSV loading capabilities of the databases it supports.
 These loaders are extremely performant. Odo will beat any other pure Python
 approach when loading large datasets. The following is a performance comparison
 of loading the entire NYC taxi trip and fare combined dataset (about 33GB of
-text) into PostgreSQL, MySQL, and SQLite3 using odo. Finally we compare a naive
-approach using pandas chunked ``pd.read_csv`` and calling ``DataFrame.to_sql``
-to append to the table.
+text) into PostgreSQL, MySQL, and SQLite3 using odo. Our baseline for comparison
+is pandas.
 
-PostgreSQL (22m 64s)
-````````````````````
+Pandas
+``````
+
+* TODO
+
+
+CSV -> PostgreSQL (22m 64s)
+```````````````````````````
 
 * READS: ~50 MB/s
 * WRITES: ~50 MB/s
@@ -48,6 +53,13 @@ for the ``COPY`` command using a custom SQLAlchemy expression.
    In [1]: %time t = odo('all.csv', 'postgresql://localhost::nyc')
    CPU times: user 1.43 s, sys: 330 ms, total: 1.76 s
    Wall time: 22min 46s
+
+PostgreSQL -> CSV (21m 32s)
+```````````````````````````
+
+Getting data out of the database takes roughly the same amount of time as
+loading it in.
+
 
 ``pg_bulkload`` Command Line Utility (13m 17s)
 ``````````````````````````````````````````````
@@ -72,8 +84,8 @@ the installation requires several steps.
            0 Rows replaced with new rows.
    ./pg_bulkload nyc2.ctl < all.csv  26.14s user 33.31s system 7% cpu 13:17.31 total
 
-MySQL (21m 47s)
-```````````````
+CSV -> MySQL (21m 47s)
+``````````````````````
 
 .. code-block:: python
 
@@ -83,8 +95,21 @@ MySQL (21m 47s)
 * READS: ~30 MB/s
 * WRITES: ~150 MB/s
 
-SQLite3 (57m 31s\*)
+MySQL -> CSV (TODO)
 ```````````````````
+
+.. code-block:: python
+
+   In [1]: %time t = odo('mysql+pymysql://localhost/test::nyc', 'all.csv')
+
+* READS: ~25 MB/s
+* WRITES: ~22 MB/s
+
+Similar to PostgreSQL, MySQL takes roughly the same amount of time to write a
+CSV as it does to load it into a table.
+
+CSV -> SQLite3 (57m 31s\*)
+``````````````````````````
 
 .. code-block:: python
 
@@ -94,19 +119,47 @@ SQLite3 (57m 31s\*)
    CPU times: user 3.09 s, sys: 819 ms, total: 3.91 s
    Wall time: 57min 31s
 
-\* Here, we call ``discover`` on a version of the dataset that has the header in
-the first line and we use a version of the dataset *without* the header line in
-the sqlite3 ``.import`` command. This is sort of cheating, but I wanted to see
-what the loading time of sqlite3's import command was without the overhead of
-creating a new file sans the header line.
+\* Here, we call ``discover`` on a version of the dataset that has the header
+in the first line and we use a version of the dataset *without* the header line
+in the sqlite3 ``.import`` command. This is sort of cheating, but I wanted to
+see what the loading time of sqlite3's import command was without the overhead
+of creating a new file sans the header line.
 
-Pandas
-``````
-* TODO
+SQLite3 -> CSV (TODO)
+`````````````````````
+
+TODO
+----
+
+Gzip'd CSV -> Redshift
+``````````````````````
+
+Not well tested in odo
+
+Redshift to CSV
+```````````````
+
+Not well tested in odo
+
+Gzip'd JSON -> Redshift
+```````````````````````
+
+Not well tested in odo
+
+CSV -> MongoDB
+``````````````
+
+We can use ``mongoimport`` here.
+
+MongoDB -> CSV
+``````````````
+
+We can use ``mongoexport`` here.
 
 
 Final Thoughts
 ``````````````
+
 For getting CSV files into the major open source databases from within Python,
-nothing will beat odo, since it's using the native capabilities of the
-underlying database.
+nothing will beat odo since it's using the native capabilities of the
+underlying database. Don't use pandas for getting your CSV files into a database.
