@@ -80,7 +80,7 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
            '-nullvalue', repr(element.na_value),
            '-separator', element.delimiter,
            '-cmd', '.import "%s" %s' % (fullpath, t.name),
-           element.bind.url.database]
+           '"%s"' % element.bind.url.database]
     stdout, stderr = subprocess.Popen(cmd,
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.STDOUT,
