@@ -64,7 +64,8 @@ def sniff_dialect(path, nbytes, encoding='utf-8'):
     with open_file(path, 'rb') as f:
         raw = f.read(nbytes)
     dialect = csv.Sniffer().sniff(raw.decode(encoding))
-    dialect.lineterminator = '\r\n' if b'\r\n' in raw else '\n'
+    dialect.lineterminator = (b'\r\n'
+                              if b'\r\n' in raw else b'\n').decode(encoding)
     return dialect_to_dict(dialect)
 
 
