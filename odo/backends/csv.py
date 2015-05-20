@@ -17,7 +17,7 @@ import uuid
 import csv
 from glob import glob
 
-from ..compatibility import unicode, PY26
+from ..compatibility import unicode, PY2
 from ..utils import keywords, ext
 from ..append import append
 from ..convert import convert, ooc_types
@@ -55,7 +55,7 @@ def open_file(path, *args, **kwargs):
 def infer_header(path, nbytes=10000, encoding='utf-8', **kwargs):
     with open_file(path, 'rb') as f:
         raw = f.read(nbytes)
-    return csv.Sniffer().has_header(raw if PY26 else raw.decode(encoding))
+    return csv.Sniffer().has_header(raw if PY2 else raw.decode(encoding))
 
 
 def sniff_dialect(path, nbytes, encoding='utf-8'):
