@@ -101,7 +101,7 @@ class CSV(object):
         else:
             self.has_header = has_header
         self.encoding = encoding
-        kwargs = merge(sniff_dialect(path, sniff_nbytes),
+        kwargs = merge(sniff_dialect(path, sniff_nbytes, encoding=encoding),
                        keymap(alias, kwargs))
         self.dialect = valfilter(bool,
                                  dict((d, kwargs[d])
