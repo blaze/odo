@@ -547,7 +547,7 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
                            delimiter=element.delimiter,
                            quotechar=element.quotechar,
                            na_value=element.na_value,
-                           escapechar=element.escapechar or '')
+                           escapechar=element.escapechar)
 
 
 @compiles(CopyToCSV, 'mysql')
