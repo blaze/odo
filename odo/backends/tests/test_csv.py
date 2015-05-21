@@ -364,3 +364,10 @@ def test_header_with_quotes():
     }
     """)
     assert discover(csv) == expected
+
+
+def test_encoding_is_none():
+    with tmpfile('.csv') as fn:
+        with open(fn, 'w') as f:
+            f.write('a,1\nb,2\nc,3'.encode('utf-8').decode('utf-8'))
+        assert CSV(fn, encoding=None).encoding == 'utf-8'
