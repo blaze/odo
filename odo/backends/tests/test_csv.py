@@ -350,3 +350,24 @@ def test_has_header_on_tsv():
             f.write(b'a\tb\n1\t2\n3\t4')
         csv = CSV(fn)
         assert csv.has_header
+
+
+def test_header_with_quotes():
+    csv = CSV(os.path.join(os.path.dirname(__file__), 'encoding.csv'),
+              encoding='latin1')
+    expected = dshape("""var * {
+        D_PROC: ?string,
+        NUM_SEQ: int64,
+        COD_TIP_RELAC: ?float64,
+        COMPL: ?string,
+        COD_ASSUNTO: int64
+    }
+    """)
+    assert discover(csv) == expected
+
+
+def test_encoding_is_none():
+    with tmpfile('.csv') as fn:
+        with open(fn, 'w') as f:
+            f.write('a,1\nb,2\nc,3'.encode('utf-8').decode('utf-8'))
+        assert CSV(fn, encoding=None).encoding == 'utf-8'
