@@ -135,8 +135,13 @@ SQLite3 -> CSV
 CSV -> MongoDB
 ``````````````
 * TODO
+* We can use ``mongoimport`` here, but only if we don't have datetimes or
+  timedeltas in our data.
 
-We can use ``mongoimport`` here.
+MongoDB -> CSV
+``````````````
+* TODO
+* We can use ``mongoexport`` here.
 
 TODO
 ----
@@ -152,13 +157,6 @@ Redshift to S3(CSV)
 GZIP'd JSON -> Redshift
 ```````````````````````
 * Not well tested in odo
-
-MongoDB -> CSV
-``````````````
-* TODO
-
-We can use ``mongoexport`` here.
-
 
 Final Thoughts
 ``````````````
