@@ -47,8 +47,7 @@ def test_simple_into(csv):
 def test_csv_with_header():
     with tmpfile('db') as dbfilename:
         with filetext('a,b\n1,2\n3,4', extension='csv') as csvfilename:
-            t = odo(csvfilename, 'sqlite:///%s::mytable' % dbfilename,
-                    has_header=True)
+            t = odo(csvfilename, 'sqlite:///%s::mytable' % dbfilename)
             assert discover(t) == dshape('var * {a: int64, b: int64}')
             assert odo(t, set) == set([(1, 2), (3, 4)])
 
