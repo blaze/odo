@@ -21,15 +21,15 @@ enormous cost to this process.
 
 **Why aren't we using the software that was designed explicitly for this purpose?**
 
-Why
----
+Why?
+----
 Loading CSV files into databases is a solved problem. It's a problem that has
 been solved well. Instead of rolling our own loader every time we need to do
 this and wasting computational resources, we should use the native loaders in
 the database of our choosing. Odo lets you do this with a single line of code.
 
-How
----
+How?
+----
 Odo uses the native CSV loading capabilities of the databases it supports.
 These loaders are extremely fast. Odo will beat any other pure Python approach
 when loading large datasets. The following is a performance comparison of
