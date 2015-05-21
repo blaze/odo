@@ -7,7 +7,7 @@ import datashape
 from datashape import discover, Record, Option
 from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
-from toolz import concat, keyfilter, keymap, merge, valfilter, second
+from toolz import concat, keyfilter, keymap, merge, valfilter
 import pandas
 import pandas as pd
 import os
@@ -17,7 +17,7 @@ import uuid
 import csv
 from glob import glob
 
-from ..compatibility import unicode, PY26
+from ..compatibility import unicode, PY2
 from ..utils import keywords, ext
 from ..append import append
 from ..convert import convert, ooc_types
@@ -55,7 +55,7 @@ def open_file(path, *args, **kwargs):
 def infer_header(path, nbytes=10000, encoding='utf-8', **kwargs):
     with open_file(path, 'rb') as f:
         raw = f.read(nbytes)
-    return csv.Sniffer().has_header(raw if PY26 else raw.decode(encoding))
+    return csv.Sniffer().has_header(raw if PY2 else raw.decode(encoding))
 
 
 def sniff_dialect(path, nbytes, encoding='utf-8'):
@@ -64,7 +64,8 @@ def sniff_dialect(path, nbytes, encoding='utf-8'):
     with open_file(path, 'rb') as f:
         raw = f.read(nbytes)
     dialect = csv.Sniffer().sniff(raw.decode(encoding))
-    dialect.lineterminator = '\r\n' if b'\r\n' in raw else '\n'
+    dialect.lineterminator = (b'\r\n'
+                              if b'\r\n' in raw else b'\n').decode(encoding)
     return dialect_to_dict(dialect)
 
 
@@ -91,16 +92,16 @@ class CSV(object):
     """
     canonical_extension = 'csv'
 
-    def __init__(self, path, has_header='no-input', encoding='utf-8',
+    def __init__(self, path, has_header=None, encoding='utf-8',
                  sniff_nbytes=10000, **kwargs):
         self.path = path
-        if has_header == 'no-input':
+        if has_header is None:
             self.has_header = (not os.path.exists(path) or
                                infer_header(path, sniff_nbytes))
         else:
             self.has_header = has_header
         self.encoding = encoding
-        kwargs = merge(sniff_dialect(path, sniff_nbytes),
+        kwargs = merge(sniff_dialect(path, sniff_nbytes, encoding=encoding),
                        keymap(alias, kwargs))
         self.dialect = valfilter(bool,
                                  dict((d, kwargs[d])
