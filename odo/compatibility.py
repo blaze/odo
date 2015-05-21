@@ -5,7 +5,6 @@ import itertools
 import os
 
 PY2 = sys.version_info[0] == 2
-PY26 = PY2 and sys.version_info[1] == 6
 PY3 = sys.version_info[0] == 3
 ON_TRAVIS_CI = 'TRAVIS_PYTHON_VERSION' in os.environ
 
