@@ -61,6 +61,8 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
         csv = element.csv
     else:
         csv = Temp(CSV)('.%s' % uuid.uuid1())
+        assert csv.has_header, \
+            'SQLAlchemy element.header is True but CSV inferred no header'
 
         # write to a temporary file after skipping the first line
         chunksize = 1 << 24  # 16 MiB
@@ -70,7 +72,7 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
                 index = mf.find(lineterminator)
                 if index == -1:
                     raise ValueError("'%s' not found" % lineterminator)
-                mf.seek(index + 1)
+                mf.seek(index + len(lineterminator))  # len because \r\n
                 with open(csv.path, 'wb') as g:
                     for chunk in iter(partial(mf.read, chunksize), b''):
                         g.write(chunk)
