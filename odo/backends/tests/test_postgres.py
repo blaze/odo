@@ -132,3 +132,21 @@ def test_na_value(sql, csv):
         with open(csv.path, 'rt') as f:
             raw = f.read()
     assert raw == 'a,b\n1,NA\n10,20\n100,200\n'
+
+
+def test_different_encoding(url):
+    encoding = 'latin1'
+    sql = odo(os.path.join(os.path.dirname(__file__), 'encoding.csv'),
+              url,
+              encoding=encoding)
+    result = odo(sql, list)
+    expected = [(u'1958.001.500131-1A', 1, None, u'', 899),
+                (u'1958.001.500156-6', 1, None, u'', 899),
+                (u'1958.001.500162-1', 1, None, u'', 899),
+                (u'1958.001.500204-2', 1, None, u'', 899),
+                (u'1958.001.500204-2A', 1, None, u'', 899),
+                (u'1958.001.500204-2B', 1, None, u'', 899),
+                (u'1958.001.500223-6', 1, None, u'', 9610),
+                (u'1958.001.500233-9', 1, None, u'', 4703),
+                (u'1909.017.000018-3', 1, 30.0, u'sumaria', 899)]
+    assert result == expected

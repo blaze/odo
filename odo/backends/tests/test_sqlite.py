@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import os
 from itertools import product
 import pytest
 pytest.importorskip('sqlalchemy')
@@ -75,3 +76,21 @@ def test_sqlite_to_csv(sep, header):
                         for row in map(lambda x: x.split(sep), lines[header:])]
             assert odo(fn, list, delimiter=sep, has_header=header,
                        dshape=discover(t)) == expected
+
+
+def test_different_encoding():
+    encoding = 'latin1'
+    with tmpfile('db') as db:
+        sql = odo(os.path.join(os.path.dirname(__file__), 'encoding.csv'),
+                  'sqlite:///%s::t' % db, encoding=encoding)
+        result = odo(sql, list)
+    expected = [(u'1958.001.500131-1A', 1, u'', u'', 899),
+                (u'1958.001.500156-6', 1, u'', u'', 899),
+                (u'1958.001.500162-1', 1, u'', u'', 899),
+                (u'1958.001.500204-2', 1, u'', u'', 899),
+                (u'1958.001.500204-2A', 1, u'', u'', 899),
+                (u'1958.001.500204-2B', 1, u'', u'', 899),
+                (u'1958.001.500223-6', 1, u'', u'', 9610),
+                (u'1958.001.500233-9', 1, u'', u'', 4703),
+                (u'1909.017.000018-3', 1, 30.0, u'sumaria', 899)]
+    assert result == expected
