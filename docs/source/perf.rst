@@ -19,7 +19,6 @@ First we convert our CSV into an iterator of DataFrames, and then those are
 converted into Python data structures compatible with SQLAlchemy. There's an
 enormous cost to this process.
 
-
 Why aren't we using the software that was designed explicitly for this purpose?
 -------------------------------------------------------------------------------
 Loading CSV files into databases is a solved problem. It's a problem that has
@@ -153,8 +152,8 @@ Gzip'd CSV → Redshift
 `````````````````````
 * Not well tested in odo
 
-Redshift to S3(CSV)
-```````````````````
+Redshift → S3(CSV)
+``````````````````
 * Not well tested in odo
 
 GZIP'd JSON → Redshift
