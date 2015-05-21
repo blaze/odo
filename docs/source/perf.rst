@@ -19,10 +19,9 @@ First we convert our CSV into an iterator of DataFrames, and then those are
 converted into Python data structures compatible with SQLAlchemy. There's an
 enormous cost to this process.
 
-**Why aren't we using the software that was designed explicitly for this purpose?**
 
-Why?
-----
+Why aren't we using the software that was designed explicitly for this purpose?
+-------------------------------------------------------------------------------
 Loading CSV files into databases is a solved problem. It's a problem that has
 been solved well. Instead of rolling our own loader every time we need to do
 this and wasting computational resources, we should use the native loaders in
