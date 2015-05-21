@@ -43,8 +43,8 @@ Pandas
 ``````
 * TODO
 
-CSV -> PostgreSQL (22m 64s)
-```````````````````````````
+CSV → PostgreSQL (22m 64s)
+``````````````````````````
 * READS: ~50 MB/s
 * WRITES: ~50 MB/s
 
@@ -57,8 +57,8 @@ for the ``COPY`` command using a custom SQLAlchemy expression.
    CPU times: user 1.43 s, sys: 330 ms, total: 1.76 s
    Wall time: 22min 46s
 
-PostgreSQL -> CSV (21m 32s)
-```````````````````````````
+PostgreSQL → CSV (21m 32s)
+``````````````````````````
 Getting data out of the database takes roughly the same amount of time as
 loading it in.
 
@@ -86,8 +86,8 @@ for data integrity when turning off WAL.
            0 Rows replaced with new rows.
    ./pg_bulkload nyc2.ctl < all.csv  26.14s user 33.31s system 7% cpu 13:17.31 total
 
-CSV -> MySQL (20m 49s)
-``````````````````````
+CSV → MySQL (20m 49s)
+`````````````````````
 
 .. code-block:: python
 
@@ -98,8 +98,8 @@ CSV -> MySQL (20m 49s)
 * READS: ~30 MB/s
 * WRITES: ~150 MB/s
 
-MySQL -> CSV (17m 47s)
-``````````````````````
+MySQL → CSV (17m 47s)
+`````````````````````
 
 .. code-block:: python
 
@@ -113,8 +113,8 @@ MySQL -> CSV (17m 47s)
 Similar to PostgreSQL, MySQL takes roughly the same amount of time to write a
 CSV as it does to load it into a table.
 
-CSV -> SQLite3 (57m 31s\*)
-``````````````````````````
+CSV → SQLite3 (57m 31s\*)
+`````````````````````````
 
 .. code-block:: python
 
@@ -131,34 +131,34 @@ in the sqlite3 ``.import`` command. This is sort of cheating, but I wanted to
 see what the loading time of sqlite3's import command was without the overhead
 of creating a new file sans the header line.
 
-SQLite3 -> CSV
-``````````````
+SQLite3 → CSV
+`````````````
 * TODO
 
-CSV -> MongoDB
-``````````````
+CSV → MongoDB
+`````````````
 * TODO
 * We can use ``mongoimport`` here, but only if we don't have datetimes or
   timedeltas in our data.
 
-MongoDB -> CSV
-``````````````
+MongoDB → CSV
+`````````````
 * TODO
 * We can use ``mongoexport`` here.
 
 TODO
 ----
 
-Gzip'd CSV -> Redshift
-``````````````````````
+Gzip'd CSV → Redshift
+`````````````````````
 * Not well tested in odo
 
 Redshift to S3(CSV)
 ```````````````````
 * Not well tested in odo
 
-GZIP'd JSON -> Redshift
-```````````````````````
+GZIP'd JSON → Redshift
+``````````````````````
 * Not well tested in odo
 
 Final Thoughts
