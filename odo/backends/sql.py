@@ -2,10 +2,12 @@ from __future__ import absolute_import, division, print_function
 
 import os
 import re
+import subprocess
 
 from itertools import chain
 from collections import Iterator
 from datetime import datetime, date
+from distutils.spawn import find_executable
 
 import pandas as pd
 import sqlalchemy as sa
@@ -510,68 +512,95 @@ def select_or_selectable_to_frame(el, **kwargs):
 
 
 class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
-    def __init__(self, element, path, delimiter=',', quote='"',
-                 lineterminator=r'\n', header=True):
+    def __init__(self, element, path, delimiter=',', quotechar='"',
+                 lineterminator=r'\n', escapechar='\\', header=True,
+                 na_value=''):
         self.element = element
         self.path = path
         self.delimiter = delimiter
-        self.quote = quote
+        self.quotechar = quotechar
         self.lineterminator = lineterminator
-        self.header = header
+
+        # mysql cannot write headers
+        self.header = header and element.bind.dialect.name != 'mysql'
+        self.escapechar = escapechar
+        self.na_value = na_value
 
 
 @compiles(CopyToCSV, 'postgresql')
 def compile_copy_to_csv_postgres(element, compiler, **kwargs):
-    istable = isinstance(element.element, sa.Table)
-    template = 'COPY {0} TO %r WITH CSV %s DELIMITER %r QUOTE %r'
-    selectable_format = '(%s)' if not istable else '%s'
-    if istable:
-        processed = element.element.name
-    else:
-        processed = compiler.process(element.element)
-    assert processed, \
-        ('got empty string from processing element of type %r' %
-         type(element.element).__name__)
-    return template.format(selectable_format) % (processed,
-                                                 element.path,
-                                                 'HEADER'
-                                                 if element.header
-                                                 else '',
-                                                 element.delimiter,
-                                                 element.quote)
+    selectable = element.element
+    istable = isinstance(selectable, sa.Table)
+    template = """COPY %s TO '{path}'
+        WITH CSV {header}
+        DELIMITER '{delimiter}'
+        QUOTE '{quotechar}'
+        NULL '{na_value}'
+        ESCAPE '{escapechar}'
+    """ % ('{query}' if istable else '({query})')
+    processed = selectable.name if istable else compiler.process(selectable)
+    assert processed, ('got empty string from processing element of type %r' %
+                       type(selectable).__name__)
+    return template.format(query=processed,
+                           path=element.path,
+                           header='HEADER' if element.header else '',
+                           delimiter=element.delimiter,
+                           quotechar=element.quotechar,
+                           na_value=element.na_value,
+                           escapechar=element.escapechar)
 
 
 @compiles(CopyToCSV, 'mysql')
 def compile_copy_to_csv_mysql(element, compiler, **kwargs):
-    istable = isinstance(element.element, sa.Table)
-    template = """
-    %s INTO OUTFILE %r
-    FIELDS TERMINATED BY %r
-    ENCLOSED BY %r
-    LINES TERMINATED BY '%s'"""
-    if istable:
-        processed = 'SELECT * FROM %s' % element.element.name
+    selectable = element.element
+    if isinstance(selectable, sa.Table):
+        processed = 'SELECT * FROM %(table)s' % dict(table=selectable.name)
     else:
-        processed = compiler.process(element.element)
-    assert processed, \
-        ('got empty string from processing element of type %r' %
-         type(element.element).__name__)
-    columns = ', '.join(map(repr, element.element.c.keys()))
-    select_template = ('SELECT %s UNION ALL %s' %
-                       (columns,
-                        template % (processed, element.path,
-                                    element.delimiter, element.quote,
-                                    element.lineterminator)))
-    return select_template
+        processed = compiler.process(selectable)
+    assert processed, ('got empty string from processing element of type %r' %
+                       type(selectable).__name__)
+    template = """{query} INTO OUTFILE '{path}'
+    FIELDS TERMINATED BY '{delimiter}'
+    OPTIONALLY ENCLOSED BY '{quotechar}'
+    ESCAPED BY '{escapechar}'
+    LINES TERMINATED BY '{lineterminator}'"""
+    return template.format(query=processed,
+                           path=element.path,
+                           delimiter=element.delimiter,
+                           lineterminator=element.lineterminator,
+                           escapechar=element.escapechar.encode('unicode-escape').decode(),
+                           quotechar=element.quotechar)
+
+
+@compiles(CopyToCSV, 'sqlite')
+def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
+    if not find_executable('sqlite3'):
+        raise MDNotImplementedError("Could not find sqlite executable")
+
+    selectable = element.element
+    sql = (compiler.process(sa.select([selectable])
+                            if isinstance(selectable, sa.Table)
+                            else selectable) + ';')
+    sql = re.sub(r'\s{2,}', ' ', re.sub(r'\s*\n\s*', ' ', sql)).encode()
+    cmd = ['sqlite3', '-csv',
+           '-%sheader' % ('no' if not element.header else ''),
+           '-separator', element.delimiter,
+           selectable.bind.url.database]
+    with open(element.path, mode='at') as f:
+        subprocess.Popen(cmd, stdout=f, stdin=subprocess.PIPE).communicate(sql)
+
+    # This will be a no-op since we're doing the write during the compile
+    return ''
 
 
 @append.register(CSV, sa.sql.Selectable)
-def append_table_to_csv(csv, selectable, **kwargs):
+def append_table_to_csv(csv, selectable, dshape=None, **kwargs):
     kwargs = keyfilter(keywords(CopyToCSV).__contains__,
                        merge(csv.dialect, kwargs))
     stmt = CopyToCSV(selectable, os.path.abspath(csv.path), **kwargs)
-    with selectable.bind.connect() as conn:
+    with selectable.bind.begin() as conn:
         conn.execute(stmt)
+    csv.has_header = stmt.header
     return csv
 
 

@@ -34,6 +34,7 @@ test:
     - dask
     - dynd-python
     - paramiko
+    - sqlite3 # [win]
     - boto # [not win]
     - bokeh # [not py26]
     - pytables >=3.0.0
@@ -45,6 +46,6 @@ test:
     - pip install sas7bdat && py.test -vx --pyargs odo -rsxX
 
 about:
-  home: http://github.com/ContinuumIO/into/
+  home: https://github.com/ContinuumIO/odo/
   license: BSD
   summary: Data migration

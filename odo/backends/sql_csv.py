@@ -1,120 +1,144 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import sys
 import re
 import subprocess
+import uuid
+import mmap
+
+from contextlib import closing
+from functools import partial
 from distutils.spawn import find_executable
 
-import sqlalchemy
+import sqlalchemy as sa
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.elements import Executable, ClauseElement
 
+from toolz import merge
 from multipledispatch import MDNotImplementedError
 
-from ..regex import RegexDispatcher
 from ..append import append
 from ..convert import convert
 from .csv import CSV, infer_header
 from ..temp import Temp
 from .aws import S3
 
-copy_command = RegexDispatcher('copy_command')
-execute_copy = RegexDispatcher('execute_copy')
+
+class CopyFromCSV(Executable, ClauseElement):
+    def __init__(self, element, csv, delimiter=',', header=None, na_value='',
+                 lineterminator='\n', quotechar='"', escapechar='\\',
+                 encoding='utf8', skiprows=0, **kwargs):
+        if not isinstance(element, sa.Table):
+            raise TypeError('element must be a sqlalchemy.Table instance')
+        self.element = element
+        self.csv = csv
+        self.delimiter = delimiter
+        self.header = (header if header is not None else
+                       (csv.has_header
+                        if csv.has_header is not None else infer_header(csv)))
+        self.na_value = na_value
+        self.lineterminator = lineterminator
+        self.quotechar = quotechar
+        self.escapechar = escapechar
+        self.encoding = encoding
+        self.skiprows = int(skiprows or self.header)
+
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+    @property
+    def bind(self):
+        return self.element.bind
 
 
-@copy_command.register('.*sqlite')
-def copy_sqlite(dialect, tbl, csv, has_header=None, **kwargs):
-    abspath = os.path.abspath(csv.path)
-    if sys.platform == 'win32':
-        abspath = abspath.encode('unicode_escape').decode()
-    tblname = tbl.name
-    dbpath = str(tbl.bind.url).split('///')[-1]
-    delim = csv.dialect.get('delimiter', ',')
-    if has_header is None:
-        has_header = csv.has_header
-    if has_header is None:
-        has_header = infer_header(csv, **kwargs)
-
-    if not has_header:
-        statement = """
-            echo .import {abspath} {tblname} | sqlite3 -separator "{delim}" {dbpath}
-        """
-    elif os.name != 'nt':
-        statement = """
-            pipe=$(mktemp -t pipe.XXXXXXXXXX) && rm -f $pipe && mkfifo -m 600 $pipe && (tail -n +2 {abspath} > $pipe &) && echo ".import $pipe {tblname}" | sqlite3 -separator '{delim}' {dbpath}
-        """
-    else:
-        raise MDNotImplementedError()
-
-    # strip is needed for windows
-    return statement.format(**locals()).strip()
-
-
-@execute_copy.register('sqlite')
-def execute_copy_sqlite(dialect, engine, statement):
-    # If we don't have sqlite3.exe
+@compiles(CopyFromCSV, 'sqlite')
+def compile_from_csv_sqlite(element, compiler, **kwargs):
     if not find_executable('sqlite3'):
         raise MDNotImplementedError("Could not find sqlite executable")
-    ps = subprocess.Popen(statement, shell=True,
-                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    stdout, stderr = ps.communicate()
-    return stdout
+
+    t = element.element
+    if not element.header:
+        csv = element.csv
+    else:
+        csv = Temp(CSV)('.%s' % uuid.uuid1())
+        assert csv.has_header, \
+            'SQLAlchemy element.header is True but CSV inferred no header'
+
+        # write to a temporary file after skipping the first line
+        chunksize = 1 << 24  # 16 MiB
+        lineterminator = element.lineterminator.encode(element.encoding)
+        with open(element.csv.path, 'rb') as f:
+            with closing(mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)) as mf:
+                index = mf.find(lineterminator)
+                if index == -1:
+                    raise ValueError("'%s' not found" % lineterminator)
+                mf.seek(index + len(lineterminator))  # len because \r\n
+                with open(csv.path, 'wb') as g:
+                    for chunk in iter(partial(mf.read, chunksize), b''):
+                        g.write(chunk)
+
+    fullpath = os.path.abspath(csv.path).encode('unicode-escape').decode()
+    cmd = ['sqlite3',
+           '-nullvalue', repr(element.na_value),
+           '-separator', element.delimiter,
+           '-cmd', '.import "%s" %s' % (fullpath, t.name),
+           element.bind.url.database]
+    stdout, stderr = subprocess.Popen(cmd,
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.STDOUT,
+                                      stdin=subprocess.PIPE).communicate()
+    assert not stdout, \
+        'error: %s from command: %s' % (stdout, ' '.join(cmd))
+    return ''
 
 
-@copy_command.register('postgresql')
-def copy_postgres(dialect, tbl, csv, **kwargs):
-    abspath = os.path.abspath(csv.path)
-    if sys.platform == 'win32':
-        abspath = abspath.encode('unicode_escape').decode()
-    tblname = tbl.name
-    format_str = 'csv'
-    delimiter = csv.dialect.get('delimiter', ',')
-    na_value = ''
-    quotechar = csv.dialect.get('quotechar', '"')
-    escapechar = csv.dialect.get('escapechar', '\\')
-    header = not not csv.has_header
-    encoding = csv.encoding or 'utf-8'
-
-    statement = """
-        COPY {tblname} FROM '{abspath}'
-            (FORMAT {format_str},
-             DELIMITER E'{delimiter}',
-             NULL '{na_value}',
-             QUOTE '{quotechar}',
-             ESCAPE '{escapechar}',
-             HEADER {header},
-             ENCODING '{encoding}');"""
-
-    return statement.format(**locals())
-
-
-@copy_command.register('mysql.*')
-def copy_mysql(dialect, tbl, csv, **kwargs):
-    mysql_local = ''
-    abspath = os.path.abspath(csv.path)
-    if sys.platform == 'win32':
-        abspath = abspath.encode('unicode_escape').decode()
-    tblname = tbl.name
-    delimiter = csv.dialect.get('delimiter', ',')
-    quotechar = csv.dialect.get('quotechar', '"')
-    escapechar = csv.dialect.get('escapechar', r'\\')
-    lineterminator = csv.dialect.get('lineterminator', os.linesep)
-    lineterminator = lineterminator.encode('unicode_escape').decode()
-    skiprows = 1 if csv.has_header else 0
-    encoding = {'utf-8': 'utf8'}.get(csv.encoding.lower() or 'utf8',
-                                     csv.encoding)
-    statement = u"""
-        LOAD DATA {mysql_local} INFILE '{abspath}'
-        INTO TABLE {tblname}
+@compiles(CopyFromCSV, 'mysql')
+def compile_from_csv_mysql(element, compiler, **kwargs):
+    if element.na_value:
+        raise ValueError('MySQL does not support custom NULL values')
+    encoding = {'utf-8': 'utf8'}.get(element.encoding.lower(),
+                                     element.encoding or 'utf8')
+    escapechar = element.escapechar.encode('unicode-escape').decode()
+    lineterminator = element.lineterminator.encode('unicode-escape').decode()
+    result = r"""
+        LOAD DATA {local} INFILE '{path}'
+        INTO TABLE {0.element.name}
         CHARACTER SET {encoding}
         FIELDS
-            TERMINATED BY '{delimiter}'
-            ENCLOSED BY '{quotechar}'
+            TERMINATED BY '{0.delimiter}'
+            ENCLOSED BY '{0.quotechar}'
             ESCAPED BY '{escapechar}'
-        LINES TERMINATED BY '{lineterminator}'
-        IGNORE {skiprows} LINES;
-    """
+        LINES TERMINATED BY '{0.lineterminator}'
+        IGNORE {0.skiprows} LINES;
+    """.format(element,
+               path=os.path.abspath(element.csv.path),
+               local=getattr(element, 'local', ''),
+               encoding=encoding,
+               lineterminator=lineterminator,
+               escapechar=escapechar).strip()
+    return result
 
-    return statement.format(**locals())
+
+@compiles(CopyFromCSV, 'postgresql')
+def compile_from_csv_postgres(element, compiler, **kwargs):
+    encoding = {'utf8': 'utf-8'}.get(element.encoding.lower(),
+                                     element.encoding or 'utf8')
+    if len(element.escapechar) != 1:
+        raise ValueError('postgres does not allow escapechar longer than 1 '
+                         'byte')
+    statement = """
+    COPY {0.element.name} FROM '{path}'
+        (FORMAT CSV,
+         DELIMITER E'{0.delimiter}',
+         NULL '{0.na_value}',
+         QUOTE '{0.quotechar}',
+         ESCAPE '{0.escapechar}',
+         HEADER {header},
+         ENCODING '{encoding}');"""
+    return statement.format(element,
+                            path=os.path.abspath(element.csv.path),
+                            header=str(element.header).upper(),
+                            encoding=encoding).strip()
 
 
 try:
@@ -125,31 +149,29 @@ try:
 except ImportError:
     pass
 else:
-    @copy_command.register('redshift.*')
-    def copy_redshift(dialect, tbl, csv, schema_name=None, **kwargs):
-        assert isinstance(csv, S3(CSV))
-        assert csv.path.startswith('s3://')
+    @compiles(CopyFromCSV, 'redshift')
+    def compile_from_csv_redshift(element, compiler, **kwargs):
+        assert isinstance(element.csv, S3(CSV))
+        assert element.csv.path.startswith('s3://')
 
         cfg = boto.Config()
 
         aws_access_key_id = cfg.get('Credentials', 'aws_access_key_id')
         aws_secret_access_key = cfg.get('Credentials', 'aws_secret_access_key')
 
-        options = dict(delimiter=kwargs.get('delimiter',
-                                            csv.dialect.get('delimiter', ',')),
-                       ignore_header=int(kwargs.get('has_header',
-                                                    csv.has_header)),
+        options = dict(delimiter=element.delimiter,
+                       ignore_header=int(element.header),
                        empty_as_null=True,
                        blanks_as_null=False,
-                       compression=kwargs.get('compression', ''))
+                       compression=getattr(element, 'compression', ''))
 
-        if schema_name is None:
+        if getattr(element, 'schema_name', None) is None:
             # 'public' by default, this is a postgres convention
-            schema_name = (tbl.schema or
-                           sa.inspect(tbl.bind).default_schema_name)
+            schema_name = (element.element.schema or
+                           sa.inspect(element.bind).default_schema_name)
         cmd = CopyCommand(schema_name=schema_name,
-                          table_name=tbl.name,
-                          data_location=csv.path,
+                          table_name=element.element.name,
+                          data_location=element.csv.path,
                           access_key=aws_access_key_id,
                           secret_key=aws_secret_access_key,
                           options=options,
@@ -157,16 +179,7 @@ else:
         return re.sub(r'\s+(;)', r'\1', re.sub(r'\s+', ' ', str(cmd))).strip()
 
 
-@execute_copy.register('.*', priority=9)
-def execute_copy_all(dialect, engine, statement):
-    conn = engine.raw_connection()
-    cursor = conn.cursor()
-    cursor.execute(statement)
-    conn.commit()
-    conn.close()
-
-
-@append.register(sqlalchemy.Table, CSV)
+@append.register(sa.Table, CSV)
 def append_csv_to_sql_table(tbl, csv, **kwargs):
     dialect = tbl.bind.dialect.name
 
@@ -180,6 +193,8 @@ def append_csv_to_sql_table(tbl, csv, **kwargs):
         from .ssh import SSH
         return append(tbl, convert(Temp(SSH(CSV)), csv, **kwargs), **kwargs)
 
-    statement = copy_command(dialect, tbl, csv, **kwargs)
-    execute_copy(dialect, tbl.bind, statement)
+    kwargs = merge(csv.dialect, kwargs)
+    stmt = CopyFromCSV(tbl, csv, **kwargs)
+    with tbl.bind.begin() as conn:
+        conn.execute(stmt)
     return tbl
