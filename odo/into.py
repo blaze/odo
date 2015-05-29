@@ -6,7 +6,7 @@ from .convert import convert
 from .append import append
 from .resource import resource
 from .utils import ignoring
-from datashape import discover, var
+from datashape import discover
 from datashape.dispatch import namespace
 from datashape.predicates import isdimension
 from .compatibility import unicode
@@ -100,7 +100,7 @@ def into_object(target, source, **kwargs):
     return append(target, source, **kwargs)
 
 
-@into.register(str, object)
+@into.register((str, unicode), object)
 def into_string(uri, b, **kwargs):
     ds = kwargs.pop('dshape', None)
     if not ds:
@@ -114,7 +114,7 @@ def into_string(uri, b, **kwargs):
     return into(a, b, dshape=ds, **kwargs)
 
 
-@into.register((type, str), str)
+@into.register((type, (str, unicode)), (str, unicode))
 def into_string_string(a, b, **kwargs):
     r = resource(b, **kwargs)
     return into(a, r, **kwargs)
