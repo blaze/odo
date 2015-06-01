@@ -136,7 +136,7 @@ def test_na_value(sql, csv):
 
 @pytest.mark.xfail(raises=AssertionError,
                    reason="Remove when all databases are being tested at once")
-def test_different_encoding(url, engine):
+def test_different_encoding(url, sql):
     encoding = 'latin1'
     sql = odo(os.path.join(os.path.dirname(__file__), 'encoding.csv'),
               url,

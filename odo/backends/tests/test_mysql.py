@@ -202,7 +202,7 @@ def test_csv_output_does_not_preserve_header(sql, csv):
 
 @pytest.mark.xfail(raises=AssertionError,
                    reason="Remove when all databases are being tested at once")
-def test_different_encoding(name, engine):
+def test_different_encoding(name, sql):
     encoding = 'latin1'
     sql = odo(os.path.join(os.path.dirname(__file__), 'encoding.csv'),
               url + '::%s' % name,
