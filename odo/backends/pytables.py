@@ -5,7 +5,7 @@ from datashape.dispatch import dispatch
 from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
-from ..chunks import chunks, Chunks
+from ..chunks import chunks
 from ..utils import tmpfile
 
 import os
