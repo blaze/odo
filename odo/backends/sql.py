@@ -427,7 +427,7 @@ def create_schema_if_not_exists(schema):
     Create a schema if it does not already exist. If the schema exists,
     no action is taken.
     """
-    return sa.DDL('create schema if not exists %(s)s', context={'s': schema})
+    return sa.DDL('create schema if not exists "%(s)s"', context={'s': schema})
 
 
 @resource.register('(.*sql.*|oracle|redshift)(\+\w+)?://.+')
