@@ -413,7 +413,8 @@ def append_select_statement_to_sql_Table(t, o, **kwargs):
     if not o.bind == t.bind:
         return append(t, convert(Iterator, o, **kwargs), **kwargs)
 
-    assert o.bind.has_table(t.key), 'tables must come from the same database'
+    assert o.bind.dialect.has_table(o.bind, t.name, t.schema), \
+        'tables must come from the same database'
 
     query = t.insert().from_select(o.columns.keys(), o)
 
