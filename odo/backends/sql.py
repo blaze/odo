@@ -401,7 +401,7 @@ def append_table_to_sql_Table(t, o, **kwargs):
     if t.bind.name == o.bind.name == 'hive':
         with t.bind.connect() as conn:
             conn.execute('INSERT INTO TABLE %s SELECT * FROM %s' %
-                         (t.name, o.name))
+                         (t.key, o.key))
         return t
 
     s = sa.select([o])
@@ -413,7 +413,8 @@ def append_select_statement_to_sql_Table(t, o, **kwargs):
     if not o.bind == t.bind:
         return append(t, convert(Iterator, o, **kwargs), **kwargs)
 
-    assert o.bind.has_table(t.name), 'tables must come from the same database'
+    assert o.bind.dialect.has_table(o.bind, t.name, t.schema), \
+        'tables must come from the same database'
 
     query = t.insert().from_select(o.columns.keys(), o)
 
@@ -538,7 +539,7 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
         NULL '{na_value}'
         ESCAPE '{escapechar}'
     """ % ('{query}' if istable else '({query})')
-    processed = selectable.name if istable else compiler.process(selectable)
+    processed = selectable.key if istable else compiler.process(selectable)
     assert processed, ('got empty string from processing element of type %r' %
                        type(selectable).__name__)
     return template.format(query=processed,
@@ -554,7 +555,7 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
 def compile_copy_to_csv_mysql(element, compiler, **kwargs):
     selectable = element.element
     if isinstance(selectable, sa.Table):
-        processed = 'SELECT * FROM %(table)s' % dict(table=selectable.name)
+        processed = 'SELECT * FROM %(table)s' % dict(table=selectable.key)
     else:
         processed = compiler.process(selectable)
     assert processed, ('got empty string from processing element of type %r' %
