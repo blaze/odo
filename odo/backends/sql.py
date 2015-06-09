@@ -465,8 +465,9 @@ def resource_sql(uri, *args, **kwargs):
         table_name, args = args[0], args[1:]
         metadata = metadata_of_engine(engine)
         with ignoring(sa.exc.NoSuchTableError):
-            return sa.Table(table_name, metadata, autoload=True,
-                            autoload_with=engine)
+            return attach_schema(sa.Table(table_name, metadata, autoload=True,
+                                          autoload_with=engine, schema=schema),
+                                 schema)
         if ds:
             t = dshape_to_table(table_name, ds, metadata)
             t.create()
