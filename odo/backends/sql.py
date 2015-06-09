@@ -435,6 +435,16 @@ def create_schema(ddl, target, bind, tables=None, state=None, checkfirst=None,
                         """).fetchall())))
 
 
+def attach_schema(obj, schema):
+    if schema is not None:
+        event.listen(
+            obj,
+            'before_create',
+            CreateSchema(schema, quote=True).execute_if(callable_=create_schema,
+                                                        dialect='postgresql'))
+    return obj
+
+
 def fullname(table, compiler):
     preparer = compiler.dialect.identifier_preparer
     fullname = preparer.quote_identifier(table.name)
