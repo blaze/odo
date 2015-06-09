@@ -275,9 +275,9 @@ def create_from_datashape(o, ds, **kwargs):
 
 
 @dispatch(sa.engine.base.Engine, DataShape)
-def create_from_datashape(engine, ds, **kwargs):
-    assert isrecord(ds)
-    metadata = metadata_of_engine(engine)
+def create_from_datashape(engine, ds, schema=None, **kwargs):
+    assert isrecord(ds), 'datashape must be Record type, got %s' % ds
+    metadata = metadata_of_engine(engine, schema=schema)
     for name, sub_ds in ds[0].dict.items():
         t = dshape_to_table(name, sub_ds, metadata=metadata)
         t.create()
