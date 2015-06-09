@@ -548,7 +548,8 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
         NULL '{na_value}'
         ESCAPE '{escapechar}'
     """ % ('{query}' if istable else '({query})')
-    processed = selectable.name if istable else compiler.process(selectable)
+    processed = (fullname(selectable, compiler)
+                 if istable else compiler.process(selectable))
     assert processed, ('got empty string from processing element of type %r' %
                        type(selectable).__name__)
     return template.format(query=processed,
