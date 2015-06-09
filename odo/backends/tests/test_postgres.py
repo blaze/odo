@@ -44,8 +44,46 @@ def sql(url):
     except sa.exc.OperationalError as e:
         pytest.skip(str(e))
     else:
-        yield t
-        drop(t)
+        try:
+            yield t
+        finally:
+            drop(t)
+
+
+@pytest.yield_fixture
+def sql_with_schema():
+    url = 'postgresql://postgres@localhost/test::%s.%s' % (next(names),
+                                                           next(names))
+    try:
+        t = resource(url, dshape='var * {a: int32, b: ?int32}')
+    except sa.exc.OperationalError as e:
+        pytest.skip(str(e))
+    else:
+        try:
+            yield t
+        finally:
+            drop(t)
+
+
+@pytest.yield_fixture
+def sql_with_ugly_schema():
+    metadata = sa.MetaData(bind=sa.create_engine('postgresql://localhost'),
+                           schema='foo.bar.is.ugly')
+    metadata.bind.execute(sa.sql.ddl.CreateSchema(metadata.schema))
+    try:
+        t = sa.Table('a.b.c', metadata,
+                     sa.Column('a', sa.INTEGER, nullable=False),
+                     sa.Column('b', sa.INTEGER, nullable=True),
+                     schema=metadata.schema)
+    except sa.exc.OperationalError as e:
+        pytest.skip(str(e))
+    else:
+        t.create(checkfirst=True)
+        try:
+            yield t
+        finally:
+            drop(t)
+            metadata.bind.execute(sa.sql.ddl.DropSchema(metadata.schema))
 
 
 @pytest.yield_fixture
@@ -152,3 +190,11 @@ def test_different_encoding(url):
                 (u'1958.001.500233-9', 1, None, u'', 4703),
                 (u'1909.017.000018-3', 1, 30.0, u'sumaria', 899)]
     assert result == expected
+
+
+def test_schema(csv, sql_with_schema):
+    assert odo(odo(csv, sql_with_schema), list) == data
+
+
+def test_ugly_schema(csv, sql_with_ugly_schema):
+    assert odo(odo(csv, sql_with_ugly_schema), list) == data
