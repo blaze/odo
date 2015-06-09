@@ -264,9 +264,11 @@ def dshape_to_table(name, ds, metadata=None):
 
     if isinstance(ds, str):
         ds = dshape(ds)
-    metadata = metadata or sa.MetaData()
+    if metadata is None:
+        metadata = sa.MetaData()
     cols = dshape_to_alchemy(ds)
-    return sa.Table(name, metadata, *cols)
+    t = sa.Table(name, metadata, *cols, schema=metadata.schema)
+    return attach_schema(t, t.schema)
 
 
 @dispatch(object, str)
