@@ -423,6 +423,15 @@ def append_select_statement_to_sql_Table(t, o, **kwargs):
 
 
 @resource.register('(.*sql.*|oracle|redshift)(\+\w+)?://.+')
+def fullname(table, compiler):
+    preparer = compiler.dialect.identifier_preparer
+    fullname = preparer.quote_identifier(table.name)
+    schema = table.schema
+    if schema is not None:
+        fullname = '%s.%s' % (preparer.quote_schema(schema), fullname)
+    return fullname
+
+
 def resource_sql(uri, *args, **kwargs):
     kwargs2 = keyfilter(keywords(sa.create_engine).__contains__, kwargs)
     engine = create_engine(uri, **kwargs2)
