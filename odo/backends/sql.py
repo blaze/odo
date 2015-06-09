@@ -422,6 +422,14 @@ def append_select_statement_to_sql_Table(t, o, **kwargs):
     return t
 
 
+def create_schema_if_not_exists(schema):
+    """
+    Create a schema if it does not already exist. If the schema exists,
+    no action is taken.
+    """
+    return sa.DDL('create schema if not exists "%(s)s"', context={'s': schema})
+
+
 @resource.register('(.*sql.*|oracle|redshift)(\+\w+)?://.+')
 def resource_sql(uri, *args, **kwargs):
     kwargs2 = keyfilter(keywords(sa.create_engine).__contains__, kwargs)
@@ -431,7 +439,15 @@ def resource_sql(uri, *args, **kwargs):
     # we were also given a table name
     if args and isinstance(args[0], str):
         table_name, args = args[0], args[1:]
+        try:
+            schema_name, table_name = table_name.split('.', 1)
+        except ValueError:
+            schema_name = None
+
         metadata = metadata_of_engine(engine)
+        metadata.schema = schema_name
+        if schema_name is not None:
+            engine.execute(create_schema_if_not_exists(schema_name))
         with ignoring(sa.exc.NoSuchTableError):
             return sa.Table(table_name, metadata, autoload=True,
                             autoload_with=engine)
