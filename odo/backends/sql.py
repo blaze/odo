@@ -429,12 +429,11 @@ def append_select_statement_to_sql_Table(t, o, **kwargs):
 
 def create_schema(ddl, target, bind, tables=None, state=None, checkfirst=None,
                   **kwargs):
-    return (checkfirst and
-            ddl.element not in list(
-                map(first,
-                    bind.execute(
-                        """SELECT schema_name FROM information_schema.schemata
-                        """).fetchall())))
+    return ddl.element not in list(
+               map(first,
+                   bind.execute(
+                       """SELECT schema_name FROM information_schema.schemata
+                       """).fetchall()))
 
 
 def attach_schema(obj, schema):
@@ -461,6 +460,7 @@ def resource_sql(uri, *args, **kwargs):
     kwargs2 = keyfilter(keywords(sa.create_engine).__contains__, kwargs)
     engine = create_engine(uri, **kwargs2)
     ds = kwargs.get('dshape')
+    schema = kwargs.get('schema')
 
     # we were also given a table name
     if args and isinstance(args[0], (str, unicode)):
@@ -480,7 +480,7 @@ def resource_sql(uri, *args, **kwargs):
 
     # We were not given a table name
     if ds:
-        create_from_datashape(engine, ds)
+        create_from_datashape(engine, ds, schema=schema)
     return engine
 
 
