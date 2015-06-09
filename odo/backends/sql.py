@@ -192,8 +192,8 @@ def discover_sqlalchemy_selectable(t):
 
 
 @memoize
-def metadata_of_engine(engine):
-    return sa.MetaData(engine)
+def metadata_of_engine(engine, schema=None):
+    return sa.MetaData(engine, schema=schema)
 
 
 def create_engine(uri, *args, **kwargs):
