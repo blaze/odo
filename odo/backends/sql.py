@@ -12,6 +12,8 @@ from distutils.spawn import find_executable
 import pandas as pd
 import sqlalchemy as sa
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy import event
+from sqlalchemy.schema import CreateSchema
 
 from multipledispatch import MDNotImplementedError
 
