@@ -11,6 +11,7 @@ from distutils.spawn import find_executable
 
 import pandas as pd
 import sqlalchemy as sa
+from sqlalchemy import inspect
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy import event
 from sqlalchemy.schema import CreateSchema
@@ -427,22 +428,18 @@ def append_select_statement_to_sql_Table(t, o, **kwargs):
     return t
 
 
-def create_schema(ddl, target, bind, tables=None, state=None, checkfirst=None,
-                  **kwargs):
-    return ddl.element not in list(
-               map(first,
-                   bind.execute(
-                       """SELECT schema_name FROM information_schema.schemata
-                       """).fetchall()))
+def should_create_schema(ddl, target, bind, tables=None, state=None,
+                         checkfirst=None, **kwargs):
+    return ddl.element not in inspect(target.bind).get_schema_names()
 
 
 def attach_schema(obj, schema):
     if schema is not None:
-        event.listen(
-            obj,
-            'before_create',
-            CreateSchema(schema, quote=True).execute_if(callable_=create_schema,
-                                                        dialect='postgresql'))
+        ddl = CreateSchema(schema, quote=True)
+        event.listen(obj,
+                     'before_create',
+                     ddl.execute_if(callable_=should_create_schema,
+                                    dialect='postgresql'))
     return obj
 
 
