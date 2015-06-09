@@ -27,6 +27,7 @@ from toolz import (partition_all, keyfilter, first, memoize, valfilter,
                    identity, concat, curry, merge)
 from toolz.curried import pluck, map
 
+from ..compatibility import unicode
 from ..utils import keywords, ignoring, iter_except
 from ..convert import convert, ooc_types
 from ..append import append
@@ -426,7 +427,6 @@ def append_select_statement_to_sql_Table(t, o, **kwargs):
     return t
 
 
-@resource.register('(.*sql.*|oracle|redshift)(\+\w+)?://.+')
 def create_schema(ddl, target, bind, tables=None, state=None, checkfirst=None,
                   **kwargs):
     return (checkfirst and
@@ -463,7 +463,7 @@ def resource_sql(uri, *args, **kwargs):
     ds = kwargs.get('dshape')
 
     # we were also given a table name
-    if args and isinstance(args[0], str):
+    if args and isinstance(args[0], (str, unicode)):
         table_name, args = args[0], args[1:]
         metadata = metadata_of_engine(engine)
         with ignoring(sa.exc.NoSuchTableError):
