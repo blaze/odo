@@ -22,6 +22,7 @@ from ..convert import convert
 from .csv import CSV, infer_header
 from ..temp import Temp
 from .aws import S3
+from .sql import fullname
 
 
 class CopyFromCSV(Executable, ClauseElement):
@@ -127,7 +128,7 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
         raise ValueError('postgres does not allow escapechar longer than 1 '
                          'byte')
     statement = """
-    COPY {0.element.name} FROM '{path}'
+    COPY {fullname} FROM '{path}'
         (FORMAT CSV,
          DELIMITER E'{0.delimiter}',
          NULL '{0.na_value}',
@@ -136,6 +137,7 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
          HEADER {header},
          ENCODING '{encoding}');"""
     return statement.format(element,
+                            fullname=fullname(element.element, compiler),
                             path=os.path.abspath(element.csv.path),
                             header=str(element.header).upper(),
                             encoding=encoding).strip()
