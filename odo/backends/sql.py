@@ -441,7 +441,7 @@ def resource_sql(uri, *args, **kwargs):
         table_name, args = args[0], args[1:]
         try:
             schema_name, table_name = table_name.split('.', 1)
-        except:
+        except ValueError:
             schema_name = None
 
         metadata = metadata_of_engine(engine)
