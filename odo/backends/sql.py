@@ -432,6 +432,7 @@ def fullname(table, compiler):
     return fullname
 
 
+@resource.register(r'(.*sql.*|oracle|redshift)(\+\w+)?://.+')
 def resource_sql(uri, *args, **kwargs):
     kwargs2 = keyfilter(keywords(sa.create_engine).__contains__, kwargs)
     engine = create_engine(uri, **kwargs2)
