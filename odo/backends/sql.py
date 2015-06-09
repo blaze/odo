@@ -469,7 +469,7 @@ def resource_sql(uri, *args, **kwargs):
                                           autoload_with=engine, schema=schema),
                                  schema)
         if ds:
-            t = dshape_to_table(table_name, ds, metadata)
+            t = dshape_to_table(table_name, ds, metadata=metadata)
             t.create()
             return t
         else:
