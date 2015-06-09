@@ -425,6 +425,16 @@ def append_select_statement_to_sql_Table(t, o, **kwargs):
 
 
 @resource.register('(.*sql.*|oracle|redshift)(\+\w+)?://.+')
+def create_schema(ddl, target, bind, tables=None, state=None, checkfirst=None,
+                  **kwargs):
+    return (checkfirst and
+            ddl.element not in list(
+                map(first,
+                    bind.execute(
+                        """SELECT schema_name FROM information_schema.schemata
+                        """).fetchall())))
+
+
 def fullname(table, compiler):
     preparer = compiler.dialect.identifier_preparer
     fullname = preparer.quote_identifier(table.name)
