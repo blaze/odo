@@ -11,7 +11,10 @@ from distutils.spawn import find_executable
 
 import pandas as pd
 import sqlalchemy as sa
+from sqlalchemy import inspect
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy import event
+from sqlalchemy.schema import CreateSchema
 
 from multipledispatch import MDNotImplementedError
 
@@ -25,6 +28,7 @@ from toolz import (partition_all, keyfilter, first, memoize, valfilter,
                    identity, concat, curry, merge)
 from toolz.curried import pluck, map
 
+from ..compatibility import unicode
 from ..utils import keywords, ignoring, iter_except
 from ..convert import convert, ooc_types
 from ..append import append
@@ -190,8 +194,8 @@ def discover_sqlalchemy_selectable(t):
 
 
 @memoize
-def metadata_of_engine(engine):
-    return sa.MetaData(engine)
+def metadata_of_engine(engine, schema=None):
+    return sa.MetaData(engine, schema=schema)
 
 
 def create_engine(uri, *args, **kwargs):
@@ -262,9 +266,11 @@ def dshape_to_table(name, ds, metadata=None):
 
     if isinstance(ds, str):
         ds = dshape(ds)
-    metadata = metadata or sa.MetaData()
+    if metadata is None:
+        metadata = sa.MetaData()
     cols = dshape_to_alchemy(ds)
-    return sa.Table(name, metadata, *cols)
+    t = sa.Table(name, metadata, *cols, schema=metadata.schema)
+    return attach_schema(t, t.schema)
 
 
 @dispatch(object, str)
@@ -273,9 +279,9 @@ def create_from_datashape(o, ds, **kwargs):
 
 
 @dispatch(sa.engine.base.Engine, DataShape)
-def create_from_datashape(engine, ds, **kwargs):
-    assert isrecord(ds)
-    metadata = metadata_of_engine(engine)
+def create_from_datashape(engine, ds, schema=None, **kwargs):
+    assert isrecord(ds), 'datashape must be Record type, got %s' % ds
+    metadata = metadata_of_engine(engine, schema=schema)
     for name, sub_ds in ds[0].dict.items():
         t = dshape_to_table(name, sub_ds, metadata=metadata)
         t.create()
@@ -422,21 +428,48 @@ def append_select_statement_to_sql_Table(t, o, **kwargs):
     return t
 
 
-@resource.register('(.*sql.*|oracle|redshift)(\+\w+)?://.+')
+def should_create_schema(ddl, target, bind, tables=None, state=None,
+                         checkfirst=None, **kwargs):
+    return ddl.element not in inspect(target.bind).get_schema_names()
+
+
+def attach_schema(obj, schema):
+    if schema is not None:
+        ddl = CreateSchema(schema, quote=True)
+        event.listen(obj,
+                     'before_create',
+                     ddl.execute_if(callable_=should_create_schema,
+                                    dialect='postgresql'))
+    return obj
+
+
+def fullname(table, compiler):
+    preparer = compiler.dialect.identifier_preparer
+    fullname = preparer.quote_identifier(table.name)
+    schema = table.schema
+    if schema is not None:
+        fullname = '%s.%s' % (preparer.quote_schema(schema), fullname)
+    return fullname
+
+
+@resource.register(r'(.*sql.*|oracle|redshift)(\+\w+)?://.+')
 def resource_sql(uri, *args, **kwargs):
     kwargs2 = keyfilter(keywords(sa.create_engine).__contains__, kwargs)
     engine = create_engine(uri, **kwargs2)
     ds = kwargs.get('dshape')
+    schema = kwargs.get('schema')
 
     # we were also given a table name
-    if args and isinstance(args[0], str):
+    if args and isinstance(args[0], (str, unicode)):
         table_name, args = args[0], args[1:]
-        metadata = metadata_of_engine(engine)
+        metadata = metadata_of_engine(engine, schema=schema)
+
         with ignoring(sa.exc.NoSuchTableError):
-            return sa.Table(table_name, metadata, autoload=True,
-                            autoload_with=engine)
+            return attach_schema(sa.Table(table_name, metadata, autoload=True,
+                                          autoload_with=engine, schema=schema),
+                                 schema)
         if ds:
-            t = dshape_to_table(table_name, ds, metadata)
+            t = dshape_to_table(table_name, ds, metadata=metadata)
             t.create()
             return t
         else:
@@ -444,7 +477,7 @@ def resource_sql(uri, *args, **kwargs):
 
     # We were not given a table name
     if ds:
-        create_from_datashape(engine, ds)
+        create_from_datashape(engine, ds, schema=schema)
     return engine
 
 
@@ -538,7 +571,8 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
         NULL '{na_value}'
         ESCAPE '{escapechar}'
     """ % ('{query}' if istable else '({query})')
-    processed = selectable.name if istable else compiler.process(selectable)
+    processed = (fullname(selectable, compiler)
+                 if istable else compiler.process(selectable))
     assert processed, ('got empty string from processing element of type %r' %
                        type(selectable).__name__)
     return template.format(query=processed,
