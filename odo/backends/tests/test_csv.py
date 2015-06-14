@@ -371,3 +371,12 @@ def test_encoding_is_none():
         with open(fn, 'w') as f:
             f.write('a,1\nb,2\nc,3'.encode('utf-8').decode('utf-8'))
         assert CSV(fn, encoding=None).encoding == 'utf-8'
+
+
+def test_discover_with_dotted_names():
+    with tmpfile('.csv') as fn:
+        with open(fn, 'w') as f:
+            f.write('a.b,c.d\n1,2\n3,4')
+        dshape = discover(resource(fn))
+    assert dshape == datashape.dshape('var * {"a.b": int64, "c.d": int64}')
+    assert dshape.measure.names == [u'a.b', u'c.d']
