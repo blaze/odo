@@ -4,7 +4,7 @@ from collections import Iterator
 import numpy as np
 from toolz import keyfilter
 from datashape.dispatch import dispatch
-from datashape import DataShape
+from datashape import DataShape, from_numpy
 
 from dask.array.core import Array, from_array
 from dask.bag.core import Bag
@@ -17,8 +17,7 @@ from ..utils import keywords
 
 @discover.register(Array)
 def discover_dask_array(a, **kwargs):
-    block = a._get_block(*([0] * a.ndim))
-    return DataShape(*(a.shape + (discover(block).measure,)))
+    return from_numpy(a.shape, a.dtype)
 
 
 arrays = [np.ndarray]
