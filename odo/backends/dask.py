@@ -6,7 +6,7 @@ from toolz import keyfilter
 from datashape.dispatch import dispatch
 from datashape import DataShape
 
-from dask.array.core import rec_concatenate, Array, get, from_array
+from dask.array.core import concatenate3, Array, get, from_array
 from dask.bag.core import Bag
 import dask.bag as db
 from dask.compatibility import long
@@ -61,7 +61,7 @@ def array_to_dask(x, name=None, chunks=None, **kwargs):
 
 @convert.register(np.ndarray, Array, cost=10.)
 def dask_to_numpy(x, **kwargs):
-    return rec_concatenate(get(x.dask, x._keys(), **kwargs))
+    return concatenate3(get(x.dask, x._keys(), **kwargs))
 
 
 @convert.register(float, Array, cost=10.)
