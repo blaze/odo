@@ -159,16 +159,15 @@ def element_of(seq):
         seq = seq[0]
     return seq
 
+
 @convert.register(np.ndarray, list, cost=10.0)
 def list_to_numpy(seq, dshape=None, **kwargs):
     if isinstance(element_of(seq), dict):
         seq = list(records_to_tuples(dshape, seq))
-    if (seq and isinstance(seq[0], Iterable)
-            and not ishashable(seq[0])
-            and not isscalar(dshape)):
+    if (seq and isinstance(seq[0], Iterable) and not ishashable(seq[0]) and
+            not isscalar(dshape)):
         seq = list(map(tuple, seq))
-    dtype = dshape_to_numpy(dshape)
-    return np.array(seq, dtype=dtype)
+    return np.array(seq, dtype=dshape_to_numpy(dshape))
 
 
 @convert.register(Iterator, list, cost=0.001)
