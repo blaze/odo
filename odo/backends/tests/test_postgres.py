@@ -33,6 +33,14 @@ def complex_csv():
 
 
 @pytest.fixture
+def engine():
+    try:
+        return resource('postgresql://postgres@localhost/test')
+    except sa.exc.OperationalError as e:
+        pytest.skip(str(e))
+
+
+@pytest.fixture
 def url():
     return 'postgresql://postgres@localhost/test::%s' % next(names)
 
@@ -167,24 +175,25 @@ def test_na_value(sql, csv):
     assert raw == 'a,b\n1,NA\n10,20\n100,200\n'
 
 
-@pytest.mark.xfail(raises=AssertionError,
-                   reason="Remove when all databases are being tested at once")
-def test_different_encoding(url, sql):
+def test_different_encoding(url, engine):
+    # sql_with_schema is here because we need to fail if there's no database
     encoding = 'latin1'
-    sql = odo(os.path.join(os.path.dirname(__file__), 'encoding.csv'),
-              url,
-              encoding=encoding)
-    result = odo(sql, list)
-    expected = [(u'1958.001.500131-1A', 1, None, u'', 899),
-                (u'1958.001.500156-6', 1, None, u'', 899),
-                (u'1958.001.500162-1', 1, None, u'', 899),
-                (u'1958.001.500204-2', 1, None, u'', 899),
-                (u'1958.001.500204-2A', 1, None, u'', 899),
-                (u'1958.001.500204-2B', 1, None, u'', 899),
-                (u'1958.001.500223-6', 1, None, u'', 9610),
-                (u'1958.001.500233-9', 1, None, u'', 4703),
-                (u'1909.017.000018-3', 1, 30.0, u'sumaria', 899)]
-    assert result == expected
+    path = os.path.join(os.path.dirname(__file__), 'encoding.csv')
+    sql = odo(path, url, encoding=encoding)
+    try:
+        result = odo(sql, list)
+        expected = [(u'1958.001.500131-1A', 1, None, u'', 899),
+                    (u'1958.001.500156-6', 1, None, u'', 899),
+                    (u'1958.001.500162-1', 1, None, u'', 899),
+                    (u'1958.001.500204-2', 1, None, u'', 899),
+                    (u'1958.001.500204-2A', 1, None, u'', 899),
+                    (u'1958.001.500204-2B', 1, None, u'', 899),
+                    (u'1958.001.500223-6', 1, None, u'', 9610),
+                    (u'1958.001.500233-9', 1, None, u'', 4703),
+                    (u'1909.017.000018-3', 1, 30.0, u'sumaria', 899)]
+        assert result == expected
+    finally:
+        drop(sql)
 
 
 def test_schema(csv, sql_with_schema):
