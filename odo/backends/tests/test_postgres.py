@@ -33,14 +33,6 @@ def complex_csv():
 
 
 @pytest.fixture
-def engine():
-    try:
-        return resource('postgresql://postgres@localhost/test')
-    except sa.exc.OperationalError as e:
-        pytest.skip(str(e))
-
-
-@pytest.fixture
 def url():
     return 'postgresql://postgres@localhost/test::%s' % next(names)
 
