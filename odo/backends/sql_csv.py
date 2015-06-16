@@ -135,7 +135,7 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
          QUOTE '{0.quotechar}',
          ESCAPE '{0.escapechar}',
          HEADER {header},
-         ENCODING '{encoding}');"""
+         ENCODING '{encoding}')"""
     return statement.format(element,
                             fullname=fullname(element.element, compiler),
                             path=os.path.abspath(element.csv.path),
