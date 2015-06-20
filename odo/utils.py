@@ -207,7 +207,7 @@ def records_to_tuples(ds, data):
     if isinstance(ds, (str, unicode)):
         ds = dshape(ds)
     if isinstance(ds.measure, Record) and len(ds.shape) == 1:
-        return pluck(ds.measure.names, data)
+        return pluck(ds.measure.names, data, default=None)
     if isinstance(ds.measure, Record) and len(ds.shape) == 0:
         return get(ds.measure.names, data)
     if not isinstance(ds.measure, Record):
