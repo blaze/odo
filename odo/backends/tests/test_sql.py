@@ -404,17 +404,6 @@ def test_empty_select_to_empty_frame():
     assert df.columns.tolist() == ['x', 'y']
 
 
-def test_stream_table_chunks_roperly():
-    ds = dshape('var * {x: int, y: int}')
-    with tmpfile('.db') as fn1:
-        points = resource('sqlite:///%s::points' % fn1, dshape=ds)
-        points = odo(list(zip(range(10), range(10))), points)
-        assert points is not None
-        c = iter(odo(points, chunks(pd.DataFrame), chunksize=2))
-        result = next(c)
-    assert len(result) == 2
-
-
 def test_stream_select_chunks_properly():
     ds = dshape('var * {x: int, y: int}')
     with tmpfile('.db') as fn1:
