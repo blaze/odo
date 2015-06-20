@@ -129,7 +129,7 @@ datashape is only a guess and might need to be tweaked.
    >>> from odo import odo, resource, discover
    >>> csv = resource('accounts.csv')  # Have to use resource to discover URIs
    >>> discover(csv)
-   dshape("var * {name: string, balance: int64")
+   dshape("var * {name: string, balance: int64}")
 
    >>> ds = dshape("var * {name: string, balance: float64")  # copy-paste-modify
    >>> odo('accounts.csv', pd.DataFrame, dshape=ds)
