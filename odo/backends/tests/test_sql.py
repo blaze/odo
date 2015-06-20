@@ -405,11 +405,12 @@ def test_empty_select_to_empty_frame():
 
 
 def test_stream_select_chunks_properly():
+    import odo
     ds = dshape('var * {x: int, y: int}')
     with tmpfile('.db') as fn1:
         points = resource('sqlite:///%s::points' % fn1, dshape=ds)
-        points = odo(list(zip(range(10), range(10))), points)
+        points = odo.odo(list(zip(range(10), range(10))), points)
         assert points is not None
-        c = iter(odo(sa.select([points]), chunks(pd.DataFrame), chunksize=2))
-        result = next(c)
-    assert len(result) == 2
+        path = convert.path(type(sa.select([points])),
+                            chunks(pd.DataFrame))
+    assert odo.backends.sql.select_or_selectable_to_frame not in path[0]
