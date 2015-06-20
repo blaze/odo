@@ -12,7 +12,7 @@ import datashape
 from odo.backends.sql import (dshape_to_table, create_from_datashape,
                               dshape_to_alchemy)
 from odo.utils import tmpfile, raises
-from odo import convert, append, resource, discover, into, odo
+from odo import convert, append, resource, discover, into, odo, chunks
 
 
 def test_resource():
@@ -402,3 +402,25 @@ def test_empty_select_to_empty_frame():
         df = odo(sel, pd.DataFrame)
     assert df.empty
     assert df.columns.tolist() == ['x', 'y']
+
+
+def test_stream_table_chunks_roperly():
+    ds = dshape('var * {x: int, y: int}')
+    with tmpfile('.db') as fn1:
+        points = resource('sqlite:///%s::points' % fn1, dshape=ds)
+        points = odo(list(zip(range(10), range(10))), points)
+        assert points is not None
+        c = iter(odo(points, chunks(pd.DataFrame), chunksize=2))
+        result = next(c)
+    assert len(result) == 2
+
+
+def test_stream_select_chunks_properly():
+    ds = dshape('var * {x: int, y: int}')
+    with tmpfile('.db') as fn1:
+        points = resource('sqlite:///%s::points' % fn1, dshape=ds)
+        points = odo(list(zip(range(10), range(10))), points)
+        assert points is not None
+        c = iter(odo(sa.select([points]), chunks(pd.DataFrame), chunksize=2))
+        result = next(c)
+    assert len(result) == 2
