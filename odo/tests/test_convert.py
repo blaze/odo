@@ -127,6 +127,20 @@ def test_list_to_numpy_on_dicts():
     assert convert(list, x) == [('Alice', 100), ('Bob', 200)]
 
 
+def test_list_of_dicts_with_missing_to_numpy():
+    data = [{'name': 'Alice', 'amount': 100},
+            {'name': 'Bob'},
+            {'amount': 200}]
+    result = convert(np.ndarray, data)
+    assert result.dtype.names == ('amount', 'name')
+    expected = np.array([(100.0, 'Alice'),
+                         (np.nan, 'Bob'),
+                         (200.0, None)],
+                        dtype=[('amount', 'float64'), ('name', 'O')])
+    assert np.all((result == expected) |
+                  ((result != result) & (expected != expected)))
+
+
 def test_chunks_numpy_pandas():
     x = np.array([('Alice', 100), ('Bob', 200)],
                  dtype=[('name', 'S7'), ('amount', 'i4')])
