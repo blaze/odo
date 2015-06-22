@@ -10,9 +10,9 @@ import sqlalchemy as sa
 from datashape import discover, dshape
 import datashape
 from odo.backends.sql import (dshape_to_table, create_from_datashape,
-                              dshape_to_alchemy)
+                              dshape_to_alchemy, select_or_selectable_to_frame)
 from odo.utils import tmpfile, raises
-from odo import convert, append, resource, discover, into, odo
+from odo import convert, append, resource, discover, into, odo, chunks
 
 
 def test_resource():
@@ -402,3 +402,14 @@ def test_empty_select_to_empty_frame():
         df = odo(sel, pd.DataFrame)
     assert df.empty
     assert df.columns.tolist() == ['x', 'y']
+
+
+def test_stream_select_chunks_properly():
+    ds = dshape('var * {x: int, y: int}')
+    with tmpfile('.db') as db:
+        points = resource('sqlite:///%s::points' % db, dshape=ds)
+        points = odo(list(zip(range(10), range(10))), points)
+        assert points is not None
+        path = convert.path(type(sa.select([points])),
+                            chunks(pd.DataFrame))
+    assert select_or_selectable_to_frame != path[0][-1]

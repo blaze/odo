@@ -123,9 +123,9 @@ def batch(sel, chunksize=10000):
     chunksize : int, optional, default 10000
         Number of rows to fetch from the database
     """
-    def rowterator(sel, chunksize=chunksize):
-        with sel.bind.connect() as conn:
-            result = conn.execute(sel)
+    def rowterator(sel, chunksize):
+        with sel.bind.begin() as conn:
+            result = conn.execution_options(stream_results=True).execute(sel)
             yield result.keys()
 
             for rows in iter_except(curry(result.fetchmany, size=chunksize),
@@ -134,8 +134,13 @@ def batch(sel, chunksize=10000):
                     yield rows
                 else:
                     return
-    terator = rowterator(sel)
+    terator = rowterator(sel, chunksize)
     return next(terator), concat(terator)
+
+
+@discover.register(sa.sql.elements.ColumnClause)
+def discover_column_clause(t):
+    return Record([(t.name, discover(t.type))])
 
 
 @discover.register(sa.dialects.postgresql.base.INTERVAL)
@@ -189,8 +194,8 @@ def discover_sqlalchemy_column(col):
 
 @discover.register(sa.sql.FromClause)
 def discover_sqlalchemy_selectable(t):
-    records = list(sum([discover(c).parameters[0] for c in t.columns], ()))
-    return var * Record(records)
+    types = [discover(c).parameters[0] for c in t.columns]
+    return var * Record(list(sum(types, ())))
 
 
 @memoize
@@ -336,15 +341,15 @@ def dshape_to_alchemy(dshape):
 
 
 @convert.register(Iterator, sa.Table, cost=300.0)
-def sql_to_iterator(t, **kwargs):
-    _, rows = batch(sa.select([t]))
+def sql_to_iterator(t, chunksize=10000, **kwargs):
+    _, rows = batch(sa.select([t]), chunksize=chunksize)
     return map(tuple, rows)
 
 
 @convert.register(Iterator, sa.sql.Select, cost=300.0)
-def select_to_iterator(sel, dshape=None, **kwargs):
+def select_to_iterator(sel, dshape=None, chunksize=10000, **kwargs):
     func = pluck(0) if dshape and isscalar(dshape.measure) else map(tuple)
-    _, rows = batch(sel)
+    _, rows = batch(sel, chunksize=chunksize)
     return func(rows)
 
 
@@ -358,34 +363,34 @@ def select_to_base(sel, dshape=None, **kwargs):
 
 @append.register(sa.Table, Iterator)
 def append_iterator_to_table(t, rows, dshape=None, **kwargs):
-    assert not isinstance(t, type)
+    if isinstance(t, type):
+        raise TypeError('type of t, %r, is not allowed to be a type object' %
+                        type(t).__name__)
     rows = iter(rows)
 
     # We see if the sequence is of tuples or dicts
     # If tuples then we coerce them to dicts
-    try:
-        row = next(rows)
-    except StopIteration:
+    row = next(rows, None)
+    if row is None:
         return
     rows = chain([row], rows)
     if isinstance(row, (tuple, list)):
         if dshape and isinstance(dshape.measure, datashape.Record):
             names = dshape.measure.names
-            if set(names) != set(discover(t).measure.names):
+            found_names = discover(t).measure.names
+            if set(names) != set(found_names):
                 raise ValueError("Column names of incoming data don't match "
                                  "column names of existing SQL table\n"
                                  "Names in SQL table: %s\n"
                                  "Names from incoming data: %s\n" %
-                                 (discover(t).measure.names, names))
+                                 (found_names, names))
         else:
             names = discover(t).measure.names
         rows = (dict(zip(names, row)) for row in rows)
 
-    engine = t.bind
-    with engine.connect() as conn:
+    with t.bind.begin() as conn:
         for chunk in partition_all(1000, rows):  # TODO: 1000 is hardcoded
             conn.execute(t.insert(), chunk)
-
     return t
 
 
@@ -535,9 +540,9 @@ def drop(table):
     table.drop(table.bind, checkfirst=True)
 
 
-@convert.register(pd.DataFrame, (sa.sql.Select, sa.sql.Selectable), cost=200.0)
-def select_or_selectable_to_frame(el, **kwargs):
-    columns, rows = batch(el)
+@convert.register(pd.DataFrame, (sa.sql.Select, sa.sql.Selectable), cost=400.0)
+def select_or_selectable_to_frame(el, chunksize=10000, **kwargs):
+    columns, rows = batch(el, chunksize=chunksize)
     row = next(rows, None)
     if row is None:
         return pd.DataFrame(columns=columns)
