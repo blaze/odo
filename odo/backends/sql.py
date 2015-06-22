@@ -138,11 +138,6 @@ def batch(sel, chunksize=10000):
     return next(terator), concat(terator)
 
 
-@discover.register(sa.sql.elements.ColumnClause)
-def discover_column_clause(t):
-    return Record([(t.name, discover(t.type))])
-
-
 @discover.register(sa.dialects.postgresql.base.INTERVAL)
 def discover_postgresql_interval(t):
     return discover(sa.types.Interval(day_precision=0,
