@@ -194,8 +194,8 @@ def discover_sqlalchemy_column(col):
 
 @discover.register(sa.sql.FromClause)
 def discover_sqlalchemy_selectable(t):
-    records = list(sum([discover(c).parameters[0] for c in t.columns], ()))
-    return var * Record(records)
+    types = [discover(c).parameters[0] for c in t.columns]
+    return var * Record(list(sum(types, ())))
 
 
 @memoize
