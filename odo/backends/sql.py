@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+from operator import attrgetter
 import os
 import re
 import subprocess
@@ -24,7 +25,7 @@ from datashape.predicates import isdimension, isrecord, isscalar
 from datashape import discover
 from datashape.dispatch import dispatch
 
-from toolz import (partition_all, keyfilter, first, memoize, valfilter,
+from toolz import (partition_all, keyfilter, memoize, valfilter,
                    identity, concat, curry, merge)
 from toolz.curried import pluck, map
 
@@ -234,7 +235,8 @@ def discover(metadata):
     except NotImplementedError:
         metadata.reflect()
     pairs = []
-    for name, table in sorted(metadata.tables.items(), key=first):
+    for table in sorted(metadata.tables.values(), key=attrgetter('name')):
+        name = table.name
         try:
             pairs.append([name, discover(table)])
         except sa.exc.CompileError as e:
