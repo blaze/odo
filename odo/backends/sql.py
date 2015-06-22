@@ -363,34 +363,34 @@ def select_to_base(sel, dshape=None, **kwargs):
 
 @append.register(sa.Table, Iterator)
 def append_iterator_to_table(t, rows, dshape=None, **kwargs):
-    assert not isinstance(t, type)
+    if isinstance(t, type):
+        raise TypeError('type of t, %r, is not allowed to be a type object' %
+                        type(t).__name__)
     rows = iter(rows)
 
     # We see if the sequence is of tuples or dicts
     # If tuples then we coerce them to dicts
-    try:
-        row = next(rows)
-    except StopIteration:
+    row = next(rows, None)
+    if row is None:
         return
     rows = chain([row], rows)
     if isinstance(row, (tuple, list)):
         if dshape and isinstance(dshape.measure, datashape.Record):
             names = dshape.measure.names
-            if set(names) != set(discover(t).measure.names):
+            found_names = discover(t).measure.names
+            if set(names) != set(found_names):
                 raise ValueError("Column names of incoming data don't match "
                                  "column names of existing SQL table\n"
                                  "Names in SQL table: %s\n"
                                  "Names from incoming data: %s\n" %
-                                 (discover(t).measure.names, names))
+                                 (found_names, names))
         else:
             names = discover(t).measure.names
         rows = (dict(zip(names, row)) for row in rows)
 
-    engine = t.bind
-    with engine.begin() as conn:
+    with t.bind.begin() as conn:
         for chunk in partition_all(1000, rows):  # TODO: 1000 is hardcoded
             conn.execute(t.insert(), chunk)
-
     return t
 
 
