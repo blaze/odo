@@ -554,7 +554,7 @@ def select_or_selectable_to_series(el, chunksize=10000, dshape=None, **kwargs):
                                                dshape=dshape,
                                                **kwargs)
         assert len(result.columns) == 1
-        return result.squeeze()
+        return result.iloc[:, 0]
     else:
         raise MDNotImplementedError()
 
