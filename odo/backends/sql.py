@@ -20,7 +20,7 @@ from multipledispatch import MDNotImplementedError
 
 import datashape
 from datashape import DataShape, Record, Option, var, dshape
-from datashape.predicates import isdimension, isrecord, isscalar
+from datashape.predicates import isdimension, isrecord, isscalar, iscollection
 from datashape import discover
 from datashape.dispatch import dispatch
 
@@ -543,6 +543,20 @@ def select_or_selectable_to_frame(el, chunksize=10000, **kwargs):
         return pd.DataFrame(columns=columns)
     return pd.DataFrame(list(chain([tuple(row)], map(tuple, rows))),
                         columns=columns)
+
+
+@convert.register(pd.Series, (sa.sql.Select, sa.sql.Selectable), cost=300.0)
+def select_or_selectable_to_series(el, chunksize=10000, dshape=None, **kwargs):
+    if dshape is None or (dshape is not None and iscollection(dshape) and
+                          isscalar(dshape.measure)):
+        result = select_or_selectable_to_frame(el,
+                                               chunksize=chunksize,
+                                               dshape=dshape,
+                                               **kwargs)
+        assert len(result.columns) == 1
+        return result.squeeze()
+    else:
+        raise MDNotImplementedError()
 
 
 class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
