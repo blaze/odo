@@ -69,6 +69,7 @@ def test_resource():
         assert isinstance(resource(fn, expected_dshape=dshape('var * {a: int}')),
                           JSONLines)
 
+
 def test_resource_guessing():
     with json_file(dat) as fn:
         assert isinstance(resource(fn), JSON)
@@ -142,7 +143,7 @@ def test_datetimes():
 
 def test_json_encoder():
     result = json.dumps([1, datetime.datetime(2000, 1, 1, 12, 30, 0)],
-                       default=json_dumps)
+                        default=json_dumps)
     assert result == '[1, "2000-01-01T12:30:00Z"]'
     assert json.loads(result) == [1, "2000-01-01T12:30:00Z"]
 
@@ -209,6 +210,7 @@ def test_write_gzip_lines():
         f.close()
         assert line.decode('utf-8').strip() == str(json.dumps(dat[0]))
 
+
 def test_write_gzip():
     with tmpfile('json.gz') as fn:
         j = JSON(fn)
@@ -225,7 +227,6 @@ def test_resource_gzip():
         assert isinstance(resource(fn), (JSON, JSONLines))
         assert isinstance(resource('json://' + fn), (JSON, JSONLines))
         assert isinstance(resource('jsonlines://' + fn), (JSON, JSONLines))
-
 
     with tmpfile('jsonlines.gz'):
         assert isinstance(resource('jsonlines://' + fn), (JSON, JSONLines))
