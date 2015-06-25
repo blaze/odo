@@ -220,6 +220,7 @@ def test_write_gzip():
         text = f.read()
         f.close()
         assert text.decode('utf-8').strip() == str(json.dumps(dat))
+        assert isinstance(resource(fn), (JSON, JSONLines))
 
 
 def test_resource_gzip():
