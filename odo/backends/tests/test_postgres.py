@@ -8,6 +8,8 @@ pytest.importorskip('psycopg2')
 import os
 import itertools
 
+from datashape import dshape
+
 from odo.backends.csv import CSV
 from odo import odo, into, resource, drop, discover
 from odo.utils import assert_allclose, tmpfile
@@ -195,3 +197,9 @@ def test_schema(csv, sql_with_schema):
 
 def test_ugly_schema(csv, sql_with_ugly_schema):
     assert odo(odo(csv, sql_with_ugly_schema), list) == data
+
+
+def test_schema_discover(sql_with_schema):
+    meta = discover(sql_with_schema.metadata)
+    assert meta == dshape('{%s: var * {a: int32, b: ?int32}}' %
+                          sql_with_schema.name)
