@@ -230,19 +230,23 @@ def resource_json_ambiguous(path, **kwargs):
     """ Try to guess if this file is line-delimited or not """
     if os.path.exists(path):
         f = open(path)
-        one = next(f)
         try:
-            two = next(f)
+            one = next(f)
+        except UnicodeDecodeError:  # gzip
+            f.close()
+            return resource_json(path, **kwargs)
+        try:
+            next(f)
         except StopIteration:  # only one line
             f.close()
             return resource_json(path, **kwargs)
         try:
             json.loads(one)
-            f.close()
             return resource_jsonlines(path, **kwargs)
         except:
-            f.close()
             return resource_json(path, **kwargs)
+        finally:
+            f.close()
 
     # File doesn't exist, is the dshape variable length?
     dshape = kwargs.get('expected_dshape', None)

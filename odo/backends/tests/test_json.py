@@ -1,16 +1,21 @@
 from __future__ import absolute_import, division, print_function
 
-from odo.backends.json import *
-from odo.utils import tmpfile, ignoring
-from odo import into
-from odo.temp import Temp, _Temp
-from contextlib import contextmanager
-from datashape import dshape
 import datetime
 import os
 import gzip
 import os
 import json
+
+from contextlib import contextmanager
+
+import numpy as np
+from odo.backends.json import json_dumps
+from odo.utils import tmpfile, ignoring
+from odo import odo, discover, JSONLines, resource, JSON, convert, append, drop
+from odo.temp import Temp, _Temp
+
+from datashape import dshape
+
 
 @contextmanager
 def json_file(data):
@@ -19,6 +24,7 @@ def json_file(data):
             json.dump(data, f, default=json_dumps)
 
         yield fn
+
 
 @contextmanager
 def jsonlines_file(data):
@@ -34,10 +40,12 @@ def jsonlines_file(data):
 dat = [{'name': 'Alice', 'amount': 100},
        {'name': 'Bob', 'amount': 200}]
 
+
 def test_discover_json():
     with json_file(dat) as fn:
         j = JSON(fn)
         assert discover(j) == discover(dat)
+
 
 def test_discover_jsonlines():
     with jsonlines_file(dat) as fn:
@@ -60,6 +68,7 @@ def test_resource():
 
         assert isinstance(resource(fn, expected_dshape=dshape('var * {a: int}')),
                           JSONLines)
+
 
 def test_resource_guessing():
     with json_file(dat) as fn:
@@ -134,7 +143,7 @@ def test_datetimes():
 
 def test_json_encoder():
     result = json.dumps([1, datetime.datetime(2000, 1, 1, 12, 30, 0)],
-                       default=json_dumps)
+                        default=json_dumps)
     assert result == '[1, "2000-01-01T12:30:00Z"]'
     assert json.loads(result) == [1, "2000-01-01T12:30:00Z"]
 
@@ -201,6 +210,7 @@ def test_write_gzip_lines():
         f.close()
         assert line.decode('utf-8').strip() == str(json.dumps(dat[0]))
 
+
 def test_write_gzip():
     with tmpfile('json.gz') as fn:
         j = JSON(fn)
@@ -210,6 +220,7 @@ def test_write_gzip():
         text = f.read()
         f.close()
         assert text.decode('utf-8').strip() == str(json.dumps(dat))
+        assert isinstance(resource(fn), (JSON, JSONLines))
 
 
 def test_resource_gzip():
@@ -217,7 +228,6 @@ def test_resource_gzip():
         assert isinstance(resource(fn), (JSON, JSONLines))
         assert isinstance(resource('json://' + fn), (JSON, JSONLines))
         assert isinstance(resource('jsonlines://' + fn), (JSON, JSONLines))
-
 
     with tmpfile('jsonlines.gz'):
         assert isinstance(resource('jsonlines://' + fn), (JSON, JSONLines))
@@ -239,3 +249,18 @@ def test_drop():
         assert os.path.exists(fn)
         drop(js)
         assert not os.path.exists(fn)
+
+
+def test_missing_to_csv():
+    data = [dict(a=1, b=2), dict(a=2, c=4)]
+    with tmpfile('.json') as fn:
+        js = JSON(fn)
+        js = odo(data, js)
+
+        with tmpfile('.csv') as csvf:
+            csv = odo(js, csvf)
+            with open(csv.path, 'rt') as f:
+                result = f.read()
+
+    expected = 'a,b,c\n1,2.0,\n2,,4.0\n'
+    assert result == expected

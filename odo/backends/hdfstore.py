@@ -1,12 +1,13 @@
 from __future__ import absolute_import, division, print_function
 
+import numpy as np
 import pandas as pd
 
 import datashape
 from datashape import discover
 from ..append import append
 from ..convert import convert, ooc_types
-from ..chunks import chunks, Chunks
+from ..chunks import chunks
 from ..resource import resource
 
 
@@ -37,6 +38,13 @@ def discover_hdfstore_storer(storer):
 
 @convert.register(chunks(pd.DataFrame), pd.io.pytables.AppendableFrameTable)
 def hdfstore_to_chunks_dataframes(data, chunksize=100000, **kwargs):
+    if (isinstance(chunksize, (float, np.floating)) and
+            not chunksize.is_integer()):
+        raise TypeError('chunksize argument must be an integer, got %s' %
+                        chunksize)
+
+    chunksize = int(chunksize)
+
     def f():
         k = min(chunksize, 100)
         yield data.parent.select(data.pathname, start=0, stop=k)
