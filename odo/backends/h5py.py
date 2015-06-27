@@ -209,8 +209,9 @@ def append_h5py(dset, x, **kwargs):
 @convert.register(np.ndarray, h5py.Dataset, cost=3.0)
 def h5py_to_numpy(dset, force=False, **kwargs):
     if dset.size > 1e9:
-        raise MemoryError("File size is large: %0.2f GB.\n"
-                          "Convert with flag force=True to force loading" % d.size / 1e9)
+        raise MemoryError(("File size is large: %0.2f GB.\n"
+                           "Convert with flag force=True to force loading") %
+                          (dset.size / 1e9))
     else:
         return dset[:]
 
