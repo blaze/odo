@@ -43,6 +43,7 @@ General
 .. toctree::
    :maxdepth: 1
 
+   project-info
    overview
    uri
    datashape
