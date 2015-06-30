@@ -44,6 +44,7 @@ def test_csv_append():
         assert '100' in s
 
 
+
 def test_pandas_read():
     with filetext('Alice,1\nBob,2') as fn:
         ds = datashape.dshape('var * {name: string, amount: int}')
@@ -333,6 +334,36 @@ def test_infer_header():
 
 def test_csv_supports_sep():
     assert CSV('foo.csv', sep=';').dialect['delimiter'] == ';'
+
+
+def test_trip_small_discovery():
+    filename = os.path.join(os.path.dirname(__file__), 'tripsmall.csv')
+    csv = resource(filename)
+    dshape = discover(csv)
+    expected = datashape.dshape("""var * {
+      medallion: ?string,
+      hack_license: ?string,
+      vendor_id: ?string,
+      rate_code: int64,
+      store_and_fwd_flag: ?string,
+      pickup_datetime: ?datetime,
+      dropoff_datetime: ?datetime,
+      passenger_count: int64,
+      trip_time_in_secs: int64,
+      trip_distance: ?float64,
+      pickup_longitude: ?float64,
+      pickup_latitude: ?float64,
+      dropoff_longitude: ?float64,
+      dropoff_latitude: ?float64,
+      tolls_amount: ?float64,
+      tip_amount: ?float64,
+      total_amount: ?float64,
+      mta_tax: ?float64,
+      fare_amount: ?float64,
+      payment_type: ?string,
+      surcharge: ?float64
+    }""")
+    assert dshape == expected
 
 
 def test_csv_to_compressed_csv():

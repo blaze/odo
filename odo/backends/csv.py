@@ -4,7 +4,8 @@ import sys
 import re
 from contextlib import contextmanager
 import datashape
-from datashape import discover, Record, Option
+from datashape import (discover, Record, Option, string, String, object_,
+                       DateTime)
 from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
 from toolz import concat, keyfilter, keymap, merge, valfilter
@@ -243,6 +244,30 @@ def CSV_to_chunks_of_dataframes(c, chunksize=2 ** 20, **kwargs):
     return chunks(pd.DataFrame)(_)
 
 
+def optionify_frame(df):
+    measure = discover(df).measure
+    types = []
+    for typ in measure.types:
+        isoption = hasattr(typ, 'ty')
+        basetyp = getattr(typ, 'ty', typ)
+        if isinstance(basetyp, String) or basetyp == object_:
+            newtyp = Option(string)
+        elif isinstance(basetyp, DateTime):
+            newtyp = Option(basetyp)
+        else:
+            newtyp = basetyp
+        types.append(Option(newtyp)
+                     if isoption and
+                     not isinstance(newtyp, Option) else newtyp)
+
+    # Use Series.isnull to determine Option-ness
+    measure = Record([(name, Option(typ)
+                       if not isinstance(typ, Option) and
+                       df[name].isnull().any() else typ)
+                      for name, typ in zip(measure.names, types)])
+    return measure
+
+
 @discover.register(CSV)
 def discover_csv(c, nrows=1000, **kwargs):
     df = csv_to_dataframe(c, nrows=nrows, **kwargs)
@@ -262,15 +287,7 @@ def discover_csv(c, nrows=1000, **kwargs):
         if not df[col].count():
             df[col] = None
 
-    measure = discover(df).measure
-
-    # Use Series.notnull to determine Option-ness
-    measure = Record([[name, Option(typ)
-                       if df[name].isnull().any() and
-                       not isinstance(typ, Option) else typ]
-                      for name, typ in zip(measure.names, measure.types)])
-
-    return datashape.var * measure
+    return datashape.var * optionify_frame(df)
 
 
 @resource.register('.+\.(csv|tsv|ssv|data|dat)(\.gz|\.bz2?)?')

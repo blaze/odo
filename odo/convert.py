@@ -41,6 +41,11 @@ def numpy_to_series(x, **kwargs):
     return pd.Series(x)
 
 
+@convert.register(tuple, np.void)
+def void_to_tuple(x, **kwargs):
+    return x.item()
+
+
 @convert.register(pd.Series, pd.DataFrame, cost=0.1)
 def DataFrame_to_Series(x, **kwargs):
     assert len(x.columns) == 1

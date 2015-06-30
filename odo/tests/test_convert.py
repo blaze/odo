@@ -255,3 +255,10 @@ def test_chunks_of_lists_and_iterators():
     assert convert(list, cl) == [1, 2, 3, 4]
     assert list(convert(Iterator, cl)) == [1, 2, 3, 4]
     assert len(list(convert(chunks(Iterator), cl))) == 2
+
+
+def test_numpy_void_to_tuple():
+    x = np.array([('a', 1, 1.0)],
+                 dtype=[('name', '|S1'), ('id', 'i8'), ('amount', 'f8')])
+    assert x[0].dtype.type == np.void
+    assert convert(tuple, x[0]) == x[0].item()

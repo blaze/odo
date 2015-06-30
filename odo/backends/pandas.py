@@ -1,30 +1,73 @@
 from __future__ import absolute_import, division, print_function
 
-from datashape import discover
-from datashape import (float32, float64, string, Option, Record, object_,
-        datetime_)
-import datashape
+import sys
+import numpy as np
+from toolz import identity
+from toolz.compatibility import zip
+from datashape import (discover, float32, float64, Option, String, from_numpy,
+                       Record)
 
 import pandas as pd
 
 
-possibly_missing = set((string, datetime_, float32, float64))
+possibly_missing = frozenset((float32, float64))
+
 
 @discover.register(pd.DataFrame)
 def discover_dataframe(df):
-    obj = object_
     names = list(df.columns)
-    dtypes = list(map(datashape.CType.from_numpy_dtype, df.dtypes))
-    dtypes = [string if dt == obj else dt for dt in dtypes]
-    odtypes = [Option(dt) if dt in possibly_missing else dt
-                for dt in dtypes]
-    schema = datashape.Record(list(zip(names, odtypes)))
-    return len(df) * schema
+    dtypes = [discover(df[c]).measure for c in names]
+    odtypes = [Option(dt) if dt in possibly_missing else dt for dt in dtypes]
+    return len(df) * Record(list(zip(names, odtypes)))
+
+
+def isbytes(s):
+    """Check whether a Series contains all bytes values
+
+    Parameters
+    ----------
+    s : Series
+
+    Returns
+    -------
+    t : bool
+        Whether `s` is either all bytes or all bytes modulo NaNs
+
+    Examples
+    --------
+    >>> s = pd.Series([u'a', b'a'])
+    >>> isbytes(s)
+    False
+    """
+    try:
+        return isinstance(np.sum(s.values), bytes)
+    except TypeError:
+        try:
+            return isinstance(np.sum(s.dropna().values), bytes)
+        except TypeError:
+            return False
 
 
 @discover.register(pd.Series)
 def discover_series(s):
-    return len(s) * datashape.CType.from_numpy_dtype(s.dtype)
+    typ = pd.lib.infer_dtype(s)
+
+    if (typ == 'unicode' or typ == 'string' or typ == 'bytes' or
+            typ == 'mixed' and isbytes(s)):
+        nchars = pd.lib.max_len_string_array(s.values)
+        option = Option if s.isnull().any() else identity
+        measure = (String(nchars)
+                   if (typ == 'unicode' or
+                       sys.version_info[0] >= 3 and
+                       typ not in ('mixed', 'bytes'))
+                   else String(nchars, 'A'))
+    elif typ.startswith(('timedelta', 'datetime')):
+        option = Option if s.isnull().any() else identity
+        measure = from_numpy((), s.dtype)
+    else:
+        option = identity
+        measure = from_numpy((), s.dtype)
+    return len(s) * option(measure)
 
 
 def coerce_datetimes(df):
