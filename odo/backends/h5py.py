@@ -231,15 +231,11 @@ def resource_h5py(uri, datapath=None, dshape=None, expected_dshape=None,
         uri = uri[len('h5py://'):]
     f = h5py.File(uri)
     olddatapath = datapath
-    if datapath is not None:
-        try:
-            old_dset = f[datapath]
-        except KeyError:
-            pass
-        else:
-            if expected_dshape is not None:
-                dshape = expected_dshape
-                assert dshape == discover(old_dset)
+    if datapath is not None and datapath in f:
+        old_dset = f[datapath]
+        if expected_dshape is not None:
+            dshape = expected_dshape
+            assert dshape == discover(old_dset)
     if dshape is not None:
         ds = datashape.dshape(dshape)
         if datapath:
