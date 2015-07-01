@@ -6,7 +6,7 @@ from odo.backends.hdfstore import discover
 from contextlib import contextmanager
 from odo.utils import tmpfile
 from odo.chunks import chunks
-from odo import into, append, convert, resource, discover
+from odo import into, append, convert, resource, discover, odo
 import datashape
 import pandas as pd
 from datetime import datetime
@@ -150,3 +150,18 @@ def test_fixed_convert():
         r = resource('hdfstore://'+fn+'::/foo')
         assert eq(convert(pd.DataFrame, r), df)
         r.parent.close()
+
+
+def test_append_vs_write():
+    import pandas.util.testing as tm
+    with tmpfile('.hdf5') as fn:
+        df.to_hdf(fn, 'foo', append=True)
+        newdf = odo(odo(df, 'hdfstore://%s::foo' % fn), pd.DataFrame)
+
+    tm.assert_frame_equal(newdf, pd.concat([df, df]))
+
+    with tmpfile('.hdf5') as fn:
+        newdf = odo(odo(df, 'hdfstore://%s::foo' % fn, mode='w'),
+                    pd.DataFrame)
+
+    tm.assert_frame_equal(newdf, df)
