@@ -225,11 +225,21 @@ def h5py_to_numpy_chunks(dset, chunksize=2 ** 20, **kwargs):
 
 
 @resource.register('h5py://.+', priority=11)
-def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
+def resource_h5py(uri, datapath=None, dshape=None, expected_dshape=None,
+                  **kwargs):
     if uri.startswith('h5py://'):
         uri = uri[len('h5py://'):]
     f = h5py.File(uri)
     olddatapath = datapath
+    if datapath is not None:
+        try:
+            old_dset = f[datapath]
+        except KeyError:
+            pass
+        else:
+            if expected_dshape is not None:
+                dshape = expected_dshape
+                assert dshape == discover(old_dset)
     if dshape is not None:
         ds = datashape.dshape(dshape)
         if datapath:
