@@ -3,15 +3,13 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 import pandas as pd
 
-from toolz import keyfilter
-
 import datashape
 from datashape import discover
 from ..append import append
 from ..convert import convert, ooc_types
 from ..chunks import chunks
 from ..resource import resource
-from ..utils import keywords
+from ..utils import filter_kwargs
 
 
 @discover.register(pd.HDFStore)
@@ -85,17 +83,12 @@ def resource_hdfstore(uri, datapath=None, dshape=None, **kwargs):
     # 2. Try translating unicode to ascii?  (PyTables fails here)
     fn = uri.split('://')[1]
     try:
-        f = pd.HDFStore(fn,
-                        **keyfilter(keywords(pd.HDFStore).__contains__,
-                                    kwargs))
+        f = pd.HDFStore(fn, **filter_kwargs(pd.HDFStore, kwargs))
     except RuntimeError as e:
         raise type(e)(pytables_h5py_explanation)
 
     if dshape is None:
-        if datapath:
-            return f.get_storer(datapath)
-        else:
-            return f
+        return f.get_storer(datapath) if datapath else f
     dshape = datashape.dshape(dshape)
 
     # Already exists, return it
