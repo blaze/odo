@@ -3,12 +3,15 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 import pandas as pd
 
+from toolz import keyfilter
+
 import datashape
 from datashape import discover
 from ..append import append
 from ..convert import convert, ooc_types
 from ..chunks import chunks
 from ..resource import resource
+from ..utils import keywords
 
 
 @discover.register(pd.HDFStore)
@@ -82,8 +85,10 @@ def resource_hdfstore(uri, datapath=None, dshape=None, **kwargs):
     # 2. Try translating unicode to ascii?  (PyTables fails here)
     fn = uri.split('://')[1]
     try:
-        f = pd.HDFStore(fn)
-    except RuntimeError  as e:
+        f = pd.HDFStore(fn,
+                        **keyfilter(keywords(pd.HDFStore).__contains__,
+                                    kwargs))
+    except RuntimeError as e:
         raise type(e)(pytables_h5py_explanation)
 
     if dshape is None:
@@ -97,7 +102,7 @@ def resource_hdfstore(uri, datapath=None, dshape=None, **kwargs):
     if datapath in f:
         return f.get_storer(datapath)
 
-    # Need to create new datast.
+    # Need to create new dataset.
     # HDFStore doesn't support empty datasets, so we use a proxy object.
     return EmptyHDFStoreDataset(f, datapath, dshape)
 
