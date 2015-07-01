@@ -251,9 +251,9 @@ def resource_h5py(uri, datapath=None, dshape=None, expected_dshape=None,
         return f
 
 
-@resource.register('.+\.(hdf5|h5)')
-def resource_hdf5(*args, **kwargs):
-    return resource_h5py(*args, **kwargs)
+@resource.register(r'^(?!hdfstore).+\.(hdf5|h5)', priority=10)
+def resource_hdf5(uri, *args, **kwargs):
+    return resource_h5py(uri, *args, **kwargs)
 
 
 @dispatch((h5py.Group, h5py.Dataset))

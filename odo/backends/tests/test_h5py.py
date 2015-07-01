@@ -260,3 +260,11 @@ def test_resource_shape():
         r = resource(fn+'::/data', dshape='var * 10 * int')
         assert r.shape == (0, 10)
         r.file.close()
+
+
+@pytest.mark.parametrize('ext', ['h5', 'hdf5'])
+def test_resource_with_hdfstore_extension_works(ext):
+    fn = 'hdfstore:foo.%s' % ext
+    with pytest.raises(NotImplementedError):
+        odo(fn, np.recarray)
+    assert not os.path.exists(fn)
