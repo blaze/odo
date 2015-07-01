@@ -258,5 +258,7 @@ def test_resource_shape():
 
 @pytest.mark.parametrize('ext', ['h5', 'hdf5'])
 def test_resource_with_hdfstore_extension_works(ext):
+    fn = 'hdfstore:foo.%s' % ext
     with pytest.raises(NotImplementedError):
-        odo('hdfstore:foo.%s' % ext, np.recarray)
+        odo(fn, np.recarray)
+    assert not os.path.exists(fn)
