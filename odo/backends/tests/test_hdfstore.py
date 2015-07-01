@@ -156,12 +156,19 @@ def test_append_vs_write():
     import pandas.util.testing as tm
     with tmpfile('.hdf5') as fn:
         df.to_hdf(fn, 'foo', append=True)
-        newdf = odo(odo(df, 'hdfstore://%s::foo' % fn), pd.DataFrame)
+        store = odo(df, 'hdfstore://%s::foo' % fn)
+        try:
+            newdf = odo(store, pd.DataFrame)
+        finally:
+            store.parent.close()
 
     tm.assert_frame_equal(newdf, pd.concat([df, df]))
 
     with tmpfile('.hdf5') as fn:
-        newdf = odo(odo(df, 'hdfstore://%s::foo' % fn, mode='w'),
-                    pd.DataFrame)
+        store = odo(df, 'hdfstore://%s::foo' % fn, mode='w')
+        try:
+            newdf = odo(store, pd.DataFrame)
+        finally:
+            store.parent.close()
 
     tm.assert_frame_equal(newdf, df)
