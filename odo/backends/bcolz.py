@@ -11,6 +11,7 @@ from bcolz import ctable, carray
 
 import datashape
 from datashape import discover
+from datashape.predicates import isrecord
 
 from ..numpy_dtype import dshape_to_numpy
 from ..append import append
@@ -30,13 +31,6 @@ def discover_bcolz(c, **kwargs):
 @append.register(ctable, np.ndarray)
 def numpy_append_to_bcolz(a, b, **kwargs):
     dtype = b.dtype
-    dtype_pairs = [(name, dtype[name].type) for name in dtype.names]
-    is_object = [dt == np.object_ for _, dt in dtype_pairs]
-    if any(is_object):
-        raise TypeError("object dtypes are not supported by bcolz.\n"
-                        "Columns %s have object dtypes" %
-                        [name for (name, _), keep in
-                         zip(dtype_pairs, is_object) if keep])
     a.append(b)
     a.flush()
     return a
@@ -44,8 +38,6 @@ def numpy_append_to_bcolz(a, b, **kwargs):
 
 @append.register(carray, np.ndarray)
 def numpy_append_to_bcolz(a, b, **kwargs):
-    if b.dtype.type == np.object_:
-        raise TypeError("object dtypes are not supported by bcolz")
     a.append(b)
     a.flush()
     return a
@@ -104,6 +96,23 @@ def resource_bcolz(uri, dshape=None, expected_dshape=None, **kwargs):
         dshape = datashape.dshape(dshape)
 
         dt = dshape_to_numpy(dshape)
+        if isrecord(dshape.measure):
+            dtype_pairs = [(name, dt[name].type) for name in dt.names]
+            is_object = [dtype == np.object_ for _, dtype in dtype_pairs]
+            if any(is_object):
+                raise TypeError("object dtypes are not supported by bcolz.\n"
+                                "Columns %s have object dtypes.\n"
+                                "If you have strings in those columns, pass in"
+                                " a fixed length string dshape for each of "
+                                "those columns.\nFor example, if the maximum "
+                                "length of each string in column 'a' is 10"
+                                "instead of var * {a: int32, b: string}, "
+                                "pass var * {a: int32, b: string[10, 'A']}" %
+                                [name for (name, _), keep in
+                                 zip(dtype_pairs, is_object) if keep])
+        else:
+            if dt.type == np.object_:
+                raise TypeError("object dtypes are not supported by bcolz")
         shape_tail = tuple(map(int, dshape.shape[1:]))  # tail of shape
         if dshape.shape[0] == datashape.var:
             shape = (0,) + shape_tail
