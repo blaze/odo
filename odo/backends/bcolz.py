@@ -1,13 +1,17 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-from itertools import compress
-from bcolz import ctable, carray
-import numpy as np
+import shutil
+
 from toolz import keyfilter
+
+import numpy as np
+
+from bcolz import ctable, carray
+
 import datashape
 from datashape import discover
-import shutil
+
 from ..numpy_dtype import dshape_to_numpy
 from ..append import append
 from ..convert import convert, ooc_types
@@ -26,16 +30,17 @@ def discover_bcolz(c, **kwargs):
 @append.register(ctable, np.ndarray)
 def numpy_append_to_bcolz(a, b, **kwargs):
     dtype = b.dtype
-    column_dtypes = [(name, dtype[name].type) for name in dtype.names]
-    object_dtypes = [dt == np.object_ for _, dt in column_dtypes]
-    if any(object_dtypes):
+    dtype_pairs = [(name, dtype[name].type) for name in dtype.names]
+    is_object = [dt == np.object_ for _, dt in dtype_pairs]
+    if any(is_object):
         raise TypeError("object dtypes are not supported by bcolz.\n"
                         "Columns %s have object dtypes" %
-                        [name for name, _ in compress(column_dtypes,
-                                                      object_dtypes)])
+                        [name for (name, _), keep in
+                         zip(dtype_pairs, is_object) if keep])
     a.append(b)
     a.flush()
     return a
+
 
 @append.register(carray, np.ndarray)
 def numpy_append_to_bcolz(a, b, **kwargs):
