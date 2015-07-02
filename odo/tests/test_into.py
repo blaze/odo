@@ -2,18 +2,20 @@ from __future__ import absolute_import, division, print_function
 
 import pytest
 
-from odo.into import into
+import numpy as np
+
+from odo import odo, into
 from odo.utils import tmpfile, filetext
 from odo.backends.csv import CSV
 
 
 def test_into_convert():
-    assert into(list, (1, 2, 3)) == [1, 2, 3]
+    assert odo((1, 2, 3), list) == [1, 2, 3]
 
 
 def test_into_append():
     lst = []
-    result = into(lst, (1, 2, 3))
+    result = odo((1, 2, 3), lst)
     assert result == [1, 2, 3]
     assert result is lst
 
@@ -21,16 +23,16 @@ def test_into_append():
 def test_into_curry():
     assert callable(into(list))
     data = (1, 2, 3)
-    assert into(list)(data) == into(list, data)
+    assert into(list)(data) == odo(data, list)
 
 
 @pytest.mark.parametrize('f', [lambda x: u'%s' % x, lambda x: x])
 def test_into_double_string(f):
     with filetext('alice,1\nbob,2', extension='.csv') as source:
-        assert into(list, source) == [('alice', 1), ('bob', 2)]
+        assert odo(source, list) == [('alice', 1), ('bob', 2)]
 
         with tmpfile('.csv') as target:
-            csv = into(f(target), source)
+            csv = odo(source, f(target))
             assert isinstance(csv, CSV)
             with open(target, 'rU') as f:
                 assert 'alice' in f.read()
@@ -39,4 +41,10 @@ def test_into_double_string(f):
 @pytest.mark.parametrize('f', [lambda x: u'%s' % x, lambda x: x])
 def test_into_string_on_right(f):
     with filetext('alice,1\nbob,2', extension='.csv') as source:
-        assert into([], f(source)) == [('alice', 1), ('bob', 2)]
+        assert odo(f(source), []) == [('alice', 1), ('bob', 2)]
+
+
+def test_into_string_dshape():
+    np.testing.assert_array_equal(odo([1, 2, 3], np.ndarray,
+                                      dshape='var * float64'),
+                                  np.array([1, 2, 3], dtype='float64'))

@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 import pytest
 from odo.convert import (convert, list_to_numpy, iterator_to_numpy_chunks,
-                          dataframe_to_chunks_dataframe, numpy_to_chunks_numpy,
-                          chunks_dataframe_to_dataframe)
+                         dataframe_to_chunks_dataframe, numpy_to_chunks_numpy,
+                         chunks_dataframe_to_dataframe)
 from odo.chunks import chunks
 from datashape import discover, dshape
 from collections import Iterator
@@ -127,6 +127,20 @@ def test_list_to_numpy_on_dicts():
     assert convert(list, x) == [('Alice', 100), ('Bob', 200)]
 
 
+def test_list_of_dicts_with_missing_to_numpy():
+    data = [{'name': 'Alice', 'amount': 100},
+            {'name': 'Bob'},
+            {'amount': 200}]
+    result = convert(np.ndarray, data)
+    assert result.dtype.names == ('amount', 'name')
+    expected = np.array([(100.0, 'Alice'),
+                         (np.nan, 'Bob'),
+                         (200.0, None)],
+                        dtype=[('amount', 'float64'), ('name', 'O')])
+    assert np.all((result == expected) |
+                  ((result != result) & (expected != expected)))
+
+
 def test_chunks_numpy_pandas():
     x = np.array([('Alice', 100), ('Bob', 200)],
                  dtype=[('name', 'S7'), ('amount', 'i4')])
@@ -230,9 +244,19 @@ def test_recarray():
 
 def test_empty_iterator_to_chunks_dataframe():
     ds = dshape('var * {x: int}')
-    result = convert(pd.DataFrame, iter([]), dshape=ds)
-    assert isinstance(result, pd.DataFrame)
-    assert list(result.columns) == ['x']
+    result = convert(chunks(pd.DataFrame), iter([]), dshape=ds)
+    data = convert(pd.DataFrame, result)
+    assert isinstance(data, pd.DataFrame)
+    assert list(data.columns) == ['x']
+
+
+def test_empty_iterator_to_chunks_ndarray():
+    ds = dshape('var * {x: int}')
+    result = convert(chunks(np.ndarray), iter([]), dshape=ds)
+    data = convert(np.ndarray, result)
+    assert isinstance(data, np.ndarray)
+    assert len(data) == 0
+    assert data.dtype.names == ('x',)
 
 
 def test_chunks_of_lists_and_iterators():

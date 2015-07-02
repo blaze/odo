@@ -24,7 +24,8 @@ def unit_to_dtype(ds):
         ds = ds.measure
     if isinstance(ds, Option) and isscalar(ds) and isnumeric(ds):
         return unit_to_dtype(str(ds).replace('int', 'float').replace('?', ''))
-    if isinstance(ds, Option) and ds.ty in (date_, datetime_, string):
+    if isinstance(ds, Option) and isinstance(ds.ty, (type(date_),
+            type(datetime_), type(string), type(timedelta_))):
         ds = ds.ty
     if ds == string:
         return np.dtype('O')

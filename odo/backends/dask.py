@@ -4,9 +4,9 @@ from collections import Iterator
 import numpy as np
 from toolz import keyfilter
 from datashape.dispatch import dispatch
-from datashape import DataShape
+from datashape import DataShape, from_numpy
 
-from dask.array.core import rec_concatenate, Array, get, from_array
+from dask.array.core import Array, from_array
 from dask.bag.core import Bag
 import dask.bag as db
 from dask.compatibility import long
@@ -17,8 +17,7 @@ from ..utils import keywords
 
 @discover.register(Array)
 def discover_dask_array(a, **kwargs):
-    block = a._get_block(*([0] * a.ndim))
-    return DataShape(*(a.shape + (discover(block).measure,)))
+    return from_numpy(a.shape, a.dtype)
 
 
 arrays = [np.ndarray]
@@ -61,7 +60,7 @@ def array_to_dask(x, name=None, chunks=None, **kwargs):
 
 @convert.register(np.ndarray, Array, cost=10.)
 def dask_to_numpy(x, **kwargs):
-    return rec_concatenate(get(x.dask, x._keys(), **kwargs))
+    return np.array(x)
 
 
 @convert.register(float, Array, cost=10.)
