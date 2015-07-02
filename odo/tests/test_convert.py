@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 import pytest
 from odo.convert import (convert, list_to_numpy, iterator_to_numpy_chunks,
-                          dataframe_to_chunks_dataframe, numpy_to_chunks_numpy,
-                          chunks_dataframe_to_dataframe)
+                         dataframe_to_chunks_dataframe, numpy_to_chunks_numpy,
+                         chunks_dataframe_to_dataframe)
 from odo.chunks import chunks
 from datashape import discover, dshape
 from collections import Iterator
@@ -247,6 +247,14 @@ def test_empty_iterator_to_chunks_dataframe():
     result = convert(pd.DataFrame, iter([]), dshape=ds)
     assert isinstance(result, pd.DataFrame)
     assert list(result.columns) == ['x']
+
+
+def test_empty_iterator_to_chunks_ndarray():
+    ds = dshape('var * {x: int}')
+    result = convert(np.ndarray, iter([]), dshape=ds)
+    assert isinstance(result, np.ndarray)
+    assert len(result) == 0
+    assert result.dtype.names == ('x',)
 
 
 def test_chunks_of_lists_and_iterators():
