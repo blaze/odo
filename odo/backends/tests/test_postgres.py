@@ -8,6 +8,14 @@ pytest.importorskip('psycopg2')
 import os
 import itertools
 
+try:
+    from urllib2 import URLError
+except ImportError:
+    from urllib.error import URLError
+
+import pandas.util.testing as tm
+import pandas as pd
+
 from datashape import dshape
 
 from odo.backends.csv import CSV
@@ -203,3 +211,30 @@ def test_schema_discover(sql_with_schema):
     meta = discover(sql_with_schema.metadata)
     assert meta == dshape('{%s: var * {a: int32, b: ?int32}}' %
                           sql_with_schema.name)
+
+
+@pytest.fixture
+def tips_csv():
+    return resource('http://s3.amazonaws.com/nyqpug/tips.csv')
+
+
+@pytest.yield_fixture
+def tips(tips_csv):
+    table = 'postgresql://localhost::tips'
+    try:
+        t = resource(table, dshape=discover(tips_csv))
+    except URLError:
+        pytest.skip('no internet connection')
+    else:
+        try:
+            yield t
+        finally:
+            drop(t)
+
+
+def test_url_to_db(tips, tips_csv):
+    ds = discover(tips_csv)
+    assert ds.measure['day'] == dshape('?string').measure
+    result = odo(tips_csv, tips)
+    tm.assert_frame_equal(odo(result, pd.DataFrame),
+                          odo(tips_csv, pd.DataFrame))
