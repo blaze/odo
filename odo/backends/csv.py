@@ -6,6 +6,9 @@ import os
 import gzip
 import bz2
 import uuid
+import csv
+
+from contextlib import contextmanager
 
 from glob import glob
 
@@ -15,7 +18,7 @@ from datashape import discover, Record, Option
 from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
 
-from toolz import concat, keyfilter, keymap
+from toolz import concat, keyfilter, keymap, valfilter, merge
 
 import pandas
 import pandas as pd
@@ -37,7 +40,6 @@ quoting skipinitialspace strict'''.split()
 aliases = {
     'sep': 'delimiter'
 }
-
 
 
 def alias(key):
