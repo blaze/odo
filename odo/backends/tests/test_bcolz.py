@@ -187,5 +187,11 @@ def test_csv_to_bcolz():
                   'S16,16,TRUE,Q\n'
                   'L14,14,FALSE,I', extension='csv') as src:
         with tmpfile('bcolz') as tgt:
-            bc = into(tgt, src)
-            assert len(bc) == 3
+            into(tgt, src)
+
+
+@pytest.mark.xfail(raises=TypeError,
+                   reason='object dtypes are not well supported by bcolz')
+def test_single_object_array_to_carray():
+    with tmpfile('bcolz') as tgt:
+        into(tgt, np.array(['a', 1, 2, 1.0], dtype=object))
