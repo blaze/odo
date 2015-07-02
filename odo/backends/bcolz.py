@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+from itertools import compress
 from bcolz import ctable, carray
 import numpy as np
 from toolz import keyfilter
@@ -22,8 +23,24 @@ def discover_bcolz(c, **kwargs):
     return datashape.from_numpy(c.shape, c.dtype)
 
 
-@append.register((ctable, carray), np.ndarray)
+@append.register(ctable, np.ndarray)
 def numpy_append_to_bcolz(a, b, **kwargs):
+    dtype = b.dtype
+    column_dtypes = [(name, dtype[name].type) for name in dtype.names]
+    object_dtypes = [dt == np.object_ for _, dt in column_dtypes]
+    if any(object_dtypes):
+        raise TypeError("object dtypes are not supported by bcolz.\n"
+                        "Columns %s have object dtypes" %
+                        [name for name, _ in compress(column_dtypes,
+                                                      object_dtypes)])
+    a.append(b)
+    a.flush()
+    return a
+
+@append.register(carray, np.ndarray)
+def numpy_append_to_bcolz(a, b, **kwargs):
+    if b.dtype.type == np.object_:
+        raise TypeError("object dtypes are not supported by bcolz")
     a.append(b)
     a.flush()
     return a
