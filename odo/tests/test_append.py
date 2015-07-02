@@ -18,7 +18,7 @@ def test_append_set_to_list():
     s = set([3, 4, 5])
     lst = [1, 2, 3]
     append(lst, s)
-    assert lst == [1, 2, 3, 3, 4, 5]
+    assert sorted(lst) == [1, 2, 3, 3, 4, 5]
 
 
 def test_append_tuple_to_set():
