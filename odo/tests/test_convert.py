@@ -245,16 +245,18 @@ def test_recarray():
 def test_empty_iterator_to_chunks_dataframe():
     ds = dshape('var * {x: int}')
     result = convert(chunks(pd.DataFrame), iter([]), dshape=ds)
-    assert isinstance(convert(pd.DataFrame, result), pd.DataFrame)
-    assert list(result.columns) == ['x']
+    data = convert(pd.DataFrame, result)
+    assert isinstance(data, pd.DataFrame)
+    assert list(data.columns) == ['x']
 
 
 def test_empty_iterator_to_chunks_ndarray():
     ds = dshape('var * {x: int}')
     result = convert(chunks(np.ndarray), iter([]), dshape=ds)
-    assert isinstance(convert(np.ndarray, result), np.ndarray)
-    assert len(result) == 0
-    assert result.dtype.names == ('x',)
+    data = convert(np.ndarray, result)
+    assert isinstance(data, np.ndarray)
+    assert len(data) == 0
+    assert data.dtype.names == ('x',)
 
 
 def test_chunks_of_lists_and_iterators():
