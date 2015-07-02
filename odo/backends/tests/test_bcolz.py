@@ -179,6 +179,8 @@ def test_resource_shape():
         assert b.shape == (0, 10)
 
 
+@pytest.mark.xfail(raises=TypeError,
+                   reason='object dtypes are not well supported by bcolz')
 def test_csv_to_bcolz():
     with filetext('name,runway,takeoff,datetime_nearest_close\n'
                   'S28,28,TRUE,A\n'
