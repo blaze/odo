@@ -188,12 +188,18 @@ def numpy_chunks_to_iterator(c, **kwargs):
 @convert.register(chunks(np.ndarray), Iterator, cost=10.0)
 def iterator_to_numpy_chunks(seq, chunksize=1024, **kwargs):
     seq2 = partition_all(chunksize, seq)
-    first, rest = next(seq2), seq2
-    x = convert(np.ndarray, first, **kwargs)
-    def _():
-        yield x
-        for i in rest:
-            yield convert(np.ndarray, i, **kwargs)
+    try:
+        first, rest = next(seq2), seq2
+    except StopIteration:  # seq is empty
+        def _():
+            yield convert(np.ndarray, [], **kwargs)
+    else:
+        x = convert(np.ndarray, first, **kwargs)
+
+        def _():
+            yield x
+            for i in rest:
+                yield convert(np.ndarray, i, **kwargs)
     return chunks(np.ndarray)(_)
 
 
