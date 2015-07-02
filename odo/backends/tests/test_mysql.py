@@ -74,8 +74,10 @@ def sql(engine, csv, name):
     except sqlalchemy.exc.OperationalError as e:
         pytest.skip(str(e))
     else:
-        yield t
-        drop(t)
+        try:
+            yield t
+        finally:
+            drop(t)
 
 
 @pytest.yield_fixture
@@ -177,7 +179,9 @@ def test_sql_to_csv(sql, csv):
     with tmpfile('.csv') as fn:
         csv = odo(sql, fn)
         assert odo(csv, list) == data
-        assert discover(csv).measure.names == discover(sql).measure.names
+
+        # explicitly test that we do NOT preserve the header here
+        assert discover(csv).measure.names != discover(sql).measure.names
 
 
 def test_sql_select_to_csv(sql, csv):
@@ -186,3 +190,40 @@ def test_sql_select_to_csv(sql, csv):
     with tmpfile('.csv') as fn:
         csv = odo(query, fn)
         assert odo(csv, list) == [(x,) for x, _ in data]
+
+
+def test_csv_output_does_not_preserve_header(sql, csv):
+    sql = odo(csv, sql)
+    expected = "1,2\n10,20\n100,200\n"
+    with tmpfile('.csv') as fn:
+        csv = odo(sql, fn)
+        with open(csv.path, 'rt') as f:
+            result = f.read()
+    assert result == expected
+
+
+@pytest.mark.xfail(raises=AssertionError,
+                   reason="Remove when all databases are being tested at once")
+def test_different_encoding(name):
+    encoding = 'latin1'
+    try:
+        sql = odo(os.path.join(os.path.dirname(__file__), 'encoding.csv'),
+                  url + '::%s' % name,
+                  encoding=encoding)
+    except sa.exc.OperationalError as e:
+        pytest.skip(str(e))
+    else:
+        try:
+            result = odo(sql, list)
+            expected = [(u'1958.001.500131-1A', 1, None, u'', 899),
+                        (u'1958.001.500156-6', 1, None, u'', 899),
+                        (u'1958.001.500162-1', 1, None, u'', 899),
+                        (u'1958.001.500204-2', 1, None, u'', 899),
+                        (u'1958.001.500204-2A', 1, None, u'', 899),
+                        (u'1958.001.500204-2B', 1, None, u'', 899),
+                        (u'1958.001.500223-6', 1, None, u'', 9610),
+                        (u'1958.001.500233-9', 1, None, u'', 4703),
+                        (u'1909.017.000018-3', 1, 30.0, u'sumaria', 899)]
+            assert result == expected
+        finally:
+            drop(sql)

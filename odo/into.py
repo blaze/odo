@@ -6,7 +6,7 @@ from .convert import convert
 from .append import append
 from .resource import resource
 from .utils import ignoring
-from datashape import discover, var
+from datashape import discover
 from datashape.dispatch import namespace
 from datashape.predicates import isdimension
 from .compatibility import unicode
@@ -18,15 +18,15 @@ into = namespace['into']
 
 
 @into.register(type, object)
-def into_type(a, b, **kwargs):
+def into_type(a, b, dshape=None, **kwargs):
     with ignoring(NotImplementedError):
-        if 'dshape' not in kwargs:
-            kwargs['dshape'] = discover(b)
-    return convert(a, b, **kwargs)
+        if dshape is None:
+            dshape = discover(b)
+    return convert(a, b, dshape=dshape, **kwargs)
 
 
 @into.register(object, object)
-def into_object(target, source, **kwargs):
+def into_object(target, source, dshape=None, **kwargs):
     """ Push one dataset into another
 
     Parameters
@@ -93,31 +93,27 @@ def into_object(target, source, **kwargs):
     into.append.append      - Add things onto existing things
     """
     if isinstance(source, (str, unicode)):
-        source = resource(source, **kwargs)
+        source = resource(source, dshape=dshape, **kwargs)
     with ignoring(NotImplementedError):
-        if 'dshape' not in kwargs:
-            kwargs['dshape'] = discover(source)
-    return append(target, source, **kwargs)
+        if dshape is None:
+            dshape = discover(source)
+    return append(target, source, dshape=dshape, **kwargs)
 
 
-@into.register(str, object)
-def into_string(uri, b, **kwargs):
-    ds = kwargs.pop('dshape', None)
-    if not ds:
-        ds = discover(b)
-    if isdimension(ds[0]):
-        resource_ds = 0 * ds.subshape[0]
-    else:
-        resource_ds = ds
+@into.register((str, unicode), object)
+def into_string(uri, b, dshape=None, **kwargs):
+    if dshape is None:
+        dshape = discover(b)
 
-    a = resource(uri, dshape=resource_ds, expected_dshape=ds, **kwargs)
-    return into(a, b, dshape=ds, **kwargs)
+    resource_ds = 0 * dshape.subshape[0] if isdimension(dshape[0]) else dshape
+
+    a = resource(uri, dshape=resource_ds, expected_dshape=dshape, **kwargs)
+    return into(a, b, dshape=dshape, **kwargs)
 
 
-@into.register((type, str), str)
+@into.register((type, (str, unicode)), (str, unicode))
 def into_string_string(a, b, **kwargs):
-    r = resource(b, **kwargs)
-    return into(a, r, **kwargs)
+    return into(a, resource(b, **kwargs), **kwargs)
 
 
 @into.register(object)

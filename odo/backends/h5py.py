@@ -209,8 +209,9 @@ def append_h5py(dset, x, **kwargs):
 @convert.register(np.ndarray, h5py.Dataset, cost=3.0)
 def h5py_to_numpy(dset, force=False, **kwargs):
     if dset.size > 1e9:
-        raise MemoryError("File size is large: %0.2f GB.\n"
-                          "Convert with flag force=True to force loading" % d.size / 1e9)
+        raise MemoryError(("File size is large: %0.2f GB.\n"
+                           "Convert with flag force=True to force loading") %
+                          (dset.size / 1e9))
     else:
         return dset[:]
 
@@ -224,11 +225,17 @@ def h5py_to_numpy_chunks(dset, chunksize=2 ** 20, **kwargs):
 
 
 @resource.register('h5py://.+', priority=11)
-def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
+def resource_h5py(uri, datapath=None, dshape=None, expected_dshape=None,
+                  **kwargs):
     if uri.startswith('h5py://'):
         uri = uri[len('h5py://'):]
     f = h5py.File(uri)
     olddatapath = datapath
+    if datapath is not None and datapath in f:
+        old_dset = f[datapath]
+        if expected_dshape is not None:
+            dshape = expected_dshape
+            assert dshape == discover(old_dset)
     if dshape is not None:
         ds = datashape.dshape(dshape)
         if datapath:
@@ -244,9 +251,9 @@ def resource_h5py(uri, datapath=None, dshape=None, **kwargs):
         return f
 
 
-@resource.register('.+\.(hdf5|h5)')
-def resource_hdf5(*args, **kwargs):
-    return resource_h5py(*args, **kwargs)
+@resource.register(r'^(?!hdfstore).+\.(hdf5|h5)', priority=10)
+def resource_hdf5(uri, *args, **kwargs):
+    return resource_h5py(uri, *args, **kwargs)
 
 
 @dispatch((h5py.Group, h5py.Dataset))

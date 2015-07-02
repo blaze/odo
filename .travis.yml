@@ -29,7 +29,7 @@ install:
   - conda update conda
 
   # Install dependencies
-  - conda create -n odo-test python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python pymongo paramiko boto dask
+  - conda create -n odo-test python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python pymongo paramiko boto
   - source activate odo-test
 
   # datashape
@@ -37,6 +37,8 @@ install:
 
   # Install various deps
   - pip install sas7bdat
+  - pip install git+git://github.com/ContinuumIO/dask.git --upgrade
+  - pip install dill --upgrade
 
   # install pyspark
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then conda install spark=$SPARK_VERSION -c blaze -c https://conda.binstar.org/blaze/channel/dev; fi

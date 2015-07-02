@@ -80,6 +80,7 @@ def dt_tb():
 
 
 class TestPyTablesLight(object):
+
     def test_read(self, tbfile):
         t = PyTables(path=tbfile, datapath='/title')
         shape = t.shape
@@ -116,7 +117,7 @@ class TestPyTablesLight(object):
             for k in res.dtype.fields:
                 lhs, rhs = res[k], dt_data[k]
                 if (issubclass(np.datetime64, lhs.dtype.type) and
-                    issubclass(np.datetime64, rhs.dtype.type)):
+                        issubclass(np.datetime64, rhs.dtype.type)):
                     lhs, rhs = lhs.astype('M8[us]'), rhs.astype('M8[us]')
                 assert np.array_equal(lhs, rhs)
         finally:
@@ -126,11 +127,12 @@ class TestPyTablesLight(object):
         dtype = ds.from_numpy(dt_data.shape, dt_data.dtype)
         t = PyTables(dt_tb, '/out', dtype)
         try:
-            res = into(np.ndarray, into(t, dt_data, filename=dt_tb, datapath='/out'))
+            res = into(
+                np.ndarray, into(t, dt_data, filename=dt_tb, datapath='/out'))
             for k in res.dtype.fields:
                 lhs, rhs = res[k], dt_data[k]
                 if (issubclass(np.datetime64, lhs.dtype.type) and
-                    issubclass(np.datetime64, rhs.dtype.type)):
+                        issubclass(np.datetime64, rhs.dtype.type)):
                     lhs, rhs = lhs.astype('M8[us]'), rhs.astype('M8[us]')
                 assert np.array_equal(lhs, rhs)
         finally:
@@ -152,3 +154,7 @@ class TestPyTablesLight(object):
                                           date: float64}}""")
         assert result == expected.measure
         root._v_file.close()
+
+    def test_no_extra_files_around(self, dt_tb):
+        """ check the context manager auto-closes the resources """
+        assert not len(tb.file._open_files)

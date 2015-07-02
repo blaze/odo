@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+from operator import attrgetter
 import os
 import re
 import subprocess
@@ -7,10 +8,14 @@ import subprocess
 from itertools import chain
 from collections import Iterator
 from datetime import datetime, date
+from distutils.spawn import find_executable
 
 import pandas as pd
 import sqlalchemy as sa
+from sqlalchemy import inspect
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy import event
+from sqlalchemy.schema import CreateSchema
 
 from multipledispatch import MDNotImplementedError
 
@@ -20,10 +25,11 @@ from datashape.predicates import isdimension, isrecord, isscalar
 from datashape import discover
 from datashape.dispatch import dispatch
 
-from toolz import (partition_all, keyfilter, first, memoize, valfilter,
+from toolz import (partition_all, keyfilter, memoize, valfilter,
                    identity, concat, curry, merge)
 from toolz.curried import pluck, map
 
+from ..compatibility import unicode
 from ..utils import keywords, ignoring, iter_except
 from ..convert import convert, ooc_types
 from ..append import append
@@ -189,8 +195,8 @@ def discover_sqlalchemy_selectable(t):
 
 
 @memoize
-def metadata_of_engine(engine):
-    return sa.MetaData(engine)
+def metadata_of_engine(engine, schema=None):
+    return sa.MetaData(engine, schema=schema)
 
 
 def create_engine(uri, *args, **kwargs):
@@ -229,7 +235,8 @@ def discover(metadata):
     except NotImplementedError:
         metadata.reflect()
     pairs = []
-    for name, table in sorted(metadata.tables.items(), key=first):
+    for table in sorted(metadata.tables.values(), key=attrgetter('name')):
+        name = table.name
         try:
             pairs.append([name, discover(table)])
         except sa.exc.CompileError as e:
@@ -261,9 +268,11 @@ def dshape_to_table(name, ds, metadata=None):
 
     if isinstance(ds, str):
         ds = dshape(ds)
-    metadata = metadata or sa.MetaData()
+    if metadata is None:
+        metadata = sa.MetaData()
     cols = dshape_to_alchemy(ds)
-    return sa.Table(name, metadata, *cols)
+    t = sa.Table(name, metadata, *cols, schema=metadata.schema)
+    return attach_schema(t, t.schema)
 
 
 @dispatch(object, str)
@@ -272,9 +281,9 @@ def create_from_datashape(o, ds, **kwargs):
 
 
 @dispatch(sa.engine.base.Engine, DataShape)
-def create_from_datashape(engine, ds, **kwargs):
-    assert isrecord(ds)
-    metadata = metadata_of_engine(engine)
+def create_from_datashape(engine, ds, schema=None, **kwargs):
+    assert isrecord(ds), 'datashape must be Record type, got %s' % ds
+    metadata = metadata_of_engine(engine, schema=schema)
     for name, sub_ds in ds[0].dict.items():
         t = dshape_to_table(name, sub_ds, metadata=metadata)
         t.create()
@@ -412,7 +421,8 @@ def append_select_statement_to_sql_Table(t, o, **kwargs):
     if not o.bind == t.bind:
         return append(t, convert(Iterator, o, **kwargs), **kwargs)
 
-    assert o.bind.has_table(t.name), 'tables must come from the same database'
+    assert o.bind.has_table(t.name, t.schema), \
+        'tables must come from the same database'
 
     query = t.insert().from_select(o.columns.keys(), o)
 
@@ -421,21 +431,48 @@ def append_select_statement_to_sql_Table(t, o, **kwargs):
     return t
 
 
-@resource.register('(.*sql.*|oracle|redshift)(\+\w+)?://.+')
+def should_create_schema(ddl, target, bind, tables=None, state=None,
+                         checkfirst=None, **kwargs):
+    return ddl.element not in inspect(target.bind).get_schema_names()
+
+
+def attach_schema(obj, schema):
+    if schema is not None:
+        ddl = CreateSchema(schema, quote=True)
+        event.listen(obj,
+                     'before_create',
+                     ddl.execute_if(callable_=should_create_schema,
+                                    dialect='postgresql'))
+    return obj
+
+
+def fullname(table, compiler):
+    preparer = compiler.dialect.identifier_preparer
+    fullname = preparer.quote_identifier(table.name)
+    schema = table.schema
+    if schema is not None:
+        fullname = '%s.%s' % (preparer.quote_schema(schema), fullname)
+    return fullname
+
+
+@resource.register(r'(.*sql.*|oracle|redshift)(\+\w+)?://.+')
 def resource_sql(uri, *args, **kwargs):
     kwargs2 = keyfilter(keywords(sa.create_engine).__contains__, kwargs)
     engine = create_engine(uri, **kwargs2)
     ds = kwargs.get('dshape')
+    schema = kwargs.get('schema')
 
     # we were also given a table name
-    if args and isinstance(args[0], str):
+    if args and isinstance(args[0], (str, unicode)):
         table_name, args = args[0], args[1:]
-        metadata = metadata_of_engine(engine)
+        metadata = metadata_of_engine(engine, schema=schema)
+
         with ignoring(sa.exc.NoSuchTableError):
-            return sa.Table(table_name, metadata, autoload=True,
-                            autoload_with=engine)
+            return attach_schema(sa.Table(table_name, metadata, autoload=True,
+                                          autoload_with=engine, schema=schema),
+                                 schema)
         if ds:
-            t = dshape_to_table(table_name, ds, metadata)
+            t = dshape_to_table(table_name, ds, metadata=metadata)
             t.create()
             return t
         else:
@@ -443,7 +480,7 @@ def resource_sql(uri, *args, **kwargs):
 
     # We were not given a table name
     if ds:
-        create_from_datashape(engine, ds)
+        create_from_datashape(engine, ds, schema=schema)
     return engine
 
 
@@ -511,72 +548,81 @@ def select_or_selectable_to_frame(el, **kwargs):
 
 
 class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
-    def __init__(self, element, path, delimiter=',', quote='"',
-                 lineterminator=r'\n', header=True):
+    def __init__(self, element, path, delimiter=',', quotechar='"',
+                 lineterminator=r'\n', escapechar='\\', header=True,
+                 na_value=''):
         self.element = element
         self.path = path
         self.delimiter = delimiter
-        self.quote = quote
+        self.quotechar = quotechar
         self.lineterminator = lineterminator
-        self.header = header
+
+        # mysql cannot write headers
+        self.header = header and element.bind.dialect.name != 'mysql'
+        self.escapechar = escapechar
+        self.na_value = na_value
 
 
 @compiles(CopyToCSV, 'postgresql')
 def compile_copy_to_csv_postgres(element, compiler, **kwargs):
-    istable = isinstance(element.element, sa.Table)
-    template = 'COPY {0} TO %r WITH CSV %s DELIMITER %r QUOTE %r'
-    selectable_format = '(%s)' if not istable else '%s'
-    if istable:
-        processed = element.element.name
-    else:
-        processed = compiler.process(element.element)
-    assert processed, \
-        ('got empty string from processing element of type %r' %
-         type(element.element).__name__)
-    return template.format(selectable_format) % (processed,
-                                                 element.path,
-                                                 'HEADER'
-                                                 if element.header
-                                                 else '',
-                                                 element.delimiter,
-                                                 element.quote)
+    selectable = element.element
+    istable = isinstance(selectable, sa.Table)
+    template = """COPY %s TO '{path}'
+        WITH CSV {header}
+        DELIMITER '{delimiter}'
+        QUOTE '{quotechar}'
+        NULL '{na_value}'
+        ESCAPE '{escapechar}'
+    """ % ('{query}' if istable else '({query})')
+    processed = (fullname(selectable, compiler)
+                 if istable else compiler.process(selectable))
+    assert processed, ('got empty string from processing element of type %r' %
+                       type(selectable).__name__)
+    return template.format(query=processed,
+                           path=element.path,
+                           header='HEADER' if element.header else '',
+                           delimiter=element.delimiter,
+                           quotechar=element.quotechar,
+                           na_value=element.na_value,
+                           escapechar=element.escapechar)
 
 
 @compiles(CopyToCSV, 'mysql')
 def compile_copy_to_csv_mysql(element, compiler, **kwargs):
-    istable = isinstance(element.element, sa.Table)
-    template = """
-    %s INTO OUTFILE %r
-    FIELDS TERMINATED BY %r
-    ENCLOSED BY %r
-    LINES TERMINATED BY '%s'"""
-    if istable:
-        processed = 'SELECT * FROM %s' % element.element.name
+    selectable = element.element
+    if isinstance(selectable, sa.Table):
+        processed = 'SELECT * FROM %(table)s' % dict(table=selectable.name)
     else:
-        processed = compiler.process(element.element)
-    assert processed, \
-        ('got empty string from processing element of type %r' %
-         type(element.element).__name__)
-    columns = ', '.join(map(repr, element.element.c.keys()))
-    select_template = ('SELECT %s UNION ALL %s' %
-                       (columns,
-                        template % (processed, element.path,
-                                    element.delimiter, element.quote,
-                                    element.lineterminator)))
-    return select_template
+        processed = compiler.process(selectable)
+    assert processed, ('got empty string from processing element of type %r' %
+                       type(selectable).__name__)
+    template = """{query} INTO OUTFILE '{path}'
+    FIELDS TERMINATED BY '{delimiter}'
+    OPTIONALLY ENCLOSED BY '{quotechar}'
+    ESCAPED BY '{escapechar}'
+    LINES TERMINATED BY '{lineterminator}'"""
+    return template.format(query=processed,
+                           path=element.path,
+                           delimiter=element.delimiter,
+                           lineterminator=element.lineterminator,
+                           escapechar=element.escapechar.encode('unicode-escape').decode(),
+                           quotechar=element.quotechar)
 
 
 @compiles(CopyToCSV, 'sqlite')
 def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
-    sub = element.element
-    sql = (compiler.process(sa.select([sub])
-                            if isinstance(sub, sa.Table)
-                            else sub) + ';')
+    if not find_executable('sqlite3'):
+        raise MDNotImplementedError("Could not find sqlite executable")
+
+    selectable = element.element
+    sql = (compiler.process(sa.select([selectable])
+                            if isinstance(selectable, sa.Table)
+                            else selectable) + ';')
     sql = re.sub(r'\s{2,}', ' ', re.sub(r'\s*\n\s*', ' ', sql)).encode()
     cmd = ['sqlite3', '-csv',
            '-%sheader' % ('no' if not element.header else ''),
            '-separator', element.delimiter,
-           sub.bind.url.database]
+           selectable.bind.url.database]
     with open(element.path, mode='at') as f:
         subprocess.Popen(cmd, stdout=f, stdin=subprocess.PIPE).communicate(sql)
 
@@ -589,8 +635,9 @@ def append_table_to_csv(csv, selectable, dshape=None, **kwargs):
     kwargs = keyfilter(keywords(CopyToCSV).__contains__,
                        merge(csv.dialect, kwargs))
     stmt = CopyToCSV(selectable, os.path.abspath(csv.path), **kwargs)
-    with selectable.bind.connect() as conn:
+    with selectable.bind.begin() as conn:
         conn.execute(stmt)
+    csv.has_header = stmt.header
     return csv
 
 

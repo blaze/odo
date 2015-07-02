@@ -1,13 +1,15 @@
 from __future__ import absolute_import, division, print_function
 
+import numpy as np
 import pandas as pd
 
 import datashape
 from datashape import discover
 from ..append import append
 from ..convert import convert, ooc_types
-from ..chunks import chunks, Chunks
+from ..chunks import chunks
 from ..resource import resource
+from ..utils import filter_kwargs
 
 
 @discover.register(pd.HDFStore)
@@ -37,6 +39,13 @@ def discover_hdfstore_storer(storer):
 
 @convert.register(chunks(pd.DataFrame), pd.io.pytables.AppendableFrameTable)
 def hdfstore_to_chunks_dataframes(data, chunksize=100000, **kwargs):
+    if (isinstance(chunksize, (float, np.floating)) and
+            not chunksize.is_integer()):
+        raise TypeError('chunksize argument must be an integer, got %s' %
+                        chunksize)
+
+    chunksize = int(chunksize)
+
     def f():
         k = min(chunksize, 100)
         yield data.parent.select(data.pathname, start=0, stop=k)
@@ -74,22 +83,19 @@ def resource_hdfstore(uri, datapath=None, dshape=None, **kwargs):
     # 2. Try translating unicode to ascii?  (PyTables fails here)
     fn = uri.split('://')[1]
     try:
-        f = pd.HDFStore(fn)
-    except RuntimeError  as e:
+        f = pd.HDFStore(fn, **filter_kwargs(pd.HDFStore, kwargs))
+    except RuntimeError as e:
         raise type(e)(pytables_h5py_explanation)
 
     if dshape is None:
-        if datapath:
-            return f.get_storer(datapath)
-        else:
-            return f
+        return f.get_storer(datapath) if datapath else f
     dshape = datashape.dshape(dshape)
 
     # Already exists, return it
     if datapath in f:
         return f.get_storer(datapath)
 
-    # Need to create new datast.
+    # Need to create new dataset.
     # HDFStore doesn't support empty datasets, so we use a proxy object.
     return EmptyHDFStoreDataset(f, datapath, dshape)
 

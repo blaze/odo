@@ -12,7 +12,7 @@ from odo.backends.h5py import unicode_dtype
 
 from odo.utils import tmpfile, ignoring
 from odo.chunks import chunks
-from odo import into, append, convert, discover, drop
+from odo import into, append, convert, discover, drop, odo
 import datashape
 import h5py
 import numpy as np
@@ -103,6 +103,12 @@ def test_append():
     with file(x) as (fn, f, dset):
         append(dset, x)
         assert eq(dset[:], np.concatenate([x, x]))
+
+
+def test_append_with_uri():
+    with file(x) as (fn, f, dset):
+        result = odo(dset, '%s::%s' % (fn, dset.name))
+        assert eq(result[:], np.concatenate([x, x]))
 
 
 def test_into_resource():
@@ -254,3 +260,11 @@ def test_resource_shape():
         r = resource(fn+'::/data', dshape='var * 10 * int')
         assert r.shape == (0, 10)
         r.file.close()
+
+
+@pytest.mark.parametrize('ext', ['h5', 'hdf5'])
+def test_resource_with_hdfstore_extension_works(ext):
+    fn = 'hdfstore:foo.%s' % ext
+    with pytest.raises(NotImplementedError):
+        odo(fn, np.recarray)
+    assert not os.path.exists(fn)
