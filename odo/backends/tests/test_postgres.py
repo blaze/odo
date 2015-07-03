@@ -219,12 +219,11 @@ def tips_csv():
 
 
 @pytest.yield_fixture
-def tips(tips_csv):
-    table = 'postgresql://localhost::tips'
+def tips(url, tips_csv):
     try:
-        t = resource(table, dshape=discover(tips_csv))
-    except URLError:
-        pytest.skip('no internet connection')
+        t = resource(url, dshape=discover(tips_csv))
+    except (URLError, sa.exc.OperationalError) as e:
+        pytest.skip(str(e))
     else:
         try:
             yield t
