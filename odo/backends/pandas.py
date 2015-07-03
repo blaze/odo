@@ -7,6 +7,7 @@ import datashape
 
 import pandas as pd
 
+from toolz.compatibility import zip
 from toolz import curry
 
 
@@ -57,11 +58,11 @@ def coerce_datetimes(df):
     df2 = df.select_dtypes(include=['object']).apply(converter)
     datetime64_ns = np.dtype('datetime64[ns]')
     object_dype = np.dtype('object')
-    for c in df2.columns:
+    for (_, old), (c, new) in zip(df.iteritems(), df2.iteritems()):
         # dateutil converts things like Sun to the date of the next upcoming
         # Sunday so only assign if the type has changed but shouldn't have
-        if not (df2[c].dtype == datetime64_ns and
-                df[c].dtype == object_dype and
-                (df[c].str.isalpha() | df[c].str.isspace()).any()):
-            df[c] = df2[c]
+        if not (new.dtype == datetime64_ns and
+                old.dtype == object_dype and
+                (old.str.isalpha() | old.str.isspace()).any()):
+            df[c] = new
     return df
