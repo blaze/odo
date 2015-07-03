@@ -19,6 +19,7 @@ from multipledispatch import MDNotImplementedError
 
 from ..append import append
 from ..convert import convert
+from .url import URL
 from .csv import CSV, infer_header
 from ..temp import Temp
 from .aws import S3
@@ -189,7 +190,8 @@ def append_csv_to_sql_table(tbl, csv, **kwargs):
     # aren't already in S3
     if dialect == 'redshift' and not isinstance(csv, S3(CSV)):
         csv = convert(Temp(S3(CSV)), csv, **kwargs)
-    elif dialect != 'redshift' and isinstance(csv, S3(CSV)):
+    elif ((dialect != 'redshift' and isinstance(csv, S3(CSV))) or
+          isinstance(csv, URL(CSV))):
         csv = convert(Temp(CSV), csv, has_header=csv.has_header, **kwargs)
     elif dialect == 'hive':
         from .ssh import SSH

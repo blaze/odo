@@ -1,14 +1,18 @@
 from __future__ import absolute_import, division, print_function
 
+import numpy as np
 from datashape import discover
-from datashape import (float32, float64, string, Option, Record, object_,
-        datetime_)
+from datashape import float32, float64, string, Option, object_, datetime_
 import datashape
 
 import pandas as pd
 
+from toolz.compatibility import zip
+from toolz import curry
+
 
 possibly_missing = set((string, datetime_, float32, float64))
+
 
 @discover.register(pd.DataFrame)
 def discover_dataframe(df):
@@ -16,8 +20,7 @@ def discover_dataframe(df):
     names = list(df.columns)
     dtypes = list(map(datashape.CType.from_numpy_dtype, df.dtypes))
     dtypes = [string if dt == obj else dt for dt in dtypes]
-    odtypes = [Option(dt) if dt in possibly_missing else dt
-                for dt in dtypes]
+    odtypes = [Option(dt) if dt in possibly_missing else dt for dt in dtypes]
     schema = datashape.Record(list(zip(names, odtypes)))
     return len(df) * schema
 
@@ -51,7 +54,15 @@ def coerce_datetimes(df):
     name            object
     dtype: object
     """
-    df2 = df.select_dtypes(include=['object']).apply(pd.to_datetime)
-    for c in df2.columns:
-        df[c] = df2[c]
+    converter = curry(pd.to_datetime, infer_datetime_format=True)
+    df2 = df.select_dtypes(include=['object']).apply(converter)
+    datetime64_ns = np.dtype('datetime64[ns]')
+    object_dype = np.dtype('object')
+    for (_, old), (c, new) in zip(df.iteritems(), df2.iteritems()):
+        # dateutil converts things like Sun to the date of the next upcoming
+        # Sunday so only assign if the type has changed but shouldn't have
+        if not (new.dtype == datetime64_ns and
+                old.dtype == object_dype and
+                (old.str.isalpha() | old.str.isspace()).any()):
+            df[c] = new
     return df
