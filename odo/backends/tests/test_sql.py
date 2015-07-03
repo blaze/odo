@@ -109,6 +109,12 @@ def test_discover_selectable():
     assert discover(q) == dshape('var * {x: int}')
 
 
+def test_discover_fixed_length_string():
+    t = resource('sqlite:///:memory:::mytable',
+                 dshape='var * {x: string[30]}')
+    assert discover(t) == dshape('var * {x: string[30]}')
+
+
 def single_table_engine():
     engine = sa.create_engine('sqlite:///:memory:')
     metadata = sa.MetaData(engine)

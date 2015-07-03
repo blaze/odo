@@ -81,9 +81,6 @@ types = {
 revtypes = dict(map(reversed, types.items()))
 
 revtypes.update({
-    sa.types.VARCHAR: 'string',
-    sa.types.String: 'string',
-    sa.types.Unicode: 'string',
     sa.types.DATETIME: 'datetime',
     sa.types.TIMESTAMP: 'datetime',
     sa.types.FLOAT: 'float64',
@@ -171,6 +168,8 @@ def discover_typeengine(typ):
         return dshape(revtypes[typ])[0]
     if type(typ) in revtypes:
         return dshape(revtypes[type(typ)])[0]
+    if isinstance(typ, (sa.String, sa.Unicode)):
+        return datashape.String(typ.length, typ.collation)
     else:
         for k, v in revtypes.items():
             if isinstance(k, type) and (isinstance(typ, k) or
@@ -322,12 +321,12 @@ def dshape_to_alchemy(dshape):
         else:
             return dshape_to_alchemy(dshape[0])
     if isinstance(dshape, datashape.String):
-        if dshape[0].fixlen is None:
+        fixlen = dshape[0].fixlen
+        if fixlen is None:
             return sa.types.Text
-        if 'U' in dshape.encoding:
-            return sa.types.Unicode(length=dshape[0].fixlen)
-        if 'A' in dshape.encoding:
-            return sa.types.String(length=dshape[0].fixlen)
+        string_types = dict(U=sa.types.Unicode, A=sa.types.String)
+        assert dshape.encoding is not None
+        return string_types[dshape.encoding[0]](length=fixlen)
     if isinstance(dshape, datashape.DateTime):
         if dshape.tz:
             return sa.types.DateTime(timezone=True)
