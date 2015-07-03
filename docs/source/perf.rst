@@ -9,7 +9,7 @@ something like this:
 
    >>> import sqlalchemy as sa
    >>> import pandas as pd
-   >>> con = sa.create_engine('postgresql://localhost/db::table')
+   >>> con = sa.create_engine('postgresql://localhost/db')
    >>> chunks = pd.read_csv('filename.csv', chunksize=100000)
    >>> for chunk in chunks:
    ...     chunk.to_sql(name='table', if_exist='append', con=con)
@@ -37,10 +37,6 @@ pandas.
 
 **NB:** I'm happy to hear about other optimizations that I may not be taking
 advantage of.
-
-Pandas
-``````
-* TODO
 
 CSV → PostgreSQL (22m 64s)
 ``````````````````````````
@@ -128,41 +124,37 @@ CSV → SQLite3 (57m 31s\*)
 in the first line and we use a version of the dataset *without* the header line
 in the sqlite3 ``.import`` command. This is sort of cheating, but I wanted to
 see what the loading time of sqlite3's import command was without the overhead
-of creating a new file sans the header line.
+of creating a new file without the header line.
 
 SQLite3 → CSV
 `````````````
 * TODO
 
-CSV → MongoDB
-`````````````
-* TODO
-* We can use ``mongoimport`` here, but only if we don't have datetimes or
-  timedeltas in our data.
+Pandas
+``````
+* READS: ~60 MB/s
+* WRITES: ~3-5 MB/s
 
-MongoDB → CSV
-`````````````
-* TODO
-* We can use ``mongoexport`` here.
+I didn't actually finish this timing because a single iteration of inserting
+1,000,000 rows took about 4 minutes and there would be 174 such iterations
+bringing the total loading time to::
 
-TODO
-----
+  .. code-block:: python
 
-Gzip'd CSV → Redshift
-`````````````````````
-* Not well tested in odo
+     >>> 175 * 4 / 60.0  # doctest: +ELLIPSIS
+     11.66...
 
-Redshift → S3(CSV)
-``````````````````
-* Not well tested in odo
+11.66 **hours**!
 
-GZIP'd JSON → Redshift
-``````````````````````
-* Not well tested in odo
+Nearly *12* hours to insert 175 million rows into a postgresql database. The
+next slowest database (SQLite) is still **11x** faster than reading your CSV
+file into pandas and then sending that ``DataFrame`` to PostgreSQL with the
+``to_pandas`` method.
 
 Final Thoughts
 ``````````````
-
 For getting CSV files into the major open source databases from within Python,
-nothing will beat odo since it's using the native capabilities of the
-underlying database. Don't use pandas for getting your CSV files into a database.
+nothing is faster than odo since it takes advantage of the capabilities of the
+underlying database.
+
+Don't use pandas for loading CSV files into a database.
