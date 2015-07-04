@@ -126,9 +126,16 @@ in the sqlite3 ``.import`` command. This is sort of cheating, but I wanted to
 see what the loading time of sqlite3's import command was without the overhead
 of creating a new file without the header line.
 
-SQLite3 → CSV
-`````````````
-* TODO
+SQLite3 → CSV (46m 43s)
+```````````````````````
+* READS: ~15 MB/s
+* WRITES: ~13 MB/s
+
+.. code-block:: python
+
+   In [1]: %time t = odo('sqlite:///db.db::nyc', 'nyc.csv')
+   CPU times: user 2.7 s, sys: 841 ms, total: 3.55 s
+   Wall time: 46min 43s
 
 Pandas
 ``````
