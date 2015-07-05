@@ -282,12 +282,12 @@ def discover_csv(c, nrows=1000, **kwargs):
     return datashape.var * measure
 
 
-@resource.register('.+\.(csv|tsv|ssv|data|dat)(\.gz|\.bz2?)?')
+@resource.register(r'.+\.(csv|tsv|ssv|data|dat)(\.gz|\.bz2?)?', priority=19)
 def resource_csv(uri, **kwargs):
     return CSV(uri, **kwargs)
 
 
-@resource.register('.*\*.+', priority=12)
+@resource.register(r'.*\*.+', priority=12)
 def resource_glob(uri, **kwargs):
     filenames = sorted(glob(uri))
     r = resource(filenames[0], **kwargs)
