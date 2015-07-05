@@ -4,6 +4,7 @@ import os
 import re
 
 from glob import glob
+from pprint import pformat
 
 from toolz import memoize, first
 from datashape import discover, var
@@ -18,6 +19,16 @@ class _Directory(Chunks):
     For typed containers see the ``Directory`` function which generates
     parametrized Directory classes.
 
+    Parameters
+    ----------
+    path : str
+        An existing directory or glob pattern
+    kwargs : dict
+        Additional keyword arguments that will be passed to the call to
+        resource when iterating over a directory
+
+    Examples
+    --------
     >>> from odo import CSV
     >>> c = Directory(CSV)('path/to/data/') # doctest: +SKIP
     >>> c # doctest: +SKIP
@@ -31,24 +42,23 @@ class _Directory(Chunks):
     Directory()(path=..., pattern='*')
     """
     def __init__(self, path, **kwargs):
-        path = os.path.normpath(path)
+        path = os.path.abspath(path)
         if os.path.isdir(path):
             self.pattern = '*'
         else:
-            assert re.match(r'.*%s\*.*$' % re.escape(os.sep), path), \
-                ('%r does not contain a glob pattern and is not a directory'
-                 % path)
             path, self.pattern = os.path.split(path)
         self.path = os.path.abspath(path)
         self.kwargs = kwargs
 
+    @property
+    def glob(self):
+        return os.path.join(self.path, self.pattern)
+
     def __iter__(self):
-        path = os.path.join(self.path, self.pattern)
-        return (resource(fn, **self.kwargs) for fn in sorted(glob(path)))
+        return (resource(fn, **self.kwargs) for fn in sorted(glob(self.glob)))
 
     def __repr__(self):
-        return '%s(path=%r, pattern=%r)' % (type(self).__name__, self.path,
-                                            self.pattern)
+        return '%s(glob=%s)' % (type(self).__name__, self.glob)
 
 
 def Directory(cls):
@@ -70,7 +80,7 @@ def discover_Directory(c, **kwargs):
     return var * discover(first(c)).subshape[0]
 
 
-@resource.register('.+' + re_path_sep + '\*\..+', priority=15)
+@resource.register(r'.+%s.*(?:(?:\[!?.+\])|\?|\*)+.+' % re_path_sep, priority=18)
 def resource_directory(uri, **kwargs):
     try:
         one_uri = first(glob(uri))
