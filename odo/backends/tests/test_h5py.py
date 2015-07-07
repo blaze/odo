@@ -1,10 +1,14 @@
 from __future__ import absolute_import, division, print_function
 
 import pytest
-pytest.importorskip('h5py')
+h5py = pytest.importorskip('h5py')
+
+import os
+import sys
+
+from distutils.version import LooseVersion
 
 import h5py
-import os
 from contextlib import contextmanager
 
 from odo.backends.h5py import append, create, resource, discover, convert
@@ -74,6 +78,15 @@ def test_discover():
         assert str(discover(f)) == str(discover({'data': x}))
 
 
+two_point_five_and_windows_py34 = \
+    pytest.mark.skipif(sys.platform == 'win32' and
+                       h5py.__version__ == LooseVersion('2.5.0') and
+                       sys.version_info[:2] == (3, 4),
+                       reason=('h5py 2.5.0 issue with varlen string types: '
+                               'https://github.com/h5py/h5py/issues/593'))
+
+
+@two_point_five_and_windows_py34
 def test_discover_on_data_with_object_in_record_name():
     data = np.array([(u'a', 1), (u'b', 2)], dtype=[('lrg_object',
                                                     unicode_dtype),
@@ -208,6 +221,7 @@ def test_resource_with_variable_length():
             r.file.close()
 
 
+@two_point_five_and_windows_py34
 def test_resource_with_option_types():
     with tmpfile('.hdf5') as fn:
         ds = datashape.dshape('4 * {name: ?string, amount: ?int32}')
@@ -236,6 +250,7 @@ def test_copy_with_into():
             dset.file.close()
 
 
+@two_point_five_and_windows_py34
 def test_varlen_dtypes():
     y = np.array([('Alice', 100), ('Bob', 200)],
                 dtype=[('name', 'O'), ('amount', 'i4')])
