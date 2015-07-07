@@ -80,7 +80,8 @@ def test_discover():
 
 two_point_five_and_windows = \
     pytest.mark.skipif(sys.platform == 'win32' and
-                       h5py.__version__ == LooseVersion('2.5.0'),
+                       h5py.__version__ == LooseVersion('2.5.0') and
+                       sys.version[:2] == (3, 4),
                        reason=('h5py 2.5.0 issue with varlen string types: '
                                'https://github.com/h5py/h5py/issues/593'))
 
