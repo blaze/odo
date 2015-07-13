@@ -14,20 +14,25 @@ something like this:
    >>> for chunk in chunks:
    ...     chunk.to_sql(name='table', if_exist='append', con=con)
 
-There is an unnecessary and expensive amount of data conversion going on here.
-First we convert our CSV into an iterator of DataFrames, and then those are
-converted into Python data structures compatible with SQLAlchemy. There's an
-enormous cost to this process.
+There is an unnecessary and very expensive amount of data conversion going on
+here. First we convert our CSV into an iterator of DataFrames, then those
+DataFrames are converted into Python data structures compatible with
+SQLAlchemy. Those Python objects then need to be serialized in a way that's
+compatible with the database they are being sent to. Before you know it, more
+time is spent converting data and serializing Python data structures than on
+reading data from disk.
 
-Why aren't we using the software that was designed explicitly for this purpose?
--------------------------------------------------------------------------------
+Use the technology that has already solved your problem well
+------------------------------------------------------------
+
 Loading CSV files into databases is a solved problem. It's a problem that has
 been solved well. Instead of rolling our own loader every time we need to do
 this and wasting computational resources, we should use the native loaders in
 the database of our choosing. Odo lets you do this with a single line of code.
 
-How?
-----
+How does odo achieve native database loading speed?
+---------------------------------------------------
+
 Odo uses the native CSV loading capabilities of the databases it supports.
 These loaders are extremely fast. Odo will beat any other pure Python approach
 when loading large datasets. The following is a performance comparison of
@@ -37,6 +42,9 @@ pandas.
 
 **NB:** I'm happy to hear about other optimizations that I may not be taking
 advantage of.
+
+Timings
+-------
 
 CSV → PostgreSQL (22m 64s)
 ``````````````````````````
