@@ -4,3 +4,4 @@ docs/build
 build/
 odo.egg-info/
 dist
+.coverage
