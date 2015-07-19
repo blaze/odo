@@ -1,7 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
+import inspect
+import re
+import importlib
+
 from toolz import merge
 from multipledispatch import Dispatcher
+from multipledispatch.dispatcher import str_signature
 from .convert import convert
 from .append import append
 from .resource import resource
@@ -16,17 +21,35 @@ if 'into' not in namespace:
     namespace['into'] = Dispatcher('into')
 into = namespace['into']
 
+def simulate_convert(a, b):
+    if not isinstance(a, type):
+        a = type(a)
+    if not isinstance(b, type):
+        b = type(b)
+    print('convert will be called with arguments: ({})'.format(
+        str_signature((a, b))))
+
+    convert_path = convert.path(b, a)
+    for (n, (src, tgt, func)) in enumerate(convert_path, start=1):
+        print('Conversion hop {n}: {src} to {tgt} by function {func}:\n'
+            '{func_txt}'.format(n=n, src=src.__name__, tgt=tgt.__name__,
+            func=func.__name__, func_txt=inspect.getsource(func)))
 
 @into.register(type, object)
-def into_type(a, b, dshape=None, **kwargs):
+def into_type(a, b, dshape=None, simulate=False, **kwargs):
+    if simulate:
+        print('In into.into_type')
+        simulate_convert(a, b)
+        return
+
     with ignoring(NotImplementedError):
         if dshape is None:
             dshape = discover(b)
-    return convert(a, b, dshape=dshape, **kwargs)
+    return convert(a, b, dshape=dshape, simulate=simulate, **kwargs)
 
 
 @into.register(object, object)
-def into_object(target, source, dshape=None, **kwargs):
+def into_object(target, source, dshape=None, simulate=False, **kwargs):
     """ Push one dataset into another
 
     Parameters
@@ -92,6 +115,41 @@ def into_object(target, source, dshape=None, **kwargs):
     into.convert.convert    - Convert things into new things
     into.append.append      - Add things onto existing things
     """
+    if simulate:
+        print('In into.into_object')
+        print('append will be called with arguments: ({})'.format(
+            str_signature((type(target), type(source)))))
+
+        dispatched_func = append.dispatch(type(target), type(source))
+
+        print('This will call the function: {}'.format(dispatched_func.__name__))
+        print('This function looks like:')
+        func_src = inspect.getsource(dispatched_func)
+        print(func_src)
+
+        match = re.search(r'convert\((\w+),', func_src, flags=re.I)
+        if match:
+            convert_str = match.group(1)
+            try:
+                # Convert object name string to actual object type, if possible
+                try:
+                    module = importlib.import_module('__builtin__')
+                    convert_type = getattr(module, convert_str)
+                except AttributeError:
+                    module, convert_str = convert_str.rsplit(".", 1)
+                    module = importlib.import_module(module)
+                    convert_type = getattr(module, convert_str)
+
+                simulate_convert(convert_type, source)
+            except:
+                print('convert will be called with arguments: ({0}, {1})'.format(
+                    convert_str, type(source).__name__))
+                print('Convert pathing could not be determined (maybe {} is not '
+                    'a type in a reachable namespace?)'.format(convert_str))
+                raise
+
+        return
+
     if isinstance(source, (str, unicode)):
         source = resource(source, dshape=dshape, **kwargs)
     with ignoring(NotImplementedError):
@@ -101,19 +159,26 @@ def into_object(target, source, dshape=None, **kwargs):
 
 
 @into.register((str, unicode), object)
-def into_string(uri, b, dshape=None, **kwargs):
+def into_string(uri, b, dshape=None, simulate=False, **kwargs):
+    if simulate:
+        print('In into.into_string')
+
     if dshape is None:
         dshape = discover(b)
 
     resource_ds = 0 * dshape.subshape[0] if isdimension(dshape[0]) else dshape
 
     a = resource(uri, dshape=resource_ds, expected_dshape=dshape, **kwargs)
-    return into(a, b, dshape=dshape, **kwargs)
+
+    return into(a, b, dshape=dshape, simulate=simulate, **kwargs)
 
 
 @into.register((type, (str, unicode)), (str, unicode))
-def into_string_string(a, b, **kwargs):
-    return into(a, resource(b, **kwargs), **kwargs)
+def into_string_string(a, b, simulate=False, **kwargs):
+    if simulate:
+        print('In into.into_string_string')
+
+    return into(a, resource(b, **kwargs), simulate=simulate, **kwargs)
 
 
 @into.register(object)
