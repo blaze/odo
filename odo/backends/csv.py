@@ -2,20 +2,26 @@ from __future__ import absolute_import, division, print_function
 
 import sys
 import re
-from contextlib import contextmanager
-import datashape
-from datashape import discover, Record, Option
-from datashape.predicates import isrecord
-from datashape.dispatch import dispatch
-from toolz import concat, keyfilter, keymap, merge, valfilter
-import pandas
-import pandas as pd
 import os
 import gzip
 import bz2
 import uuid
 import csv
+
+from contextlib import contextmanager
+
 from glob import glob
+
+import datashape
+
+from datashape import discover, Record, Option
+from datashape.predicates import isrecord
+from datashape.dispatch import dispatch
+
+from toolz import concat, keyfilter, keymap, valfilter, merge
+
+import pandas
+import pandas as pd
 
 from ..compatibility import unicode, PY2
 from ..utils import keywords, ext
@@ -24,13 +30,16 @@ from ..convert import convert, ooc_types
 from ..resource import resource
 from ..chunks import chunks
 from ..temp import Temp
+from ..directory import Directory
 from ..numpy_dtype import dshape_to_pandas
 from .pandas import coerce_datetimes
 
 dialect_terms = '''delimiter doublequote escapechar lineterminator quotechar
 quoting skipinitialspace strict'''.split()
 
-aliases = {'sep': 'delimiter'}
+aliases = {
+    'sep': 'delimiter'
+}
 
 
 def alias(key):
@@ -285,7 +294,8 @@ def resource_glob(uri, **kwargs):
     return chunks(type(r))([resource(u, **kwargs) for u in sorted(glob(uri))])
 
 
-@convert.register(chunks(pd.DataFrame), (chunks(CSV), chunks(Temp(CSV))),
+@convert.register(chunks(pd.DataFrame), (chunks(CSV), chunks(Temp(CSV)),
+                                         Directory(CSV), Directory(Temp(CSV))),
                   cost=10.0)
 def convert_glob_of_csvs_to_chunks_of_dataframes(csvs, **kwargs):
     def _():
@@ -303,7 +313,7 @@ def convert_dataframes_to_temporary_csv(data, **kwargs):
 
 @dispatch(CSV)
 def drop(c):
-    os.unlink(c.path)
+    os.remove(c.path)
 
 
 ooc_types.add(CSV)

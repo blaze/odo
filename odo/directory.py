@@ -1,11 +1,15 @@
 from __future__ import absolute_import, division, print_function
 
+import os
+import re
+
 from glob import glob
-from .chunks import Chunks
-from .resource import resource
+
 from toolz import memoize, first
 from datashape import discover, var
-import os
+
+from .chunks import Chunks
+from .resource import resource
 
 
 class _Directory(Chunks):
@@ -15,27 +19,42 @@ class _Directory(Chunks):
     parametrized Directory classes.
 
     >>> from odo import CSV
-    >>> c = Directory(CSV)('path/to/data/')  # doctest: +SKIP
+    >>> c = Directory(CSV)('path/to/data/') # doctest: +SKIP
+    >>> c # doctest: +SKIP
+    Directory(CSV)(path=..., pattern='*')
 
     Normal use through resource strings
 
     >>> r = resource('path/to/data/*.csv')  # doctest: +SKIP
+    Directory(CSV)(path=..., pattern='*.csv')
     >>> r = resource('path/to/data/')  # doctest: +SKIP
-
-
+    Directory()(path=..., pattern='*')
     """
     def __init__(self, path, **kwargs):
-        self.path = path
+        path = os.path.normpath(path)
+        if os.path.isdir(path):
+            self.pattern = '*'
+        else:
+            assert re.match(r'.*%s\*.*$' % re.escape(os.sep), path), \
+                ('%r does not contain a glob pattern and is not a directory'
+                 % path)
+            path, self.pattern = os.path.split(path)
+        self.path = os.path.abspath(path)
         self.kwargs = kwargs
 
     def __iter__(self):
-        return (resource(os.path.join(self.path, fn), **self.kwargs)
-                    for fn in sorted(os.listdir(self.path)))
+        path = os.path.join(self.path, self.pattern)
+        return (resource(fn, **self.kwargs) for fn in sorted(glob(path)))
+
+    def __repr__(self):
+        return '%s(path=%r, pattern=%r)' % (type(self).__name__, self.path,
+                                            self.pattern)
 
 
 def Directory(cls):
     """ Parametrized DirectoryClass """
-    return type('Directory(%s)' % cls.__name__, (_Directory,), {'container': cls})
+    return type('Directory(%s)' % cls.__name__, (_Directory,),
+                {'container': cls})
 
 Directory.__doc__ = Directory.__doc__
 
@@ -53,13 +72,12 @@ def discover_Directory(c, **kwargs):
 
 @resource.register('.+' + re_path_sep + '\*\..+', priority=15)
 def resource_directory(uri, **kwargs):
-    path = uri.rsplit(os.path.sep, 1)[0]
     try:
         one_uri = first(glob(uri))
     except (OSError, StopIteration):
-        return _Directory(path, **kwargs)
+        return _Directory(uri, **kwargs)
     subtype = type(resource(one_uri, **kwargs))
-    return Directory(subtype)(path, **kwargs)
+    return Directory(subtype)(uri, **kwargs)
 
 
 @resource.register('.+' + re_path_sep, priority=9)
