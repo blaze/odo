@@ -1,8 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
+import collections
+import importlib
 import inspect
 import re
-import importlib
 
 from toolz import merge
 from multipledispatch import Dispatcher
@@ -21,26 +22,127 @@ if 'into' not in namespace:
     namespace['into'] = Dispatcher('into')
 into = namespace['into']
 
-def simulate_convert(a, b):
-    if not isinstance(a, type):
-        a = type(a)
-    if not isinstance(b, type):
-        b = type(b)
-    print('convert will be called with arguments: ({})'.format(
-        str_signature((a, b))))
+convert_hop = collections.namedtuple(
+    'ConvertHop', ['source', 'target', 'func', 'mod', 'code'])
 
-    convert_path = convert.path(b, a)
-    for (n, (src, tgt, func)) in enumerate(convert_path, start=1):
-        print('Conversion hop {n}: {src} to {tgt} by function {func}:\n'
-            '{func_txt}'.format(n=n, src=src.__name__, tgt=tgt.__name__,
-            func=func.__name__, func_txt=inspect.getsource(func)))
+class Path(object):
+    """Contains information about the conversion path that odo will take between
+    two types.
+
+    Two types of information are contained - information on an append operation
+    and information on a convert operation. Append function calls will frequently
+    contain convert calls as well, so both the append and convert attributes may
+    have values.
+
+    Positional arguments:
+    source -- The object odo is converting from.
+    target -- The object or type odo is converting to."""
+
+    def __init__(self, source, target):
+        self.source = source
+        self.target = target
+        self.append_sig = None
+        self.append_func = None
+        self.append_mod = None
+        self.append_code = None
+        self.convert_sig = None
+        self.convert_path = []
+
+    def add_append(self, func):
+        """Add information about an append function call to the Path object.
+
+        Positional argument:
+        func -- An function that MultipleDispatch returns for a given append
+            signature."""
+
+        self.append_func = func
+        self.append_mod = inspect.getmodule(func)
+        self.append_code = inspect.getsource(func)
+
+    def add_convert(self, path):
+        """Add information about a convert path to the Path object.
+
+        Positional argument:
+        path -- A list of tuples containing source type, target type, and function
+            that NetworkX returns for a given convert signature."""
+
+        for (src, tgt, func) in path:
+            hop = convert_hop(src, tgt, func, inspect.getmodule(func),
+                              inspect.getsource(func))
+            self.convert_path.append(hop)
+
+    def simulate_convert(self, a, b):
+        """Query networkx to see what the shortest path is from type b to type a."""
+
+        if not isinstance(a, type):
+            a = type(a)
+        if not isinstance(b, type):
+            b = type(b)
+
+        convert_path = convert.path(b, a)
+        self.add_convert(convert_path)
+
+    def __str__(self):
+        if isinstance(self.source, type):
+            source = self.source.__name__ + ' type'
+        else:
+            source = type(self.source).__name__ + ' object'
+        if isinstance(self.target, type):
+            target = self.target.__name__ + ' type'
+        else:
+            target = type(self.target).__name__ + ' object'
+
+        outstr = 'Odo path simulation from {src} to {tgt}\n'.format(
+            src=source, tgt=target)
+        outstr += '------------------------------------------------------------\n'
+        if self.append_sig:
+            outstr += 'Append will be called from {src} to {tgt}\n'.format(
+                src=self.append_sig[1].__name__,
+                tgt=self.append_sig[0].__name__)
+            outstr += 'Append will dispatch function {func} from {mod}\n'.format(
+                func=self.append_func.__name__, mod=self.append_mod.__name__)
+            outstr += 'Function {func} code follows:\n'.format(
+                func=self.append_func.__name__)
+
+            for line in self.append_code.split('\n'):
+                outstr += '    ' + line + '\n'
+
+        if self.convert_sig:
+            if isinstance(self.convert_sig[0], basestring):
+                target = self.convert_sig[0]
+            else:
+                target = self.convert_sig[0].__name__
+            outstr += 'Convert will be called from {src} to {tgt}\n'.format(
+                src=self.convert_sig[1].__name__, tgt=target)
+
+        if self.convert_path:
+            for (n, hop) in enumerate(self.convert_path, start=1):
+                outstr += 'Conversion hop {n}: {src} to {tgt}\n'.format(
+                    n=n, src=hop.source.__name__, tgt=hop.target.__name__)
+                outstr += 'Hop dispatches function {func} from {mod}\n'.format(
+                    func=hop.func.__name__, mod=hop.mod.__name__)
+                outstr += 'Function {func} code follows:\n'.format(
+                    func=hop.func.__name__)
+
+                for line in hop.code.split('\n'):
+                    outstr += '    ' + line + '\n'
+        elif self.convert_sig:
+           outstr += ('Convert pathing could not be determined (maybe {} is not '
+                    'a type in a reachable namespace?)'.format(self.convert_sig[0]))
+
+        return outstr
+
+    # Eventually make __repr__ more Pythonic
+    __repr__ = __str__
+
 
 @into.register(type, object)
 def into_type(a, b, dshape=None, simulate=False, **kwargs):
     if simulate:
-        print('In into.into_type')
-        simulate_convert(a, b)
-        return
+        path = Path(b, a)
+        path.convert_sig = (a, type(b))
+        path.simulate_convert(a, b)
+        return path
 
     with ignoring(NotImplementedError):
         if dshape is None:
@@ -116,18 +218,13 @@ def into_object(target, source, dshape=None, simulate=False, **kwargs):
     into.append.append      - Add things onto existing things
     """
     if simulate:
-        print('In into.into_object')
-        print('append will be called with arguments: ({})'.format(
-            str_signature((type(target), type(source)))))
+        path = Path(source, target)
+        path.append_sig = (type(target), type(source))
 
-        dispatched_func = append.dispatch(type(target), type(source))
+        path.add_append(append.dispatch(type(target), type(source)))
 
-        print('This will call the function: {}'.format(dispatched_func.__name__))
-        print('This function looks like:')
-        func_src = inspect.getsource(dispatched_func)
-        print(func_src)
-
-        match = re.search(r'convert\((\w+),', func_src, flags=re.I)
+        # Look for a convert call inside the append function code
+        match = re.search(r'convert\((\w+),', path.append_code, flags=re.I)
         if match:
             convert_str = match.group(1)
             try:
@@ -140,15 +237,12 @@ def into_object(target, source, dshape=None, simulate=False, **kwargs):
                     module = importlib.import_module(module)
                     convert_type = getattr(module, convert_str)
 
-                simulate_convert(convert_type, source)
+                path.convert_sig = (convert_type, type(source))
+                path.simulate_convert(convert_type, source)
             except:
-                print('convert will be called with arguments: ({0}, {1})'.format(
-                    convert_str, type(source).__name__))
-                print('Convert pathing could not be determined (maybe {} is not '
-                    'a type in a reachable namespace?)'.format(convert_str))
-                raise
+                path.convert_sig = (convert_str, type(source))
 
-        return
+        return path
 
     if isinstance(source, (str, unicode)):
         source = resource(source, dshape=dshape, **kwargs)
@@ -160,9 +254,6 @@ def into_object(target, source, dshape=None, simulate=False, **kwargs):
 
 @into.register((str, unicode), object)
 def into_string(uri, b, dshape=None, simulate=False, **kwargs):
-    if simulate:
-        print('In into.into_string')
-
     if dshape is None:
         dshape = discover(b)
 
@@ -175,9 +266,6 @@ def into_string(uri, b, dshape=None, simulate=False, **kwargs):
 
 @into.register((type, (str, unicode)), (str, unicode))
 def into_string_string(a, b, simulate=False, **kwargs):
-    if simulate:
-        print('In into.into_string_string')
-
     return into(a, resource(b, **kwargs), simulate=simulate, **kwargs)
 
 
