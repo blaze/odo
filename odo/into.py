@@ -52,7 +52,7 @@ class Path(object):
         """Add information about an append function call to the Path object.
 
         Positional argument:
-        func -- An function that MultipleDispatch returns for a given append
+        func -- A function that MultipleDispatch returns for a given append
             signature."""
 
         self.append_func = func
@@ -64,22 +64,34 @@ class Path(object):
 
         Positional argument:
         path -- A list of tuples containing source type, target type, and function
-            that NetworkX returns for a given convert signature."""
+            that NetworkX returns for a given convert signature.
+
+        Creates convert_hop namedtuples containing source type, target type,
+        function to be called, module that the function exists in, and source
+        code for that function, and appends them to self.convert_path."""
 
         for (src, tgt, func) in path:
             hop = convert_hop(src, tgt, func, inspect.getmodule(func),
                               inspect.getsource(func))
             self.convert_path.append(hop)
 
-    def simulate_convert(self, a, b):
-        """Query networkx to see what the shortest path is from type b to type a."""
+    def simulate_convert(self, tgt, src):
+        """Query networkx to see what the shortest path is from source to target.
 
-        if not isinstance(a, type):
-            a = type(a)
-        if not isinstance(b, type):
-            b = type(b)
+        Positional arguments:
+        tgt -- Destination object or type.
+        src -- Source object or type.
 
-        convert_path = convert.path(b, a)
+        Calls self.add_convert to add the resulting path information to itself.
+
+        Raises networkx.NetworkXNoPath if no path from src to tgt exists."""
+
+        if not isinstance(tgt, type):
+            tgt = type(tgt)
+        if not isinstance(src, type):
+            src = type(src)
+
+        convert_path = convert.path(src, tgt)
         self.add_convert(convert_path)
 
     def __str__(self):
@@ -147,7 +159,7 @@ def into_type(a, b, dshape=None, simulate=False, **kwargs):
     with ignoring(NotImplementedError):
         if dshape is None:
             dshape = discover(b)
-    return convert(a, b, dshape=dshape, simulate=simulate, **kwargs)
+    return convert(a, b, dshape=dshape, **kwargs)
 
 
 @into.register(object, object)
