@@ -132,9 +132,9 @@ class Path(object):
 
         return outstr
 
-    # Eventually make __repr__ more Pythonic
-    __repr__ = __str__
-
+    def __repr__(self):
+        return 'Path(source={src}, target={tgt})'.format(
+            src=repr(self.source), tgt=repr(self.target))
 
 @into.register(type, object)
 def into_type(a, b, dshape=None, simulate=False, **kwargs):
@@ -165,6 +165,9 @@ def into_object(target, source, dshape=None, simulate=False, **kwargs):
         or a string (e.g. 'postgresql://hostname::tablename'
     raise_on_errors: bool (optional, defaults to False)
         Raise exceptions rather than reroute around them
+    simulate: bool (optional, defaults to False)
+        Rather than executing a conversion, returns a Path object describing
+        the conversion function path odo will take.
     **kwargs:
         keyword arguments to pass through to conversion functions.
 
@@ -220,11 +223,10 @@ def into_object(target, source, dshape=None, simulate=False, **kwargs):
     if simulate:
         path = Path(source, target)
         path.append_sig = (type(target), type(source))
-
         path.add_append(append.dispatch(type(target), type(source)))
 
         # Look for a convert call inside the append function code
-        match = re.search(r'convert\((\w+),', path.append_code, flags=re.I)
+        match = re.search(r'convert\((.+?),', path.append_code, flags=re.I)
         if match:
             convert_str = match.group(1)
             try:
