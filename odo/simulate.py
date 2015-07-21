@@ -8,8 +8,9 @@ except:
 import inspect
 import re
 
-from .convert import convert
 from .append import append
+from .compatibility import PY2
+from .convert import convert
 
 convert_hop = collections.namedtuple(
     'ConvertHop', ['source', 'target', 'func', 'mod', 'code'])
@@ -50,7 +51,10 @@ class Path(object):
                 convert_type = None
                 # Convert object name string to actual object type, if possible
                 try:
-                    module = importlib.import_module('__builtin__')
+                    if PY2:
+                        module = importlib.import_module('__builtin__')
+                    else:
+                        module = importlib.import_module('builtins')
                     convert_type = getattr(module, convert_str)
                     self.convert_sig = (convert_type, type(source))
                 except:
