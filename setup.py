@@ -5,11 +5,6 @@ from fnmatch import fnmatch
 from distutils.core import setup
 
 import versioneer
-versioneer.VCS = 'git'
-versioneer.versionfile_source = os.path.join('odo', '_version.py')
-versioneer.versionfile_build = versioneer.versionfile_source
-versioneer.tag_prefix = ''  # tags are like 1.2.0
-versioneer.parentdir_prefix = 'odo-'  # dirname like 'myproject-1.2.0'
 
 
 def find_packages(path):

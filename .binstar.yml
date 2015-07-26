@@ -18,6 +18,7 @@ before_script:
 
 install:
   - conda config --add channels blaze
+  - conda config --set always_yes true
 
 script:
   - conda build conda.recipe

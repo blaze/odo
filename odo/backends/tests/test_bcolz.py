@@ -79,7 +79,9 @@ def test_resource_ctable():
 
 
 def get_expectedlen(x):
-    shape, cparams, dtype, _, expectedlen, _, chunklen = x.read_meta()
+    reader = getattr(x, '_read_meta', getattr(x, 'read_meta', None))
+    assert reader is not None
+    shape, cparams, dtype, _, expectedlen, _, chunklen = reader()
     return expectedlen
 
 

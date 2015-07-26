@@ -48,7 +48,9 @@ General
    uri
    datashape
    drop
+   perf
    add-new-backend
+   releases
 
 
 Formats

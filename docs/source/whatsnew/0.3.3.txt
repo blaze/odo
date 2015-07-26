@@ -1,0 +1,32 @@
+Release 0.3.3
+-------------
+
+:Release: 0.3.3
+:Date: July 7th, 2015
+
+New Backends
+------------
+
+None
+
+Improved Backends
+-----------------
+
+* Implement SQL databases to CSV conversion using native the database dump (:issue:`174`, :issue:`189`, :issue:`191`, :issue:`199`).
+* Improve CSV header existence inference (:issue:`192`).
+* Non-standard schemas can be passed into :func:`~odo.resource.resource` with the ``schema`` argument (:issue:`223`).
+
+API Changes
+-----------
+
+* ``unicode`` strings can be passed in as URIs to :func:`~odo.resource.resource` (:issue:`212`).
+
+Bug Fixes
+---------
+
+* Fixed writing compressed CSVs in Python 3 and Windows (:issue:`188`, :issue:`190`).
+* Dask API changes (:issue:`226`).
+* Fix some tests that would fail on binstar because they weren't properly skipped (:issue:`216`).
+* PyTables API compatibility when given a integer valued float (:issue:`236`).
+* Default to ``None`` when plucking and a key isn't found (:issue:`228`).
+* Fix gzip dispatching on JSON discovery (:issue:`243`).
