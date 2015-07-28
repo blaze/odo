@@ -2,9 +2,8 @@ from __future__ import absolute_import, division, print_function
 from collections import Iterator
 
 import numpy as np
-from toolz import keyfilter
 from datashape.dispatch import dispatch
-from datashape import DataShape, from_numpy
+from datashape import from_numpy
 
 from dask.array.core import Array, from_array
 from dask.bag.core import Bag
@@ -12,7 +11,7 @@ import dask.bag as db
 from dask.compatibility import long
 
 from odo import append, chunks, convert, discover, TextFile
-from ..utils import keywords
+from ..utils import filter_kwargs
 
 
 @discover.register(Array)
@@ -55,7 +54,8 @@ else:
 def array_to_dask(x, name=None, chunks=None, **kwargs):
     if chunks is None:
         raise ValueError("chunks cannot be None")
-    return from_array(x, chunks=chunks, name=name, **kwargs)
+    return from_array(x, chunks=chunks, name=name,
+                      **filter_kwargs(from_array, kwargs))
 
 
 @convert.register(np.ndarray, Array, cost=10.)
@@ -90,5 +90,4 @@ def bag_to_iterator(x, **kwargs):
 
 @convert.register(Bag, list)
 def bag_to_iterator(x, **kwargs):
-    kwargs = keyfilter(keywords(db.from_sequence).__contains__, kwargs)
-    return db.from_sequence(x, **kwargs)
+    return db.from_sequence(x, **filter_kwargs(db.from_sequence, kwargs))
