@@ -52,7 +52,7 @@ class Path(object):
                 # Convert object name string to actual object type, if possible
                 try:
                     if PY2:
-                        module = importlib.import_module('__builtin__')
+                        module = __import__('__builtin__', globals(), locals(), [], -1)
                     else:
                         module = importlib.import_module('builtins')
                     convert_type = getattr(module, convert_str)
