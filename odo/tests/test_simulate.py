@@ -76,8 +76,7 @@ class TestConvertSimulation(unittest.TestCase):
 
     def test_json_object_to_csv_type(self):
         with filetext('[{"alice": 1, "bob": 2}]', extension='.json') as source:
-            with self.assertRaises(nx.NetworkXNoPath):
-                path = odo(JSON(source), CSV)
+            self.assertRaises(nx.NetworkXNoPath, odo, JSON(source), CSV)
 
 
 if __name__ == '__main__':
