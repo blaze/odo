@@ -26,8 +26,8 @@ def dataframe_to_numpy(df, dshape=None, **kwargs):
 
 
 @convert.register(pd.DataFrame, np.ndarray, cost=1.0)
-def numpy_to_dataframe(x, **kwargs):
-    return pd.DataFrame(x)
+def numpy_to_dataframe(x, dshape, **kwargs):
+    return pd.DataFrame(x, columns=getattr(dshape.measure, 'names', None))
 
 
 @convert.register(pd.Series, np.ndarray, cost=1.0)
