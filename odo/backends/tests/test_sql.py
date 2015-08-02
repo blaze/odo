@@ -83,7 +83,7 @@ def test_discover():
                  sa.Column('timestamp', sa.DateTime, primary_key=True))
 
     assert discover(s) == \
-        dshape('var * {name: ?string, amount: ?int32, timestamp: datetime}')
+        dshape('var * {name: ?string, amount: ?int32, timestamp: !datetime}')
 
 
 def test_discover_numeric_column():
@@ -408,3 +408,76 @@ def test_empty_select_to_empty_frame():
         df = odo(sel, pd.DataFrame)
     assert df.empty
     assert df.columns.tolist() == ['x', 'y']
+
+
+def test_discover_foreign_keys():
+    with tmpfile('db') as fn:
+        products = resource('sqlite:///%s::products' % fn,
+                            dshape="""
+                                var * {
+                                    product_no: !int32,
+                                    name: ?string,
+                                    price: ?float64
+                                }
+                            """)
+        expected = dshape("""var * {
+                          order_id: !int32,
+                          product_no: (int32) >> {
+                            product_no: !int32,
+                            name: ?string,
+                            price: ?float64
+                          },
+                          quantity: ?int32
+                        }""")
+        orders = resource('sqlite:///%s::orders' % fn,
+                          dshape=expected,
+                          foreign_keys=dict(product_no=products.c.product_no))
+        result = discover(orders)
+        assert result == expected
+
+
+def test_invalid_foreign_keys():
+    with tmpfile('db') as fn:
+        expected = dshape("""var * {
+                          order_id: !int32,
+                          product_no: (int32) >> {
+                            product_no: !int32,
+                            name: ?string,
+                            price: ?float64
+                          },
+                          quantity: ?int32
+                        }""")
+        with pytest.raises(TypeError):
+            resource('sqlite:///%s::orders' % fn, dshape=expected)
+
+
+def test_foreign_keys_auto_construct():
+    with tmpfile('db') as fn:
+        products = resource('sqlite:///%s::products' % fn,
+                            dshape="""
+                                var * {
+                                    product_no: !int32,
+                                    name: ?string,
+                                    price: ?float64
+                                }
+                            """)
+        ds = dshape("""var * {
+                          order_id: !int32,
+                          product_no: (int32) >> T,
+                          quantity: ?int32
+                        }""")
+        orders = resource('sqlite:///%s::orders' % fn, dshape=ds,
+                          foreign_keys=dict(product_no=products.c.product_no))
+        assert discover(orders) != ds
+
+
+def test_foreign_keys_bad_field():
+    with tmpfile('db') as fn:
+        expected = dshape("""var * {
+                          order_id: !int32,
+                          product_no: int64,
+                          quantity: ?int32
+                        }""")
+        with pytest.raises(TypeError):
+            resource('sqlite:///%s::orders' % fn, dshape=expected,
+                     foreign_keys=dict(foo='products.product_no'))

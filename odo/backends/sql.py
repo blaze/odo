@@ -20,17 +20,18 @@ from sqlalchemy.schema import CreateSchema
 from multipledispatch import MDNotImplementedError
 
 import datashape
-from datashape import DataShape, Record, Option, var, dshape
+from datashape import (DataShape, Record, Option, var, dshape, PrimaryKey,
+                       ForeignKey)
 from datashape.predicates import isdimension, isrecord, isscalar
 from datashape import discover
 from datashape.dispatch import dispatch
 
-from toolz import (partition_all, keyfilter, memoize, valfilter,
-                   identity, concat, curry, merge)
+from toolz import (partition_all, keyfilter, memoize, valfilter, identity,
+                   concat, curry, merge, first)
 from toolz.curried import pluck, map
 
 from ..compatibility import unicode
-from ..utils import keywords, ignoring, iter_except
+from ..utils import keywords, ignoring, iter_except, filter_kwargs
 from ..convert import convert, ooc_types
 from ..append import append
 from ..resource import resource
@@ -167,7 +168,7 @@ def discover_typeengine(typ):
     if typ in revtypes:
         return dshape(revtypes[typ])[0]
     if type(typ) in revtypes:
-        return dshape(revtypes[type(typ)])[0]
+        return revtypes[type(typ)]
     if isinstance(typ, (sa.String, sa.Unicode)):
         return datashape.String(typ.length, typ.collation)
     else:
@@ -183,13 +184,25 @@ def discover_typeengine(typ):
 
 @discover.register(sa.Column)
 def discover_sqlalchemy_column(col):
-    optionify = Option if col.nullable else identity
-    return Record([[col.name, optionify(discover(col.type))]])
+    optionify = Option if col.nullable else PrimaryKey if col.primary_key else identity
+    coltype = optionify(discover(col.type))
+    nkeys = len(col.foreign_keys)
+    assert 0 <= nkeys <= 1, 'only allowed one foreign key'
+
+    if nkeys:
+        # TODO: handle self referential fkeys (currently we blow the stack)
+        parent_measure = discover(first(col.foreign_keys).column.table).measure
+        measure = ForeignKey(dshape(coltype), dshape(parent_measure))
+    else:
+        measure = coltype
+    return Record([(col.name, measure)])
 
 
 @discover.register(sa.sql.FromClause)
 def discover_sqlalchemy_selectable(t):
-    records = list(sum([discover(c).parameters[0] for c in t.columns], ()))
+    records = list(sum([discover(c).parameters[0]
+                        for c in t.columns if not getattr(c, 'system', False)],
+                       ()))
     return var * Record(records)
 
 
@@ -254,7 +267,24 @@ def discover_row_proxy(rp):
     return Record(list(zip(rp.keys(), map(discover, rp.values()))))
 
 
-def dshape_to_table(name, ds, metadata=None):
+def validate_foreign_keys(ds, foreign_keys):
+    # passed foreign_keys and column in dshape, but not a ForeignKey type
+    for field in foreign_keys:
+        if field not in ds.measure.names:
+            raise TypeError('Requested foreign key field %r is not a field in '
+                            'datashape %s' % (field, ds))
+    for field, typ in ds.measure.fields:
+        if field in foreign_keys and not isinstance(typ, ForeignKey):
+            raise TypeError('Foreign key %s passed in but not a ForeignKey '
+                            'datashape, got %s' % (field, typ))
+
+        if isinstance(typ, ForeignKey) and field not in foreign_keys:
+            raise TypeError('ForeignKey type %s found on column %s, but %r '
+                            "wasn't found in %s" %
+                            (typ, field, field, foreign_keys))
+
+
+def dshape_to_table(name, ds, metadata=None, foreign_keys=None):
     """
     Create a SQLAlchemy table from a datashape and a name
 
@@ -269,7 +299,14 @@ def dshape_to_table(name, ds, metadata=None):
         ds = dshape(ds)
     if metadata is None:
         metadata = sa.MetaData()
+    if foreign_keys is None:
+        foreign_keys = {}
+
+    validate_foreign_keys(ds, foreign_keys)
+
     cols = dshape_to_alchemy(ds)
+    cols.extend(sa.ForeignKeyConstraint([column_name], [referent])
+                for column_name, referent in foreign_keys.items())
     t = sa.Table(name, metadata, *cols, schema=metadata.schema)
     return attach_schema(t, t.schema)
 
@@ -280,11 +317,13 @@ def create_from_datashape(o, ds, **kwargs):
 
 
 @dispatch(sa.engine.base.Engine, DataShape)
-def create_from_datashape(engine, ds, schema=None, **kwargs):
+def create_from_datashape(engine, ds, schema=None, foreign_keys=None,
+                          **kwargs):
     assert isrecord(ds), 'datashape must be Record type, got %s' % ds
     metadata = metadata_of_engine(engine, schema=schema)
     for name, sub_ds in ds[0].dict.items():
-        t = dshape_to_table(name, sub_ds, metadata=metadata)
+        t = dshape_to_table(name, sub_ds, metadata=metadata,
+                            foreign_keys=foreign_keys)
         t.create()
     return engine
 
@@ -306,13 +345,16 @@ def dshape_to_alchemy(dshape):
     """
     if isinstance(dshape, str):
         dshape = datashape.dshape(dshape)
+    if isinstance(dshape, ForeignKey):
+        return dshape_to_alchemy(dshape.argtypes[0].measure)
     if isinstance(dshape, Option):
         return dshape_to_alchemy(dshape.ty)
     if str(dshape) in types:
         return types[str(dshape)]
     if isinstance(dshape, datashape.Record):
         return [sa.Column(name,
-                          dshape_to_alchemy(typ),
+                          dshape_to_alchemy(getattr(typ, 'ty', typ)),
+                          primary_key=isinstance(typ[0], PrimaryKey),
                           nullable=isinstance(typ[0], Option))
                 for name, typ in dshape.parameters[0]]
     if isinstance(dshape, datashape.DataShape):
@@ -456,10 +498,10 @@ def fullname(table, compiler):
 
 @resource.register(r'(.*sql.*|oracle|redshift)(\+\w+)?://.+')
 def resource_sql(uri, *args, **kwargs):
-    kwargs2 = keyfilter(keywords(sa.create_engine).__contains__, kwargs)
-    engine = create_engine(uri, **kwargs2)
-    ds = kwargs.get('dshape')
-    schema = kwargs.get('schema')
+    engine = create_engine(uri, **filter_kwargs(sa.create_engine, kwargs))
+    ds = kwargs.pop('dshape', None)
+    schema = kwargs.pop('schema', None)
+    foreign_keys = kwargs.pop('foreign_keys', None)
 
     # we were also given a table name
     if args and isinstance(args[0], (str, unicode)):
@@ -467,11 +509,14 @@ def resource_sql(uri, *args, **kwargs):
         metadata = metadata_of_engine(engine, schema=schema)
 
         with ignoring(sa.exc.NoSuchTableError):
-            return attach_schema(sa.Table(table_name, metadata, autoload=True,
-                                          autoload_with=engine, schema=schema),
-                                 schema)
+            return attach_schema(
+                sa.Table(table_name, metadata, schema=schema,
+                         autoload_with=engine),
+                schema
+            )
         if ds:
-            t = dshape_to_table(table_name, ds, metadata=metadata)
+            t = dshape_to_table(table_name, ds, metadata=metadata,
+                                foreign_keys=foreign_keys)
             t.create()
             return t
         else:
@@ -479,7 +524,8 @@ def resource_sql(uri, *args, **kwargs):
 
     # We were not given a table name
     if ds:
-        create_from_datashape(engine, ds, schema=schema)
+        create_from_datashape(engine, ds, schema=schema,
+                              foreign_keys=foreign_keys)
     return engine
 
 
@@ -547,6 +593,7 @@ def select_or_selectable_to_frame(el, **kwargs):
 
 
 class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
+
     def __init__(self, element, path, delimiter=',', quotechar='"',
                  lineterminator=r'\n', escapechar='\\', header=True,
                  na_value=''):
@@ -604,7 +651,8 @@ def compile_copy_to_csv_mysql(element, compiler, **kwargs):
                            path=element.path,
                            delimiter=element.delimiter,
                            lineterminator=element.lineterminator,
-                           escapechar=element.escapechar.encode('unicode-escape').decode(),
+                           escapechar=element.escapechar.encode(
+                               'unicode-escape').decode(),
                            quotechar=element.quotechar)
 
 
