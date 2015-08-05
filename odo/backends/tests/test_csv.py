@@ -15,8 +15,7 @@ from odo.backends.csv import (CSV, append, convert, resource,
                               csv_to_dataframe, CSV_to_chunks_of_dataframes,
                               infer_header)
 from odo.utils import tmpfile, filetext, filetexts, raises
-from odo import (into, append, convert, resource, discover, dshape, Temp,
-                 chunks, odo)
+from odo import (into, discover, dshape, Temp, chunks, odo)
 from odo.temp import _Temp
 from odo.compatibility import unicode
 
