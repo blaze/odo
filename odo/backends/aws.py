@@ -4,13 +4,13 @@ import os
 import uuid
 import zlib
 import re
-
+from fnmatch import fnmatch
 from contextlib import contextmanager
 from collections import Iterator
 from operator import attrgetter
 
 import pandas as pd
-from toolz import memoize, first
+from toolz import memoize, first, concat
 
 from .. import (discover, CSV, resource, append, convert, drop, Temp, JSON,
                 JSONLines, chunks)
@@ -151,6 +151,28 @@ def resource_s3_csv(uri, **kwargs):
     return S3(CSV)(uri, **kwargs)
 
 
+@resource.register('s3://.*\*.csv(\.gz)?', priority=19)
+def resource_s3_csv_glob(uri, **kwargs):
+    con = get_s3_connection()
+    result = urlparse(uri)
+    bucket = con.get_bucket(result.netloc)
+    key = result.path.lstrip('/')
+
+    all_keys = bucket.list(prefix=key.split('*')[0])
+    matched = [k for k in all_keys if fnmatch(k.key, key)]
+    uris = ['s3://{}/{}'.format(bucket.name, k.key) for k in matched]
+    r = resource(uris[0], **kwargs)
+    return chunks(type(r))([resource(u, **kwargs) for u in sorted(uris)])
+
+
+@convert.register(chunks(pd.DataFrame), chunks(S3(CSV)), cost=11.0)
+def convert_gob_of_s3_csvs_to_chunks_of_dataframes(csvs, **kwargs):
+   def _():
+       return concat(convert(chunks(pd.DataFrame), csv, **kwargs)
+                      for csv in csvs)
+   return chunks(pd.DataFrame)(_)
+
+
 @resource.register('s3://.*\.txt(\.gz)?', priority=18)
 def resource_s3_text(uri, **kwargs):
     return S3(TextFile)(uri)
@@ -272,3 +294,5 @@ else:
             raise ValueError('Error code %d, message: %r' % (exit_status,
                                                              stderr.read()))
         return ssh
+
+
