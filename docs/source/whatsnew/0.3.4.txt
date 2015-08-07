@@ -30,3 +30,12 @@ Bug Fixes
   a numpy array to a DataFrame (:issue:`273`).
 * Fix appending into a sql table from chunks not returning the table.
   (:issue:`278`).
+
+Miscellaneous
+-------------
+
+* Adds :func:`~odo.utils.copydoc` function to copy docstrings from one object
+  onto another. This helps with the pattern of explicitly setting the
+  ``__doc__`` attribute to the ``__doc__`` of another function or class. This
+  function can be used as a decorator like: ``@copydoc(FromThisClass)`` or as a
+  function like: ``copydoc(FromThisClass, to_this_function)``. (:issue:`277`).
