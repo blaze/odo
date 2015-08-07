@@ -188,7 +188,7 @@ def test_different_encoding(url):
                         (u'1958.001.500223-6', 1, None, u'', 9610),
                         (u'1958.001.500233-9', 1, None, u'', 4703),
                         (u'1909.017.000018-3', 1, 30.0, u'sumaria', 899),
-                        (u"", 1, 0, u"®", 0)]
+                        (u'', 1, 0, b'\xae'.decode('latin1'), 0)]
             assert result == expected
         finally:
             drop(sql)
