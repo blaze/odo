@@ -200,9 +200,7 @@ def discover_sqlalchemy_column(col):
 
 @discover.register(sa.sql.FromClause)
 def discover_sqlalchemy_selectable(t):
-    records = list(sum([discover(c).parameters[0]
-                        for c in t.columns if not getattr(c, 'system', False)],
-                       ()))
+    records = list(sum([discover(c).parameters[0] for c in t.columns], ()))
     return var * Record(records)
 
 
