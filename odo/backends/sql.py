@@ -184,8 +184,8 @@ def discover_typeengine(typ):
 
 @discover.register(sa.Column)
 def discover_sqlalchemy_column(col):
-    optionify = Option if col.nullable else PrimaryKey if col.primary_key else identity
-    coltype = optionify(discover(col.type))
+    metafy = Option if col.nullable else PrimaryKey if col.primary_key else identity
+    coltype = metafy(discover(col.type))
     nkeys = len(col.foreign_keys)
     assert 0 <= nkeys <= 1, 'only allowed one foreign key'
 
