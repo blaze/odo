@@ -28,3 +28,5 @@ Bug Fixes
 * Cope with Dask and bcolz API changes (:issue:`270`).
 * Fixed a bug where columns in dshape were being ignored when converting
   a numpy array to a DataFrame (:issue:`273`).
+* Fix appending into a sql table from chunks not returning the table.
+  (:issue:`278`).
