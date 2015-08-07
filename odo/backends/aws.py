@@ -19,7 +19,7 @@ from multipledispatch import MDNotImplementedError
 from .text import TextFile
 
 from ..compatibility import urlparse
-from ..utils import tmpfile, ext, sample, filter_kwargs
+from ..utils import tmpfile, ext, sample, filter_kwargs, copydoc
 
 
 @memoize
@@ -87,12 +87,10 @@ class _S3(object):
                               **filter_kwargs(self.subtype.__init__, kwargs))
 
 
+@memoize
+@copydoc(_S3)
 def S3(cls):
     return type('S3(%s)' % cls.__name__, (_S3, cls), {'subtype': cls})
-
-
-S3.__doc__ = _S3.__doc__
-S3 = memoize(S3)
 
 
 @sample.register((S3(CSV), S3(JSONLines)))

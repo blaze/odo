@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 from toolz import memoize
 from .drop import drop
+from .utils import copydoc
+
 
 class _Temp(object):
     """ Temporary version of persistent storage
@@ -16,10 +18,8 @@ class _Temp(object):
         drop(self)
 
 
+@memoize
+@copydoc(_Temp)
 def Temp(cls):
     """ Parametrized Chunks Class """
     return type('Temp(%s)' % cls.__name__, (_Temp, cls), {'persistent_type': cls})
-
-Temp.__doc__ = _Temp.__doc__
-
-Temp = memoize(Temp)

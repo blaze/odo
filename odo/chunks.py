@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from toolz import memoize, first
 from datashape import discover, var
-from .utils import cls_name
+from .utils import cls_name, copydoc
 
 
 class Chunks(object):
@@ -36,13 +36,11 @@ class Chunks(object):
             return iter(self.data)
 
 
+@memoize
+@copydoc(Chunks)
 def chunks(cls):
     """ Parametrized Chunks Class """
     return type('chunks(%s)' % cls_name(cls), (Chunks,), {'container': cls})
-
-chunks.__doc__ = Chunks.__doc__
-
-chunks = memoize(chunks)
 
 
 @discover.register(Chunks)

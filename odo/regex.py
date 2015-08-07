@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import re
 
+
 def normalize(r):
     """
 
@@ -12,6 +13,7 @@ def normalize(r):
     '^\d*$'
     """
     return '^' + r.lstrip('^').rstrip('$') + '$'
+
 
 class RegexDispatcher(object):
     """
@@ -44,7 +46,6 @@ class RegexDispatcher(object):
         self.name = name
         self.funcs = dict()
         self.priorities = dict()
-
 
     def add(self, regex, func, priority=10):
         self.funcs[normalize(regex)] = func
