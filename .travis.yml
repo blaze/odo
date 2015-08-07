@@ -41,6 +41,8 @@ install:
   - pip install git+git://github.com/blaze/datashape.git
 
   # Install various deps
+  - conda uninstall toolz
+  - pip install toolz
   - pip install sas7bdat
   - pip install git+git://github.com/blaze/dask.git --upgrade
   - pip install dill --upgrade
