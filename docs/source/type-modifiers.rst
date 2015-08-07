@@ -58,7 +58,43 @@ an online fashion
 
 .. code-block:: python
 
-   >>> from odo import odo, pd, chunks
+   >>> from odo import odo, chunks
+   >>> import pandas as pd
    >>> seq = odo('postgresql://localhost::mytable', chunks(pd.DataFrame))
    >>> for df in seq:
    ...    # work on each dataframe sequentially
+
+
+``chunks`` may also be used to write an iterable of chunks into another
+resource. For example, we may use chunks to write a sequence of numpy arrays
+into a postgres table while only ever holding one whole array in memory like so:
+
+.. code-block:: python
+
+   >>> import numpy as np
+   >>> from odo import odo, chunks
+   >>> seq = (np.random.randn(5, 3) for _ in range(3))
+   >>> odo(chunks(np.ndarray)(seq), 'postgresql://localhost::mytable')
+
+``chunks(type_)(seq)`` is merely a small box wrapping the inner sequence that
+allows odo to know the types of the elements in the sequence. We may still use
+this sequence as we would any other, including looping over it.
+
+Because this is wrapping the inner sequence, we may only iterate over the
+``chunks`` multiple times if the inner sequence supports being iterated over
+more than once. For example:
+
+.. code-block:: python
+
+   >>> from odo import chunks
+   >>> CL = chunks(list)
+   >>> multuple_iteration_seq = CL([[0, 1, 2], [3, 4, 5])
+   >>> tuple(multuple_iteration_seq)
+   ([0, 1, 2], [3, 4, 5])
+   >>> tuple(multuple_iteration_seq)
+   ([0, 1, 2], [3, 4, 5])
+   >>> single_iteration_seq = CL(iter([[0, 1, 2], [3, 4, 5]]))
+   >>> tuple(single_iteraton_seq)
+   ([0, 1, 2], [3, 4, 5])
+   >>> tuple(single_iteration_seq)
+   ()
