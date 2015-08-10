@@ -434,6 +434,7 @@ def append_iterator_to_table(t, rows, dshape=None, **kwargs):
 def append_anything_to_sql_Table(t, c, **kwargs):
     for item in c:
         append(t, item, **kwargs)
+    return t
 
 
 @append.register(sa.Table, object)
