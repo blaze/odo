@@ -8,7 +8,7 @@ import re
 import uuid
 
 from ..directory import Directory
-from ..utils import keywords, tmpfile, sample, ignoring
+from ..utils import keywords, tmpfile, sample, ignoring, copydoc
 from ..resource import resource
 from ..append import append
 from ..convert import convert
@@ -78,12 +78,10 @@ class _SSH(object):
         return conn.file(self.path, 'r')
 
 
+@memoize
+@copydoc(_SSH)
 def SSH(cls):
     return type('SSH(%s)' % cls.__name__, (_SSH, cls), {'subtype':  cls})
-
-SSH.__doc__ = _SSH.__doc__
-
-SSH = memoize(SSH)
 
 
 types_by_extension = {'csv': CSV, 'json': JSONLines}

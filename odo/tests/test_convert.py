@@ -265,3 +265,12 @@ def test_chunks_of_lists_and_iterators():
     assert convert(list, cl) == [1, 2, 3, 4]
     assert list(convert(Iterator, cl)) == [1, 2, 3, 4]
     assert len(list(convert(chunks(Iterator), cl))) == 2
+
+
+def test_ndarray_to_df_preserves_field_names():
+    ds = dshape('2 * {a: int, b: int}')
+    arr = np.array([[0, 1], [2, 3]])
+    # dshape explicitly sets field names.
+    assert (convert(pd.DataFrame, arr, dshape=ds).columns == ['a', 'b']).all()
+    # no dshape is passed.
+    assert (convert(pd.DataFrame, arr).columns == [0, 1]).all()

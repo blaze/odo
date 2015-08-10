@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from glob import glob
 from .chunks import Chunks
 from .resource import resource
+from .utils import copydoc
 from toolz import memoize, first
 from datashape import discover, var
 import os
@@ -33,13 +34,11 @@ class _Directory(Chunks):
                     for fn in sorted(os.listdir(self.path)))
 
 
+@memoize
+@copydoc(_Directory)
 def Directory(cls):
     """ Parametrized DirectoryClass """
     return type('Directory(%s)' % cls.__name__, (_Directory,), {'container': cls})
-
-Directory.__doc__ = Directory.__doc__
-
-Directory = memoize(Directory)
 
 
 re_path_sep = os.path.sep
