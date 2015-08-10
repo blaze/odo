@@ -422,7 +422,7 @@ def test_discover_foreign_keys():
                             """)
         expected = dshape("""var * {
                           order_id: !int32,
-                          product_no: (int32) >> {
+                          product_no: (int32) => {
                             product_no: !int32,
                             name: ?string,
                             price: ?float64
@@ -440,7 +440,7 @@ def test_invalid_foreign_keys():
     with tmpfile('db') as fn:
         expected = dshape("""var * {
                           order_id: !int32,
-                          product_no: (int32) >> {
+                          product_no: (int32) => {
                             product_no: !int32,
                             name: ?string,
                             price: ?float64
@@ -463,7 +463,7 @@ def test_foreign_keys_auto_construct():
                             """)
         ds = dshape("""var * {
                           order_id: !int32,
-                          product_no: (int32) >> T,
+                          product_no: (int32) => T,
                           quantity: ?int32
                         }""")
         orders = resource('sqlite:///%s::orders' % fn, dshape=ds,
