@@ -6,7 +6,7 @@ import pytest
 pytest.importorskip('sqlalchemy')
 
 from datashape import dshape, discover
-from odo import resource, odo
+from odo import resource, odo, drop
 from odo.utils import tmpfile, filetext
 
 
@@ -93,3 +93,12 @@ def test_different_encoding():
                 (u'1958.001.500233-9', 1, u'', u'', 4703),
                 (u'1909.017.000018-3', 1, 30.0, u'sumaria', 899)]
     assert result == expected
+
+
+def test_drop_raise_on_errors():
+    with tmpfile('.db') as db:
+        with pytest.raises(ValueError):
+            drop('sqlite:///%s:::t' % db)
+
+    with tmpfile('.db') as db:
+        assert drop('sqlite:///%s::t' % db, raise_on_errors=False) is None
