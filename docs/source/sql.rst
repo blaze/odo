@@ -37,3 +37,22 @@ These are often an order of magnitude faster than the ``Python->SQLAlchemy``
 route when they are available.::
 
     sqlalchemy.Table <- CSV
+
+Enabling Conversions
+--------------------
+
+Odo is dependent on the SQLAlchemy library for sqlite, PostgreSQL, MySQL, Hive,
+and RedShift support.  SQLAlchemy is not installed by default when Odo is
+installed, therefore you must install it if you want to use one of these
+databases.
+
+If SQLAlchemy is not installed and you try using one of the databases, you
+may get the following error:
+
+```
+NotImplementedError: Unable to parse uri to data resource: sqlite:///file.db
+```
+
+
+
+
