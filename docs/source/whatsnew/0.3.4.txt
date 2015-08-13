@@ -20,6 +20,11 @@ None
 API Changes
 -----------
 
+* The ``str`` dispatched version of the :func:`~odo.drop.drop` function now
+  takes a ``raise_on_errors`` boolean keyword argument that when ``True`` will
+  raise if the call to ``resource`` inside this implementation raises an
+  ``Exception`` and will pass through otherwise (:issue:`280`).
+
 None
 
 Bug Fixes
