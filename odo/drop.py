@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from datashape.dispatch import dispatch
+
 from .resource import resource
 from .compatibility import unicode
 
@@ -33,6 +34,11 @@ def drop(rsrc):
 
 
 @dispatch((str, unicode))
-def drop(uri, **kwargs):
-    data = resource(uri, **kwargs)
-    drop(data)
+def drop(uri, raise_on_errors=True, **kwargs):
+    try:
+        data = resource(uri, **kwargs)
+    except Exception:
+        if raise_on_errors:
+            raise
+    else:
+        drop(data)
