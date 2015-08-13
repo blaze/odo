@@ -41,12 +41,19 @@ route when they are available.::
 Enabling Conversions
 --------------------
 
-Odo is dependent on the SQLAlchemy library for sqlite, PostgreSQL, MySQL, Hive,
-and RedShift support.  SQLAlchemy is not installed by default when Odo is
-installed, therefore you must install it if you want to use one of these
-databases.
+Odo is dependent on various conversion libraries.  Many of these are not 
+installed by default. 
 
-If SQLAlchemy is not installed and you try using one of the databases, you
-may get the following error::
+For example the SQLAlchemy library is used for sqlite, PostgreSQL, MySQL, Hive,
+and RedShift conversions.  SQLAlchemy is not installed by default, therefore 
+you must install it if you want to use one of these databases.
 
-    NotImplementedError: Unable to parse uri to data resource: sqlite:///file.db
+You can install SQLAlchemy by typing one of shell commands below::
+
+    $ conda install sqlalchemy
+    or
+    $ pip install sqlalchemy
+
+If a conversion is not enabled you may get the following error::
+
+    NotImplementedError: Unable to parse uri to data resource: ...
