@@ -49,9 +49,9 @@ databases.
 If SQLAlchemy is not installed and you try using one of the databases, you
 may get the following error:
 
-```
-NotImplementedError: Unable to parse uri to data resource: sqlite:///file.db
-```
+
+	NotImplementedError: Unable to parse uri to data resource: sqlite:///file.db
+
 
 
 
