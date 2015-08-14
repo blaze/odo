@@ -20,8 +20,7 @@ from sqlalchemy.schema import CreateSchema
 from multipledispatch import MDNotImplementedError
 
 import datashape
-from datashape import (DataShape, Record, Option, var, dshape, PrimaryKey,
-                       ForeignKey)
+from datashape import DataShape, Record, Option, var, dshape, Map, PrimaryKey
 from datashape.predicates import isdimension, isrecord, isscalar
 from datashape import discover
 from datashape.dispatch import dispatch
@@ -192,7 +191,7 @@ def discover_sqlalchemy_column(col):
     if nkeys:
         # TODO: handle self referential fkeys (currently we blow the stack)
         parent_measure = discover(first(col.foreign_keys).column.table).measure
-        measure = ForeignKey(dshape(coltype), dshape(parent_measure))
+        measure = Map(coltype, parent_measure)
     else:
         measure = coltype
     return Record([(col.name, measure)])
@@ -272,12 +271,12 @@ def validate_foreign_keys(ds, foreign_keys):
             raise TypeError('Requested foreign key field %r is not a field in '
                             'datashape %s' % (field, ds))
     for field, typ in ds.measure.fields:
-        if field in foreign_keys and not isinstance(typ, ForeignKey):
-            raise TypeError('Foreign key %s passed in but not a ForeignKey '
+        if field in foreign_keys and not isinstance(typ, Map):
+            raise TypeError('Foreign key %s passed in but not a Map'
                             'datashape, got %s' % (field, typ))
 
-        if isinstance(typ, ForeignKey) and field not in foreign_keys:
-            raise TypeError('ForeignKey type %s found on column %s, but %r '
+        if isinstance(typ, Map) and field not in foreign_keys:
+            raise TypeError('Map type %s found on column %s, but %r '
                             "wasn't found in %s" %
                             (typ, field, field, foreign_keys))
 
@@ -343,8 +342,8 @@ def dshape_to_alchemy(dshape):
     """
     if isinstance(dshape, str):
         dshape = datashape.dshape(dshape)
-    if isinstance(dshape, ForeignKey):
-        return dshape_to_alchemy(dshape.argtypes[0].measure)
+    if isinstance(dshape, Map):
+        return dshape_to_alchemy(dshape.key.measure)
     if isinstance(dshape, Option):
         return dshape_to_alchemy(dshape.ty)
     if str(dshape) in types:
