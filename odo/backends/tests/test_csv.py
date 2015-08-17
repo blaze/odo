@@ -86,6 +86,19 @@ def test_pandas_read_supports_gzip():
         assert convert(list, df) == [('Alice', 1), ('Bob', 2)]
         assert list(df.columns) == ['name', 'amount']
 
+@pytest.mark.xfail(sys.version_info < (3,3,0),
+                   reason="lzma not part of std libs until 3.3")
+def test_pandas_read_supports_xz():
+    import lzma
+    with filetext('Alice,1\nBob,2', open=lzma.open,
+                  mode='wt', extension='.csv.xz') as fn:
+        ds = datashape.dshape('var * {name: string, amount: int}')
+        csv = CSV(fn)
+        df = csv_to_dataframe(csv, dshape=ds)
+        assert isinstance(df, pd.DataFrame)
+        assert convert(list, df) == [('Alice', 1), ('Bob', 2)]
+        assert list(df.columns) == ['name', 'amount']
+
 
 def test_pandas_read_supports_read_csv_kwargs():
     with filetext('Alice,1\nBob,2') as fn:
