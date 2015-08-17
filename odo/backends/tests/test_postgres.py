@@ -8,6 +8,7 @@ pytest.importorskip('psycopg2')
 import os
 import itertools
 
+import datashape
 from datashape import dshape
 
 from odo.backends.csv import CSV
@@ -91,8 +92,24 @@ def complex_sql(url):
     except sa.exc.OperationalError as e:
         pytest.skip(str(e))
     else:
-        yield t
-        drop(t)
+        try:
+            yield t
+        finally:
+            drop(t)
+
+
+@pytest.yield_fixture
+def sql_with_array(url):
+    ds = 'var * {a: var * float64, b: string}'
+    try:
+        t = resource(url, dshape=ds)
+    except sa.exc.OperationalError as e:
+        pytest.skip(str(e))
+    else:
+        try:
+            yield t
+        finally:
+            drop(t)
 
 
 def test_simple_into(csv, sql):
@@ -203,3 +220,14 @@ def test_schema_discover(sql_with_schema):
     meta = discover(sql_with_schema.metadata)
     assert meta == dshape('{%s: var * {a: int32, b: ?int32}}' %
                           sql_with_schema.name)
+
+
+def test_discover_array(sql_with_array):
+    expected = dshape('var * {a: var * float64, b: string}')
+    result = discover(sql_with_array)
+    assert result == expected
+
+
+def test_nested_records_fail(url):
+    with pytest.raises(TypeError):
+        resource(url, dshape='var * {a: var * float64, b: {c: int64}}')
