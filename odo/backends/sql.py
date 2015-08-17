@@ -142,6 +142,11 @@ def discover_postgresql_interval(t):
                                       second_precision=t.precision))
 
 
+@discover.register(sa.dialects.postgresql.base.ARRAY)
+def discover_postgresql_array(t):
+    return var * discover(t.item_type)
+
+
 @discover.register(sa.dialects.oracle.base.INTERVAL)
 def discover_oracle_interval(t):
     return discover(t.adapt(sa.types.Interval))
@@ -269,7 +274,7 @@ def dshape_to_table(name, ds, metadata=None):
         ds = dshape(ds)
     if metadata is None:
         metadata = sa.MetaData()
-    cols = dshape_to_alchemy(ds)
+    cols = dshape_to_alchemy(ds, getattr(metadata.bind, 'dialect', None))
     t = sa.Table(name, metadata, *cols, schema=metadata.schema)
     return attach_schema(t, t.schema)
 
@@ -289,7 +294,12 @@ def create_from_datashape(engine, ds, schema=None, **kwargs):
     return engine
 
 
-def dshape_to_alchemy(dshape):
+array_types = {
+    'postgresql': sa.dialects.postgresql.ARRAY
+}
+
+
+def dshape_to_alchemy(dshape, dialect=None, level=0):
     """
 
     >>> dshape_to_alchemy('int')
@@ -307,19 +317,34 @@ def dshape_to_alchemy(dshape):
     if isinstance(dshape, str):
         dshape = datashape.dshape(dshape)
     if isinstance(dshape, Option):
-        return dshape_to_alchemy(dshape.ty)
+        return dshape_to_alchemy(dshape.ty, dialect, level=level + 1)
     if str(dshape) in types:
         return types[str(dshape)]
     if isinstance(dshape, datashape.Record):
-        return [sa.Column(name,
-                          dshape_to_alchemy(typ),
-                          nullable=isinstance(typ[0], Option))
-                for name, typ in dshape.parameters[0]]
+        if 0 <= level <= 1:  # we only allow at most a single level of nesting
+            return [sa.Column(name,
+                              dshape_to_alchemy(typ, dialect, level=level + 1),
+                              nullable=isinstance(typ, Option))
+                    for name, typ in dshape.parameters[0]]
+        raise TypeError(
+            'nested record dshape not supported by sqlalchemy')
     if isinstance(dshape, datashape.DataShape):
         if isdimension(dshape[0]):
-            return dshape_to_alchemy(dshape[1])
+            if isscalar(dshape[1]):
+                type_ = array_types.get(dialect.name, None)
+                if type_ is None:
+                    raise TypeError('dialect %s has no array type for dshape '
+                                    '%s' % (dialect.name, dshape))
+                return type_(dshape_to_alchemy(dshape[1],
+                                               dialect, level=level + 1))
+            else:
+                if not level:
+                    return dshape_to_alchemy(dshape[1], dialect,
+                                             level=level + 1)
+                raise TypeError('nested record dshape not supported by sqlalchemy')
         else:
-            return dshape_to_alchemy(dshape[0])
+            return dshape_to_alchemy(dshape[0], dialect, level=level + 1)
+
     if isinstance(dshape, datashape.String):
         fixlen = dshape[0].fixlen
         if fixlen is None:
