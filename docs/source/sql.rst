@@ -37,3 +37,23 @@ These are often an order of magnitude faster than the ``Python->SQLAlchemy``
 route when they are available.::
 
     sqlalchemy.Table <- CSV
+
+Enabling Conversions
+--------------------
+
+Odo is dependent on various conversion libraries.  Many of these are not 
+installed by default. 
+
+For example the SQLAlchemy library is used for sqlite, PostgreSQL, MySQL, Hive,
+and RedShift conversions.  SQLAlchemy is not installed by default, therefore 
+you must install it if you want to use one of these databases.
+
+You can install SQLAlchemy by typing one of shell commands below::
+
+    $ conda install sqlalchemy
+    or
+    $ pip install sqlalchemy
+
+If a conversion is not enabled you may get the following error::
+
+    NotImplementedError: Unable to parse uri to data resource: ...
