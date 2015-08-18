@@ -10,6 +10,8 @@ from datashape import discover
 from datashape.dispatch import namespace
 from datashape.predicates import isdimension
 from .compatibility import unicode
+from pandas import DataFrame, Series
+from numpy import ndarray
 
 
 if 'into' not in namespace:
@@ -94,6 +96,8 @@ def into_object(target, source, dshape=None, **kwargs):
     """
     if isinstance(source, (str, unicode)):
         source = resource(source, dshape=dshape, **kwargs)
+    if isinstance(target, (DataFrame, Series, ndarray)):
+        raise ValueError('target of %s type does not support in-place append' % type(target))
     with ignoring(NotImplementedError):
         if dshape is None:
             dshape = discover(source)
