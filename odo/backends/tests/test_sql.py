@@ -483,6 +483,29 @@ def test_foreign_keys_bad_field():
                      foreign_keys=dict(foo='products.product_no'))
 
 
+@pytest.fixture
+def recursive_fkey():
+    return sa.Table(
+        'employees',
+        sa.MetaData(),
+        sa.Column('eid', sa.BIGINT, primary_key=True),
+        sa.Column('name', sa.TEXT),
+        sa.Column('mgr_eid', sa.BIGINT, sa.ForeignKey('employees.eid'),
+                  nullable=False)
+    )
+
+
+def test_recursive_foreign_key(recursive_fkey):
+    expected = dshape("""
+        var * {
+            eid: !int64,
+            name: ?string,
+            mgr_eid: map[int64, {eid: !int64, name: ?string, mgr_eid: int64}]
+        }
+    """)
+    assert discover(recursive_fkey) == expected
+
+
 def test_append_chunks():
     tbl = resource('sqlite:///:memory:::test', dshape='var * {a: int, b: int}')
     res = odo(
