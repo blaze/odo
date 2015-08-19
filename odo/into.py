@@ -13,6 +13,7 @@ from .compatibility import unicode
 from pandas import DataFrame, Series
 from numpy import ndarray
 
+not_appendable_types = DataFrame, Series, ndarray, tuple
 
 if 'into' not in namespace:
     namespace['into'] = Dispatcher('into')
@@ -96,7 +97,7 @@ def into_object(target, source, dshape=None, **kwargs):
     """
     if isinstance(source, (str, unicode)):
         source = resource(source, dshape=dshape, **kwargs)
-    if isinstance(target, (DataFrame, Series, ndarray)):
+    if isinstance(target, not_appendable_types):
         raise ValueError('target of %s type does not support in-place append' % type(target))
     with ignoring(NotImplementedError):
         if dshape is None:
