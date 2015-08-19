@@ -506,6 +506,26 @@ def test_recursive_foreign_key(recursive_fkey):
     assert discover(recursive_fkey) == expected
 
 
+def test_create_recursive_foreign_key():
+    with tmpfile('.db') as fn:
+        t = resource('sqlite:///%s::employees' % fn,
+                     dshape="""
+                     var * {
+                        eid: !int64,
+                        name: ?string,
+                        mgr_eid: map[int64, T]
+                     }""", foreign_keys=dict(mgr_eid='employees.eid'))
+        result = discover(t)
+    expected = dshape("""
+        var * {
+            eid: !int64,
+            name: ?string,
+            mgr_eid: map[int64, {eid: !int64, name: ?string, mgr_eid: int64}]
+        }
+    """)
+    assert result == expected
+
+
 def test_append_chunks():
     tbl = resource('sqlite:///:memory:::test', dshape='var * {a: int, b: int}')
     res = odo(
