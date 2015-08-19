@@ -6,7 +6,7 @@ import re
 import subprocess
 
 from itertools import chain
-from collections import Iterator
+from collections import Iterator, OrderedDict
 from datetime import datetime, date
 from distutils.spawn import find_executable
 
@@ -26,7 +26,7 @@ from datashape import discover
 from datashape.dispatch import dispatch
 
 from toolz import (partition_all, keyfilter, memoize, valfilter, identity,
-                   concat, curry, merge, first)
+                   concat, curry, merge)
 from toolz.curried import pluck, map
 
 from ..compatibility import unicode
@@ -181,26 +181,27 @@ def discover_typeengine(typ):
     raise NotImplementedError("No SQL-datashape match for type %s" % typ)
 
 
-@discover.register(sa.Column)
-def discover_sqlalchemy_column(col):
-    metafy = Option if col.nullable else PrimaryKey if col.primary_key else identity
-    coltype = metafy(discover(col.type))
-    nkeys = len(col.foreign_keys)
-    assert 0 <= nkeys <= 1, 'only allowed one foreign key'
+@discover.register(sa.ForeignKey, sa.sql.FromClause)
+def discover_foreign_key_relationship(fk, parent, parent_measure=None):
+    if fk.column.table is not parent:
+        parent_measure = discover(fk.column.table).measure
+    return {fk.parent.name: Map(discover(fk.parent.type), parent_measure)}
 
-    if nkeys:
-        # TODO: handle self referential fkeys (currently we blow the stack)
-        parent_measure = discover(first(col.foreign_keys).column.table).measure
-        measure = Map(coltype, parent_measure)
-    else:
-        measure = coltype
-    return Record([(col.name, measure)])
+
+@discover.register(sa.Column)
+def discover_sqlalchemy_column(c):
+    meta = Option if c.nullable else PrimaryKey if c.primary_key else identity
+    return Record([(c.name, meta(discover(c.type)))])
 
 
 @discover.register(sa.sql.FromClause)
 def discover_sqlalchemy_selectable(t):
-    records = list(sum([discover(c).parameters[0] for c in t.columns], ()))
-    return var * Record(records)
+    records = OrderedDict(sum([discover(c).parameters[0] for c in t.columns],
+                              ()))
+    fkeys = [discover(fkey, t, parent_measure=Record(records.items()))
+             for fkey in t.foreign_keys]
+    records.update(merge(*fkeys))
+    return var * Record(records.items())
 
 
 @memoize
