@@ -284,4 +284,4 @@ epub_copyright = u'2015, Continuum Analytics'
 # Allow duplicate toc entries.
 #epub_tocdup = True
 
-extlinks = dict(issue=('https://github.com/ContinuumIO/odo/issues/%s', '#'))
+extlinks = dict(issue=('https://github.com/blaze/odo/issues/%s', '#'))
