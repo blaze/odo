@@ -70,7 +70,7 @@ Instead of returning the context object, ``odo`` will return the ``SchemaRDD``
 that we just created. This makes it more convenient to do things with the result.
 
 This functionality is nascent, so try it out and don't hesitate to
-`report a bug or request a feature <https://github.com/ContinuumIO/into/issues/new>`_!
+`report a bug or request a feature <https://github.com/blaze/into/issues/new>`_!
 
 
 URIs

@@ -24,13 +24,13 @@ Getting Odo
 
   .. code-block:: sh
 
-     $ pip install git+git://github.com/ContinuumIO/odo
+     $ pip install git+git://github.com/blaze/odo
 
 Source
 ------
-Odo development takes place on GitHub: https://github.com/ContinuumIO/odo.
+Odo development takes place on GitHub: https://github.com/blaze/odo.
 
 Reporting Issues
 ----------------
-* Bugs and feature requests can be filed `here <https://github.com/ContinuumIO/odo/issues>`_.
+* Bugs and feature requests can be filed `here <https://github.com/blaze/odo/issues>`_.
 * The `blaze development mailing list <https://groups.google.com/a/continuum.io/d/forum/blaze-dev>`_ is good place to discuss ideas and ask questions about odo.
