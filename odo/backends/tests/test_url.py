@@ -25,7 +25,7 @@ pytestmark = pytest.mark.skipif(raises(URLError,
                                 reason='unable to connect to google.com')
 
 iris_url = ('https://raw.githubusercontent.com/'
-            'ContinuumIO/blaze/master/blaze/examples/data/iris.csv')
+            'blaze/blaze/master/blaze/examples/data/iris.csv')
 ftp_url = "ftp://athena-dist.mit.edu/pub/XNeXT/README.txt"
 
 
