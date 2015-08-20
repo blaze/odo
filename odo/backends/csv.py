@@ -120,6 +120,10 @@ def append_object_to_csv(c, seq, **kwargs):
 
 compressed_open = {'gz': gzip.open, 'bz2': bz2.BZ2File}
 
+if sys.version_info >= (3,3,0):
+   import lzma
+   compressed_open['xz']=lzma.open
+
 
 @append.register(CSV, pd.DataFrame)
 def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
@@ -138,6 +142,9 @@ def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
         elif sys.version_info[0] == 2:
             kwargs['mode'] = 'ab' if sys.platform == 'win32' else 'at'
         f = compressed_open[ext(c.path)](c.path, **kwargs)
+    elif ext(c.path) in ('xz'): #if we got here, python version is < 3.3 
+       #raise error!
+       raise BaseException("Error! '%s' only supported in python versions >= 3.3" % ext(c.path))
     else:
         f = c.path
 
@@ -273,7 +280,7 @@ def discover_csv(c, nrows=1000, **kwargs):
     return datashape.var * measure
 
 
-@resource.register('.+\.(csv|tsv|ssv|data|dat)(\.gz|\.bz2?)?')
+@resource.register('.+\.(csv|tsv|ssv|data|dat)(\.gz|\.xz|\.bz2?)?')
 def resource_csv(uri, **kwargs):
     return CSV(uri, **kwargs)
 

@@ -44,6 +44,20 @@ So the following lines would be valid inputs to ``odo``
    >>> odo('mongodb://hostname/db::collection', pd.DataFrame) # Dump Mongo to DataFrame
 
 
+Enabling Conversions
+--------------------
+
+Odo is dependent on external libraries for many of its conversions. 
+Since most users will only use a small subset of conversions, Odo does not 
+install most external libraries. 
+
+If you try to use a supported conversion and that conversion is not 
+installed, you may get the following error:
+
+```
+NotImplementedError: Unable to parse uri to data resource...
+```
+
 Network Effects
 ---------------
 
