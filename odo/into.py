@@ -97,7 +97,7 @@ def into_object(target, source, dshape=None, **kwargs):
     """
     if isinstance(source, (str, unicode)):
         source = resource(source, dshape=dshape, **kwargs)
-    if isinstance(target, not_appendable_types):
+    if type(target) in not_appendable_types:
         raise ValueError('target of %s type does not support in-place append' % type(target))
     with ignoring(NotImplementedError):
         if dshape is None:
