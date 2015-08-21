@@ -400,6 +400,8 @@ def select_to_base(sel, dshape=None, **kwargs):
 @append.register(sa.Table, Iterator)
 def append_iterator_to_table(t, rows, dshape=None, **kwargs):
     assert not isinstance(t, type)
+    if not t.exists():
+        raise ValueError('table %r does not exist' % t.name)
     rows = iter(rows)
 
     # We see if the sequence is of tuples or dicts
@@ -579,6 +581,8 @@ ooc_types.add(sa.Table)
 @dispatch(sa.Table)
 def drop(table):
     table.drop(table.bind, checkfirst=True)
+    if table.exists():
+        raise ValueError('table %r dropped but still exists' % table.name)
 
 
 @convert.register(pd.DataFrame, (sa.sql.Select, sa.sql.Selectable), cost=200.0)
