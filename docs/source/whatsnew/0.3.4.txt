@@ -39,3 +39,5 @@ Miscellaneous
   ``__doc__`` attribute to the ``__doc__`` of another function or class. This
   function can be used as a decorator like: ``@copydoc(FromThisClass)`` or as a
   function like: ``copydoc(FromThisClass, to_this_function)``. (:issue:`277`).
+* Fixed a bug where CSV was not forwarding the ``encoding`` keyword causing file
+  reading to fail when encountering non-utf8 encoded characters (:issue:`275`).

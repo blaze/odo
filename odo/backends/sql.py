@@ -122,16 +122,15 @@ def batch(sel, chunksize=10000):
         Number of rows to fetch from the database
     """
     def rowterator(sel, chunksize=chunksize):
-        with sel.bind.connect() as conn:
-            result = conn.execute(sel)
-            yield result.keys()
+        result = sel.execute()
+        yield result.keys()
 
-            for rows in iter_except(curry(result.fetchmany, size=chunksize),
-                                    sa.exc.ResourceClosedError):
-                if rows:
-                    yield rows
-                else:
-                    return
+        for rows in iter_except(curry(result.fetchmany, size=chunksize),
+                                sa.exc.ResourceClosedError):
+            if rows:
+                yield rows
+            else:
+                return
     terator = rowterator(sel)
     return next(terator), concat(terator)
 
@@ -455,10 +454,20 @@ def fullname(table, compiler):
     return fullname
 
 
+_ignore_kwargs = frozenset([
+    'dshape',
+    'expected_dshape',
+    'schema',
+])
+
+
 @resource.register(r'(.*sql.*|oracle|redshift)(\+\w+)?://.+')
 def resource_sql(uri, *args, **kwargs):
-    kwargs2 = keyfilter(keywords(sa.create_engine).__contains__, kwargs)
-    engine = create_engine(uri, **kwargs2)
+    engine = create_engine(
+        uri,
+        **keyfilter(lambda k: k not in _ignore_kwargs, kwargs)
+    )
+    print(uri)
     ds = kwargs.get('dshape')
     schema = kwargs.get('schema')
 

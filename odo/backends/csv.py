@@ -100,8 +100,10 @@ class CSV(object):
                  sniff_nbytes=10000, **kwargs):
         self.path = path
         if has_header is None:
-            self.has_header = (not os.path.exists(path) or
-                               infer_header(path, sniff_nbytes))
+            self.has_header = (
+                not os.path.exists(path) or
+                infer_header(path, sniff_nbytes, encoding)
+            )
         else:
             self.has_header = has_header
         self.encoding = encoding if encoding is not None else 'utf-8'
