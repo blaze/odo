@@ -46,6 +46,6 @@ test:
     - pip install sas7bdat && py.test -vx --pyargs odo -rsxX
 
 about:
-  home: https://github.com/ContinuumIO/odo/
+  home: https://github.com/blaze/odo/
   license: BSD
   summary: Data migration

@@ -40,7 +40,7 @@ install:
 
   # Install various deps
   - pip install sas7bdat
-  - pip install git+git://github.com/ContinuumIO/dask.git --upgrade
+  - pip install git+git://github.com/blaze/dask.git --upgrade
   - pip install dill --upgrade
 
   # install pyspark

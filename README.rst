@@ -42,7 +42,7 @@ Method
 Odo migrates data using network of small data conversion functions between
 type pairs. That network is below:
 
-.. image:: https://raw.githubusercontent.com/ContinuumIO/odo/master/docs/source/images/conversions.png
+.. image:: https://raw.githubusercontent.com/blaze/odo/master/docs/source/images/conversions.png
    :alt: odo conversions
 
 Each node is a container type (like ``pandas.DataFrame`` or
@@ -92,7 +92,7 @@ operate only on the subgraph of the red nodes.
 LICENSE
 -------
 
-New BSD. See `License File <https://github.com/ContinuumIO/odo/blob/master/LICENSE.txt>`__.
+New BSD. See `License File <https://github.com/blaze/odo/blob/master/LICENSE.txt>`__.
 
 History
 -------
@@ -103,8 +103,8 @@ Odo was factored out from the Blaze_ project.
 .. _Blaze: http://blaze.pydata.org/
 .. _networkx: https://networkx.github.io/
 .. _Documentation: https://odo.readthedocs.org/en/latest/
-.. |Build Status| image:: https://travis-ci.org/ContinuumIO/odo.png
-   :target: https://travis-ci.org/ContinuumIO/odo
+.. |Build Status| image:: https://travis-ci.org/blaze/odo.png
+   :target: https://travis-ci.org/blaze/odo
 .. |Doc Status| image:: https://readthedocs.org/projects/odo/badge/?version=latest
    :target: https://readthedocs.org/projects/odo/?badge=latest
    :alt: Documentation Status
