@@ -268,9 +268,9 @@ def dshape_to_table(name, ds, metadata=None):
     if isinstance(ds, str):
         ds = dshape(ds)
     if not isrecord(ds.measure):
-        raise TypeError("dshape must be a record type e.g., "
-                        "{a: int64, b: int64}. Input dshape is %r" %
-                        (ds))
+        raise TypeError('dshape measure must be a record type e.g., '
+                        '"{a: int64, b: int64}". Input measure is %r' %
+                        ds.measure)
     if metadata is None:
         metadata = sa.MetaData()
     cols = dshape_to_alchemy(ds)
