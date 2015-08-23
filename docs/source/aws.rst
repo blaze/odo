@@ -33,12 +33,23 @@ Interface
 URIs
 ----
 
-To access an S3 bucket, simply provide the path to the S3 bucket prefixed with
+To access an S3 key, simply provide the path to the S3 key prefixed with
 ``s3://``
 
     .. code-block:: python
 
        >>> csvfile = resource('s3://bucket/key.csv')
+
+S3 commonly uses a ``prefix`` to limit an operation to a subset of keys.
+We can simulate a glob of keys by combining a ``prefix`` with the ``*`` character:
+
+    .. code-block:: python
+
+       >>> csv_glob = resource('s3://bucket/prefix*.csv')
+
+This will match all keys with starting with ``prefix`` and ending with the ``.csv``
+extension. The result ``csv_glob`` can be used just like a glob of files from your
+local disk.
 
 Accessing a Redshift database is the same as accessing it through SQLAlchemy
 
