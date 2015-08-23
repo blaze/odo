@@ -215,18 +215,18 @@ def _csv_to_dataframe(c, dshape=None, chunksize=None, **kwargs):
         else:
             header = None
 
-    kwargs = keyfilter(keywords(pandas.read_csv).__contains__, kwargs)
-    return pandas.read_csv(c.path,
-                           header=header,
-                           sep=sep,
-                           encoding=encoding,
-                           dtype=dtypes,
-                           parse_dates=parse_dates,
-                           names=names,
-                           compression=compression,
-                           chunksize=chunksize,
-                           usecols=usecols,
-                           **kwargs)
+    kwargs = keyfilter(keywords(pd.read_csv).__contains__, kwargs)
+    return pd.read_csv(c.path,
+                       header=header,
+                       sep=sep,
+                       encoding=encoding,
+                       dtype=dtypes,
+                       parse_dates=parse_dates,
+                       names=names,
+                       compression=compression,
+                       chunksize=chunksize,
+                       usecols=usecols,
+                       **kwargs)
 
 
 @convert.register(chunks(pd.DataFrame), (Temp(CSV), CSV), cost=10.0)
