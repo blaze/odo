@@ -59,7 +59,7 @@ class PipeSniffer(csv.Sniffer):
     '|'
     """
     def __init__(self, *args, **kwargs):
-        super(PipeSniffer, self).__init__(*args, **kwargs)
+        csv.Sniffer.__init__(self, *args, **kwargs)
         self.preferred = [',', '\t', ';', '|', ':', ' ']
 
 
