@@ -119,7 +119,7 @@ def sample_s3_line_delimited(data, length=8192):
 
     raw = raw[:index]
 
-    with tmpfile(ext(re.sub('\.gz$', '', data.path))) as fn:
+    with tmpfile(ext(re.sub(r'\.gz$', '', data.path))) as fn:
         # we use wb because without an encoding boto returns bytes
         with open(fn, 'wb') as f:
             f.write(raw)
