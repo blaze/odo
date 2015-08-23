@@ -562,6 +562,10 @@ class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
         self.escapechar = escapechar
         self.na_value = na_value
 
+    @property
+    def bind(self):
+        return self.element.bind
+
 
 @compiles(CopyToCSV, 'postgresql')
 def compile_copy_to_csv_postgres(element, compiler, **kwargs):
@@ -637,7 +641,6 @@ def append_table_to_csv(csv, selectable, dshape=None, **kwargs):
     stmt = CopyToCSV(selectable, os.path.abspath(csv.path), **kwargs)
     with selectable.bind.begin() as conn:
         conn.execute(stmt)
-    csv.has_header = stmt.header
     return csv
 
 
