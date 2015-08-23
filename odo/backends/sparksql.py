@@ -41,7 +41,7 @@ except ImportError:
                              FloatType, DoubleType, StringType,
                              BinaryType, BooleanType, TimestampType,
                              DateType, ArrayType, StructType,
-                             StructField)
+                             StructField, SchemaRDD as SparkDataFrame)
     SPARK_ONE_TWO = True
 else:
     from pyspark.sql.types import (ByteType, ShortType, IntegerType,
