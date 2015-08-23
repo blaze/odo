@@ -87,7 +87,18 @@ def infer_header(path, nbytes=10000, encoding='utf-8', **kwargs):
         encoding = 'utf-8'
     with open_file(path, 'rb') as f:
         raw = f.read(nbytes)
-    return PipeSniffer().has_header(raw if PY2 else raw.decode(encoding))
+    if not raw:
+        return True
+    sniffer = PipeSniffer()
+    decoded = raw if PY2 else raw.decode(encoding)
+    try:
+        return sniffer.has_header(decoded)
+    except csv.Error:
+        return None
+
+
+def newlines(encoding):
+    return b'\r\n'.decode(encoding), b'\n'.decode(encoding)
 
 
 def sniff_dialect(path, nbytes, encoding='utf-8'):
@@ -96,10 +107,14 @@ def sniff_dialect(path, nbytes, encoding='utf-8'):
     if encoding is None:
         encoding = 'utf-8'
     with open_file(path, 'rb') as f:
-        raw = f.read(nbytes)
-    dialect = PipeSniffer().sniff(raw.decode(encoding))
-    dialect.lineterminator = (b'\r\n'
-                              if b'\r\n' in raw else b'\n').decode(encoding)
+        raw = f.read(nbytes).decode(encoding or 'utf-8')
+    sniffer = PipeSniffer()
+    try:
+        dialect = sniffer.sniff(raw, delimiters=sniffer.preferred)
+    except csv.Error:
+        return {}
+    crnl, nl = newlines(encoding)
+    dialect.lineterminator = crnl if crnl in raw else nl
     return dialect_to_dict(dialect)
 
 
@@ -129,17 +144,53 @@ class CSV(object):
     def __init__(self, path, has_header=None, encoding='utf-8',
                  sniff_nbytes=10000, **kwargs):
         self.path = path
-        if has_header is None:
-            self.has_header = (not os.path.exists(path) or
-                               infer_header(path, sniff_nbytes))
-        else:
-            self.has_header = has_header
-        self.encoding = encoding if encoding is not None else 'utf-8'
-        kwargs = merge(sniff_dialect(path, sniff_nbytes, encoding=encoding),
-                       keymap(alias, kwargs))
-        self.dialect = valfilter(bool,
-                                 dict((d, kwargs[d])
-                                      for d in dialect_terms if d in kwargs))
+        self._has_header = has_header
+        self.encoding = encoding or 'utf-8'
+        self._kwargs = kwargs
+        self._sniff_nbytes = sniff_nbytes
+
+    def _sniff_dialect(self, path):
+        kwargs = self._kwargs
+        dialect = sniff_dialect(path, self._sniff_nbytes,
+                                encoding=self.encoding)
+        kwargs = merge(dialect, keymap(alias, kwargs))
+        return valfilter(lambda x: x is not None,
+                         dict((d, kwargs[d])
+                              for d in dialect_terms if d in kwargs))
+
+    @property
+    def dialect(self):
+        with sample(self) as fn:
+            return self._sniff_dialect(fn)
+
+    @property
+    def has_header(self):
+        if self._has_header is None:
+            with sample(self) as fn:
+                with open(fn, mode='rb') as f:
+                    raw = f.read()
+                self._has_header = not raw or infer_header(fn,
+                                                           self._sniff_nbytes,
+                                                           encoding=self.encoding)
+        return self._has_header
+
+
+@sample.register(CSV)
+@contextmanager
+def sample_csv(csv, length=8192, **kwargs):
+    should_delete = not os.path.exists(csv.path)
+    if should_delete:
+        with open_file(csv.path, mode='wb'):
+            pass
+    try:
+        with open_file(csv.path, mode='rb') as f:
+            with tmpfile(csv.canonical_extension) as fn:
+                with open(fn, mode='w') as tmpf:
+                    tmpf.write(f.read(length).decode(csv.encoding))
+                yield fn
+    finally:
+        if should_delete:
+            os.remove(csv.path)
 
 
 @append.register(CSV, object)
