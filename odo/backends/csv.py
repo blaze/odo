@@ -37,6 +37,34 @@ quoting skipinitialspace strict'''.split()
 aliases = {'sep': 'delimiter'}
 
 
+class PipeSniffer(csv.Sniffer):
+    """A csv sniffer that has no preferred delimiters
+
+    Notes
+    -----
+    The :module:`~csv` module has a list of preferred delimiters that will be
+    returned before the delimiter(s) discovered by parsing the file. This
+    results in a dialect having an incorrect delimiter if the data contain a
+    non preferred delimiter and a preferred one. See the Examples section for
+    an example showing the difference between the two sniffers.
+
+    Examples
+    --------
+    >>> import csv
+    >>> data = 'a|b| c|d'  # space is preferred but '|' is more common
+    >>> csv.Sniffer().sniff(data).delimiter  # incorrect
+    ' '
+    >>> NoDefaultSniffer().sniff(data).delimiter  # correct
+    '|'
+    """
+    def __init__(self, *args, **kwargs):
+        super(PipeSniffer, self).__init__(*args, **kwargs)
+        self.preferred = [',', '\t', ';', '|', ' ', ':']
+
+        # we do this to avoid the default heuristic that the csv modules uses
+        del self.preferred[:]
+
+
 def alias(key):
     """ Alias kwarg dialect keys to normalized set
 
@@ -61,7 +89,7 @@ def infer_header(path, nbytes=10000, encoding='utf-8', **kwargs):
         encoding = 'utf-8'
     with open_file(path, 'rb') as f:
         raw = f.read(nbytes)
-    return csv.Sniffer().has_header(raw if PY2 else raw.decode(encoding))
+    return PipeSniffer().has_header(raw if PY2 else raw.decode(encoding))
 
 
 def sniff_dialect(path, nbytes, encoding='utf-8'):
@@ -71,7 +99,7 @@ def sniff_dialect(path, nbytes, encoding='utf-8'):
         encoding = 'utf-8'
     with open_file(path, 'rb') as f:
         raw = f.read(nbytes)
-    dialect = csv.Sniffer().sniff(raw.decode(encoding))
+    dialect = PipeSniffer().sniff(raw.decode(encoding))
     dialect.lineterminator = (b'\r\n'
                               if b'\r\n' in raw else b'\n').decode(encoding)
     return dialect_to_dict(dialect)
