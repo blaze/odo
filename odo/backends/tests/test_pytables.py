@@ -5,7 +5,7 @@ import datashape as ds
 import pytest
 tb = pytest.importorskip('tables')
 
-from odo import into
+from odo import into, odo
 from odo.utils import tmpfile
 from odo.backends.pytables import PyTables, discover
 import os
@@ -158,3 +158,13 @@ class TestPyTablesLight(object):
     def test_no_extra_files_around(self, dt_tb):
         """ check the context manager auto-closes the resources """
         assert not len(tb.file._open_files)
+
+
+def test_pytables_to_csv():
+    ndim = 2
+    h5file = tb.openFile('test.h5', mode='w', title="Test Array")
+    h5file.createArray('/', "test", np.zeros((ndim, ndim), dtype=float))
+    h5file.close()
+    with tmpfile('csv') as fn:
+        t = odo('pytables://test.h5::/test', fn)
+        assert odo(t, list) == [(0.0, 0.0), (0.0, 0.0)]
