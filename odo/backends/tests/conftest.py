@@ -2,17 +2,19 @@ import os
 import shutil
 import pytest
 
-from odo.backends.sparksql import HiveContext, SQLContext, SPARK_ONE_TWO
-
 
 @pytest.fixture(scope='session')
 def sc():
-    return pytest.importorskip('pyspark').SparkContext('local[*]', 'odo')
+    pytest.importorskip('pyspark')
+    from pyspark import SparkContext
+    return SparkContext('local[*]', 'odo')
 
 
 @pytest.yield_fixture(scope='session')
 def sqlctx(sc):
     pytest.importorskip('pyspark')
+    from odo.backends.sparksql import HiveContext, SQLContext, SPARK_ONE_TWO
+
     try:
         yield HiveContext(sc) if not SPARK_ONE_TWO else SQLContext(sc)
     finally:
