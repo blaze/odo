@@ -36,7 +36,7 @@ class CopyFromCSV(Executable, ClauseElement):
         self.delimiter = delimiter
         self.header = (header if header is not None else
                        (csv.has_header
-                        if csv.has_header is not None else infer_header(csv)))
+                        if csv.has_header is not None else infer_header(csv.path)))
         self.na_value = na_value
         self.lineterminator = lineterminator
         self.quotechar = quotechar
