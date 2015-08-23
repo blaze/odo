@@ -215,10 +215,10 @@ def test_redshift_getting_started(temp_tb):
         likemusicals: ?bool,
     }""")
     csv = S3(CSV)('s3://awssampledb/tickit/allusers_pipe.txt')
-    table = into(temp_tb, csv, dshape=dshape, delimiter='|')
+    table = into(temp_tb, csv, dshape=dshape)
 
     # make sure we have a non empty table
-    assert table.count().execute().scalar() == 49989
+    assert table.count().scalar() == 49990
 
 
 def test_frame_to_s3_to_frame():
