@@ -38,7 +38,8 @@ aliases = {'sep': 'delimiter'}
 
 
 class PipeSniffer(csv.Sniffer):
-    """A csv sniffer that has no preferred delimiters
+    """A csv sniffer that adds the ``'|'`` character to the list of preferred
+    delimiters and gives space the least precedence.
 
     Notes
     -----
@@ -54,15 +55,12 @@ class PipeSniffer(csv.Sniffer):
     >>> data = 'a|b| c|d'  # space is preferred but '|' is more common
     >>> csv.Sniffer().sniff(data).delimiter  # incorrect
     ' '
-    >>> NoDefaultSniffer().sniff(data).delimiter  # correct
+    >>> PipeSniffer().sniff(data).delimiter  # correct
     '|'
     """
     def __init__(self, *args, **kwargs):
         super(PipeSniffer, self).__init__(*args, **kwargs)
-        self.preferred = [',', '\t', ';', '|', ' ', ':']
-
-        # we do this to avoid the default heuristic that the csv modules uses
-        del self.preferred[:]
+        self.preferred = [',', '\t', ';', '|', ':', ' ']
 
 
 def alias(key):
