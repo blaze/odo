@@ -267,6 +267,10 @@ def dshape_to_table(name, ds, metadata=None):
 
     if isinstance(ds, str):
         ds = dshape(ds)
+    if not isrecord(ds.measure):
+        raise TypeError("dshape must be a record type e.g., "
+                        "{a: int64, b: int64}. Input dshape is %r" %
+                        (ds))
     if metadata is None:
         metadata = sa.MetaData()
     cols = dshape_to_alchemy(ds)
@@ -281,7 +285,6 @@ def create_from_datashape(o, ds, **kwargs):
 
 @dispatch(sa.engine.base.Engine, DataShape)
 def create_from_datashape(engine, ds, schema=None, **kwargs):
-    assert isrecord(ds), 'datashape must be Record type, got %s' % ds
     metadata = metadata_of_engine(engine, schema=schema)
     for name, sub_ds in ds[0].dict.items():
         t = dshape_to_table(name, sub_ds, metadata=metadata)
