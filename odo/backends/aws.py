@@ -110,8 +110,7 @@ def sample_s3_line_delimited(data, length=8192):
     if data.object.exists():
         key = data.object
     else:  # we are probably trying to read from a set of files
-        keys = sorted((key for key in data.object.bucket.get_all_keys()
-                       if key.key.startswith(data.object.key)),
+        keys = sorted(data.object.bucket.list(prefix=data.object.key),
                       key=attrgetter('key'))
         if not keys:
             # we didn't find anything with a prefix of data.object.key
