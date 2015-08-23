@@ -2,23 +2,27 @@ from __future__ import absolute_import, division, print_function
 
 import sys
 import re
-from contextlib import contextmanager
-import datashape
-from datashape import discover, Record, Option
-from datashape.predicates import isrecord
-from datashape.dispatch import dispatch
-from toolz import concat, keyfilter, keymap, merge, valfilter
-import pandas
-import pandas as pd
 import os
 import gzip
 import bz2
 import uuid
 import csv
+
 from glob import glob
+from contextlib import contextmanager
+
+from toolz import concat, keyfilter, keymap, merge, valfilter
+
+import pandas as pd
+
+import datashape
+
+from datashape import discover, Record, Option
+from datashape.predicates import isrecord
+from datashape.dispatch import dispatch
 
 from ..compatibility import unicode, PY2
-from ..utils import keywords, ext
+from ..utils import keywords, ext, sample, tmpfile
 from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
