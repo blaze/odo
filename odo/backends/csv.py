@@ -185,8 +185,8 @@ def sample_csv(csv, length=8192, **kwargs):
     try:
         with open_file(csv.path, mode='rb') as f:
             with tmpfile(csv.canonical_extension) as fn:
-                with open(fn, mode='w') as tmpf:
-                    tmpf.write(f.read(length).decode(csv.encoding))
+                with open(fn, mode='wb') as tmpf:
+                    tmpf.write(f.read(length))
                 yield fn
     finally:
         if should_delete:
