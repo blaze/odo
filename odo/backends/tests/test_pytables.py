@@ -5,7 +5,7 @@ import datashape as ds
 import pytest
 tb = pytest.importorskip('tables')
 
-from odo import into
+from odo import into, odo
 from odo.utils import tmpfile
 from odo.backends.pytables import PyTables, discover
 import os
@@ -161,13 +161,10 @@ class TestPyTablesLight(object):
 
 
 def test_pytables_to_csv():
-    import numpy as np
-    import tables as tb
-    from odo import odo
-
     ndim = 2
     h5file = tb.openFile('test.h5', mode='w', title="Test Array")
     h5file.createArray('/', "test", np.zeros((ndim, ndim), dtype=float))
     h5file.close()
-    t = odo('pytables://test.h5::/test', 'foo.csv')
-    assert odo(t, list) == [(0.0, 0.0), (0.0, 0.0)]
+    with tmpfile('csv') as fn:
+        t = odo('pytables://test.h5::/test', fn)
+        assert odo(t, list) == [(0.0, 0.0), (0.0, 0.0)]
