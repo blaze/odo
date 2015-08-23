@@ -30,6 +30,8 @@ Bug Fixes
   a numpy array to a DataFrame (:issue:`273`).
 * Fix appending into a sql table from chunks not returning the table.
   (:issue:`278`).
+* Fix a bug where ``'pytables://'`` wasn't being properly stripped off the URI
+  (:issue:`292`)
 
 Miscellaneous
 -------------

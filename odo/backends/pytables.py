@@ -148,7 +148,7 @@ def PyTables(path, datapath, dshape=None, **kwargs):
 
 @resource.register('pytables://.+', priority=11)
 def resource_pytables(path, datapath, **kwargs):
-    return PyTables(path, datapath, **kwargs)
+    return PyTables(path[len('pytables://'):], datapath, **kwargs)
 
 
 @dispatch((tables.Table, tables.Array))
