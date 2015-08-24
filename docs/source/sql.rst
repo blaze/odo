@@ -75,9 +75,10 @@ Many errors look like this::
 
 If you're reading in CSV data from S3, check to make sure that
 
-   1. The delimiter is correct (we can't correctly infer everything)
-   2. If the data are compressed (e.g., as gzip files) that you passed in
-      the ``compression='gzip'`` keyword argument.
+   1. The delimiter is correct. We can't correctly infer everything, so you may
+      have to pass that value in as e.g., ``delimiter='|'``.
+   2. You passed in the ``compression='gzip'`` keyword argument if your data
+      are compressed as gzip files.
 
 If you're still getting an error and you're sure both of the above are
 correct, please report a bug on
