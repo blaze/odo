@@ -16,7 +16,7 @@ import itertools
 import json
 from contextlib import contextmanager, closing
 
-from odo import into, resource, S3, discover, CSV, drop, append
+from odo import into, resource, S3, discover, CSV, drop, append, odo
 from odo.backends.aws import get_s3_connection
 from odo.utils import tmpfile
 from odo.compatibility import urlopen
@@ -219,6 +219,36 @@ def test_redshift_getting_started(temp_tb):
 
     # make sure we have a non empty table
     assert table.count().scalar() == 49990
+
+
+def test_redshift_dwdate(temp_tb):
+    dshape = datashape.dshape("""var * {
+          key: int64,
+          date: string[19],
+          day_of_week: string[10],
+          month: string[10],
+          year: int64,
+          year_month_num: int64,
+          year_month: string[8],
+          day_num_in_week: int64,
+          day_num_in_month: int64,
+          day_num_in_year: int64,
+          month_num_in_year: int64,
+          week_num_in_year: int64,
+          selling_season: string[13],
+          last_day_in_week_fl: string[1],
+          last_day_in_month_fl: string[1],
+          holiday_fl: string[1],
+          weekday_fl: string[1]
+    }""")
+    # we have to pass the separator here because the date column has a comma
+    # TODO: see if we can provide a better error message by querying
+    # stl_load_errors
+    assert odo(S3(CSV)('s3://awssampledb/ssbgz/dwdate'),
+               temp_tb,
+               delimiter='|',
+               compression='gzip',
+               dshape=dshape).count().scalar() == 2556
 
 
 def test_frame_to_s3_to_frame():
