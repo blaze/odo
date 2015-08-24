@@ -57,6 +57,9 @@ class PipeSniffer(csv.Sniffer):
     ' '
     >>> PipeSniffer().sniff(data).delimiter  # correct
     '|'
+    >>> data = 'a|b|Nov 10, 1981|d'
+    >>> csv.Sniffer().sniff(data).delimiter  # can't handle every case :(
+    ','
     """
     def __init__(self, *args, **kwargs):
         csv.Sniffer.__init__(self, *args, **kwargs)
