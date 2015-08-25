@@ -50,7 +50,7 @@ install:
   - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda install unittest2 && pip install psycopg2 pymysql; fi
 
   # redshift sqlalchemy dialect
-  - pip install --upgrade git+git://github.com/cpcloud/redshift_sqlalchemy
+  - pip install --upgrade git+git://github.com/graingert/redshift_sqlalchemy
 
 # Before_script section stolen from fabric
 # See license https://github.com/fabric/fabric/blob/master/LICENSE

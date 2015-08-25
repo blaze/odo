@@ -147,7 +147,6 @@ try:
     import boto
     from odo.backends.aws import S3
     from redshift_sqlalchemy.dialect import CopyCommand
-    import sqlalchemy as sa
 except ImportError:
     pass
 else:
@@ -161,24 +160,18 @@ else:
         aws_access_key_id = cfg.get('Credentials', 'aws_access_key_id')
         aws_secret_access_key = cfg.get('Credentials', 'aws_secret_access_key')
 
-        options = dict(delimiter=element.delimiter,
-                       ignore_header=int(element.header),
-                       empty_as_null=True,
-                       blanks_as_null=False,
-                       compression=getattr(element, 'compression', ''))
-
-        if getattr(element, 'schema_name', None) is None:
-            # 'public' by default, this is a postgres convention
-            schema_name = (element.element.schema or
-                           sa.inspect(element.bind).default_schema_name)
-        cmd = CopyCommand(schema_name=schema_name,
-                          table_name=element.element.name,
+        compression = getattr(element, 'compression', '').upper() or None
+        cmd = CopyCommand(table=element.element,
                           data_location=element.csv.path,
-                          access_key=aws_access_key_id,
-                          secret_key=aws_secret_access_key,
-                          options=options,
-                          format='CSV')
-        return re.sub(r'\s+(;)', r'\1', re.sub(r'\s+', ' ', str(cmd))).strip()
+                          access_key_id=aws_access_key_id,
+                          secret_access_key=aws_secret_access_key,
+                          format='CSV',
+                          delimiter=element.delimiter,
+                          ignore_header=int(element.header),
+                          empty_as_null=True,
+                          blanks_as_null=False,
+                          compression=compression)
+        return compiler.process(cmd)
 
 
 @append.register(sa.Table, CSV)
