@@ -23,6 +23,8 @@ def unit_to_dtype(ds):
     if isinstance(ds, DataShape):
         ds = ds.measure
     if isinstance(ds, Option) and isscalar(ds) and isnumeric(ds):
+        if isinstance(ds.ty, Decimal):
+            return unit_to_dtype(str(ds.ty.to_numpy_dtype()).replace('int', 'float'))
         return unit_to_dtype(str(ds).replace('int', 'float').replace('?', ''))
     if isinstance(ds, Option) and isinstance(ds.ty, (type(date_),
             type(datetime_), type(string), type(timedelta_))):
