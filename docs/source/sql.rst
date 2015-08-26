@@ -5,6 +5,32 @@ Odo interacts with SQL databases through SQLAlchemy.  As a result, ``odo``
 supports all databases that SQLAlchemy supports.  Through third-party
 extensions, SQLAlchemy supports *most* databases.
 
+.. warning::
+
+   When putting an array like object such as a NumPy array or PyTables array
+   into a database you *must* provide the column names in the form of a Record
+   datashape. Without column names, it doesn't make sense to put an array into
+   a database table, since a database table doesn't make sense without named
+   columns. Remember, **there's no notion of dimensions indexed by integers**
+   like there is with arrays, so the inability to put an array with unnamed
+   columns into a database is intentional.
+
+   Here's a failing example:
+
+   .. code-block:: python
+
+      >>> import numpy as np
+      >>> from odo import odo
+      >>> x = np.zeros((10, 2))
+      >>> t = odo(x, 'sqlite:///db.db::x')  # this will NOT work
+
+   Here's what to do instead:
+
+   .. code-block:: python
+
+      >>> t = odo(x, 'sqlite:///db.db::x',  # works because columns are named
+      >>> ...     dshape='var * {a: float64, b: float64}')
+
 URIs
 ----
 
