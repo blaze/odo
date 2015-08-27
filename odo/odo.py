@@ -1,7 +1,10 @@
+import datashape
+
 from .into import into
+from .compatibility import unicode
 
 
-def odo(source, target, **kwargs):
+def odo(source, target, dshape=None, **kwargs):
     """ Push one dataset into another
 
     Parameters
@@ -87,4 +90,6 @@ def odo(source, target, **kwargs):
     odo.convert.convert    - Convert things into new things
     odo.append.append      - Add things onto existing things
     """
-    return into(target, source, **kwargs)
+    if dshape is not None and isinstance(dshape, (str, unicode)):
+        dshape = datashape.dshape(dshape)
+    return into(target, source, dshape=dshape, **kwargs)
