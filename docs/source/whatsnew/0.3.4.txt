@@ -7,6 +7,8 @@ Release |version|
 New Features
 ------------
 
+* Added support for Spark 1.4 on Python 2.7 and Python 3.4 (:issue:`294`)
+
 New Backends
 ------------
 

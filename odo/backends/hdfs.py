@@ -17,7 +17,6 @@ from datashape import coretypes as ct
 from collections import namedtuple, Iterator
 from contextlib import contextmanager
 from .ssh import SSH
-from .spark import SparkDataFrame, SchemaRDD
 from .sql import metadata_of_engine, sa
 from ..utils import tmpfile, sample, ignoring, raises
 from ..temp import Temp
@@ -537,8 +536,6 @@ def resource_hdfs(uri, **kwargs):
 
 
 @append.register(HDFS(TextFile), (Iterator, object))
-@append.register(HDFS(JSONLines), (Iterator, object, SparkDataFrame,
-                                   SchemaRDD))
 @append.register(HDFS(JSON), (list, object))
 @append.register(HDFS(CSV), (chunks(pd.DataFrame), pd.DataFrame, object))
 def append_object_to_hdfs(target, source, **kwargs):

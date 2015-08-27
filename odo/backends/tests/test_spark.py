@@ -7,7 +7,7 @@ pytest.importorskip('pyspark')
 import pytest
 from datashape import dshape
 from odo import odo, discover
-from odo.backends.spark import SparkDataFrame
+from odo.backends.sparksql import SparkDataFrame
 from pyspark import RDD
 from pyspark.rdd import PipelinedRDD
 from pyspark.sql import Row, SchemaRDD
