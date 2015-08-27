@@ -84,5 +84,6 @@ def dshape_to_pandas(ds):
     datetimes = [name for name, typ in ds.measure.dict.items()
                  if 'date' in str(typ)]
 
-    return dict((name, dtype if dtype.type != np.unicode_ else object)
+    return dict((name,
+                (dtype if dtype.type != np.unicode_ else np.dtype('object')))
                 for name, dtype in dtypes.items()), datetimes
