@@ -191,6 +191,22 @@ def test_csv_to_bcolz():
             into(tgt, src)
 
 
+@pytest.mark.parametrize('encoding', ['A', 'U8'])
+def test_csv_to_bcolz_fixed_length_string(encoding):
+    dshape = """var * {
+        name: string[3, '%(encoding)s'],
+        runway: int64,
+        takeoff: bool,
+        datetime_nearest_close: string[1, '%(encoding)s']
+    }""" % dict(encoding=encoding)
+    with filetext('name,runway,takeoff,datetime_nearest_close\n'
+                  'S28,28,TRUE,A\n'
+                  'S16,16,TRUE,Q\n'
+                  'L14,14,FALSE,I', extension='csv') as src:
+        with tmpfile('bcolz') as tgt:
+            odo(src, tgt, dshape=dshape)
+
+
 @pytest.mark.xfail(raises=TypeError,
                    reason='object dtypes are not well supported by bcolz')
 def test_single_object_array_to_carray():
