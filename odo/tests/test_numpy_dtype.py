@@ -20,3 +20,15 @@ def test_parameterized_option_instances():
     dshape4 = datashape.dshape('option[timedelta[unit="D"]]')
     nptype4 = unit_to_dtype(dshape4)
     assert isinstance(nptype4, np.dtype)
+
+    dshape5 = datashape.dshape('decimal[9,2]')
+    nptype5 = unit_to_dtype(dshape5)
+    assert nptype5 == np.float64
+
+    dshape6 = datashape.dshape('decimal[9]')
+    nptype6 = unit_to_dtype(dshape6)
+    assert nptype6 == np.int32
+
+    dshape7 = datashape.dshape('?decimal[9]')
+    nptype7 = unit_to_dtype(dshape7)
+    assert nptype7 == np.float32
