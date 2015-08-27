@@ -162,9 +162,10 @@ class TestPyTablesLight(object):
 
 def test_pytables_to_csv():
     ndim = 2
-    h5file = tb.openFile('test.h5', mode='w', title="Test Array")
-    h5file.createArray('/', "test", np.zeros((ndim, ndim), dtype=float))
-    h5file.close()
-    with tmpfile('csv') as fn:
-        t = odo('pytables://test.h5::/test', fn)
-        assert odo(t, list) == [(0.0, 0.0), (0.0, 0.0)]
+    with tmpfile('.h5') as fn:
+        h5file = tb.openFile(fn, mode='w', title="Test Array")
+        h5file.createArray('/', "test", np.zeros((ndim, ndim), dtype=float))
+        h5file.close()
+        with tmpfile('csv') as csv:
+            t = odo('pytables://%s::/test' % fn, csv)
+            assert odo(t, list) == [(0.0, 0.0), (0.0, 0.0)]

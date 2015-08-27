@@ -57,9 +57,32 @@ to consume iterators of Python dictionaries.  This method is robust but slow.::
     sqlalchemy.Table <-> Iterator
     sqlalchemy.Select <-> Iterator
 
-For a growing subset of databases (``sqlite, MySQL, PostgreSQL, Hive,
-RedShift``) we also use the CSV or JSON tools that come with those databases.
+For a growing subset of databases (sqlite, MySQL, PostgreSQL, Hive,
+Redshift) we also use the CSV or JSON tools that come with those databases.
 These are often an order of magnitude faster than the ``Python->SQLAlchemy``
 route when they are available.::
 
     sqlalchemy.Table <- CSV
+
+
+Amazon Redshift
+---------------
+
+When using Amazon Redshift the error reporting leaves much to be desired.
+Many errors look like this::
+
+    InternalError: (psycopg2.InternalError) Load into table 'tmp0' failed.  Check 'stl_load_errors' system table for details.
+
+If you're reading in CSV data from S3, check to make sure that
+
+   1. The delimiter is correct. We can't correctly infer everything, so you may
+      have to pass that value in as e.g., ``delimiter='|'``.
+   2. You passed in the ``compression='gzip'`` keyword argument if your data
+      are compressed as gzip files.
+
+If you're still getting an error and you're sure both of the above are
+correct, please report a bug on
+`the odo issue tracker <https://github.com/blaze/odo/issues>`_
+
+We have an open issue (:issue:`298`) to discuss how to better handle the
+problem of error reporting when using Redshift.

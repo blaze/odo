@@ -1,16 +1,24 @@
 from __future__ import absolute_import, division, print_function
 
-from datashape import dshape, Record
-from toolz import pluck, get, curry, keyfilter
-from contextlib import contextmanager
-from multiprocessing.pool import ThreadPool
 import inspect
 import datetime
 import tempfile
 import os
 import shutil
 import numpy as np
+
+from contextlib import contextmanager
+from multiprocessing.pool import ThreadPool
+
+from multipledispatch import Dispatcher
+
+from datashape import dshape, Record
+
+from toolz import pluck, get, curry, keyfilter
+
 from .compatibility import unicode
+
+sample = Dispatcher('sample')
 
 
 def iter_except(func, exception, first=None):
@@ -263,10 +271,6 @@ def into_path(*path):
     """
     import odo
     return os.path.join(os.path.dirname(odo.__file__), *path)
-
-
-from multipledispatch import Dispatcher
-sample = Dispatcher('sample')
 
 
 @curry
