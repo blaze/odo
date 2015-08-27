@@ -1,15 +1,18 @@
 from __future__ import absolute_import, division, print_function
 
 from toolz import merge
+
 from multipledispatch import Dispatcher
+
+from datashape import discover
+from datashape.dispatch import namespace
+from datashape.predicates import isdimension
+
+from .compatibility import unicode
 from .convert import convert
 from .append import append
 from .resource import resource
 from .utils import ignoring
-from datashape import discover
-from datashape.dispatch import namespace
-from datashape.predicates import isdimension
-from .compatibility import unicode
 
 
 if 'into' not in namespace:
