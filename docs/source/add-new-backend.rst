@@ -199,7 +199,7 @@ finding, ``append`` and ``discover`` are managed by multipledispatch_, and
 Examples are useful.  You may want to look at some of the ``odo`` source for
 simple backends for help
 
-    https://github.com/ContinuumIO/odo/tree/master/odo/backends
+    https://github.com/blaze/odo/tree/master/odo/backends
 
 .. _DataShape : datashape.html
 .. _multipledispatch: http://github.com/mrocklin/multipledispatch

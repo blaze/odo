@@ -28,7 +28,7 @@ from multipledispatch import MDNotImplementedError
 from .text import TextFile
 
 from ..compatibility import urlparse
-from ..utils import tmpfile, ext, sample
+from ..utils import tmpfile, ext, sample, copydoc
 
 
 class _URL(object):
@@ -70,11 +70,10 @@ class _URL(object):
         self.filename = os.path.basename(urlparse(url).path)
 
 
+@memoize
+@copydoc(_URL)
 def URL(cls):
     return type('URL(%s)' % cls.__name__, (_URL, cls), {'subtype': cls})
-
-URL.__doc__ = _URL.__doc__
-URL = memoize(URL)
 
 
 @sample.register((URL(CSV), URL(JSONLines)))

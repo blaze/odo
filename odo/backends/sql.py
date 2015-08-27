@@ -267,6 +267,10 @@ def dshape_to_table(name, ds, metadata=None):
 
     if isinstance(ds, str):
         ds = dshape(ds)
+    if not isrecord(ds.measure):
+        raise TypeError('dshape measure must be a record type e.g., '
+                        '"{a: int64, b: int64}". Input measure is %r' %
+                        ds.measure)
     if metadata is None:
         metadata = sa.MetaData()
     cols = dshape_to_alchemy(ds)
@@ -281,7 +285,6 @@ def create_from_datashape(o, ds, **kwargs):
 
 @dispatch(sa.engine.base.Engine, DataShape)
 def create_from_datashape(engine, ds, schema=None, **kwargs):
-    assert isrecord(ds), 'datashape must be Record type, got %s' % ds
     metadata = metadata_of_engine(engine, schema=schema)
     for name, sub_ds in ds[0].dict.items():
         t = dshape_to_table(name, sub_ds, metadata=metadata)
@@ -394,6 +397,7 @@ def append_iterator_to_table(t, rows, dshape=None, **kwargs):
 def append_anything_to_sql_Table(t, c, **kwargs):
     for item in c:
         append(t, item, **kwargs)
+    return t
 
 
 @append.register(sa.Table, object)
@@ -561,6 +565,10 @@ class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
         self.escapechar = escapechar
         self.na_value = na_value
 
+    @property
+    def bind(self):
+        return self.element.bind
+
 
 @compiles(CopyToCSV, 'postgresql')
 def compile_copy_to_csv_postgres(element, compiler, **kwargs):
@@ -636,7 +644,6 @@ def append_table_to_csv(csv, selectable, dshape=None, **kwargs):
     stmt = CopyToCSV(selectable, os.path.abspath(csv.path), **kwargs)
     with selectable.bind.begin() as conn:
         conn.execute(stmt)
-    csv.has_header = stmt.header
     return csv
 
 

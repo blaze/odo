@@ -12,7 +12,7 @@ import datashape
 from odo.backends.sql import (dshape_to_table, create_from_datashape,
                               dshape_to_alchemy)
 from odo.utils import tmpfile, raises
-from odo import convert, append, resource, discover, into, odo
+from odo import convert, append, resource, discover, into, odo, chunks
 
 
 def test_resource():
@@ -408,3 +408,29 @@ def test_empty_select_to_empty_frame():
         df = odo(sel, pd.DataFrame)
     assert df.empty
     assert df.columns.tolist() == ['x', 'y']
+
+
+def test_append_chunks():
+    tbl = resource('sqlite:///:memory:::test', dshape='var * {a: int, b: int}')
+    res = odo(
+        chunks(np.ndarray)((
+            np.array([[0, 1], [2, 3]]),
+            np.array([[4, 5], [6, 7]]),
+        )),
+        tbl,
+    )
+    assert res is tbl
+    assert (
+        odo(tbl, np.ndarray) == np.array(
+            [(0, 1),
+             (2, 3),
+             (4, 5),
+             (6, 7)],
+            dtype=[('a', '<i4'), ('b', '<i4')],
+        )
+    ).all()
+
+
+def test_append_array_without_column_names():
+    with pytest.raises(TypeError):
+        odo(np.zeros((2, 2)), 'sqlite:///:memory:::test')

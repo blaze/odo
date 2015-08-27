@@ -5,6 +5,32 @@ Odo interacts with SQL databases through SQLAlchemy.  As a result, ``odo``
 supports all databases that SQLAlchemy supports.  Through third-party
 extensions, SQLAlchemy supports *most* databases.
 
+.. warning::
+
+   When putting an array like object such as a NumPy array or PyTables array
+   into a database you *must* provide the column names in the form of a Record
+   datashape. Without column names, it doesn't make sense to put an array into
+   a database table, since a database table doesn't make sense without named
+   columns. Remember, **there's no notion of dimensions indexed by integers**
+   like there is with arrays, so the inability to put an array with unnamed
+   columns into a database is intentional.
+
+   Here's a failing example:
+
+   .. code-block:: python
+
+      >>> import numpy as np
+      >>> from odo import odo
+      >>> x = np.zeros((10, 2))
+      >>> t = odo(x, 'sqlite:///db.db::x')  # this will NOT work
+
+   Here's what to do instead:
+
+   .. code-block:: python
+
+      >>> t = odo(x, 'sqlite:///db.db::x',  # works because columns are named
+      >>> ...     dshape='var * {a: float64, b: float64}')
+
 URIs
 ----
 
@@ -31,9 +57,32 @@ to consume iterators of Python dictionaries.  This method is robust but slow.::
     sqlalchemy.Table <-> Iterator
     sqlalchemy.Select <-> Iterator
 
-For a growing subset of databases (``sqlite, MySQL, PostgreSQL, Hive,
-RedShift``) we also use the CSV or JSON tools that come with those databases.
+For a growing subset of databases (sqlite, MySQL, PostgreSQL, Hive,
+Redshift) we also use the CSV or JSON tools that come with those databases.
 These are often an order of magnitude faster than the ``Python->SQLAlchemy``
 route when they are available.::
 
     sqlalchemy.Table <- CSV
+
+
+Amazon Redshift
+---------------
+
+When using Amazon Redshift the error reporting leaves much to be desired.
+Many errors look like this::
+
+    InternalError: (psycopg2.InternalError) Load into table 'tmp0' failed.  Check 'stl_load_errors' system table for details.
+
+If you're reading in CSV data from S3, check to make sure that
+
+   1. The delimiter is correct. We can't correctly infer everything, so you may
+      have to pass that value in as e.g., ``delimiter='|'``.
+   2. You passed in the ``compression='gzip'`` keyword argument if your data
+      are compressed as gzip files.
+
+If you're still getting an error and you're sure both of the above are
+correct, please report a bug on
+`the odo issue tracker <https://github.com/blaze/odo/issues>`_
+
+We have an open issue (:issue:`298`) to discuss how to better handle the
+problem of error reporting when using Redshift.

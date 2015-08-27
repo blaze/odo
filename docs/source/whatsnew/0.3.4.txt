@@ -1,0 +1,50 @@
+Release |version|
+-----------------
+
+:Release: |version|
+:Date: TBD
+
+New Features
+------------
+
+New Backends
+------------
+
+None
+
+Improved Backends
+-----------------
+
+* Dialect discovery on CSV files now samples a subset of the file. This allows
+  S3(CSV) to have correct values for its dialect (:issue:`293`).
+* Loading a set of files on a s3 bucket with a prefix into a redshift database
+  now works (:issue:`293`).
+
+None
+
+API Changes
+-----------
+
+None
+
+Bug Fixes
+---------
+
+* Cope with Dask and bcolz API changes (:issue:`270`).
+* Fixed a bug where columns in dshape were being ignored when converting
+  a numpy array to a DataFrame (:issue:`273`).
+* Fix appending into a sql table from chunks not returning the table.
+  (:issue:`278`).
+* Fix a bug where ``'pytables://'`` wasn't being properly stripped off the URI
+  (:issue:`292`)
+* Fix a bug where a non-existent header row was being removed from an S3(CSV)
+  because the dialect was set incorrectly (:issue:`293`).
+
+Miscellaneous
+-------------
+
+* Adds :func:`~odo.utils.copydoc` function to copy docstrings from one object
+  onto another. This helps with the pattern of explicitly setting the
+  ``__doc__`` attribute to the ``__doc__`` of another function or class. This
+  function can be used as a decorator like: ``@copydoc(FromThisClass)`` or as a
+  function like: ``copydoc(FromThisClass, to_this_function)``. (:issue:`277`).
