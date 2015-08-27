@@ -30,7 +30,9 @@ def discover_bcolz(c, **kwargs):
 
 @append.register(ctable, np.ndarray)
 def numpy_append_to_bcolz(a, b, **kwargs):
-    dtype = b.dtype
+    if getattr(b.dtype, 'names', None) is None:
+        raise TypeError('NumPy array must have a record dtype. Array has dtype'
+                        ' %s' % b.dtype)
     a.append(b)
     a.flush()
     return a
@@ -38,6 +40,9 @@ def numpy_append_to_bcolz(a, b, **kwargs):
 
 @append.register(carray, np.ndarray)
 def numpy_append_to_bcolz(a, b, **kwargs):
+    if getattr(b.dtype, 'names', None) is not None:
+        raise TypeError('NumPy array must have a scalar dtype. Array has dtype'
+                        ' %s' % b.dtype)
     a.append(b)
     a.flush()
     return a
