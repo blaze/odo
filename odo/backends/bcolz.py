@@ -115,9 +115,8 @@ def resource_bcolz(uri, dshape=None, expected_dshape=None, **kwargs):
                                 "pass var * {a: int32, b: string[10, 'A']}" %
                                 [name for (name, _), keep in
                                  zip(dtype_pairs, is_object) if keep])
-        else:
-            if dt.type == np.object_:
-                raise TypeError("object dtypes are not supported by bcolz")
+        elif dt.type == np.object_:
+            raise TypeError("object dtypes are not supported by bcolz")
         shape_tail = tuple(map(int, dshape.shape[1:]))  # tail of shape
         if dshape.shape[0] == datashape.var:
             shape = (0,) + shape_tail
