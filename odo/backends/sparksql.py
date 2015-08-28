@@ -31,8 +31,8 @@ from ..temp import Temp
 from ..chunks import chunks
 
 from .json import JSONLines, JSON
-from .hdfs import HDFS
 from .csv import CSV
+
 
 try:
     from pyspark.sql import DataFrame as SparkDataFrame
@@ -196,13 +196,18 @@ def rdd_to_spark_df_or_srdd(rdd, **kwargs):
     return append(HiveContext(rdd.context), rdd, **kwargs)
 
 
-@append.register(HDFS(JSONLines),
-                 (Iterator, object, SparkDataFrame, SchemaRDD))
-@append.register(HDFS(JSON), (list, object))
-@append.register(HDFS(CSV), (chunks(pd.DataFrame), pd.DataFrame, object))
-def append_spark_to_hdfs(target, source, **kwargs):
-    tmp = convert(Temp(target.subtype), source, **kwargs)
-    return append(target, tmp, **kwargs)
+try:
+    from .hdfs import HDFS
+except ImportError:
+    pass
+else:
+    @append.register(HDFS(JSONLines),
+                     (Iterator, object, SparkDataFrame, SchemaRDD))
+    @append.register(HDFS(JSON), (list, object))
+    @append.register(HDFS(CSV), (chunks(pd.DataFrame), pd.DataFrame, object))
+    def append_spark_to_hdfs(target, source, **kwargs):
+        tmp = convert(Temp(target.subtype), source, **kwargs)
+        return append(target, tmp, **kwargs)
 
 
 def dshape_to_schema(ds):
