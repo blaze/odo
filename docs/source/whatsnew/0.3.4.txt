@@ -40,7 +40,8 @@ Bug Fixes
 * Fix a bug where ``'pytables://'`` wasn't being properly stripped off the URI
   (:issue:`292`)
 * Fix a bug where a non-existent header row was being removed from an S3(CSV)
-  because the dialect was set incorrectly (:issue:`293`).
+  because the dialect was set incorrectly (:issue:`293`)
+* Fix a bug where the SparkSQL backend wouldn't work if we didn't have paramiko installed (:issue:`300`)
 
 Miscellaneous
 -------------
