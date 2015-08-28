@@ -27,6 +27,9 @@ None
 API Changes
 -----------
 
+* :func:`~odo.resource.resource` on SQLAlchemy URIs now returns a
+  ``MetaData`` object instead of an ``Engine`` (:issue:`301`)
+
 None
 
 Bug Fixes
