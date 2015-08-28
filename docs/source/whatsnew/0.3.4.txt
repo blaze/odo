@@ -22,8 +22,6 @@ Improved Backends
 * Loading a set of files on a s3 bucket with a prefix into a redshift database
   now works (:issue:`293`).
 
-None
-
 API Changes
 -----------
 
