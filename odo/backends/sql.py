@@ -327,9 +327,10 @@ def dshape_to_alchemy(dshape):
         fixlen = dshape[0].fixlen
         if fixlen is None:
             return sa.types.Text
-        string_types = dict(U=sa.types.Unicode, A=sa.types.String)
-        assert dshape.encoding is not None
-        return string_types[dshape.encoding[0]](length=fixlen)
+        string_types = dict(ascii=sa.types.String)
+        assert dshape.encoding
+        string_t = string_types.get(dshape.encoding, sa.types.Unicode)
+        return string_t(length=fixlen)
     if isinstance(dshape, datashape.DateTime):
         if dshape.tz:
             return sa.types.DateTime(timezone=True)
