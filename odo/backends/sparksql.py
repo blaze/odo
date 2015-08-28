@@ -1,5 +1,4 @@
 from __future__ import division, print_function, absolute_import
-import ipdb; ipdb.set_trace()
 
 import os
 import glob
