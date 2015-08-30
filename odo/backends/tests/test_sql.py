@@ -545,3 +545,8 @@ def test_append_chunks():
             dtype=[('a', '<i4'), ('b', '<i4')],
         )
     ).all()
+
+
+def test_append_array_without_column_names():
+    with pytest.raises(TypeError):
+        odo(np.zeros((2, 2)), 'sqlite:///:memory:::test')

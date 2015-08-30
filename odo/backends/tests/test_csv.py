@@ -326,9 +326,9 @@ def test_more_unicode_column_names():
 
 def test_infer_header():
     with filetext('name,val\nAlice,100\nNA,200', extension='csv') as fn:
-        assert infer_header(CSV(fn).path) == True
+        assert infer_header(CSV(fn).path, 100) == True
     with filetext('Alice,100\nNA,200', extension='csv') as fn:
-        assert infer_header(CSV(fn).path) == False
+        assert infer_header(CSV(fn).path, 100) == False
 
 
 def test_csv_supports_sep():

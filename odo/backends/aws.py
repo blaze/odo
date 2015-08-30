@@ -7,9 +7,10 @@ import re
 
 from contextlib import contextmanager
 from collections import Iterator
+from operator import attrgetter
 
 import pandas as pd
-from toolz import memoize
+from toolz import memoize, first
 
 from .. import (discover, CSV, resource, append, convert, drop, Temp, JSON,
                 JSONLines, chunks)
@@ -101,15 +102,27 @@ def sample_s3_line_delimited(data, length=8192):
     Parameters
     ----------
     data : S3(CSV)
-        A CSV file living in  an S3 bucket
+        A CSV file living in an S3 bucket
     length : int, optional, default ``8192``
         Number of bytes of the file to read
     """
     headers = {'Range': 'bytes=0-%d' % length}
-    raw = data.object.get_contents_as_string(headers=headers)
+    if data.object.exists():
+        key = data.object
+    else:  # we are probably trying to read from a set of files
+        keys = sorted(data.object.bucket.list(prefix=data.object.key),
+                      key=attrgetter('key'))
+        if not keys:
+            # we didn't find anything with a prefix of data.object.key
+            raise ValueError('Object %r does not exist and no keys with a '
+                             'prefix of %r exist' %
+                             (data.object, data.object.key))
+        key = first(keys)
+    raw = key.get_contents_as_string(headers=headers)
 
-    if ext(data.path) == 'gz':
-        raw = zlib.decompress(raw, 32 + zlib.MAX_WBITS)
+    if ext(key.key) == 'gz':
+        # decompressobj allows decompression of partial streams
+        raw = zlib.decompressobj(32 + zlib.MAX_WBITS).decompress(raw)
 
     # this is generally cheap as we usually have a tiny amount of data
     try:
@@ -119,7 +132,7 @@ def sample_s3_line_delimited(data, length=8192):
 
     raw = raw[:index]
 
-    with tmpfile(ext(re.sub('\.gz$', '', data.path))) as fn:
+    with tmpfile(ext(re.sub(r'\.gz$', '', data.path))) as fn:
         # we use wb because without an encoding boto returns bytes
         with open(fn, 'wb') as f:
             f.write(raw)

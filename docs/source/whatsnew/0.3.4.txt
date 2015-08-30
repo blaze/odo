@@ -7,6 +7,8 @@ Release |version|
 New Features
 ------------
 
+* Added support for Spark 1.4 on Python 2.7 and Python 3.4 (:issue:`294`)
+
 New Backends
 ------------
 
@@ -15,7 +17,10 @@ None
 Improved Backends
 -----------------
 
-None
+* Dialect discovery on CSV files now samples a subset of the file. This allows
+  S3(CSV) to have correct values for its dialect (:issue:`293`).
+* Loading a set of files on a s3 bucket with a prefix into a redshift database
+  now works (:issue:`293`).
 
 API Changes
 -----------
@@ -30,6 +35,11 @@ Bug Fixes
   a numpy array to a DataFrame (:issue:`273`).
 * Fix appending into a sql table from chunks not returning the table.
   (:issue:`278`).
+* Fix a bug where ``'pytables://'`` wasn't being properly stripped off the URI
+  (:issue:`292`)
+* Fix a bug where a non-existent header row was being removed from an S3(CSV)
+  because the dialect was set incorrectly (:issue:`293`)
+* Fix a bug where the SparkSQL backend wouldn't work if we didn't have paramiko installed (:issue:`300`)
 
 Miscellaneous
 -------------

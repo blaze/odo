@@ -142,7 +142,7 @@ def test_append_spark_df_to_json_lines(ctx):
     sdf = ctx.table('t')
     expected = pd.concat([df, df]).sort('amount').reset_index(drop=True).sort_index(axis=1)
     with tmpfile('.json') as fn:
-        with open(fn, mode='wb') as f:
+        with open(fn, mode='w') as f:
             f.write(out + os.linesep)
 
         uri = 'jsonlines://%s' % fn
