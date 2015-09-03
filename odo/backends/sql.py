@@ -110,7 +110,11 @@ sa.dialects.registry.load('oracle')
 sa.dialects.registry.load('postgresql')
 
 
-def batch(sel, chunksize=10000):
+def getbind(t, bind):
+    return t.bind if bind is None else bind
+
+
+def batch(sel, chunksize=10000, bind=None):
     """Execute `sel`, streaming row at a time and fetching from the database in
     batches of size `chunksize`.
 
@@ -122,7 +126,7 @@ def batch(sel, chunksize=10000):
         Number of rows to fetch from the database
     """
     def rowterator(sel, chunksize=chunksize):
-        with sel.bind.connect() as conn:
+        with getbind(sel, bind).connect() as conn:
             result = conn.execute(sel)
             yield result.keys()
 
@@ -386,28 +390,28 @@ def dshape_to_alchemy(dshape, primary_key=frozenset()):
 
 
 @convert.register(Iterator, sa.Table, cost=300.0)
-def sql_to_iterator(t, **kwargs):
-    _, rows = batch(sa.select([t]))
+def sql_to_iterator(t, bind=None, **kwargs):
+    _, rows = batch(sa.select([t]), bind=bind)
     return map(tuple, rows)
 
 
 @convert.register(Iterator, sa.sql.Select, cost=300.0)
-def select_to_iterator(sel, dshape=None, **kwargs):
+def select_to_iterator(sel, dshape=None, bind=None, **kwargs):
     func = pluck(0) if dshape and isscalar(dshape.measure) else map(tuple)
-    _, rows = batch(sel)
+    _, rows = batch(sel, bind=bind)
     return func(rows)
 
 
 @convert.register(base, sa.sql.Select, cost=300.0)
-def select_to_base(sel, dshape=None, **kwargs):
+def select_to_base(sel, dshape=None, bind=None, **kwargs):
     assert not dshape or isscalar(dshape), \
         'dshape should be None or scalar, got %s' % dshape
-    with sel.bind.connect() as conn:
+    with getbind(sel, bind).connect() as conn:
         return conn.execute(sel).scalar()
 
 
 @append.register(sa.Table, Iterator)
-def append_iterator_to_table(t, rows, dshape=None, **kwargs):
+def append_iterator_to_table(t, rows, dshape=None, bind=None, **kwargs):
     assert not isinstance(t, type)
     if not t.exists():
         raise ValueError('table %r does not exist' % t.name)
@@ -433,7 +437,7 @@ def append_iterator_to_table(t, rows, dshape=None, **kwargs):
             names = discover(t).measure.names
         rows = (dict(zip(names, row)) for row in rows)
 
-    engine = t.bind
+    engine = getbind(t, bind)
     with engine.connect() as conn:
         for chunk in partition_all(1000, rows):  # TODO: 1000 is hardcoded
             conn.execute(t.insert(), chunk)
@@ -455,29 +459,28 @@ def append_anything_to_sql_Table(t, o, **kwargs):
 
 @append.register(sa.Table, sa.Table)
 def append_table_to_sql_Table(t, o, **kwargs):
-    # This condition is an ugly kludge and should be removed once
-    # https://github.com/dropbox/PyHive/issues/15 is resolved
-    if t.bind.name == o.bind.name == 'hive':
-        with t.bind.connect() as conn:
-            conn.execute('INSERT INTO TABLE %s SELECT * FROM %s' %
-                         (t.name, o.name))
-        return t
-
     s = sa.select([o])
     return append(t, s, **kwargs)
 
 
 @append.register(sa.Table, sa.sql.Select)
-def append_select_statement_to_sql_Table(t, o, **kwargs):
-    if not o.bind == t.bind:
-        return append(t, convert(Iterator, o, **kwargs), **kwargs)
+def append_select_statement_to_sql_Table(t, o, bind=None, **kwargs):
+    tbind = getbind(t, bind)
+    obind = getbind(o, bind)
+    if not tbind == obind:
+        return append(
+            t,
+            convert(Iterator, o, bind=bind, **kwargs),
+            bind=bind,
+            **kwargs
+        )
 
-    assert o.bind.has_table(t.name, t.schema), \
+    assert obind.has_table(t.name, t.schema), \
         'tables must come from the same database'
 
     query = t.insert().from_select(o.columns.keys(), o)
 
-    with o.bind.connect() as conn:
+    with obind.connect() as conn:
         conn.execute(query)
     return t
 
@@ -590,8 +593,8 @@ ooc_types.add(sa.Table)
 
 
 @dispatch(sa.Table)
-def drop(table):
-    table.drop(table.bind, checkfirst=True)
+def drop(table, bind=None):
+    table.drop(getbind(table, bind), checkfirst=True)
     if table.exists():
         raise ValueError('table %r dropped but still exists' % table.name)
 
@@ -696,11 +699,11 @@ def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
 
 
 @append.register(CSV, sa.sql.Selectable)
-def append_table_to_csv(csv, selectable, dshape=None, **kwargs):
+def append_table_to_csv(csv, selectable, dshape=None, bind=None, **kwargs):
     kwargs = keyfilter(keywords(CopyToCSV).__contains__,
                        merge(csv.dialect, kwargs))
     stmt = CopyToCSV(selectable, os.path.abspath(csv.path), **kwargs)
-    with selectable.bind.begin() as conn:
+    with getbind(selectable, bind).begin() as conn:
         conn.execute(stmt)
     return csv
 

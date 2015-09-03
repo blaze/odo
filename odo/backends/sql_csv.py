@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import re
 import subprocess
 import uuid
 import mmap
@@ -22,7 +21,7 @@ from ..convert import convert
 from .csv import CSV, infer_header
 from ..temp import Temp
 from .aws import S3
-from .sql import fullname
+from .sql import fullname, getbind
 
 
 class CopyFromCSV(Executable, ClauseElement):
@@ -175,8 +174,9 @@ else:
 
 
 @append.register(sa.Table, CSV)
-def append_csv_to_sql_table(tbl, csv, **kwargs):
-    dialect = tbl.bind.dialect.name
+def append_csv_to_sql_table(tbl, csv, bind=None, **kwargs):
+    bind = getbind(tbl, bind)
+    dialect = bind.dialect.name
 
     # move things to a temporary S3 bucket if we're using redshift and we
     # aren't already in S3
@@ -190,6 +190,6 @@ def append_csv_to_sql_table(tbl, csv, **kwargs):
 
     kwargs = merge(csv.dialect, kwargs)
     stmt = CopyFromCSV(tbl, csv, **kwargs)
-    with tbl.bind.begin() as conn:
+    with bind.begin() as conn:
         conn.execute(stmt)
     return tbl
