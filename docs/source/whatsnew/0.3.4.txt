@@ -31,6 +31,9 @@ Improved Backends
   S3(CSV) to have correct values for its dialect (:issue:`293`).
 * Loading a set of files on a s3 bucket with a prefix into a redshift database
   now works (:issue:`293`).
+* :func:`~odo.odo.odo` now accepts a new keyword argument `bind` which is the
+  sqlalchemy engine to use when executing the sql commands. This allows us to
+  odo to or from an unbound sqlalchemy object (:issue:`305`).
 
 API Changes
 -----------

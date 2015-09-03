@@ -27,28 +27,31 @@ from .sql import fullname, getbind
 class CopyFromCSV(Executable, ClauseElement):
     def __init__(self, element, csv, delimiter=',', header=None, na_value='',
                  lineterminator='\n', quotechar='"', escapechar='\\',
-                 encoding='utf8', skiprows=0, **kwargs):
+                 encoding='utf8', skiprows=0, bind=None, **kwargs):
         if not isinstance(element, sa.Table):
             raise TypeError('element must be a sqlalchemy.Table instance')
         self.element = element
         self.csv = csv
         self.delimiter = delimiter
-        self.header = (header if header is not None else
-                       (csv.has_header
-                        if csv.has_header is not None else infer_header(csv.path)))
+        self.header = (
+            header if header is not None else
+            (csv.has_header
+             if csv.has_header is not None else infer_header(csv.path))
+        )
         self.na_value = na_value
         self.lineterminator = lineterminator
         self.quotechar = quotechar
         self.escapechar = escapechar
         self.encoding = encoding
         self.skiprows = int(skiprows or self.header)
+        self._bind = getbind(element, bind)
 
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-    @property
-    def bind(self):
-        return self.element.bind
+        @property
+        def bind(self):
+            return self._bind
 
 
 @compiles(CopyFromCSV, 'sqlite')
@@ -189,7 +192,7 @@ def append_csv_to_sql_table(tbl, csv, bind=None, **kwargs):
         return append(tbl, convert(Temp(SSH(CSV)), csv, **kwargs), **kwargs)
 
     kwargs = merge(csv.dialect, kwargs)
-    stmt = CopyFromCSV(tbl, csv, **kwargs)
+    stmt = CopyFromCSV(tbl, csv, bind=bind, **kwargs)
     with bind.begin() as conn:
         conn.execute(stmt)
     return tbl

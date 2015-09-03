@@ -613,21 +613,22 @@ class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
 
     def __init__(self, element, path, delimiter=',', quotechar='"',
                  lineterminator=r'\n', escapechar='\\', header=True,
-                 na_value=''):
+                 na_value='', bind=None):
         self.element = element
         self.path = path
         self.delimiter = delimiter
         self.quotechar = quotechar
         self.lineterminator = lineterminator
+        self._bind = getbind(element, bind)
 
         # mysql cannot write headers
-        self.header = header and element.bind.dialect.name != 'mysql'
+        self.header = header and bind.dialect.name != 'mysql'
         self.escapechar = escapechar
         self.na_value = na_value
 
     @property
     def bind(self):
-        return self.element.bind
+        return self._bind
 
 
 @compiles(CopyToCSV, 'postgresql')
@@ -702,7 +703,12 @@ def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
 def append_table_to_csv(csv, selectable, dshape=None, bind=None, **kwargs):
     kwargs = keyfilter(keywords(CopyToCSV).__contains__,
                        merge(csv.dialect, kwargs))
-    stmt = CopyToCSV(selectable, os.path.abspath(csv.path), **kwargs)
+    stmt = CopyToCSV(
+        selectable,
+        os.path.abspath(csv.path),
+        bind=bind,
+        **kwargs
+    )
     with getbind(selectable, bind).begin() as conn:
         conn.execute(stmt)
     return csv
