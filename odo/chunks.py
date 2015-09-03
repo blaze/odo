@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-from toolz import memoize, first
+from collections import Iterator
+
+from toolz import memoize, first, peek
 from datashape import discover, var
 from .utils import cls_name, copydoc
 
@@ -45,4 +47,9 @@ def chunks(cls):
 
 @discover.register(Chunks)
 def discover_chunks(c, **kwargs):
-    return var * discover(first(c)).subshape[0]
+    data = c.data
+    if isinstance(data, Iterator):
+        fst, c.data = peek(data)
+    else:
+        fst = first(c)
+    return var * discover(fst).subshape[0]

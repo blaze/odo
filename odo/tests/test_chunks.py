@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+from datashape import dshape
 from odo.chunks import *
 from toolz import first
 
@@ -33,3 +34,10 @@ def test_callables():
 def test_discover():
     cl = CL([[1, 2, 3], [4, 5, 6]])
     assert discover(cl).measure == discover(1).measure
+
+
+def test_discover_no_consume():
+    cl = CL(iter(([0, 1, 2], [3, 4, 5])))
+    assert discover(cl) == discover(cl) == dshape('var * int64')
+    assert tuple(cl) == ([0, 1, 2], [3, 4, 5])
+    assert tuple(cl) == ()
