@@ -92,6 +92,25 @@ specifying the primary key in the ``dshape`` argument
       >>> products.c.id.primary_key
       True
 
+One can also create a compound primary key by writing ``!`` in front of each
+column that forms the primary key. For example
+
+
+   .. code-block:: python
+
+      >>> dshape = """
+      ... var * {
+      ...     product_no: !int32,
+      ...     product_sku: !string,
+      ...     name: ?string,
+      ...     price: ?float64
+      ... }
+      ... """
+      >>> products = resource('sqlite:///%s::products' % fn, dshape=dshape)
+
+Here, the column pair ``product_no, product_sku`` make up the compound primary
+key of the ``products`` table.
+
 
 Creating resources with foreign key relationships
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -161,12 +180,97 @@ Finally, note that discovery of primary and foreign keys is done automatically
 if the relationships already exist in the database so it isn't necessary to
 specify them if they've already been created elsewhere.
 
+More Complex Foreign Key Relationships
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Odo supports creation and discovery of self referential foreign key
+relationships as well as foreign keys that are elements of a compound primary
+key. The latter are usually seen when creating a many-to-many relationship via
+a `junction table <https://en.wikipedia.org/wiki/Junction_table>`_.
+
+Self referential relationships are most easily specified using type variables
+(see the previous section for a description of how that works). Using the
+example of a management hierarchy:
+
+   .. code-block:: python
+
+      >>> dshape = 'var * {eid: !int64, name: ?string, mgr_eid: map[int64, T]}'
+      >>> t = resource(
+      ...     'sqlite:///%s::employees' % fn,
+      ...     dshape=dshape,
+      ...     foreign_keys={'mgr_eid': 'employees.eid'}
+      ... )
+
+   .. note::
+
+      Currently odo only recurses one level before terminating as we don't yet
+      have a syntax for truly expressing recursive types in datashape
+
+Here's an example of creating a junction table (whose foreign keys form a
+compound primary key) using a modified version of the traditional
+`suppliers and parts database <https://en.wikipedia.org/wiki/Suppliers_and_Parts_database>`_:
+
+   .. code-block:: python
+
+      >>> suppliers = resource(
+      ...     'sqlite:///%s::suppliers' % fn,
+      ...     dshape='var * {id: !int64, name: string}'
+      ... )
+      >>> parts = resource(
+      ...     'sqlite:///%s::parts' % fn,
+      ...     dshape='var * {id: !int64, name: string, region: string}'
+      ... )
+      >>> suppart = resource(
+      ...     'sqlite:///%s::suppart' % fn,
+      ...     dshape='var * {supp_id: !map[int64, T], part_id: !map[int64, U]}',
+      ...     foreign_keys={
+      ...         'supp_id': suppliers.c.id,
+      ...         'part_id': parts.c.id
+      ...     }
+      ... )
+      >>> from odo import discover
+      >>> print(discover(suppart))
+      var * {
+          supp_id: !map[int64, {id: !int64, name: string}],
+          part_id: !map[int64, {id: !int64, name: string, region: string}]
+      }
+
 Foreign Key Relationship Failure Modes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Some databases support the notion of having a foreign key reference one column
-from another table's compound primary key. SQLite is an example of one database
-that supports this. Other databases such as PostgreSQL will raise an error if
+from another table's compound primary key. For example
+
+   .. code-block:: python
+
+      >>> products = resource('sqlite:///%s::products' % fn,
+      ...                     dshape="""
+      ...                         var * {
+      ...                             product_no: !int32,
+      ...                             product_sku: !string,
+      ...                             name: ?string,
+      ...                             price: ?float64
+      ...                         }
+      ...                     """)
+      >>> dshape = """
+      ... var * {
+      ...   order_id: !int32,
+      ...   product_no: map[int32, T],
+      ...   quantity: ?int32
+      ... }
+      ... """
+      >>> orders = resource('sqlite:///%s::orders' % fn, dshape=dshape,
+      ...                   foreign_keys={
+      ...                       'product_no': products.c.product_no
+      ...                       # no reference to product_sku!
+      ...                   })
+
+
+Here we see that when I construct the ``orders`` table, I'm only including one
+of the columns contained in the primary key of the ``products`` table.
+
+SQLite is an example of one database
+that allows this. Other databases such as PostgreSQL will raise an error if
 the table containing the foreign keys doesn't have a reference to all of the
 columns of the compound primary key. Odo has no opinion on this, so if the
 database allows it, odo will allow it. *This is an intentional choice*.
