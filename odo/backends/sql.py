@@ -6,7 +6,7 @@ import re
 import subprocess
 
 from itertools import chain
-from collections import Iterator, OrderedDict
+from collections import Iterator
 from datetime import datetime, date
 from distutils.spawn import find_executable
 
@@ -199,12 +199,13 @@ def discover_sqlalchemy_column(c):
 
 @discover.register(sa.sql.FromClause)
 def discover_sqlalchemy_selectable(t):
-    records = OrderedDict(sum([discover(c).parameters[0] for c in t.columns],
-                              ()))
-    fkeys = [discover(fkey, t, parent_measure=Record(records.items()))
+    ordering = dict((c, i) for i, c in enumerate(c for c in t.columns.keys()))
+    records = list(sum([discover(c).parameters[0] for c in t.columns], ()))
+    fkeys = [discover(fkey, t, parent_measure=Record(records))
              for fkey in t.foreign_keys]
-    records.update(merge(*fkeys))
-    return var * Record(records.items())
+    for name, column in merge(*fkeys).items():
+        records[ordering[name]] = (name, column)
+    return var * Record(records)
 
 
 @memoize
