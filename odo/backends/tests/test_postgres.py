@@ -16,6 +16,7 @@ from odo.utils import assert_allclose, tmpfile
 
 
 names = ('tbl%d' % i for i in itertools.count())
+new_schema = object()
 data = [(1, 2), (10, 20), (100, 200)]
 null_data = [(1, None), (10, 20), (100, 200)]
 
@@ -43,7 +44,11 @@ def sql_fixture(dshape, schema=None):
     @pytest.yield_fixture(params=(True, False))
     def fixture(request, url):
         try:
-            t = resource(url, dshape=dshape, schema=schema)
+            t = resource(
+                url,
+                dshape=dshape,
+                schema=next(names) if schema is new_schema else schema,
+            )
         except sa.exc.OperationalError as e:
             pytest.skip(str(e))
         else:
@@ -62,7 +67,7 @@ def sql_fixture(dshape, schema=None):
 
 
 sql = sql_fixture('var * {a: int32, b: ?int32}')
-sql_with_schema = sql_fixture('var * {a: int32, b: ?int32}', next(names))
+sql_with_schema = sql_fixture('var * {a: int32, b: ?int32}', new_schema)
 sql_with_ugly_schema = sql_fixture('var * {a: int32, b: ?int32}', 'foo.b.ar')
 complex_sql = sql_fixture("""
     var * {
