@@ -140,14 +140,18 @@ There are two important things to note here.
 There's also a shortcut syntax using type variables for specifying foreign
 key relationships whose referred-to tables have very complex datashapes.
 
-Instead of writing our ``orders`` table above as::
+Instead of writing our ``orders`` table above as
 
-   var * {order_id: !int64, product_id: map[int64, {id: !int64, name: string}]}
+   ::
+
+      var * {order_id: !int64, product_id: map[int64, {id: !int64, name: string}]}
 
 We can replace the value part of the ``map`` type with any word starting with a
-capital letter. Often this is a single capital letter, such as ``T``::
+capital letter. Often this is a single capital letter, such as ``T``
 
-   var * {order_id: !int64, product_id: map[int64, T]}
+   ::
+
+      var * {order_id: !int64, product_id: map[int64, T]}
 
 Odo will automatically fill in the datashape for ``T`` by calling
 :func:`~odo.discover` on the columns passed into the `foreign_keys` keyword
