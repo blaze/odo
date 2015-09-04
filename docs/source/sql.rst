@@ -145,12 +145,17 @@ Instead of writing our ``orders`` table above as::
    var * {order_id: !int64, product_id: map[int64, {id: !int64, name: string}]}
 
 We can replace the value part of the ``map`` type with any word starting with a
-capital letter. Often this is just a single capital letter such as ``T``::
+capital letter. Often this is a single capital letter, such as ``T``::
 
    var * {order_id: !int64, product_id: map[int64, T]}
 
+Odo will automatically fill in the datashape for ``T`` by calling
+:func:`~odo.discover` on the columns passed into the `foreign_keys` keyword
+argument.
+
 Finally, note that discovery of primary and foreign keys is done automatically,
-if they already exist in the database.
+if they already exist in the database so there's no need to specify
+relationships or keys for tables that already have them.
 
 Amazon Redshift
 ---------------
