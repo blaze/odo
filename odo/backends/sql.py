@@ -185,7 +185,10 @@ def discover_typeengine(typ):
 def discover_foreign_key_relationship(fk, parent, parent_measure=None):
     if fk.column.table is not parent:
         parent_measure = discover(fk.column.table).measure
-    return {fk.parent.name: Map(discover(fk.parent.type), parent_measure)}
+    meta = PrimaryKey if fk.parent.primary_key else identity
+    return {
+        fk.parent.name: meta(Map(discover(fk.parent.type), parent_measure))
+    }
 
 
 @discover.register(sa.Column)
@@ -272,8 +275,9 @@ def validate_foreign_keys(ds, foreign_keys):
             raise TypeError('Requested foreign key field %r is not a field in '
                             'datashape %s' % (field, ds))
     for field, typ in ds.measure.fields:
-        if field in foreign_keys and not isinstance(typ, Map):
-            raise TypeError('Foreign key %s passed in but not a Map'
+        if field in foreign_keys and not isinstance(getattr(typ, 'ty', typ),
+                                                    Map):
+            raise TypeError('Foreign key %s passed in but not a Map '
                             'datashape, got %s' % (field, typ))
 
         if isinstance(typ, Map) and field not in foreign_keys:
