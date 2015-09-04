@@ -65,6 +65,93 @@ route when they are available.::
     sqlalchemy.Table <- CSV
 
 
+Primary and Foreign Key Relationships
+-------------------------------------
+
+.. versionadded:: 0.3.4
+
+.. warning::
+
+   Primary and foreign key relationship handling is an experimental feature and
+   is subject to change.
+
+Odo has experimental support for creating and discovering relational database
+tables with primary keys and foreign key relationships.
+
+Creating a new resource with a primary key
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+We create a new ``sqlalchemy.Table`` object with the resource function,
+specifying the primary key in the ``dshape`` argument
+
+   .. code-block:: python
+
+      >>> from odo import resource
+      >>> dshape = 'var * {id: !int64, name: string}'
+      >>> products = resource('sqlite:///db.db::products', dshape=dshape)
+      >>> products.c.id.primary_key
+      True
+
+
+Creating resources with foreign key relationships
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Creating a new resource with a foreign key relationship is only slightly more
+complex.
+
+As a motivating example, consider two tables ``products`` and ``orders``. The
+``products`` table will be the table from the primary key example. The
+``orders`` table will have a many-to-one relationship to the ``products``
+table. We can create this like so
+
+   .. code-block:: python
+
+      >>> orders_dshape = """
+      ... var * {
+      ...    order_id: !int64,
+      ...    product_id: map[int64, {id: !int64, name: string}]
+      ... }
+      ... """
+      >>> orders = resource(
+      ...     'sqlite:///db.db::orders',
+      ...     dshape=orders_dshape,
+      ...     foreign_keys={
+      ...         'product_id': products.c.id,
+      ...     }
+      ... )
+      >>> products.c.id in orders.c.product_id.foreign_keys
+      True
+
+There are two important things to note here.
+
+   1. The general syntax for specifying the *type* of referring column is
+
+      .. code-block:: python
+
+         map[<referring column type>, <measure of the table being referred to>]
+
+   2. Knowing the type isn't enough to specify a foreign key relationship. We
+      also need to know the table that has the columns we want to refer to. The
+      `foreign_keys` argument to the :func:`~odo.resource.resource` function
+      fills this need. It accepts a dictionary mapping referring column
+      names to referred to ``sqlalchemy.Column`` instances or strings such as
+      ``products.id``.
+
+There's also a shortcut syntax using type variables for specifying foreign
+key relationships whose referred-to tables have very complex datashapes.
+
+Instead of writing our ``orders`` table above as::
+
+   var * {order_id: !int64, product_id: map[int64, {id: !int64, name: string}]}
+
+We can replace the value part of the ``map`` type with any word starting with a
+capital letter. Often this is just a single capital letter such as ``T``::
+
+   var * {order_id: !int64, product_id: map[int64, T]}
+
+Finally, note that discovery of primary and foreign keys is done automatically,
+if they already exist in the database.
+
 Amazon Redshift
 ---------------
 
