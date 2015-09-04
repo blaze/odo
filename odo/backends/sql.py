@@ -619,7 +619,7 @@ class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
         self.delimiter = delimiter
         self.quotechar = quotechar
         self.lineterminator = lineterminator
-        self._bind = getbind(element, bind)
+        self._bind = bind = getbind(element, bind)
 
         # mysql cannot write headers
         self.header = header and bind.dialect.name != 'mysql'
