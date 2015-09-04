@@ -536,6 +536,116 @@ def test_create_recursive_foreign_key():
     assert result == expected
 
 
+def test_compound_primary_key():
+    with tmpfile('db') as fn:
+        products = resource('sqlite:///%s::products' % fn,
+                            dshape="""
+                                var * {
+                                    product_no: !int32,
+                                    product_sku: !string,
+                                    name: ?string,
+                                    price: ?float64
+                                }
+                            """)
+        assert len(products.primary_key) == 2
+        assert (products.primary_key.columns['product_no'] is
+                products.c.product_no)
+        assert (products.primary_key.columns['product_sku'] is
+                products.c.product_sku)
+
+
+def test_compound_primary_key_with_fkey():
+    with tmpfile('db') as fn:
+        products = resource('sqlite:///%s::products' % fn,
+                            dshape="""
+                                var * {
+                                    product_no: !int32,
+                                    product_sku: !string,
+                                    name: ?string,
+                                    price: ?float64
+                                }
+                            """)
+        ds = dshape("""var * {
+                          order_id: !int32,
+                          product_no: map[int32, T],
+                          product_sku: map[int32, U],
+                          quantity: ?int32
+                        }""")
+        orders = resource('sqlite:///%s::orders' % fn, dshape=ds,
+                          foreign_keys={
+                              'product_no': products.c.product_no,
+                              'product_sku': products.c.product_sku
+                          })
+        assert discover(orders) == dshape(
+            """var * {
+                order_id: !int32,
+                product_no: map[int32, {product_no: !int32, product_sku: !string, name: ?string, price: ?float64}],
+                product_sku: map[int32, {product_no: !int32, product_sku: !string, name: ?string, price: ?float64}],
+                quantity: ?int32
+            }
+            """
+        )
+
+
+def test_compound_primary_key_with_single_reference():
+    with tmpfile('db') as fn:
+        products = resource('sqlite:///%s::products' % fn,
+                            dshape="""
+                                var * {
+                                    product_no: !int32,
+                                    product_sku: !string,
+                                    name: ?string,
+                                    price: ?float64
+                                }
+                            """)
+        # TODO: should this fail everywhere? e.g., this fails in postgres, but
+        # not in sqlite because postgres doesn't allow partial foreign keys
+        # might be best to let the backend handle this
+        ds = dshape("""var * {
+                          order_id: !int32,
+                          product_no: map[int32, T],
+                          quantity: ?int32
+                        }""")
+        orders = resource('sqlite:///%s::orders' % fn, dshape=ds,
+                          foreign_keys=dict(product_no=products.c.product_no))
+        assert discover(orders) == dshape(
+            """var * {
+                order_id: !int32,
+                product_no: map[int32, {product_no: !int32, product_sku: !string, name: ?string, price: ?float64}],
+                quantity: ?int32
+            }
+            """
+        )
+
+
+def test_foreign_keys_as_compound_primary_key():
+    with tmpfile('db') as fn:
+        suppliers = resource(
+            'sqlite:///%s::suppliers' % fn,
+            dshape='var * {id: !int64, name: string}'
+        )
+        parts = resource(
+            'sqlite:///%s::parts' % fn,
+            dshape='var * {id: !int64, name: string, region: string}'
+        )
+        suppart = resource(
+            'sqlite:///%s::suppart' % fn,
+            dshape='var * {supp_id: !map[int64, T], part_id: !map[int64, U]}',
+            foreign_keys={
+                'supp_id': suppliers.c.id,
+                'part_id': parts.c.id
+            }
+        )
+        expected = dshape("""
+            var * {
+                supp_id: !map[int64, {id: !int64, name: string}],
+                part_id: !map[int64, {id: !int64, name: string, region: string}]
+            }
+        """)
+        result = discover(suppart)
+        assert result == expected
+
+
 def test_append_chunks():
     tbl = resource('sqlite:///:memory:::test', dshape='var * {a: int, b: int}')
     res = odo(
