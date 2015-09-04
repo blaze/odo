@@ -30,5 +30,5 @@ Bug Fixes
 * PyTables API compatibility when given a integer valued float (:issue:`236`).
 * Default to ``None`` when plucking and a key isn't found (:issue:`228`).
 * Fix gzip dispatching on JSON discovery (:issue:`243`).
-* * ``~odo.chunks.Chunks`` wrapping iterators can now be discovered without
+* ``~odo.chunks.Chunks`` wrapping iterators can now be discovered without
   consuming the first element.
