@@ -468,7 +468,17 @@ def test_foreign_keys_auto_construct():
                         }""")
         orders = resource('sqlite:///%s::orders' % fn, dshape=ds,
                           foreign_keys=dict(product_no=products.c.product_no))
-        assert discover(orders) != ds
+        assert discover(orders) == dshape("""
+            var * {
+                order_id: !int32,
+                product_no: map[int32, {
+                                    product_no: !int32,
+                                    name: ?string,
+                                    price: ?float64
+                                }],
+                quantity: ?int32
+            }
+        """)
 
 
 def test_foreign_keys_bad_field():
