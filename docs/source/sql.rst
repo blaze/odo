@@ -243,41 +243,48 @@ from another table's compound primary key. For example
 
    .. code-block:: python
 
-      >>> products = resource('sqlite:///%s::products' % fn,
-      ...                     dshape="""
-      ...                         var * {
-      ...                             product_no: !int32,
-      ...                             product_sku: !string,
-      ...                             name: ?string,
-      ...                             price: ?float64
-      ...                         }
-      ...                     """)
-      >>> dshape = """
+      >>> product_dshape = """
+      ... var * {
+      ...     product_no: !int32,
+      ...     product_sku: !string,
+      ...     name: ?string,
+      ...     price: ?float64
+      ... }
+      ... """
+      >>> products = resource(
+      ...     'sqlite:///%s::products' % fn,
+      ...     dshape=product_dshape
+      ... )
+      >>> orders_dshape = """
       ... var * {
       ...   order_id: !int32,
       ...   product_no: map[int32, T],
       ...   quantity: ?int32
       ... }
       ... """
-      >>> orders = resource('sqlite:///%s::orders' % fn, dshape=dshape,
-      ...                   foreign_keys={
-      ...                       'product_no': products.c.product_no
-      ...                       # no reference to product_sku!
-      ...                   })
+      >>> orders = resource(
+      ...     'sqlite:///%s::orders' % fn,
+      ...     dshape=orders_dshape,
+      ...     foreign_keys={
+      ...         'product_no': products.c.product_no
+      ...         # no reference to product_sku!
+      ...     }
+      ... )
 
+Here we see that when the ``orders`` table is constructed, only one of the
+columns contained in the primary key of the ``products`` table is included.
 
-Here we see that when I construct the ``orders`` table, I'm only including one
-of the columns contained in the primary key of the ``products`` table.
+SQLite is an example of one database that allows this. Other databases such as
+PostgreSQL will raise an error if the table containing the foreign keys doesn't
+have a reference to all of the columns of the compound primary key.
 
-SQLite is an example of one database
-that allows this. Other databases such as PostgreSQL will raise an error if
-the table containing the foreign keys doesn't have a reference to all of the
-columns of the compound primary key. Odo has no opinion on this, so if the
-database allows it, odo will allow it. *This is an intentional choice*.
+Odo has no opinion on this, so if the database allows it, then odo will allow
+it. **This is an intentional choice**.
+
 However, it can also lead to confusing situations where something works with
 SQLite, but not with PostgreSQL. These are not bugs in odo, they are an
-explicit choice to allow flexibility with potentially large, potentially
-immovable, already-existing systems.
+explicit choice to allow flexibility with potentially large already-existing
+systems.
 
 Amazon Redshift
 ---------------
