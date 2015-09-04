@@ -157,9 +157,9 @@ Odo will automatically fill in the datashape for ``T`` by calling
 :func:`~odo.discover` on the columns passed into the `foreign_keys` keyword
 argument.
 
-Finally, note that discovery of primary and foreign keys is done automatically,
-if they already exist in the database so there's no need to specify
-relationships or keys for tables that already have them.
+Finally, note that discovery of primary and foreign keys is done automatically
+if the relationships already exist in the database so it isn't necessary to
+specify them if they've already been created elsewhere.
 
 Amazon Redshift
 ---------------
