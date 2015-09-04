@@ -267,7 +267,7 @@ from another table's compound primary key. For example
       ...     dshape=orders_dshape,
       ...     foreign_keys={
       ...         'product_no': products.c.product_no
-      ...         # no reference to product_sku!
+      ...         # no reference to product_sku, okay for sqlite, but not postgres
       ...     }
       ... )
 
