@@ -170,7 +170,7 @@ that supports this. Other databases such as PostgreSQL will raise an error if
 the table containing the foreign keys doesn't have a reference to all of the
 columns of the compound primary key. Odo has no opinion on this, so if the
 database allows it, odo will allow it. *This is an intentional choice*.
-However, it can also lead to confusion situations where something works with
+However, it can also lead to confusing situations where something works with
 SQLite, but not with PostgreSQL. These are not bugs in odo, they are an
 explicit choice to allow flexibility with potentially large, potentially
 immovable, already-existing systems.
