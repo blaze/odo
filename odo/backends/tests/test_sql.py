@@ -420,7 +420,7 @@ def test_discover_foreign_keys():
                                     price: ?float64
                                 }
                             """,
-                            primary_keys=['product_no'])
+                            primary_key=['product_no'])
         expected = dshape("""var * {
                           order_id: int32,
                           product_no: map[int32, {
@@ -462,7 +462,7 @@ def test_foreign_keys_auto_construct():
                                     price: ?float64
                                 }
                             """,
-                            primary_keys=['product_no'])
+                            primary_key=['product_no'])
         ds = dshape("""var * {
                           order_id: int32,
                           product_no: map[int32, T],
@@ -470,7 +470,7 @@ def test_foreign_keys_auto_construct():
                         }""")
         orders = resource('sqlite:///%s::orders' % fn, dshape=ds,
                           foreign_keys=dict(product_no=products.c.product_no),
-                          primary_keys=['order_id'])
+                          primary_key=['order_id'])
         assert discover(orders) == dshape("""
             var * {
                 order_id: int32,
@@ -528,7 +528,7 @@ def test_create_recursive_foreign_key():
                         name: ?string,
                         mgr_eid: map[int64, T]
                      }""", foreign_keys=dict(mgr_eid='employees.eid'),
-                     primary_keys=['eid'])
+                     primary_key=['eid'])
         result = discover(t)
     expected = dshape("""
         var * {
@@ -551,7 +551,7 @@ def test_compound_primary_key():
                                     price: ?float64
                                 }
                             """,
-                            primary_keys=['product_no', 'product_sku'])
+                            primary_key=['product_no', 'product_sku'])
         assert len(products.primary_key) == 2
         assert (products.primary_key.columns['product_no'] is
                 products.c.product_no)
@@ -570,7 +570,7 @@ def test_compound_primary_key_with_fkey():
                                     price: ?float64
                                 }
                             """,
-                            primary_keys=['product_no', 'product_sku'])
+                            primary_key=['product_no', 'product_sku'])
         ds = dshape("""var * {
                           order_id: int32,
                           product_no: map[int32, T],
@@ -578,7 +578,7 @@ def test_compound_primary_key_with_fkey():
                           quantity: ?int32
                         }""")
         orders = resource('sqlite:///%s::orders' % fn, dshape=ds,
-                          primary_keys=['order_id'],
+                          primary_key=['order_id'],
                           foreign_keys={
                               'product_no': products.c.product_no,
                               'product_sku': products.c.product_sku
@@ -604,7 +604,7 @@ def test_compound_primary_key_with_single_reference():
                                     name: ?string,
                                     price: ?float64
                                 }
-                            """, primary_keys=['product_no', 'product_sku'])
+                            """, primary_key=['product_no', 'product_sku'])
         # TODO: should this fail everywhere? e.g., this fails in postgres, but
         # not in sqlite because postgres doesn't allow partial foreign keys
         # might be best to let the backend handle this
@@ -615,7 +615,7 @@ def test_compound_primary_key_with_single_reference():
                         }""")
         orders = resource('sqlite:///%s::orders' % fn, dshape=ds,
                           foreign_keys=dict(product_no=products.c.product_no),
-                          primary_keys=['order_id'])
+                          primary_key=['order_id'])
         assert discover(orders) == dshape(
             """var * {
                 order_id: int32,
@@ -631,12 +631,12 @@ def test_foreign_keys_as_compound_primary_key():
         suppliers = resource(
             'sqlite:///%s::suppliers' % fn,
             dshape='var * {id: int64, name: string}',
-            primary_keys=['id']
+            primary_key=['id']
         )
         parts = resource(
             'sqlite:///%s::parts' % fn,
             dshape='var * {id: int64, name: string, region: string}',
-            primary_keys=['id']
+            primary_key=['id']
         )
         suppart = resource(
             'sqlite:///%s::suppart' % fn,
@@ -645,7 +645,7 @@ def test_foreign_keys_as_compound_primary_key():
                 'supp_id': suppliers.c.id,
                 'part_id': parts.c.id
             },
-            primary_keys=['supp_id', 'part_id']
+            primary_key=['supp_id', 'part_id']
         )
         expected = dshape("""
             var * {

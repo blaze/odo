@@ -285,7 +285,7 @@ def validate_foreign_keys(ds, foreign_keys):
 
 
 def dshape_to_table(name, ds, metadata=None, foreign_keys=None,
-                    primary_keys=None):
+                    primary_key=None):
     """
     Create a SQLAlchemy table from a datashape and a name
 
@@ -309,7 +309,7 @@ def dshape_to_table(name, ds, metadata=None, foreign_keys=None,
 
     validate_foreign_keys(ds, foreign_keys)
 
-    cols = dshape_to_alchemy(ds, primary_keys=primary_keys or frozenset())
+    cols = dshape_to_alchemy(ds, primary_key=primary_key or frozenset())
     cols.extend(sa.ForeignKeyConstraint([column_name], [referent])
                 for column_name, referent in foreign_keys.items())
     t = sa.Table(name, metadata, *cols, schema=metadata.schema)
@@ -323,18 +323,18 @@ def create_from_datashape(o, ds, **kwargs):
 
 @dispatch(sa.engine.base.Engine, DataShape)
 def create_from_datashape(engine, ds, schema=None, foreign_keys=None,
-                          primary_keys=None, **kwargs):
+                          primary_key=None, **kwargs):
     assert isrecord(ds), 'datashape must be Record type, got %s' % ds
     metadata = metadata_of_engine(engine, schema=schema)
     for name, sub_ds in ds[0].dict.items():
         t = dshape_to_table(name, sub_ds, metadata=metadata,
                             foreign_keys=foreign_keys,
-                            primary_keys=primary_keys)
+                            primary_key=primary_key)
         t.create()
     return engine
 
 
-def dshape_to_alchemy(dshape, primary_keys=frozenset()):
+def dshape_to_alchemy(dshape, primary_key=frozenset()):
     """
 
     >>> dshape_to_alchemy('int')
@@ -352,23 +352,23 @@ def dshape_to_alchemy(dshape, primary_keys=frozenset()):
     if isinstance(dshape, str):
         dshape = datashape.dshape(dshape)
     if isinstance(dshape, Map):
-        return dshape_to_alchemy(dshape.key.measure, primary_keys=primary_keys)
+        return dshape_to_alchemy(dshape.key.measure, primary_key=primary_key)
     if isinstance(dshape, Option):
-        return dshape_to_alchemy(dshape.ty, primary_keys=primary_keys)
+        return dshape_to_alchemy(dshape.ty, primary_key=primary_key)
     if str(dshape) in types:
         return types[str(dshape)]
     if isinstance(dshape, datashape.Record):
         return [sa.Column(name,
                           dshape_to_alchemy(getattr(typ, 'ty', typ),
-                                            primary_keys=primary_keys),
-                          primary_key=name in primary_keys,
+                                            primary_key=primary_key),
+                          primary_key=name in primary_key,
                           nullable=isinstance(typ[0], Option))
                 for name, typ in dshape.parameters[0]]
     if isinstance(dshape, datashape.DataShape):
         if isdimension(dshape[0]):
-            return dshape_to_alchemy(dshape[1], primary_keys=primary_keys)
+            return dshape_to_alchemy(dshape[1], primary_key=primary_key)
         else:
-            return dshape_to_alchemy(dshape[0], primary_keys=primary_keys)
+            return dshape_to_alchemy(dshape[0], primary_key=primary_key)
     if isinstance(dshape, datashape.String):
         fixlen = dshape[0].fixlen
         if fixlen is None:
@@ -512,7 +512,7 @@ def resource_sql(uri, *args, **kwargs):
     ds = kwargs.pop('dshape', None)
     schema = kwargs.pop('schema', None)
     foreign_keys = kwargs.pop('foreign_keys', None)
-    primary_keys = kwargs.pop('primary_keys', None)
+    primary_key = kwargs.pop('primary_key', None)
 
     # we were also given a table name
     if args and isinstance(args[0], (str, unicode)):
@@ -528,7 +528,7 @@ def resource_sql(uri, *args, **kwargs):
         if ds:
             t = dshape_to_table(table_name, ds, metadata=metadata,
                                 foreign_keys=foreign_keys,
-                                primary_keys=primary_keys)
+                                primary_key=primary_key)
             t.create()
             return t
         else:

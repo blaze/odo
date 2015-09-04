@@ -82,35 +82,41 @@ Creating a new resource with a primary key
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We create a new ``sqlalchemy.Table`` object with the resource function,
-specifying the primary key in the ``dshape`` argument
+specifying the primary key in the ``primary_key`` argument
 
    .. code-block:: python
 
       >>> from odo import resource
-      >>> dshape = 'var * {id: !int64, name: string}'
-      >>> products = resource('sqlite:///db.db::products', dshape=dshape)
+      >>> dshape = 'var * {id: int64, name: string}'
+      >>> products = resource(
+      ...     'sqlite:///db.db::products',
+      ...     dshape=dshape,
+      ...     primary_key=['id'],
+      ... )
       >>> products.c.id.primary_key
       True
 
-One can also create a compound primary key by writing ``!`` in front of each
-column that forms the primary key. For example
-
+Compound primary keys are created by passing the list of columns that form the
+primary key. For example
 
    .. code-block:: python
 
       >>> dshape = """
       ... var * {
-      ...     product_no: !int32,
-      ...     product_sku: !string,
+      ...     product_no: int32,
+      ...     product_sku: string,
       ...     name: ?string,
       ...     price: ?float64
       ... }
       ... """
-      >>> products = resource('sqlite:///%s::products' % fn, dshape=dshape)
+      >>> products = resource(
+      ...     'sqlite:///%s::products' % fn,
+      ...     dshape=dshape,
+      ...     primary_key=['product_no', 'product_sku']
+      ... )
 
 Here, the column pair ``product_no, product_sku`` make up the compound primary
 key of the ``products`` table.
-
 
 Creating resources with foreign key relationships
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -127,13 +133,14 @@ table. We can create this like so
 
       >>> orders_dshape = """
       ... var * {
-      ...    order_id: !int64,
-      ...    product_id: map[int64, {id: !int64, name: string}]
+      ...    order_id: int64,
+      ...    product_id: map[int64, {id: int64, name: string}]
       ... }
       ... """
       >>> orders = resource(
       ...     'sqlite:///db.db::orders',
       ...     dshape=orders_dshape,
+      ...     primary_key=['order_id'],
       ...     foreign_keys={
       ...         'product_id': products.c.id,
       ...     }
@@ -163,14 +170,14 @@ Instead of writing our ``orders`` table above as
 
    ::
 
-      var * {order_id: !int64, product_id: map[int64, {id: !int64, name: string}]}
+      var * {order_id: int64, product_id: map[int64, {id: int64, name: string}]}
 
 We can replace the value part of the ``map`` type with any word starting with a
 capital letter. Often this is a single capital letter, such as ``T``
 
    ::
 
-      var * {order_id: !int64, product_id: map[int64, T]}
+      var * {order_id: int64, product_id: map[int64, T]}
 
 Odo will automatically fill in the datashape for ``T`` by calling
 :func:`~odo.discover` on the columns passed into the `foreign_keys` keyword
@@ -194,10 +201,11 @@ example of a management hierarchy:
 
    .. code-block:: python
 
-      >>> dshape = 'var * {eid: !int64, name: ?string, mgr_eid: map[int64, T]}'
+      >>> dshape = 'var * {eid: int64, name: ?string, mgr_eid: map[int64, T]}'
       >>> t = resource(
       ...     'sqlite:///%s::employees' % fn,
       ...     dshape=dshape,
+      ...     primary_key=['eid'],
       ...     foreign_keys={'mgr_eid': 'employees.eid'}
       ... )
 
@@ -214,15 +222,18 @@ compound primary key) using a modified version of the traditional
 
       >>> suppliers = resource(
       ...     'sqlite:///%s::suppliers' % fn,
-      ...     dshape='var * {id: !int64, name: string}'
+      ...     dshape='var * {id: int64, name: string}',
+      ...     primary_key=['id']
       ... )
       >>> parts = resource(
       ...     'sqlite:///%s::parts' % fn,
-      ...     dshape='var * {id: !int64, name: string, region: string}'
+      ...     dshape='var * {id: int64, name: string, region: string}',
+      ...     primary_key=['id']
       ... )
       >>> suppart = resource(
       ...     'sqlite:///%s::suppart' % fn,
-      ...     dshape='var * {supp_id: !map[int64, T], part_id: !map[int64, U]}',
+      ...     dshape='var * {supp_id: map[int64, T], part_id: map[int64, U]}',
+      ...     primary_key=['supp_id', 'part_id'],
       ...     foreign_keys={
       ...         'supp_id': suppliers.c.id,
       ...         'part_id': parts.c.id
@@ -231,8 +242,8 @@ compound primary key) using a modified version of the traditional
       >>> from odo import discover
       >>> print(discover(suppart))
       var * {
-          supp_id: !map[int64, {id: !int64, name: string}],
-          part_id: !map[int64, {id: !int64, name: string, region: string}]
+          supp_id: map[int64, {id: int64, name: string}],
+          part_id: map[int64, {id: int64, name: string, region: string}]
       }
 
 Foreign Key Relationship Failure Modes
@@ -245,19 +256,20 @@ from another table's compound primary key. For example
 
       >>> product_dshape = """
       ... var * {
-      ...     product_no: !int32,
-      ...     product_sku: !string,
+      ...     product_no: int32,
+      ...     product_sku: string,
       ...     name: ?string,
       ...     price: ?float64
       ... }
       ... """
       >>> products = resource(
       ...     'sqlite:///%s::products' % fn,
-      ...     dshape=product_dshape
+      ...     dshape=product_dshape,
+      ...     primary_key=['product_no', 'product_sku']
       ... )
       >>> orders_dshape = """
       ... var * {
-      ...   order_id: !int32,
+      ...   order_id: int32,
       ...   product_no: map[int32, T],
       ...   quantity: ?int32
       ... }
@@ -265,6 +277,7 @@ from another table's compound primary key. For example
       >>> orders = resource(
       ...     'sqlite:///%s::orders' % fn,
       ...     dshape=orders_dshape,
+      ...     primary_key=['order_id'],
       ...     foreign_keys={
       ...         'product_no': products.c.product_no
       ...         # no reference to product_sku, okay for sqlite, but not postgres
