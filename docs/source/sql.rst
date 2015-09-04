@@ -161,6 +161,20 @@ Finally, note that discovery of primary and foreign keys is done automatically
 if the relationships already exist in the database so it isn't necessary to
 specify them if they've already been created elsewhere.
 
+Foreign Key Relationship Failure Modes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Some databases support the notion of having a foreign key reference one column
+from another table's compound primary key. SQLite is an example of one database
+that supports this. Other databases such as PostgreSQL will raise an error if
+the table containing the foreign keys doesn't have a reference to all of the
+columns of the compound primary key. Odo has no opinion on this, so if the
+database allows it, odo will allow it. *This is an intentional choice*.
+However, it can also lead to confusion situations where something works with
+SQLite, but not with PostgreSQL. These are not bugs in odo, they are an
+explicit choice to allow flexibility with potentially large, potentially
+immovable, already-existing systems.
+
 Amazon Redshift
 ---------------
 
