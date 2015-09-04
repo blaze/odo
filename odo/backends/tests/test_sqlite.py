@@ -24,12 +24,12 @@ def csv():
 def test_simple_into(csv):
     tbl = 'testtable'
     with tmpfile('db') as filename:
-        engine = resource('sqlite:///' + filename)
+        metadata = resource('sqlite:///' + filename)
         t = resource('sqlite:///' + filename + '::' + tbl,
                      dshape=ds)
 
         odo(csv, t, dshape=ds)
-        conn = engine.raw_connection()
+        conn = metadata.bind.raw_connection()
         cursor = conn.cursor()
         cursor.execute("""SELECT
                         name

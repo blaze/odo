@@ -59,8 +59,9 @@ def test_resource_to_engine():
     with tmpfile('.db') as fn:
         uri = 'sqlite:///' + fn
         r = resource(uri)
-        assert isinstance(r, sa.engine.Engine)
-        assert r.dialect.name == 'sqlite'
+        assert isinstance(r, sa.MetaData)
+        assert isinstance(r.bind, sa.engine.Engine)
+        assert r.bind.dialect.name == 'sqlite'
 
 
 def test_resource_to_engine_to_create_tables():
@@ -68,8 +69,9 @@ def test_resource_to_engine_to_create_tables():
         uri = 'sqlite:///' + fn
         ds = datashape.dshape('{mytable: var * {name: string, amt: int}}')
         r = resource(uri, dshape=ds)
-        assert isinstance(r, sa.engine.Engine)
-        assert r.dialect.name == 'sqlite'
+        assert isinstance(r, sa.MetaData)
+        assert isinstance(r.bind, sa.engine.Engine)
+        assert r.bind.dialect.name == 'sqlite'
 
         assert discover(r) == ds
 
@@ -146,9 +148,7 @@ def test_select_to_iterator():
 
 def test_discovery_engine():
     engine, t = single_table_engine()
-
     assert discover(engine, 'accounts') == discover(t)
-
     assert str(discover(engine)) == str(discover({'accounts': t}))
 
 
@@ -365,14 +365,15 @@ def test_append_from_table():
 
 def test_engine_metadata_caching():
     with tmpfile('db') as fn:
-        engine = resource('sqlite:///' + fn)
+        metadata = resource('sqlite:///' + fn)
         a = resource(
             'sqlite:///' + fn + '::a', dshape=dshape('var * {x: int}'))
         b = resource(
             'sqlite:///' + fn + '::b', dshape=dshape('var * {y: int}'))
 
-        assert a.metadata is b.metadata
-        assert engine is a.bind is b.bind
+        assert metadata is not a.metadata
+        assert metadata is not b.metadata
+        assert metadata.bind is a.bind is b.bind
 
 
 def test_copy_one_table_to_a_foreign_engine():

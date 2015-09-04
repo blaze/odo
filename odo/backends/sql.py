@@ -30,7 +30,7 @@ from toolz import (partition_all, keyfilter, memoize, valfilter,
 from toolz.curried import pluck, map
 
 from ..compatibility import unicode
-from ..utils import keywords, ignoring, iter_except
+from ..utils import keywords, ignoring, iter_except, filter_kwargs
 from ..convert import convert, ooc_types
 from ..append import append
 from ..resource import resource
@@ -194,8 +194,10 @@ def discover_sqlalchemy_selectable(t):
 
 
 @memoize
-def metadata_of_engine(engine, schema=None):
-    return sa.MetaData(engine, schema=schema)
+def metadata_of_engine(engine, schema=None, views=False, fields=()):
+    metadata = sa.MetaData(bind=engine, schema=schema)
+    metadata.reflect(views=views, only=fields or None)
+    return metadata
 
 
 def create_engine(uri, *args, **kwargs):
@@ -209,37 +211,44 @@ memoized_create_engine = memoize(sa.create_engine)
 
 
 @dispatch(sa.engine.base.Engine, str)
-def discover(engine, tablename):
-    metadata = metadata_of_engine(engine)
-    if tablename not in metadata.tables:
-        try:
-            metadata.reflect(engine,
-                             views=metadata.bind.dialect.supports_views)
-        except NotImplementedError:
-            metadata.reflect(engine)
-    table = metadata.tables[tablename]
-    return discover(table)
+def discover(engine, tablename, schema=None, views=True, fields=()):
+    metadata = metadata_of_engine(
+        engine,
+        schema=schema,
+        views=views and engine.dialect.supports_views,
+        fields=(tablename,)
+    )
+    return discover(metadata.tables[tablename])
 
 
 @dispatch(sa.engine.base.Engine)
-def discover(engine):
-    metadata = metadata_of_engine(engine)
-    return discover(metadata)
+def discover(engine, schema=None, views=True, fields=()):
+    return discover(
+        metadata_of_engine(
+            engine,
+            schema=schema,
+            views=views and engine.dialect.supports_views,
+            fields=tuple(fields)
+        )
+    )
 
 
 @dispatch(sa.MetaData)
-def discover(metadata):
-    try:
-        metadata.reflect(views=metadata.bind.dialect.supports_views)
-    except NotImplementedError:
-        metadata.reflect()
+def discover(metadata, views=True, fields=()):
+    assert metadata.bind is not None, 'No engine to reflect with'
+    metadata = metadata_of_engine(
+        metadata.bind,
+        schema=metadata.schema,
+        views=views and metadata.bind.dialect.supports_views,
+        fields=tuple(fields)
+    )
     pairs = []
-    for table in sorted(metadata.tables.values(), key=attrgetter('name')):
+    for table in metadata.sorted_tables:
         name = table.name
         try:
             pairs.append([name, discover(table)])
         except sa.exc.CompileError as e:
-            print("Can not discover type of table %s.\n" % name +
+            print("Can not discover type of relation %s.\n" % name +
                   "SQLAlchemy provided this error message:\n\t%s" % e.message +
                   "\nSkipping.")
         except NotImplementedError as e:
@@ -283,13 +292,27 @@ def create_from_datashape(o, ds, **kwargs):
     return create_from_datashape(o, dshape(ds), **kwargs)
 
 
-@dispatch(sa.engine.base.Engine, DataShape)
-def create_from_datashape(engine, ds, schema=None, **kwargs):
-    metadata = metadata_of_engine(engine, schema=schema)
+@dispatch(sa.MetaData, DataShape)
+def create_from_datashape(metadata, ds, **kwargs):
     for name, sub_ds in ds[0].dict.items():
         t = dshape_to_table(name, sub_ds, metadata=metadata)
         t.create()
-    return engine
+    return metadata
+
+
+@dispatch(sa.engine.Engine, DataShape)
+def create_from_datashape(engine, ds, schema=None, views=True, fields=(),
+                          **kwargs):
+    kwargs = filter_kwargs(sa.MetaData, kwargs)
+    return create_from_datashape(
+        metadata_of_engine(
+            engine,
+            schema=schema,
+            views=views and engine.dialect.supports_views,
+            fields=tuple(fields)
+        ),
+        ds
+    )
 
 
 def dshape_to_alchemy(dshape):
@@ -464,16 +487,26 @@ def resource_sql(uri, *args, **kwargs):
     engine = create_engine(uri, **kwargs2)
     ds = kwargs.get('dshape')
     schema = kwargs.get('schema')
+    views = kwargs.get('views', True) and engine.dialect.supports_views
+    fields = kwargs.get('fields', ())
 
     # we were also given a table name
     if args and isinstance(args[0], (str, unicode)):
         table_name, args = args[0], args[1:]
-        metadata = metadata_of_engine(engine, schema=schema)
+        metadata = metadata_of_engine(
+            engine, schema=schema, views=views, fields=fields
+        )
 
         with ignoring(sa.exc.NoSuchTableError):
-            return attach_schema(sa.Table(table_name, metadata, autoload=True,
-                                          autoload_with=engine, schema=schema),
-                                 schema)
+            return attach_schema(
+                sa.Table(
+                    table_name,
+                    metadata,
+                    autoload=True,
+                    autoload_with=engine, schema=schema
+                ),
+                schema
+            )
         if ds:
             t = dshape_to_table(table_name, ds, metadata=metadata)
             t.create()
@@ -481,10 +514,17 @@ def resource_sql(uri, *args, **kwargs):
         else:
             raise ValueError("Table does not exist and no dshape provided")
 
+    metadata = metadata_of_engine(
+        engine,
+        schema=schema,
+        views=views,
+        fields=fields
+    )
+
     # We were not given a table name
     if ds:
-        create_from_datashape(engine, ds, schema=schema)
-    return engine
+        create_from_datashape(metadata, ds)
+    return metadata
 
 
 @resource.register('impala://.+')
