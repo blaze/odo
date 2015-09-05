@@ -50,6 +50,8 @@ Bug Fixes
 * Fix a bug where a non-existent header row was being removed from an S3(CSV)
   because the dialect was set incorrectly (:issue:`293`)
 * Fix a bug where the SparkSQL backend wouldn't work if we didn't have paramiko installed (:issue:`300`)
+* Fix a testing bug where the endlines were being compared and they
+  shouldn't have been (:issue:`312`).
 
 Miscellaneous
 -------------
