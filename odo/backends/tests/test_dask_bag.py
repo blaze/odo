@@ -2,10 +2,11 @@ import pytest
 
 pytest.importorskip('dask.bag')
 
+from operator import methodcaller
+
 from odo import chunks, TextFile, odo
 from dask.bag import Bag
 from odo.utils import filetexts
-from odo.compatibility import unicode
 
 
 def inc(x):
@@ -31,8 +32,8 @@ def test_convert_logfiles_to_bag():
         b = odo(logs, Bag)
         assert isinstance(b, Bag)
         assert 'a1.log' in str(b.dask.values())
-        assert (list(map(unicode.strip, odo(b, list))) ==
-                list(map(unicode.strip, odo(logs, list))))
+        assert (list(map(methodcaller('strip'), odo(b, list))) ==
+                list(map(methodcaller('strip'), odo(logs, list))))
 
 
 def test_sequence():
