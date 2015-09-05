@@ -164,7 +164,7 @@ class CSV(object):
 
     @property
     def dialect(self):
-        with sample(self, length=self._sniff_nbytes) as fn:
+        with sample(self) as fn:
             return self._sniff_dialect(fn)
 
     @property
