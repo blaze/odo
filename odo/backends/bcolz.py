@@ -1,12 +1,18 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-from bcolz import ctable, carray
-import numpy as np
+import shutil
+
 from toolz import keyfilter
+
+import numpy as np
+
+from bcolz import ctable, carray
+
 import datashape
 from datashape import discover
-import shutil
+from datashape.predicates import isrecord
+
 from ..numpy_dtype import dshape_to_numpy
 from ..append import append
 from ..convert import convert, ooc_types
@@ -22,8 +28,21 @@ def discover_bcolz(c, **kwargs):
     return datashape.from_numpy(c.shape, c.dtype)
 
 
-@append.register((ctable, carray), np.ndarray)
-def numpy_append_to_bcolz(a, b, **kwargs):
+@append.register(ctable, np.ndarray)
+def numpy_append_to_bcolz_ctable(a, b, **kwargs):
+    if getattr(b.dtype, 'names', None) is None:
+        raise TypeError('NumPy array must have a record dtype. Array has dtype'
+                        ' %s' % b.dtype)
+    a.append(b)
+    a.flush()
+    return a
+
+
+@append.register(carray, np.ndarray)
+def numpy_append_to_bcolz_carray(a, b, **kwargs):
+    if getattr(b.dtype, 'names', None) is not None:
+        raise TypeError('NumPy array must have a scalar dtype. Array has dtype'
+                        ' %s' % b.dtype)
     a.append(b)
     a.flush()
     return a
@@ -82,6 +101,22 @@ def resource_bcolz(uri, dshape=None, expected_dshape=None, **kwargs):
         dshape = datashape.dshape(dshape)
 
         dt = dshape_to_numpy(dshape)
+        if isrecord(dshape.measure):
+            dtype_pairs = [(name, dt[name].type) for name in dt.names]
+            is_object = [dtype == np.object_ for _, dtype in dtype_pairs]
+            if any(is_object):
+                raise TypeError("object dtypes are not supported by bcolz.\n"
+                                "Columns %s have object dtypes.\n"
+                                "If you have strings in those columns, pass in"
+                                " a fixed length string dshape for each of "
+                                "those columns.\nFor example, if the maximum "
+                                "length of each string in column 'a' is 10"
+                                "instead of var * {a: int32, b: string}, "
+                                "pass var * {a: int32, b: string[10, 'A']}" %
+                                [name for (name, _), keep in
+                                 zip(dtype_pairs, is_object) if keep])
+        elif dt.type == np.object_:
+            raise TypeError("object dtypes are not supported by bcolz")
         shape_tail = tuple(map(int, dshape.shape[1:]))  # tail of shape
         if dshape.shape[0] == datashape.var:
             shape = (0,) + shape_tail

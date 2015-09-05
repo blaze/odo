@@ -4,9 +4,9 @@ import pytest
 pytest.importorskip('bcolz')
 
 from odo.backends.bcolz import (append, convert, ctable, carray, resource,
-                                 discover, drop)
+                                discover, drop)
 from odo.chunks import chunks
-from odo import append, convert, discover, into
+from odo import append, convert, discover, into, odo
 import numpy as np
 from odo.utils import tmpfile, ignoring, filetext
 from contextlib import contextmanager
@@ -27,7 +27,6 @@ def tmpbcolz(*args, **kwargs):
             r.flush()
         if os.path.exists(fn):
             shutil.rmtree(fn)
-
 
 
 def eq(a, b):
@@ -181,11 +180,50 @@ def test_resource_shape():
         assert b.shape == (0, 10)
 
 
+@pytest.mark.xfail(raises=TypeError,
+                   reason='object dtypes are not well supported by bcolz')
 def test_csv_to_bcolz():
     with filetext('name,runway,takeoff,datetime_nearest_close\n'
                   'S28,28,TRUE,A\n'
                   'S16,16,TRUE,Q\n'
                   'L14,14,FALSE,I', extension='csv') as src:
         with tmpfile('bcolz') as tgt:
-            bc = into(tgt, src)
-            assert len(bc) == 3
+            into(tgt, src)
+
+
+@pytest.mark.parametrize('encoding', ['A', 'U8'])
+def test_csv_to_bcolz_fixed_length_string(encoding):
+    dshape = """var * {
+        name: string[3, '%(encoding)s'],
+        runway: int64,
+        takeoff: bool,
+        datetime_nearest_close: string[1, '%(encoding)s']
+    }""" % dict(encoding=encoding)
+    with filetext('name,runway,takeoff,datetime_nearest_close\n'
+                  'S28,28,TRUE,A\n'
+                  'S16,16,TRUE,Q\n'
+                  'L14,14,FALSE,I', extension='csv') as src:
+        with tmpfile('bcolz') as tgt:
+            odo(src, tgt, dshape=dshape)
+
+
+@pytest.mark.xfail(raises=TypeError,
+                   reason='object dtypes are not well supported by bcolz')
+def test_single_object_array_to_carray():
+    with tmpfile('bcolz') as tgt:
+        into(tgt, np.array(['a', 1, 2, 1.0], dtype=object))
+
+
+def test_append_record_to_carray_fails():
+    data = np.array([('z', 1)], dtype=[('a', 'S1'), ('b', 'int64')])
+    with tmpbcolz(dshape='var * int64') as tgt:
+        with pytest.raises(TypeError):
+            odo(data, tgt)
+        with pytest.raises(TypeError):
+            odo(data.view(np.recarray), tgt)
+
+
+def test_append_scalar_to_ctable_fails():
+    with tmpbcolz(dshape='var * {a: int64}') as tgt:
+        with pytest.raises(TypeError):
+            odo(np.arange(3), tgt)
