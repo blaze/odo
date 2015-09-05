@@ -4,6 +4,7 @@ import pytest
 
 import sys
 import os
+import numpy as np
 import pandas as pd
 import pandas.util.testing as tm
 import gzip
@@ -380,3 +381,40 @@ def test_discover_with_dotted_names():
         dshape = discover(resource(fn))
     assert dshape == datashape.dshape('var * {"a.b": int64, "c.d": int64}')
     assert dshape.measure.names == [u'a.b', u'c.d']
+
+
+try:
+    unichr
+except NameError:
+    unichr = chr
+
+
+def random_multibyte_string(nrows, string_length,
+                            domain=''.join(map(unichr, range(1488, 1515)))):
+    """ Generate `n` strings of length `string_length` sampled from `domain`.
+
+    Parameters
+    ----------
+    n : int
+        Number of random strings to generate
+    string_length : int
+        Length of each random string
+    domain : str, optional
+        The set of characters to sample from. Defaults to Hebrew.
+    """
+    for _ in range(nrows):
+        yield ''.join(np.random.choice(list(domain), size=string_length))
+
+
+def test_multibyte_encoding_replaces():
+    header = random_multibyte_string(nrows=2, string_length=3)
+    single_column = random_multibyte_string(nrows=10, string_length=4)
+    numbers = np.random.randint(4, size=10)
+    with tmpfile('.csv') as fn:
+        with open(fn, 'wb') as f:
+            f.write((','.join(header) + '\n').encode('utf8'))
+            f.write('\n'.join(','.join(map(unicode, row))
+                              for row in zip(single_column, numbers)).encode('utf8'))
+        c = CSV(fn, encoding='utf8', sniff_nbytes=10)
+        assert c.has_header
+        assert c.dialect['delimiter'] == ','
