@@ -7,13 +7,15 @@ extensions, SQLAlchemy supports *most* databases.
 
 .. warning::
 
-   When putting an array like object such as a NumPy array or PyTables array
-   into a database you *must* provide the column names in the form of a Record
-   datashape. Without column names, it doesn't make sense to put an array into
-   a database table, since a database table doesn't make sense without named
-   columns. Remember, **there's no notion of dimensions indexed by integers**
-   like there is with arrays, so the inability to put an array with unnamed
-   columns into a database is intentional.
+   When putting an array-like object such as a NumPy array into a database you
+   *must* provide the column names in the form of a Record datashape.
+
+   .. note::
+
+      Without column names, it doesn't make sense to put an array into a
+      database table, since a database table doesn't make sense without named
+      columns. The inability to put an array with unnamed columns into a
+      database is intentional.
 
    Here's a failing example:
 
