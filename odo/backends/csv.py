@@ -93,8 +93,8 @@ def infer_header(path, nbytes=10000, encoding='utf-8', **kwargs):
     if not raw:
         return True
     sniffer = PipeSniffer()
-    decoded = (raw.decode(encoding).encode(encoding)
-               if PY2 else raw.decode(encoding))
+    decoded = (raw.decode(encoding, 'replace').encode(encoding)
+               if PY2 else raw.decode(encoding, 'replace'))
     try:
         return sniffer.has_header(decoded)
     except csv.Error:
@@ -111,7 +111,7 @@ def sniff_dialect(path, nbytes, encoding='utf-8'):
     if encoding is None:
         encoding = 'utf-8'
     with open_file(path, 'rb') as f:
-        raw = f.read(nbytes).decode(encoding or 'utf-8')
+        raw = f.read(nbytes).decode(encoding or 'utf-8', 'replace')
     sniffer = PipeSniffer()
     try:
         dialect = sniffer.sniff(raw, delimiters=sniffer.preferred)
@@ -164,7 +164,7 @@ class CSV(object):
 
     @property
     def dialect(self):
-        with sample(self) as fn:
+        with sample(self, length=self._sniff_nbytes) as fn:
             return self._sniff_dialect(fn)
 
     @property
