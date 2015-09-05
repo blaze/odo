@@ -415,6 +415,8 @@ def test_multibyte_encoding_replaces():
             f.write((','.join(header) + '\n').encode('utf8'))
             f.write('\n'.join(','.join(map(unicode, row))
                               for row in zip(single_column, numbers)).encode('utf8'))
+        c = CSV(fn, encoding='utf8', sniff_nbytes=3)
+        assert c.has_header is None  # not enough data to infer header
+
         c = CSV(fn, encoding='utf8', sniff_nbytes=10)
-        assert c.has_header
         assert c.dialect['delimiter'] == ','
