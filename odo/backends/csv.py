@@ -93,7 +93,7 @@ def infer_header(path, nbytes=10000, encoding='utf-8', **kwargs):
     if not raw:
         return True
     sniffer = PipeSniffer()
-    decoded = raw if PY2 else raw.decode(encoding)
+    decoded = raw if PY2 else raw.decode(encoding, 'replace')
     try:
         return sniffer.has_header(decoded)
     except csv.Error:
