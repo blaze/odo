@@ -62,7 +62,7 @@ But we want this one::
 What is DataShape?
 ------------------
 
-Datashape is a datatype system that includes scalar types::
+DataShape is a datatype system that includes scalar types::
 
     string, int32, float64, datetime, ...
 
@@ -135,9 +135,9 @@ datashape is only a guess and might need to be tweaked.
    >>> odo('accounts.csv', pd.DataFrame, dshape=ds)
 
 In these cases we can copy-paste the datashape and modify the parts that we
-need to change.  In the example above we couldn't call discover directly on the
-URI, ``'accounts.csv'`` so instead we called ``resource`` on the URI first.
-Discover returns the datashape ``string`` on all strings, regardless of whether
+need to change.  In the example above we couldn't call ``discover`` directly on the
+URI, ``'accounts.csv'``, so instead we called ``resource`` on the URI first.
+``discover`` returns the datashape ``string`` on all strings, regardless of whether
 or not we intend them to be URIs.
 
 Learn More
