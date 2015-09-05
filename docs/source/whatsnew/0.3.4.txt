@@ -52,6 +52,8 @@ Bug Fixes
 * Fix a bug where the SparkSQL backend wouldn't work if we didn't have paramiko installed (:issue:`300`)
 * Fix a testing bug where the endlines were being compared and they
   shouldn't have been (:issue:`312`).
+* Fix a bug where sniffing multibyte encodings potentially chopped off
+  part of the encoded string (:issue:`309`, :issue:`311`).
 
 Miscellaneous
 -------------
