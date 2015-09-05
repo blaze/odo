@@ -30,7 +30,8 @@ def test_convert_logfiles_to_bag():
         b = odo(logs, Bag)
         assert isinstance(b, Bag)
         assert 'a1.log' in str(b.dask.values())
-        assert odo(b, list) == odo(logs, list)
+        assert (list(map(str.strip, odo(b, list))) ==
+                list(map(str.strip, odo(logs, list))))
 
 
 def test_sequence():
