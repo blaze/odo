@@ -406,7 +406,8 @@ def random_multibyte_string(nrows, string_length,
         yield ''.join(np.random.choice(list(domain), size=string_length))
 
 
-def test_multibyte_encoding_replaces():
+@pytest.yield_fixture
+def multibyte_csv():
     header = random_multibyte_string(nrows=2, string_length=3)
     single_column = random_multibyte_string(nrows=10, string_length=4)
     numbers = np.random.randint(4, size=10)
@@ -415,8 +416,14 @@ def test_multibyte_encoding_replaces():
             f.write((','.join(header) + '\n').encode('utf8'))
             f.write('\n'.join(','.join(map(unicode, row))
                               for row in zip(single_column, numbers)).encode('utf8'))
-        c = CSV(fn, encoding='utf8', sniff_nbytes=3)
+        yield fn
+
+
+def test_multibyte_encoding_header(multibyte_csv):
+        c = CSV(multibyte_csv, encoding='utf8', sniff_nbytes=3)
         assert c.has_header is None  # not enough data to infer header
 
-        c = CSV(fn, encoding='utf8', sniff_nbytes=10)
+
+def test_multibyte_encoding_dialect(multibyte_csv):
+        c = CSV(multibyte_csv, encoding='utf8', sniff_nbytes=10)
         assert c.dialect['delimiter'] == ','
