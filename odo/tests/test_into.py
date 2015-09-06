@@ -5,7 +5,7 @@ import pytest
 import numpy as np
 
 from odo import odo, into
-from odo.utils import tmpfile, filetext, raises
+from odo.utils import tmpfile, filetext
 from odo.backends.csv import CSV
 
 
@@ -21,8 +21,9 @@ def test_into_append():
 
 
 def test_into_append_failure():
-    nd = np.array([1, 2, 3])
-    assert raises(ValueError, lambda: odo((4, 5), nd))
+    with pytest.raises(TypeError):
+        nd = np.array([1, 2, 3])
+        odo((4, 5), nd))
 
 
 def test_into_curry():

@@ -48,7 +48,7 @@ supports in-place append.
 
 .. code-block:: python
 
-   >>> odo('myfile.csv', df) # this will raise ValueError because DataFrame is not appendable
+   >>> odo('myfile.csv', df) # this will raise TypeError because DataFrame is not appendable
 
 Network Effects
 ---------------
