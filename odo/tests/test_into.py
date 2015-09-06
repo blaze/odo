@@ -23,7 +23,7 @@ def test_into_append():
 def test_into_append_failure():
     with pytest.raises(TypeError):
         nd = np.array([1, 2, 3])
-        odo((4, 5), nd))
+        odo((4, 5), nd)
 
 
 def test_into_curry():
@@ -54,3 +54,5 @@ def test_into_string_dshape():
     np.testing.assert_array_equal(odo([1, 2, 3], np.ndarray,
                                       dshape='var * float64'),
                                   np.array([1, 2, 3], dtype='float64'))
+
+test_into_append_failure()
