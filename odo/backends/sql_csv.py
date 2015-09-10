@@ -103,7 +103,7 @@ def compile_from_csv_mysql(element, compiler, **kwargs):
     lineterminator = element.lineterminator.encode('unicode-escape').decode()
     result = r"""
         LOAD DATA {local} INFILE '{path}'
-        INTO TABLE {0.element.name}
+        INTO TABLE `{0.element.name}`
         CHARACTER SET {encoding}
         FIELDS
             TERMINATED BY '{0.delimiter}'
