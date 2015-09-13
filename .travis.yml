@@ -13,11 +13,13 @@ matrix:
       env: SPARK_VERSION=1.4
     - python: 2.7
       env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
+      env: SPARK_VERSION=1.4
     - python: 3.3
     - python: 3.4
       env: SPARK_VERSION=1.4
     - python: 3.4
       env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
+      env: SPARK_VERSION=1.4
 
 
 addons:
