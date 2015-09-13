@@ -40,7 +40,7 @@ install:
   - conda create -n odo python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy
   - conda install -n odo h5py pip cython bcolz coverage networkx toolz multipledispatch
   - conda install -n odo pytables dynd-python pymongo paramiko boto
-  - [ -n "$PANDAS_VERSION" ] && conda remove -n odo pandas
+  - if [ -n "$PANDAS_VERSION" ]; then conda remove -n odo pandas; fi
   - source activate odo
 
   # datashape
@@ -51,7 +51,7 @@ install:
   - pip install toolz
   - pip install sas7bdat
   - pip install git+git://github.com/blaze/dask.git --upgrade
-  - [ -n "$PANDAS_VERSION" ] && pip install $PANDAS_VERSION
+  - if [ -n "$PANDAS_VERSION" ]; then pip install $PANDAS_VERSION; fi
   - pip install dill --upgrade
   - pip install psycopg2
 
