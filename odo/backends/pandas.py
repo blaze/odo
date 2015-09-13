@@ -1,14 +1,16 @@
 from __future__ import absolute_import, division, print_function
 
+from functools import partial
+
 from datashape import discover
-from datashape import (float32, float64, string, Option, Record, object_,
-        datetime_)
+from datashape import float32, float64, string, Option, object_, datetime_
 import datashape
 
 import pandas as pd
 
 
 possibly_missing = set((string, datetime_, float32, float64))
+
 
 @discover.register(pd.DataFrame)
 def discover_dataframe(df):
@@ -51,7 +53,9 @@ def coerce_datetimes(df):
     name            object
     dtype: object
     """
-    df2 = df.select_dtypes(include=['object']).apply(pd.to_datetime)
+    df2 = df.select_dtypes(include=['object']).apply(
+        partial(pd.to_datetime, errors='ignore')
+    )
     for c in df2.columns:
         df[c] = df2[c]
     return df
