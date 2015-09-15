@@ -38,12 +38,19 @@ def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types,
     with ignoring(NotImplementedError):
         if 'dshape' not in kwargs:
             kwargs['dshape'] = discover(x)
+
     pth = path(graph, type(source), target,
                excluded_edges=excluded_edges,
                ooc_types=ooc_types)
     try:
         for (A, B, f) in pth:
-            x = f(x, excluded_edges=excluded_edges, **kwargs)
+            kwargs['converting_from'] = A
+            kwargs['converting_to'] = B
+            x = f(
+                x,
+                excluded_edges=excluded_edges,
+                **kwargs
+            )
         return x
     except NotImplementedError as e:
         if kwargs.get('raise_on_errors'):
