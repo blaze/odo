@@ -7,49 +7,51 @@ import tempfile
 import shutil
 
 from functools import partial
+from collections import Iterator
 from datetime import datetime, date
 
+import pandas as pd
+
 import toolz
+from toolz.curried import get, map, memoize
+from toolz import pipe, concat, curry
+
+from pyspark import RDD, SQLContext, HiveContext
+from pyspark.sql import SchemaRDD
+from pyspark.rdd import PipelinedRDD
+
 import datashape
 from datashape import dshape, Record, DataShape, Option, Tuple
 from datashape.predicates import isdimension, isrecord, iscollection
-from toolz.curried import get, map
-from toolz import pipe, concat, curry
 
 from .. import append, discover, convert
 from ..core import ooc_types
 from ..directory import Directory
-from .json import JSONLines
-from .spark import RDD, SparkDataFrame, SchemaRDD, Dummy, SQLContext
+from ..temp import Temp
+from ..chunks import chunks
 
-
-SPARK_ONE_THREE = False
+from .json import JSONLines, JSON
+from .csv import CSV
 
 
 try:
-    import pyspark
+    from pyspark.sql import DataFrame as SparkDataFrame
 except ImportError:
-    SparkDataFrame = SQLContext = Dummy
-    ByteType = ShortType = IntegerType = LongType = FloatType = Dummy
-    MapType = DoubleType = StringType = BinaryType = BooleanType = Dummy
-    TimestampType = DateType = StructType = ArrayType = StructField = Dummy
+    from pyspark.sql import (ByteType, ShortType, IntegerType, LongType,
+                             FloatType, DoubleType, StringType,
+                             BinaryType, BooleanType, TimestampType,
+                             DateType, ArrayType, StructType,
+                             StructField, SchemaRDD as SparkDataFrame)
+    SPARK_ONE_TWO = True
 else:
-    try:
-        from pyspark.sql.types import (ByteType, ShortType, IntegerType,
-                                       LongType, FloatType, DoubleType,
-                                       StringType, BinaryType, BooleanType,
-                                       TimestampType, DateType, ArrayType,
-                                       StructType, StructField, MapType)
-        SPARK_ONE_THREE = True
-    except ImportError:
-        from pyspark.sql import (ByteType, ShortType, IntegerType, LongType,
-                                 FloatType, DoubleType, StringType,
-                                 BinaryType, BooleanType, TimestampType,
-                                 DateType, ArrayType, StructType,
-                                 StructField, MapType)
+    from pyspark.sql.types import (ByteType, ShortType, IntegerType,
+                                   LongType, FloatType, DoubleType,
+                                   StringType, BinaryType, BooleanType,
+                                   TimestampType, DateType, ArrayType,
+                                   StructType, StructField)
+    SPARK_ONE_TWO = False
 
-
-base = (int, float, datetime, date, bool, str)
+base = int, float, datetime, date, bool, str
 _names = ('tmp%d' % i for i in itertools.count())
 
 
@@ -112,7 +114,7 @@ def rdd_to_sqlcontext(ctx, rdd, name=None, dshape=None, **kwargs):
         name = next(_names)
     register_table(ctx, sdf, name=name)
 
-    if SPARK_ONE_THREE:
+    if not SPARK_ONE_TWO:
         # this breaks conversion in Spark 1.2
         ctx.cacheTable(name)
     return sdf
@@ -159,7 +161,7 @@ def chunk_file(filename, chunksize):
         Number of bytes to hold in memory at a single time
     """
     with open(filename, mode='rb') as f:
-        for chunk in iter(partial(f.read, chunksize), ''):
+        for chunk in iter(partial(f.read, chunksize), b''):
             yield chunk
 
 
@@ -187,6 +189,25 @@ def spark_df_to_jsonlines(js, df,
     finally:
         shutil.rmtree(tmpd)
     return js
+
+
+@convert.register((SparkDataFrame, SchemaRDD), (RDD, PipelinedRDD))
+def rdd_to_spark_df_or_srdd(rdd, **kwargs):
+    return append(HiveContext(rdd.context), rdd, **kwargs)
+
+
+try:
+    from .hdfs import HDFS
+except ImportError:
+    pass
+else:
+    @append.register(HDFS(JSONLines),
+                     (Iterator, object, SparkDataFrame, SchemaRDD))
+    @append.register(HDFS(JSON), (list, object))
+    @append.register(HDFS(CSV), (chunks(pd.DataFrame), pd.DataFrame, object))
+    def append_spark_to_hdfs(target, source, **kwargs):
+        tmp = convert(Temp(target.subtype), source, **kwargs)
+        return append(target, tmp, **kwargs)
 
 
 def dshape_to_schema(ds):
@@ -298,3 +319,6 @@ dshape_to_sparksql = {
 }
 
 ooc_types |= set([SparkDataFrame, SchemaRDD])
+
+SQLContext = memoize(SQLContext)
+HiveContext = memoize(HiveContext)

@@ -3,14 +3,28 @@ sudo: False
 language: python
 
 matrix:
+  fast_finish: true
   include:
     - python: 2.6
     - python: 2.7
       env: SPARK_VERSION=1.2
     - python: 2.7
       env: SPARK_VERSION=1.3
+    - python: 2.7
+      env: SPARK_VERSION=1.4
     - python: 3.3
     - python: 3.4
+      env: SPARK_VERSION=1.4
+    - python: 2.7
+      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.4
+    - python: 3.4
+      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.4
+  allow_failures:
+    - python: 2.7
+      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.4
+    - python: 3.4
+      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.4
+
 
 addons:
   postgresql: "9.3"
@@ -29,43 +43,50 @@ install:
   - conda update conda
 
   # Install dependencies
-  - conda create -n odo-test python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy h5py pip cython bcolz coverage networkx toolz multipledispatch pytables dynd-python pymongo paramiko boto
-  - source activate odo-test
+  - conda create -n odo python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy
+  - conda install -n odo h5py pip cython bcolz coverage networkx toolz multipledispatch
+  - conda install -n odo pytables dynd-python pymongo paramiko boto
+  - if [ -n "$PANDAS_VERSION" ]; then conda remove -n odo pandas; fi
+  - source activate odo
 
   # datashape
-  - conda install datashape -c blaze
+  - pip install git+git://github.com/blaze/datashape.git
 
   # Install various deps
+  - conda uninstall toolz
+  - pip install toolz
   - pip install sas7bdat
   - pip install git+git://github.com/blaze/dask.git --upgrade
+  - if [ -n "$PANDAS_VERSION" ]; then pip install $PANDAS_VERSION; fi
   - pip install dill --upgrade
+  - pip install psycopg2
 
   # install pyspark
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then conda install spark=$SPARK_VERSION -c blaze -c https://conda.binstar.org/blaze/channel/dev; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' || $TRAVIS_PYTHON_VERSION == '3.4' ]]; then conda install spark=$SPARK_VERSION -c blaze -c https://conda.binstar.org/blaze/channel/dev -c anaconda-cluster; fi
 
   # Install Bokeh
-  - if [[ $TRAVIS_PYTHON_VERSION > '2.6' ]]; then conda install bokeh psycopg2 pymysql; fi
+  - if [[ $TRAVIS_PYTHON_VERSION > '2.6' ]]; then conda install bokeh pymysql; fi
 
   # For bcolz
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda install unittest2 && pip install psycopg2 pymysql; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda install unittest2 && pip install pymysql; fi
 
   # redshift sqlalchemy dialect
-  - pip install --upgrade git+git://github.com/cpcloud/redshift_sqlalchemy
+  - pip install --upgrade git+git://github.com/graingert/redshift_sqlalchemy
 
 # Before_script section stolen from fabric
 # See license https://github.com/fabric/fabric/blob/master/LICENSE
 before_script:
- # Allow us to SSH passwordless to localhost
- - ssh-keygen -f ~/.ssh/id_rsa -N ""
- - cp ~/.ssh/{id_rsa.pub,authorized_keys}
- # Creation of an SSH agent for testing forwarding
- - eval $(ssh-agent)
- - ssh-add
- - mysql -e "create database if not exists test;" -u root
- - psql -c "create database test;" -U postgres
+  # Allow us to SSH passwordless to localhost
+  - ssh-keygen -f ~/.ssh/id_rsa -N ""
+  - cp ~/.ssh/{id_rsa.pub,authorized_keys}
+  # Creation of an SSH agent for testing forwarding
+  - eval $(ssh-agent)
+  - ssh-add
+  - mysql -e "create database if not exists test;" -u root
+  - psql -c "create database test;" -U postgres
 
 script:
-    - py.test -v --doctest-modules odo
+  - py.test -v --doctest-modules --doctest-ignore-import-errors odo
 
 notifications:
   email: false
