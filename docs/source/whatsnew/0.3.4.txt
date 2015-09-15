@@ -2,7 +2,7 @@ Release |version|
 -----------------
 
 :Release: |version|
-:Date: TBD
+:Date: September 15, 2015
 
 New Features
 ------------
