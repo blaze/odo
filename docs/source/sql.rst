@@ -25,6 +25,9 @@ extensions, SQLAlchemy supports *most* databases.
       >>> from odo import odo
       >>> x = np.zeros((10, 2))
       >>> t = odo(x, 'sqlite:///db.db::x')  # this will NOT work
+      Traceback (most recent call last):
+          ...
+      TypeError: dshape measure must be a record type e.g., "{a: int64, b: int64}". Input measure is ctype("float64")
 
    Here's what to do instead:
 
@@ -49,6 +52,64 @@ SQL uris consist of the following
 * Optional database/schema name:  ``/default``
 * A table name with the ``::`` separator:  ``::accounts``
 
+
+Binds
+-----
+
+Sqlalchemy allows objects to be bound to a particular database connection. This
+is known as the 'bind' of the object, or that the object is 'bound'.
+
+By default, odo expects to be working with either bound sqlalchemy objects or
+uris to tables.
+
+For example, when working with a sqlalchemy object, one must be sure to pass a
+bound metadata to the construction of your tables.
+
+.. code-block:: python
+
+   >>> import sqlalchemy as sa
+   >>> sa.MetaData()
+   >>> tbl = sa.Table(
+   ...     'tbl',
+   ...     metadata,
+   ...     sa.Column('a', sa.Integer, primary_key=True),
+   ... )
+   >>> odo([[1], [2], [3]], tbl, dshape='var * {a: int}')  # this will NOT work
+   Traceback (most recent call last):
+        ...
+   UnboundExecutionError: Table object 'tbl' is not bound to an Engine or Connection.  Execution can not proceed without a database to execute against.
+
+We have two options for binding metadata to objects, we can explicitly bind our
+tables, or we can pass it to odo as a keyword argument.
+
+Here is an example of constructing the table with a bound metadata:
+
+.. code-block:: python
+
+   >>> import sqlalchemy as sa
+   >>> metadata = sa.MetaData(bind='sqlite:///db.db')  # NOTE: pass the uri to the db here
+   >>> tbl = sa.Table(
+   ...     'tbl',
+   ...     metadata,
+   ...     sa.Column('a', sa.Integer, primary_key=True),
+   ... )
+   >>> odo([[1], [2], [3]], tbl)  # this know knows where to fild the table.
+
+Here is an example of passing the bind to odo:
+
+.. code-block:: python
+
+   >>> import sqlalchemy as sa
+   >>> sa.MetaData()
+   >>> tbl = sa.Table(
+   ...     'tbl',
+   ...     metadata,
+   ...     sa.Column('a', sa.Integer, primary_key=True),
+   ... )
+   >>> bind = 'sqlite:///db.db'
+   >>> odo([[1], [2], [3]], tbl, dshape='var * {a: int}', bind=bind)  # pass the bind to odo here
+
+Here, the bind may be either a uri to a database, or a sqlalchemy Engine object.
 
 Conversions
 -----------
