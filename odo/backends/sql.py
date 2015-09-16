@@ -431,6 +431,7 @@ def append_iterator_to_table(t, rows, dshape=None, bind=None, **kwargs):
         return
     rows = chain([row], rows)
     if isinstance(row, (tuple, list)):
+        dshape = datashape.dshape(dshape)
         if dshape and isinstance(dshape.measure, datashape.Record):
             names = dshape.measure.names
             if set(names) != set(discover(t).measure.names):
