@@ -32,8 +32,9 @@ Improved Backends
   Pandas now includes an edge from
   ``pandas.tslib.NaTType`` to ``pandas.Timestamp``
   (:issue:`3321).
-
-None
+* :func:`~odo.odo.odo` now accepts a new keyword argument `bind` which is the
+  sqlalchemy engine to use when executing the sql commands. This allows us to
+  odo to or from an unbound sqlalchemy object (:issue:`305`).
 
 API Changes
 -----------
