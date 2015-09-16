@@ -111,7 +111,12 @@ sa.dialects.registry.load('postgresql')
 
 
 def getbind(t, bind):
-    return t.bind if bind is None else bind
+    if bind is None:
+        return t.bind
+
+    if isinstance(bind, sa.engine.base.Engine):
+        return bind
+    return sa.create_engine(bind)
 
 
 def batch(sel, chunksize=10000, bind=None):
@@ -413,8 +418,9 @@ def select_to_base(sel, dshape=None, bind=None, **kwargs):
 @append.register(sa.Table, Iterator)
 def append_iterator_to_table(t, rows, dshape=None, bind=None, **kwargs):
     assert not isinstance(t, type)
-    if not t.exists():
-        raise ValueError('table %r does not exist' % t.name)
+    engine = getbind(t, bind)
+    if not t.exists(bind=engine):
+        t.create(bind=engine)
     rows = iter(rows)
 
     # We see if the sequence is of tuples or dicts
@@ -437,7 +443,6 @@ def append_iterator_to_table(t, rows, dshape=None, bind=None, **kwargs):
             names = discover(t).measure.names
         rows = (dict(zip(names, row)) for row in rows)
 
-    engine = getbind(t, bind)
     with engine.connect() as conn:
         for chunk in partition_all(1000, rows):  # TODO: 1000 is hardcoded
             conn.execute(t.insert(), chunk)
@@ -594,8 +599,9 @@ ooc_types.add(sa.Table)
 
 @dispatch(sa.Table)
 def drop(table, bind=None):
-    table.drop(getbind(table, bind), checkfirst=True)
-    if table.exists():
+    bind = getbind(table, bind)
+    table.drop(bind=bind, checkfirst=True)
+    if table.exists(bind=bind):
         raise ValueError('table %r dropped but still exists' % table.name)
 
 
