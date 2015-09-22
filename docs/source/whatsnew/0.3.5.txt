@@ -1,4 +1,4 @@
-jRelease |version|
+Release |version|
 -----------------
 
 :Release: |version|
