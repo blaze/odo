@@ -210,16 +210,6 @@ def metadata_of_engine(engine, schema=None):
     return sa.MetaData(engine, schema=schema)
 
 
-def create_engine(uri, *args, **kwargs):
-    if ':memory:' in uri:
-        return sa.create_engine(uri, *args, **kwargs)
-    else:
-        return memoized_create_engine(uri, *args, **kwargs)
-
-
-memoized_create_engine = memoize(sa.create_engine)
-
-
 @dispatch(sa.engine.base.Engine, str)
 def discover(engine, tablename):
     metadata = metadata_of_engine(engine)
@@ -508,7 +498,8 @@ def fullname(table, compiler):
 
 @resource.register(r'(.*sql.*|oracle|redshift)(\+\w+)?://.+')
 def resource_sql(uri, *args, **kwargs):
-    engine = create_engine(uri, **filter_kwargs(sa.create_engine, kwargs))
+    engine = sa.create_engine(uri, connect_args=kwargs.pop('connect_args', {}),
+                              **filter_kwargs(sa.create_engine, kwargs))
     ds = kwargs.pop('dshape', None)
     schema = kwargs.pop('schema', None)
     foreign_keys = kwargs.pop('foreign_keys', None)
