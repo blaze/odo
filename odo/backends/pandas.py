@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+from datetime import datetime
 from functools import partial
 
 from datashape import discover
@@ -7,6 +8,8 @@ from datashape import float32, float64, string, Option, object_, datetime_
 import datashape
 
 import pandas as pd
+
+from ..convert import convert
 
 
 possibly_missing = set((string, datetime_, float32, float64))
@@ -59,3 +62,8 @@ def coerce_datetimes(df):
     for c in df2.columns:
         df[c] = df2[c]
     return df
+
+
+@convert.register(pd.Timestamp, datetime)
+def convert_datetime_to_timestamp(dt, **kwargs):
+    return pd.Timestamp(dt)

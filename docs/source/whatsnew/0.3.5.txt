@@ -26,6 +26,9 @@ None
 Improved Backends
 -----------------
 
+* Pandas now includes an edge from ``datetime.datetime`` to
+  ``pandas.Timestamp`` (:issue:`329`).
+
 None
 
 API Changes
