@@ -45,7 +45,7 @@ install:
   # Install dependencies
   - conda create -n odo python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy
   - conda install -n odo h5py pip cython bcolz coverage networkx toolz multipledispatch
-  - conda install -n odo pytables dynd-python pymongo paramiko boto
+  - conda install -n odo pytables dynd-python pymongo=2.8 paramiko boto
   - if [ -n "$PANDAS_VERSION" ]; then conda remove -n odo pandas; fi
   - source activate odo
 
