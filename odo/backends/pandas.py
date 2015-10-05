@@ -8,6 +8,7 @@ from datashape import float32, float64, string, Option, object_, datetime_
 import datashape
 
 import pandas as pd
+import numpy as np
 
 from ..convert import convert
 
@@ -67,3 +68,11 @@ def coerce_datetimes(df):
 @convert.register(pd.Timestamp, datetime)
 def convert_datetime_to_timestamp(dt, **kwargs):
     return pd.Timestamp(dt)
+
+
+@convert.register(pd.Timestamp, float)
+def nan_to_nat(fl, **kwargs):
+    if np.isnan(fl):
+        # Only nan->nat edge
+        return pd.NaT
+    raise NotImplementedError()
