@@ -39,6 +39,9 @@ None
 Bug Fixes
 ---------
 
+* Pandas backend now supports conversion from `nan` to `pandas.NaT`
+  (:issue:`331`).
+
 None
 
 Miscellaneous
