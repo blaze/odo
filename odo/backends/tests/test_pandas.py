@@ -5,6 +5,7 @@ from datetime import datetime
 from datashape import discover, Option
 from datashape import dshape
 from networkx import NetworkXNoPath
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -43,6 +44,7 @@ def test_datetime_to_timestamp():
 
 def test_nan_to_nat():
     assert odo(float('nan'), pd.Timestamp) is pd.NaT
+    assert odo(np.nan, pd.Timestamp) is pd.NaT
 
     with pytest.raises(NetworkXNoPath):
         # Check that only nan can be converted.
