@@ -53,8 +53,8 @@ SQL uris consist of the following
 * A table name with the ``::`` separator:  ``::accounts``
 
 
-Binds
------
+Executing Odo Against Databases
+-------------------------------
 
 Sqlalchemy allows objects to be bound to a particular database connection. This
 is known as the 'bind' of the object, or that the object is 'bound'.
@@ -93,7 +93,7 @@ Here is an example of constructing the table with a bound metadata:
    ...     metadata,
    ...     sa.Column('a', sa.Integer, primary_key=True),
    ... )
-   >>> odo([[1], [2], [3]], tbl)  # this know knows where to fild the table.
+   >>> odo([[1], [2], [3]], tbl)  # this know knows where to field the table.
 
 Here is an example of passing the bind to odo:
 

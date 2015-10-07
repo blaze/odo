@@ -471,22 +471,23 @@ def append_table_to_sql_Table(t, o, **kwargs):
 
 @append.register(sa.Table, sa.sql.Select)
 def append_select_statement_to_sql_Table(t, o, bind=None, **kwargs):
-    tbind = getbind(t, bind)
-    obind = getbind(o, bind)
-    if not tbind == obind:
+    t_bind = getbind(t, bind)
+    o_bind = getbind(o, bind)
+    if t_bind != o_bind:
         return append(
             t,
             convert(Iterator, o, bind=bind, **kwargs),
             bind=bind,
             **kwargs
         )
+    bind = t_bind
 
-    assert obind.has_table(t.name, t.schema), \
+    assert bind.has_table(t.name, t.schema), \
         'tables must come from the same database'
 
     query = t.insert().from_select(o.columns.keys(), o)
 
-    with obind.connect() as conn:
+    with bind.connect() as conn:
         conn.execute(query)
     return t
 
@@ -607,8 +608,8 @@ def drop(table, bind=None):
 
 
 @convert.register(pd.DataFrame, (sa.sql.Select, sa.sql.Selectable), cost=200.0)
-def select_or_selectable_to_frame(el, **kwargs):
-    columns, rows = batch(el)
+def select_or_selectable_to_frame(el, bind=None, **kwargs):
+    columns, rows = batch(el, bind=bind)
     row = next(rows, None)
     if row is None:
         return pd.DataFrame(columns=columns)
