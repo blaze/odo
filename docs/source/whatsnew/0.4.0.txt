@@ -28,6 +28,8 @@ Improved Backends
 
 * Pandas now includes an edge from ``datetime.datetime`` to
   ``pandas.Timestamp`` (:issue:`329`).
+* Pandas now includes an edge from ``NoneType`` to ``pandas.Timestamp``
+  (:issue:`3321).
 
 None
 

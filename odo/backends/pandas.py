@@ -79,3 +79,8 @@ def nan_to_nat(fl, **kwargs):
     except TypeError:
         pass
     raise NotImplementedError()
+
+
+@convert.register(pd.Timestamp, type(None))
+def none_to_nat(n, **kwargs):
+    return pd.NaT

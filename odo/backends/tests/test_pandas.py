@@ -49,3 +49,7 @@ def test_nan_to_nat():
     with pytest.raises(NetworkXNoPath):
         # Check that only nan can be converted.
         odo(0.5, pd.Timestamp)
+
+
+def test_none_to_nat():
+    assert odo(None, pd.Timestamp) is pd.NaT
