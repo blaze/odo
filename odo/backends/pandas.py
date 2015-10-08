@@ -72,7 +72,10 @@ def convert_datetime_to_timestamp(dt, **kwargs):
 
 @convert.register(pd.Timestamp, float)
 def nan_to_nat(fl, **kwargs):
-    if np.isnan(fl):
-        # Only nan->nat edge
-        return pd.NaT
+    try:
+        if np.isnan(fl):
+            # Only nan->nat edge
+            return pd.NaT
+    except TypeError:
+        pass
     raise NotImplementedError()
