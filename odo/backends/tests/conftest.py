@@ -5,16 +5,18 @@ import pytest
 
 @pytest.fixture(scope='session')
 def sc():
-    pyspark = pytest.importorskip('pyspark')
-    return pyspark.SparkContext('local[*]', 'odo')
+    pytest.importorskip('pyspark')
+    from pyspark import SparkContext
+    return SparkContext('local[*]', 'odo')
 
 
 @pytest.yield_fixture(scope='session')
 def sqlctx(sc):
-    pyspark = pytest.importorskip('pyspark')
+    pytest.importorskip('pyspark')
+    from odo.backends.sparksql import HiveContext
 
     try:
-        yield pyspark.HiveContext(sc)
+        yield HiveContext(sc)
     finally:
         dbpath = 'metastore_db'
         logpath = 'derby.log'

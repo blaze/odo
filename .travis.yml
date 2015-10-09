@@ -5,26 +5,26 @@ language: python
 matrix:
   fast_finish: true
   include:
-    - python: 2.7
-      env: SPARK_VERSION=1.3
-    - python: 2.7
-      env: SPARK_VERSION=1.4
-    - python: 2.7
-      env: SPARK_VERSION=1.5
-    - python: 3.3
+    # - python: 2.7
+    #   env: SPARK_VERSION=1.3
+    # - python: 2.7
+    #   env: SPARK_VERSION=1.4
+    # - python: 2.7
+    #   env: SPARK_VERSION=1.5
+    # - python: 3.3
     - python: 3.4
       env: SPARK_VERSION=1.4
-    - python: 3.4
-      env: SPARK_VERSION=1.5
-    - python: 2.7
-      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
-    - python: 3.4
-      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
-  allow_failures:
-    - python: 2.7
-      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
-    - python: 3.4
-      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
+    # - python: 3.4
+    #   env: SPARK_VERSION=1.5
+    # - python: 2.7
+    #   env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
+    # - python: 3.4
+    #   env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
+  # allow_failures:
+  #   - python: 2.7
+  #     env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
+  #   - python: 3.4
+  #     env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
 
 
 addons:
@@ -46,9 +46,11 @@ install:
   # Install dependencies
   - conda create -n odo python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy
   - conda install -n odo h5py pip cython bcolz coverage networkx toolz multipledispatch
-  - conda install -n odo pytables dynd-python 'pymongo<3' paramiko boto bokeh pymysql
+  - conda install -n odo pytables 'pymongo<3' paramiko boto bokeh pymysql
+  - conda install -n odo dynd-python -c dynd/channel/dev
   - if [ -n "$PANDAS_VERSION" ]; then conda remove -n odo pandas; fi
   - source activate odo
+  - python -c 'import h5py'
 
   # datashape
   - pip install git+git://github.com/blaze/datashape.git
@@ -81,7 +83,7 @@ before_script:
   - psql -c "create database test;" -U postgres
 
 script:
-  - py.test -v --doctest-modules --doctest-ignore-import-errors odo
+  - py.test -xv --doctest-modules --doctest-ignore-import-errors odo
 
 notifications:
   email: false
