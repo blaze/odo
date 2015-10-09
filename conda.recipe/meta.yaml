@@ -12,7 +12,7 @@ source:
 
 requirements:
   build:
-    - python
+    - python >=2.7
     - datashape >=0.4.6
     - numpy >=1.7
     - pandas >=0.15.0
@@ -21,7 +21,7 @@ requirements:
     - networkx
 
   run:
-    - python
+    - python >=2.7
     - datashape >=0.4.6
     - numpy >=1.7
     - pandas >=0.15.0
@@ -42,11 +42,11 @@ test:
     - paramiko
     - sqlite3 # [win]
     - boto # [not win]
-    - bokeh # [not py26]
+    - bokeh
     - pytables >=3.0.0
     - pip
-    - pymysql # [not py26]
-    - psycopg2 # [unix and not py26]
+    - pymysql
+    - psycopg2 # [unix]
 
   commands:
     - pip install sas7bdat && py.test -vx --pyargs odo -rsxX
