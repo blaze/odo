@@ -5,7 +5,6 @@ import sys
 pytest.importorskip('dynd')
 
 from odo import create, convert, discover
-from odo.backends.dynd import create
 from dynd import nd
 import numpy as np
 import datashape
