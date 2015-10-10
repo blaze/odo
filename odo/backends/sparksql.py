@@ -34,22 +34,12 @@ from .json import JSONLines, JSON
 from .csv import CSV
 
 
-try:
-    from pyspark.sql import DataFrame as SparkDataFrame
-except ImportError:
-    from pyspark.sql import (ByteType, ShortType, IntegerType, LongType,
-                             FloatType, DoubleType, StringType,
-                             BinaryType, BooleanType, TimestampType,
-                             DateType, ArrayType, StructType,
-                             StructField, SchemaRDD as SparkDataFrame)
-    SPARK_ONE_TWO = True
-else:
-    from pyspark.sql.types import (ByteType, ShortType, IntegerType,
-                                   LongType, FloatType, DoubleType,
-                                   StringType, BinaryType, BooleanType,
-                                   TimestampType, DateType, ArrayType,
-                                   StructType, StructField)
-    SPARK_ONE_TWO = False
+from pyspark.sql import DataFrame as SparkDataFrame
+from pyspark.sql.types import (
+    ByteType, ShortType, IntegerType, LongType, FloatType, DoubleType,
+    StringType, BinaryType, BooleanType, TimestampType, DateType, ArrayType,
+    StructType, StructField
+)
 
 base = int, float, datetime, date, bool, str
 _names = ('tmp%d' % i for i in itertools.count())
@@ -113,10 +103,7 @@ def rdd_to_sqlcontext(ctx, rdd, name=None, dshape=None, **kwargs):
     if name is None:
         name = next(_names)
     register_table(ctx, sdf, name=name)
-
-    if not SPARK_ONE_TWO:
-        # this breaks conversion in Spark 1.2
-        ctx.cacheTable(name)
+    ctx.cacheTable(name)
     return sdf
 
 
