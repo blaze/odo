@@ -53,3 +53,7 @@ def test_nan_to_nat():
 
 def test_none_to_nat():
     assert odo(None, pd.Timestamp) is pd.NaT
+
+
+def test_nat_to_nat():
+    assert odo(pd.NaT, pd.Timestamp) is pd.NaT
