@@ -12,7 +12,7 @@ source:
 
 requirements:
   build:
-    - python >=2.7
+    - python 2.7*|3.4*|3.5*
     - datashape >=0.4.6
     - numpy >=1.7
     - pandas >=0.15.0
@@ -21,7 +21,7 @@ requirements:
     - networkx
 
   run:
-    - python >=2.7
+    - python 2.7*|3.4*|3.5*
     - datashape >=0.4.6
     - numpy >=1.7
     - pandas >=0.15.0
