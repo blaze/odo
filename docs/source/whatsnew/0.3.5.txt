@@ -34,7 +34,8 @@ None
 API Changes
 -----------
 
-None
+* Removed support for Python 2.6 (:issue:`333`).
+* Removed support for Python 3.3 (:issue:`335`).
 
 Bug Fixes
 ---------
