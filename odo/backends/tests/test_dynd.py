@@ -38,11 +38,6 @@ def test_convert_different_types(x, typ, expected):
     assert all(lhs == rhs for lhs, rhs in zip(y, expected))
 
 
-@pytest.mark.xfail(
-    sys.version_info[:2] == (3, 3),
-    raises=AssertionError,
-    reason='Python 3.3 is not well supported'
-)
 def test_convert_struct():
     x = nd.array([('a', 1)], type='1 * {a: string, b: int32}')
     assert convert(list, x) == [{'a': 'a', 'b': 1}]
