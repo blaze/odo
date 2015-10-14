@@ -23,7 +23,7 @@ def discover_dataframe(df):
     dtypes = list(map(datashape.CType.from_numpy_dtype, df.dtypes))
     dtypes = [string if dt == obj else dt for dt in dtypes]
     odtypes = [Option(dt) if dt in possibly_missing else dt
-                for dt in dtypes]
+               for dt in dtypes]
     schema = datashape.Record(list(zip(names, odtypes)))
     return len(df) * schema
 
@@ -72,7 +72,15 @@ def convert_datetime_to_timestamp(dt, **kwargs):
 
 @convert.register(pd.Timestamp, float)
 def nan_to_nat(fl, **kwargs):
-    if np.isnan(fl):
-        # Only nan->nat edge
-        return pd.NaT
+    try:
+        if np.isnan(fl):
+            # Only nan->nat edge
+            return pd.NaT
+    except TypeError:
+        pass
     raise NotImplementedError()
+
+
+@convert.register(pd.Timestamp, (pd.tslib.NaTType, type(None)))
+def convert_null_or_nat_to_nat(n, **kwargs):
+    return pd.NaT
