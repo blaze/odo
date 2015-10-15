@@ -82,7 +82,6 @@ revtypes.update({
     sa.types.DATE: 'date',
     sa.types.BIGINT: 'int64',
     sa.types.INTEGER: 'int',
-    sa.types.NUMERIC: 'float64',  # TODO: extend datashape to decimal
     sa.types.BIGINT: 'int64',
     sa.types.NullType: 'string',
     sa.types.Float: 'float64',
@@ -168,7 +167,7 @@ def discover_typeengine(typ):
                              'second_precision=%d, day_precision=%d' %
                              (typ.second_precision, typ.day_precision))
         return datashape.TimeDelta(unit=units)
-    if isinstance(typ, sa.NUMERIC):
+    if isinstance(typ, sa.Numeric):
         return datashape.Decimal(precision=typ.precision, scale=typ.scale)
     if typ in revtypes:
         return dshape(revtypes[typ])[0]
@@ -388,7 +387,7 @@ def dshape_to_alchemy(dshape, primary_key=frozenset()):
         else:
             return sa.types.DateTime(timezone=False)
     if isinstance(dshape, datashape.Decimal):
-        return sa.NUMERIC(dshape.precision, dshape.scale)
+        return sa.Numeric(dshape.precision, dshape.scale)
     raise NotImplementedError("No SQLAlchemy dtype match for datashape: %s"
                               % dshape)
 
