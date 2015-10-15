@@ -71,11 +71,6 @@ types = {
     "timedelta[unit='ns']": sa.types.Interval(second_precision=9,
                                               day_precision=0),
     # ??: sa.types.LargeBinary,
-    # Decimal: sa.types.Numeric,
-    # ??: sa.types.PickleType,
-    # unicode: sa.types.Unicode,
-    # unicode: sa.types.UnicodeText,
-    # str: sa.types.Text,  # ??
 }
 
 revtypes = dict(map(reversed, types.items()))
@@ -173,6 +168,8 @@ def discover_typeengine(typ):
                              'second_precision=%d, day_precision=%d' %
                              (typ.second_precision, typ.day_precision))
         return datashape.TimeDelta(unit=units)
+    if isinstance(typ, sa.NUMERIC):
+        return datashape.Decimal(precision=typ.precision, scale=typ.scale)
     if typ in revtypes:
         return dshape(revtypes[typ])[0]
     if type(typ) in revtypes:
@@ -390,6 +387,8 @@ def dshape_to_alchemy(dshape, primary_key=frozenset()):
             return sa.types.DateTime(timezone=True)
         else:
             return sa.types.DateTime(timezone=False)
+    if isinstance(dshape, datashape.Decimal):
+        return sa.NUMERIC(dshape.precision, dshape.scale)
     raise NotImplementedError("No SQLAlchemy dtype match for datashape: %s"
                               % dshape)
 

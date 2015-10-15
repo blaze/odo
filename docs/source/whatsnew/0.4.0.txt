@@ -35,6 +35,7 @@ Improved Backends
 * :func:`~odo.odo.odo` now accepts a new keyword argument `bind` which is the
   sqlalchemy engine to use when executing the sql commands. This allows us to
   odo to or from an unbound sqlalchemy object (:issue:`305`).
+* Support ``decimal`` datashapes in the SQL backend (:issue:`337`).
 
 API Changes
 -----------
