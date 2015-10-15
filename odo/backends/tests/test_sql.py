@@ -387,7 +387,7 @@ def test_copy_one_table_to_a_foreign_engine():
     with tmpfile('db') as fn1:
         with tmpfile('db') as fn2:
             src = into('sqlite:///%s::points' % fn1, data, dshape=ds)
-            tgt = into('sqlite:///%s::points' % fn2 + '::points',
+            tgt = into('sqlite:///%s::points' % fn2,
                        sa.select([src]), dshape=ds)
 
             assert into(set, src) == into(set, tgt)
