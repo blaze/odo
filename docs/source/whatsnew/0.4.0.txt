@@ -48,7 +48,7 @@ Bug Fixes
 
 * Pandas backend now supports conversion from `nan` to `pandas.NaT`
   (:issue:`331`).
-* MySQL uses something other than ``sa.NUMERIC`` for native types
+* MySQL uses something other than ``sa.NUMERIC`` for native decimal types
   (:issue:`338`).
 
 None
