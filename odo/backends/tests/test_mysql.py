@@ -5,7 +5,7 @@ import pytest
 pymysql = pytest.importorskip('pymysql')
 
 from decimal import Decimal
-from datashape import var, DataShape, Record
+from datashape import var, DataShape, Record, dshape
 import itertools
 from odo.backends.csv import CSV
 from odo import resource, odo
@@ -256,6 +256,9 @@ def test_different_encoding(name):
 def test_decimal(decimal_sql):
     data = [(1.0, 2.0), (2.0, 3.0)]
     t = odo(data, decimal_sql)
+    assert discover(decimal_sql) == dshape(
+        """var * {a: ?decimal[10, 3], b: decimal[11, 2]}"""
+    )
     assert isinstance(t.c.a.type, sa.Numeric)
     assert isinstance(t.c.b.type, sa.Numeric)
     assert odo(t, list) == list(map(lambda x: tuple(map(Decimal, x)), data))
