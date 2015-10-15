@@ -84,7 +84,7 @@ revtypes.update({
     sa.types.INTEGER: 'int',
     sa.types.BIGINT: 'int64',
     sa.types.NullType: 'string',
-    sa.types.Float: 'float64',
+    sa.types.REAL: 'float32'
 })
 
 # interval types are special cased in discover_typeengine so remove them from
@@ -167,10 +167,10 @@ def discover_typeengine(typ):
                              'second_precision=%d, day_precision=%d' %
                              (typ.second_precision, typ.day_precision))
         return datashape.TimeDelta(unit=units)
-    if isinstance(typ, sa.Numeric):
-        return datashape.Decimal(precision=typ.precision, scale=typ.scale)
     if typ in revtypes:
         return dshape(revtypes[typ])[0]
+    if isinstance(typ, sa.Numeric):
+        return datashape.Decimal(precision=typ.precision, scale=typ.scale)
     if type(typ) in revtypes:
         return revtypes[type(typ)]
     if isinstance(typ, (sa.String, sa.Unicode)):
@@ -387,7 +387,7 @@ def dshape_to_alchemy(dshape, primary_key=frozenset()):
         else:
             return sa.types.DateTime(timezone=False)
     if isinstance(dshape, datashape.Decimal):
-        return sa.Numeric(dshape.precision, dshape.scale)
+        return sa.NUMERIC(dshape.precision, dshape.scale)
     raise NotImplementedError("No SQLAlchemy dtype match for datashape: %s"
                               % dshape)
 
