@@ -11,7 +11,7 @@ import pandas as pd
 
 import sqlalchemy as sa
 
-from datashape import discover, dshape
+from datashape import discover, dshape, float32, float64
 import datashape
 
 from odo.backends.sql import (
@@ -192,8 +192,8 @@ def test_dshape_to_alchemy():
     assert isinstance(dshape_to_alchemy('string[40, "U8"]'), sa.Unicode)
     assert dshape_to_alchemy('string[40]').length == 40
 
-    assert dshape_to_alchemy('float32').precision == 24
-    assert dshape_to_alchemy('float64').precision == 53
+    assert dshape_to_alchemy('float32') == sa.REAL
+    assert dshape_to_alchemy('float64') == sa.FLOAT
 
 
 def test_dshape_to_table():
@@ -711,3 +711,8 @@ def test_numeric_append():
         lambda row: tuple(map(Decimal, row)),
         tbl.select().execute().fetchall()
     ))
+
+
+def test_discover_float_and_real_core_types():
+    assert discover(sa.FLOAT()) == float64
+    assert discover(sa.REAL()) == float32

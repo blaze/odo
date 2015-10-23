@@ -50,8 +50,9 @@ Bug Fixes
   (:issue:`331`).
 * MySQL uses something other than ``sa.NUMERIC`` for native decimal types
   (:issue:`338`).
+* Fix an issue where ``sqlalchemy.Float`` objects were discovered as ``Decimal``
+  datashapes (:issue:`341`).
 
-None
 
 Miscellaneous
 -------------
