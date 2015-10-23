@@ -11,7 +11,7 @@ import pandas as pd
 
 import sqlalchemy as sa
 
-from datashape import discover, dshape
+from datashape import discover, dshape, float32, float64
 import datashape
 
 from odo.backends.sql import (
@@ -714,5 +714,5 @@ def test_numeric_append():
 
 
 def test_discover_float_and_real_core_types():
-    assert discover(sa.FLOAT()) == dshape('float64')
-    assert discover(sa.REAL()) == dshape('float32')
+    assert discover(sa.FLOAT()) == float64
+    assert discover(sa.REAL()) == float32
