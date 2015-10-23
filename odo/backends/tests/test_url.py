@@ -76,6 +76,10 @@ def test_url_txt_resource():
     assert isinstance(txt, URL(TextFile))
 
 
+@pytest.mark.xfail(
+    raises=URLError,
+    reason='MIT Athena FTP is down as of October 23, 2015'
+)
 def test_ftp_to_local_txt():
     with tmpfile('.txt') as fn:
         txt = odo(ftp_url, fn)
