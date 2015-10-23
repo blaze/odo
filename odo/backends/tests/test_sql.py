@@ -714,5 +714,5 @@ def test_numeric_append():
 
 
 def test_discover_float_and_real_core_types():
-    assert discover(sa.FLOAT) == dshape('float64')
-    assert discover(sa.REAL) == dshape('float32')
+    assert discover(sa.FLOAT()) == dshape('float64')
+    assert discover(sa.REAL()) == dshape('float32')
