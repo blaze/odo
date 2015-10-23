@@ -22,7 +22,8 @@ from multipledispatch import MDNotImplementedError
 import datashape
 from datashape import DataShape, Record, Option, var, dshape, Map
 from datashape.predicates import isdimension, isrecord, isscalar
-from datashape import discover
+from datashape import discover, datetime_, date_, float64, int64, int_, string
+from datashape import float32
 from datashape.dispatch import dispatch
 
 from toolz import (partition_all, keyfilter, memoize, valfilter, identity,
@@ -43,53 +44,49 @@ base = (int, float, datetime, date, bool, str)
 # http://docs.sqlalchemy.org/en/latest/core/types.html
 
 types = {
-    'int64': sa.types.BigInteger,
-    'int32': sa.types.Integer,
-    'int': sa.types.Integer,
-    'int16': sa.types.SmallInteger,
-    'float32': sa.types.Float(precision=24),  # sqlalchemy uses mantissa
-    'float64': sa.types.Float(precision=53),  # for precision
-    'float': sa.types.Float(precision=53),
-    'real': sa.types.Float(precision=53),
-    'string': sa.types.Text,
-    'date': sa.types.Date,
-    'time': sa.types.Time,
-    'datetime': sa.types.DateTime,
-    'bool': sa.types.Boolean,
-    "timedelta[unit='D']": sa.types.Interval(second_precision=0,
-                                             day_precision=9),
-    "timedelta[unit='h']": sa.types.Interval(second_precision=0,
-                                             day_precision=0),
-    "timedelta[unit='m']": sa.types.Interval(second_precision=0,
-                                             day_precision=0),
-    "timedelta[unit='s']": sa.types.Interval(second_precision=0,
-                                             day_precision=0),
-    "timedelta[unit='ms']": sa.types.Interval(second_precision=3,
-                                              day_precision=0),
-    "timedelta[unit='us']": sa.types.Interval(second_precision=6,
-                                              day_precision=0),
-    "timedelta[unit='ns']": sa.types.Interval(second_precision=9,
-                                              day_precision=0),
+    'int64': sa.BigInteger,
+    'int32': sa.Integer,
+    'int': sa.Integer,
+    'int16': sa.SmallInteger,
+    'float32': sa.REAL,
+    'float64': sa.FLOAT,
+    'float': sa.FLOAT,
+    'real': sa.FLOAT,
+    'string': sa.Text,
+    'date': sa.Date,
+    'time': sa.Time,
+    'datetime': sa.DateTime,
+    'bool': sa.Boolean,
+    "timedelta[unit='D']": sa.Interval(second_precision=0, day_precision=9),
+    "timedelta[unit='h']": sa.Interval(second_precision=0, day_precision=0),
+    "timedelta[unit='m']": sa.Interval(second_precision=0, day_precision=0),
+    "timedelta[unit='s']": sa.Interval(second_precision=0, day_precision=0),
+    "timedelta[unit='ms']": sa.Interval(second_precision=3, day_precision=0),
+    "timedelta[unit='us']": sa.Interval(second_precision=6, day_precision=0),
+    "timedelta[unit='ns']": sa.Interval(second_precision=9, day_precision=0),
     # ??: sa.types.LargeBinary,
 }
 
 revtypes = dict(map(reversed, types.items()))
 
 revtypes.update({
-    sa.types.DATETIME: 'datetime',
-    sa.types.TIMESTAMP: 'datetime',
-    sa.types.FLOAT: 'float64',
-    sa.types.DATE: 'date',
-    sa.types.BIGINT: 'int64',
-    sa.types.INTEGER: 'int',
-    sa.types.BIGINT: 'int64',
-    sa.types.NullType: 'string',
-    sa.types.REAL: 'float32'
+    sa.DATETIME: datetime_,
+    sa.TIMESTAMP: datetime_,
+    sa.FLOAT: float64,
+    sa.DATE: date_,
+    sa.BIGINT: int64,
+    sa.INTEGER: int_,
+    sa.BIGINT: int64,
+    sa.types.NullType: string,
+    sa.REAL: float32,
+    sa.Float: float64,
+    sa.Float(precision=24): float32,
+    sa.Float(precision=53): float64,
 })
 
 # interval types are special cased in discover_typeengine so remove them from
 # revtypes
-revtypes = valfilter(lambda x: not isinstance(x, sa.types.Interval), revtypes)
+revtypes = valfilter(lambda x: not isinstance(x, sa.Interval), revtypes)
 
 
 units_of_power = {
@@ -141,18 +138,17 @@ def batch(sel, chunksize=10000, bind=None):
 
 @discover.register(sa.dialects.postgresql.base.INTERVAL)
 def discover_postgresql_interval(t):
-    return discover(sa.types.Interval(day_precision=0,
-                                      second_precision=t.precision))
+    return discover(sa.Interval(day_precision=0, second_precision=t.precision))
 
 
 @discover.register(sa.dialects.oracle.base.INTERVAL)
 def discover_oracle_interval(t):
-    return discover(t.adapt(sa.types.Interval))
+    return discover(t.adapt(sa.Interval))
 
 
 @discover.register(sa.sql.type_api.TypeEngine)
 def discover_typeengine(typ):
-    if isinstance(typ, sa.types.Interval):
+    if isinstance(typ, sa.Interval):
         if typ.second_precision is None and typ.day_precision is None:
             return datashape.TimeDelta(unit='us')
         elif typ.second_precision == 0 and typ.day_precision == 0:
@@ -169,10 +165,10 @@ def discover_typeengine(typ):
         return datashape.TimeDelta(unit=units)
     if typ in revtypes:
         return dshape(revtypes[typ])[0]
-    if isinstance(typ, sa.Numeric):
-        return datashape.Decimal(precision=typ.precision, scale=typ.scale)
     if type(typ) in revtypes:
         return revtypes[type(typ)]
+    if isinstance(typ, (sa.NUMERIC, sa.DECIMAL)):
+        return datashape.Decimal(precision=typ.precision, scale=typ.scale)
     if isinstance(typ, (sa.String, sa.Unicode)):
         return datashape.String(typ.length, typ.collation)
     else:
@@ -377,15 +373,12 @@ def dshape_to_alchemy(dshape, primary_key=frozenset()):
     if isinstance(dshape, datashape.String):
         fixlen = dshape[0].fixlen
         if fixlen is None:
-            return sa.types.Text
-        string_types = dict(U=sa.types.Unicode, A=sa.types.String)
+            return sa.TEXT
+        string_types = dict(U=sa.Unicode, A=sa.String)
         assert dshape.encoding is not None
         return string_types[dshape.encoding[0]](length=fixlen)
     if isinstance(dshape, datashape.DateTime):
-        if dshape.tz:
-            return sa.types.DateTime(timezone=True)
-        else:
-            return sa.types.DateTime(timezone=False)
+        return sa.DATETIME(timezone=dshape.tz is not None)
     if isinstance(dshape, datashape.Decimal):
         return sa.NUMERIC(dshape.precision, dshape.scale)
     raise NotImplementedError("No SQLAlchemy dtype match for datashape: %s"
