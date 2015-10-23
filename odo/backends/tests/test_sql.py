@@ -711,3 +711,8 @@ def test_numeric_append():
         lambda row: tuple(map(Decimal, row)),
         tbl.select().execute().fetchall()
     ))
+
+
+def test_discover_float_and_real_core_types():
+    assert discover(sa.FLOAT) == dshape('float64')
+    assert discover(sa.REAL) == dshape('float32')
