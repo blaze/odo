@@ -58,18 +58,19 @@ def coerce_datetimes(df):
     dtype: object
     """
 
-    df2 = df.select_dtypes(include=[object])
-    # NOTE: In pandas < 0.17, pd.to_datetime(' ') == datetime(...), which is
-    # not what we want.  So we first remove all columns that have empty or
-    # whitsepace-only strings to compensate.  This prevents datetime coercion
-    # on whitespace or empty strings.
-    empty_or_ws_cols = df2.apply(lambda s: s.str.strip() == '').all()
-    for colname, remove in empty_or_ws_cols.iteritems():
-        if remove:
-            del df2[colname]
-    df3 = df2.apply(partial(pd.to_datetime, errors='ignore'))
-    for c in df3.columns:
-        df[c] = df3[c]
+    def patched_to_datetime(s):
+        # NOTE: In pandas < 0.17, pd.to_datetime(' ') == datetime(...), which
+        # is not what we want.  This patched version detects empty or
+        # whitespace-only strings, and maps them to a dummy object.  This
+        # prevents datetime coercion on whitespace or empty strings.
+        o = object()
+        s_norm = s.apply(lambda x: o if (hasattr(x, 'strip') and not x.strip()) else x)
+        res = pd.to_datetime(s_norm, errors='ignore')
+        return res.apply(lambda x: '' if x is o else x)
+
+    df2 = df.select_dtypes(include=['object']).apply(patched_to_datetime)
+    for c in df2.columns:
+        df[c] = df2[c]
     return df
 
 
