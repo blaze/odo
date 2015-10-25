@@ -8,6 +8,7 @@ import re
 from contextlib import contextmanager
 from collections import Iterator
 from operator import attrgetter
+from io import BytesIO
 
 import pandas as pd
 from toolz import memoize, first
@@ -219,13 +220,46 @@ def anything_to_s3_text(s3, o, **kwargs):
     return append(s3, convert(Temp(s3.subtype), o, **kwargs), **kwargs)
 
 
+@contextmanager
+def start_multipart_upload_operation(s3):
+    try:
+        multipart_upload = s3.object.bucket.initiate_multipart_upload(s3.key)
+        yield multipart_upload
+    finally:
+        multipart_upload.complete_upload()
+
+
 @append.register(S3(JSONLines), (JSONLines, Temp(JSONLines)))
 @append.register(S3(JSON), (JSON, Temp(JSON)))
 @append.register(S3(CSV), (CSV, Temp(CSV)))
 @append.register(S3(TextFile), (TextFile, Temp(TextFile)))
-def append_text_to_s3(s3, data, **kwargs):
+def append_text_to_s3(s3, data, use_s3_multipart_upload=False, **kwargs):
+    if use_s3_multipart_upload:
+        with start_multipart_upload_operation(s3) as multipart_upload:
+            _multipart_upload(data, multipart_upload)
+        return s3
+
     s3.object.set_contents_from_filename(data.path)
     return s3
+
+
+def _multipart_upload(data, multipart_upload):
+    chunk, chunk_bytes, parts_counter = [], 0, 0
+
+    def upload_part():
+        part = BytesIO(b"".join(chunk))
+        multipart_upload.upload_part_from_file(part, part_num=parts_counter + 1)
+        return parts_counter + 1
+
+    with open(data.path, "rb") as data_file:
+        for line in data_file:
+            chunk.append(line)
+            chunk_bytes += len(line)
+            if chunk_bytes >= 5 * 1024 ** 2:
+                parts_counter = upload_part()
+                chunk, chunk_bytes = [], 0
+
+        upload_part()
 
 
 try:

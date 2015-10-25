@@ -143,7 +143,6 @@ def conn():
 
 test_bucket_name = 'into-redshift-csvs'
 
-
 _tmps = ('tmp%d' % i for i in itertools.count())
 
 
@@ -331,3 +330,13 @@ def test_s3_to_sqlite():
                   dshape=discover(resource(tips_uri)))
         lhs = into(list, tb)
         assert lhs == into(list, tips_uri)
+
+
+def test_csv_to_s3__using_multipart_upload():
+    df = pd.DataFrame({'a': ["*" * 5 * 1024 ** 2]})
+    with tmpfile('.csv') as fn:
+        with s3_bucket('.csv') as b:
+            df.to_csv(fn, index=False)
+            s3 = into(b, CSV(fn), use_s3_multipart_upload=True)
+            result = into(pd.DataFrame, s3)
+    tm.assert_frame_equal(df, result)
