@@ -52,6 +52,9 @@ Bug Fixes
   (:issue:`338`).
 * Fix an issue where ``sqlalchemy.Float`` objects were discovered as ``Decimal``
   datashapes (:issue:`341`).
+* Fix an issue where ``isdimension`` was being called on the first
+  character of a datashape string instead of on a ``DataShape`` instance
+  (:issue:`345`).
 
 
 Miscellaneous
