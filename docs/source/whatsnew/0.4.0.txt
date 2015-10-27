@@ -36,6 +36,7 @@ Improved Backends
   sqlalchemy engine to use when executing the sql commands. This allows us to
   odo to or from an unbound sqlalchemy object (:issue:`305`).
 * Support ``decimal`` datashapes in the SQL backend (:issue:`337`).
+* Add ``timeout`` parameter to the ``URL`` backend (:issue:`346`).
 
 API Changes
 -----------

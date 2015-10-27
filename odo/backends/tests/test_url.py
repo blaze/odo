@@ -82,7 +82,7 @@ def test_url_txt_resource():
 )
 def test_ftp_to_local_txt():
     with tmpfile('.txt') as fn:
-        txt = odo(ftp_url, fn)
+        txt = odo(ftp_url, fn, timeout=5)
         path = os.path.abspath(txt.path)
         assert os.path.exists(path)
 
