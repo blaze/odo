@@ -28,8 +28,8 @@ _into = namespace['_into']
 def into(a, b, dshape=None, **kwargs):
     if isinstance(dshape, (str, unicode)):
         dshape = datashape.dshape(dshape)
-    assert isinstance(dshape, datashape.DataShape) or dshape is None, \
-        'dshape argument is not an instance of DataShape'
+    if dshape is not None and not isinstance(dshape, datashape.DataShape):
+        raise TypeError('dshape argument is not an instance of DataShape')
     return _into(a, b, dshape=dshape, **kwargs)
 
 
