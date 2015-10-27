@@ -724,4 +724,4 @@ def test_string_dshape_doc_example():
         t = odo(
             x, 'sqlite:///%s::x' % fn, dshape='var * {a: float64, b: float64}'
         )
-        assert [row == (0, 0) for row in t.select().execute().fetchall()]
+        assert all(row == (0, 0) for row in t.select().execute().fetchall())
