@@ -1,23 +1,40 @@
 from __future__ import absolute_import, division, print_function
 
-from toolz import merge
+from toolz import merge, curry
 from multipledispatch import Dispatcher
 from .convert import convert
 from .append import append
 from .resource import resource
 from .utils import ignoring
+
+import datashape
 from datashape import discover
 from datashape.dispatch import namespace
 from datashape.predicates import isdimension
+
 from .compatibility import unicode
 
 
-if 'into' not in namespace:
-    namespace['into'] = Dispatcher('into')
-into = namespace['into']
+__all__ = 'into',
 
 
-@into.register(type, object)
+if '_into' not in namespace:
+    namespace['_into'] = Dispatcher('_into')
+
+_into = namespace['_into']
+
+
+@curry
+def into(a, b, dshape=None, **kwargs):
+    if isinstance(dshape, (str, unicode)):
+        dshape = datashape.dshape(dshape)
+    if dshape is not None and not isinstance(dshape, datashape.DataShape):
+        raise TypeError('dshape argument is not an instance of DataShape')
+    return _into(a, b, dshape=dshape, **kwargs)
+
+
+
+@_into.register(type, object)
 def into_type(a, b, dshape=None, **kwargs):
     with ignoring(NotImplementedError):
         if dshape is None:
@@ -25,7 +42,7 @@ def into_type(a, b, dshape=None, **kwargs):
     return convert(a, b, dshape=dshape, **kwargs)
 
 
-@into.register(object, object)
+@_into.register(object, object)
 def into_object(target, source, dshape=None, **kwargs):
     """ Push one dataset into another
 
@@ -100,7 +117,7 @@ def into_object(target, source, dshape=None, **kwargs):
     return append(target, source, dshape=dshape, **kwargs)
 
 
-@into.register((str, unicode), object)
+@_into.register((str, unicode), object)
 def into_string(uri, b, dshape=None, **kwargs):
     if dshape is None:
         dshape = discover(b)
@@ -108,16 +125,9 @@ def into_string(uri, b, dshape=None, **kwargs):
     resource_ds = 0 * dshape.subshape[0] if isdimension(dshape[0]) else dshape
 
     a = resource(uri, dshape=resource_ds, expected_dshape=dshape, **kwargs)
-    return into(a, b, dshape=dshape, **kwargs)
+    return _into(a, b, dshape=dshape, **kwargs)
 
 
-@into.register((type, (str, unicode)), (str, unicode))
+@_into.register((type, (str, unicode)), (str, unicode))
 def into_string_string(a, b, **kwargs):
-    return into(a, resource(b, **kwargs), **kwargs)
-
-
-@into.register(object)
-def into_curried(o, **kwargs1):
-    def curried_into(other, **kwargs2):
-        return into(o, other, **merge(kwargs2, kwargs1))
-    return curried_into
+    return _into(a, resource(b, **kwargs), **kwargs)
