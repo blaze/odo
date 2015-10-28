@@ -337,6 +337,6 @@ def test_csv_to_s3__using_multipart_upload():
     with tmpfile('.csv') as fn:
         with s3_bucket('.csv') as b:
             df.to_csv(fn, index=False)
-            s3 = into(b, CSV(fn), use_s3_multipart_upload=True)
+            s3 = into(b, CSV(fn), multipart=True)
             result = into(pd.DataFrame, s3)
     tm.assert_frame_equal(df, result)
