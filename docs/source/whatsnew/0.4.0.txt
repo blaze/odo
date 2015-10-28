@@ -57,6 +57,8 @@ Bug Fixes
   character of a datashape string instead of on a ``DataShape`` instance
   (:issue:`345`).
 * Fixed an issue with :issue:`345` that broke Blaze (:issue:`347`).
+* Fixed an issue where empty columns in a CSV file would be coerced to
+  ``datetime`` instead of being left as strings (:issue:`342`).
 
 
 Miscellaneous
