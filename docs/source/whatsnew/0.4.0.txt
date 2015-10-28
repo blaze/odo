@@ -56,6 +56,7 @@ Bug Fixes
 * Fix an issue where ``isdimension`` was being called on the first
   character of a datashape string instead of on a ``DataShape`` instance
   (:issue:`345`).
+* Fixed an issue with :issue:`345` that broke Blaze (:issue:`347`).
 
 
 Miscellaneous
