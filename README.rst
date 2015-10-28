@@ -1,6 +1,6 @@
 Odo
 ===
- 
+
 |Build Status| |Doc Status|
 
 .. image:: https://binstar.org/blaze/odo/badges/build.svg
