@@ -225,9 +225,10 @@ def start_multipart_upload_operation(s3):
     try:
         multipart_upload = s3.object.bucket.initiate_multipart_upload(s3.key)
         yield multipart_upload
-    except Exception as exception:
-        multipart_upload.cancel_multipart_upload()
-        raise exception
+    except Exception:
+        for part in multipart_upload:
+            s3.object.bucket.cancel_multipart_upload(part.key_name, part.id)
+        raise
     else:
         multipart_upload.complete_upload()
 
@@ -236,26 +237,16 @@ def start_multipart_upload_operation(s3):
 @append.register(S3(JSON), (JSON, Temp(JSON)))
 @append.register(S3(CSV), (CSV, Temp(CSV)))
 @append.register(S3(TextFile), (TextFile, Temp(TextFile)))
-def append_text_to_s3(s3, data, multipart=False, **kwargs):
+def append_text_to_s3(s3, data, multipart=False, part_size=5 * 1 << 20, **kwargs):
     if multipart:
         with start_multipart_upload_operation(s3) as multipart_upload:
-            _upload(data, multipart_upload, **kwargs)
+            with open(data.path, 'rb') as f:
+                for part_number, part in enumerate(iter(curry(f.read, part_size), '')):
+                    multipart_upload.upload_part_from_file(BytesIO(part), part_num=part_number + 1)
         return s3
 
     s3.object.set_contents_from_filename(data.path)
     return s3
-
-
-def _upload(data, multipart_upload, part_size=5 * 1 << 20, **kwargs):
-    parts_counter = 0
-
-    def upload_part(part):
-        multipart_upload.upload_part_from_file(BytesIO(part), part_num=parts_counter + 1)
-        return parts_counter + 1
-
-    with open(data.path, 'rb') as f:
-        for part in iter(curry(f.read, part_size), ''):
-            parts_counter = upload_part(part)
 
 
 try:
