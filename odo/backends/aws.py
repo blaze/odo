@@ -237,12 +237,12 @@ def start_multipart_upload_operation(s3):
 @append.register(S3(JSON), (JSON, Temp(JSON)))
 @append.register(S3(CSV), (CSV, Temp(CSV)))
 @append.register(S3(TextFile), (TextFile, Temp(TextFile)))
-def append_text_to_s3(s3, data, multipart=False, part_size=5 * 1 << 20, **kwargs):
+def append_text_to_s3(s3, data, multipart=False, part_size=5 << 20, **kwargs):
     if multipart:
         with start_multipart_upload_operation(s3) as multipart_upload:
             with open(data.path, 'rb') as f:
-                for part_number, part in enumerate(iter(curry(f.read, part_size), '')):
-                    multipart_upload.upload_part_from_file(BytesIO(part), part_num=part_number + 1)
+                for part_number, part in enumerate(iter(curry(f.read, part_size), ''), start=1):
+                    multipart_upload.upload_part_from_file(BytesIO(part), part_num=part_number)
         return s3
 
     s3.object.set_contents_from_filename(data.path)
