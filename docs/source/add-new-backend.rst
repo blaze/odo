@@ -185,8 +185,8 @@ General Notes
 -------------
 
 We pass all keyword arguments from the top-level call to ``odo`` to *all*
-functions.  This allows special keyword arguments to trickle down the right
-right place, e.g. ``delimiter=';'`` makes it to the ``pd.read_csv`` call when
+functions.  This allows special keyword arguments to trickle down to the right
+place, e.g. ``delimiter=';'`` makes it to the ``pd.read_csv`` call when
 interacting with CSV files, but also means that all functions that you write
 must expect and handle unwanted keyword arguments.  This often requires some
 filtering on your part.
@@ -199,7 +199,7 @@ finding, ``append`` and ``discover`` are managed by multipledispatch_, and
 Examples are useful.  You may want to look at some of the ``odo`` source for
 simple backends for help
 
-    https://github.com/ContinuumIO/odo/tree/master/odo/backends
+    https://github.com/blaze/odo/tree/master/odo/backends
 
 .. _DataShape : datashape.html
 .. _multipledispatch: http://github.com/mrocklin/multipledispatch

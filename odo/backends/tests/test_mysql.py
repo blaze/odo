@@ -4,7 +4,8 @@ import pytest
 
 pymysql = pytest.importorskip('pymysql')
 
-from datashape import var, DataShape, Record
+from decimal import Decimal
+from datashape import var, DataShape, Record, dshape
 import itertools
 from odo.backends.csv import CSV
 from odo import resource, odo
@@ -91,8 +92,10 @@ def fsql(engine, fcsv, name):
     except sqlalchemy.exc.OperationalError as e:
         pytest.skip(str(e))
     else:
-        yield t
-        drop(t)
+        try:
+            yield t
+        finally:
+            drop(t)
 
 
 @pytest.fixture
@@ -111,9 +114,30 @@ def dcsv():
 
 @pytest.yield_fixture
 def dsql(engine, dcsv, name):
-    t = resource('%s::%s' % (url, name), dshape=discover(dcsv))
-    yield t
-    drop(t)
+    try:
+        t = resource('%s::%s' % (url, name), dshape=discover(dcsv))
+    except sqlalchemy.exc.OperationalError as e:
+        pytest.skip(str(e))
+    else:
+        try:
+            yield t
+        finally:
+            drop(t)
+
+
+@pytest.yield_fixture
+def decimal_sql(engine, name):
+    try:
+        t = resource('%s::%s' % (url, name),
+                     dshape="var * {a: ?decimal[10, 3], b: decimal[11, 2]}")
+    except sa.exc.OperationalError as e:
+        pytest.skip(str(e))
+    else:
+        try:
+            yield t
+        finally:
+            drop(t)
+
 
 
 def test_csv_mysql_load(sql, csv):
@@ -227,3 +251,12 @@ def test_different_encoding(name):
             assert result == expected
         finally:
             drop(sql)
+
+
+def test_decimal(decimal_sql):
+    t = sa.Table(decimal_sql.name, sa.MetaData(decimal_sql.bind), autoload=True)
+    assert discover(t) == dshape(
+        "var * {a: ?decimal[10, 3], b: decimal[11, 2]}"
+    )
+    assert isinstance(t.c.a.type, sa.Numeric)
+    assert isinstance(t.c.b.type, sa.Numeric)

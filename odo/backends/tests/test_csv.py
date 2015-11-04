@@ -4,6 +4,7 @@ import pytest
 
 import sys
 import os
+import numpy as np
 import pandas as pd
 import pandas.util.testing as tm
 import gzip
@@ -62,6 +63,13 @@ def test_pandas_read_supports_datetimes():
         assert isinstance(df, pd.DataFrame)
         assert list(df.columns) == ['name', 'when']
         assert df.dtypes['when'] == 'M8[ns]'
+
+
+def test_pandas_read_supports_whitespace_strings():
+    with filetext('a,b, \n1,2, \n2,3, \n', extension='csv') as fn:
+        csv = CSV(fn)
+        ds = discover(csv)
+        assert ds == datashape.dshape("var * {a: int64, b: int64, '': ?string}")
 
 
 def test_pandas_read_supports_missing_integers():
@@ -326,9 +334,9 @@ def test_more_unicode_column_names():
 
 def test_infer_header():
     with filetext('name,val\nAlice,100\nNA,200', extension='csv') as fn:
-        assert infer_header(CSV(fn).path) == True
+        assert infer_header(CSV(fn).path, 100) == True
     with filetext('Alice,100\nNA,200', extension='csv') as fn:
-        assert infer_header(CSV(fn).path) == False
+        assert infer_header(CSV(fn).path, 100) == False
 
 
 def test_csv_supports_sep():
@@ -380,3 +388,49 @@ def test_discover_with_dotted_names():
         dshape = discover(resource(fn))
     assert dshape == datashape.dshape('var * {"a.b": int64, "c.d": int64}')
     assert dshape.measure.names == [u'a.b', u'c.d']
+
+
+try:
+    unichr
+except NameError:
+    unichr = chr
+
+
+def random_multibyte_string(nrows, string_length,
+                            domain=''.join(map(unichr, range(1488, 1515)))):
+    """ Generate `n` strings of length `string_length` sampled from `domain`.
+
+    Parameters
+    ----------
+    n : int
+        Number of random strings to generate
+    string_length : int
+        Length of each random string
+    domain : str, optional
+        The set of characters to sample from. Defaults to Hebrew.
+    """
+    for _ in range(nrows):
+        yield ''.join(np.random.choice(list(domain), size=string_length))
+
+
+@pytest.yield_fixture
+def multibyte_csv():
+    header = random_multibyte_string(nrows=2, string_length=3)
+    single_column = random_multibyte_string(nrows=10, string_length=4)
+    numbers = np.random.randint(4, size=10)
+    with tmpfile('.csv') as fn:
+        with open(fn, 'wb') as f:
+            f.write((','.join(header) + '\n').encode('utf8'))
+            f.write('\n'.join(','.join(map(unicode, row))
+                              for row in zip(single_column, numbers)).encode('utf8'))
+        yield fn
+
+
+def test_multibyte_encoding_header(multibyte_csv):
+        c = CSV(multibyte_csv, encoding='utf8', sniff_nbytes=3)
+        assert c.has_header is None  # not enough data to infer header
+
+
+def test_multibyte_encoding_dialect(multibyte_csv):
+        c = CSV(multibyte_csv, encoding='utf8', sniff_nbytes=10)
+        assert c.dialect['delimiter'] == ','

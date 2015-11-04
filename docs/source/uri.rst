@@ -51,7 +51,7 @@ within the file.  For example we refer to the table ``accounts`` in a Postgres d
 
     postgresql://localhost::accounts
 
-In this case the separator ``::`` separtates the database
+In this case the separator ``::`` separates the database
 ``postgreqsl://localhost`` from the table within the database, ``accounts``.
 
 This also occurs in HDF5 files which have an internal datapath::
@@ -107,7 +107,7 @@ When we use a string in ``odo`` this is actually just shorthand for calling
 Notably, URIs are just syntactic sugar, you don't have to use them.  You can
 always construct the object explicitly.  Odo invents very few types,
 preferring instead to use standard projects within the Python ecosystem like
-``sqlalchemy.Table`` or ``pymongo.Collection``.  If your applicaiton also uses
+``sqlalchemy.Table`` or ``pymongo.Collection``.  If your application also uses
 these types then it's likely that ``odo`` already works with your data.
 
 

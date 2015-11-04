@@ -2,14 +2,9 @@
 
 import os
 from fnmatch import fnmatch
-from distutils.core import setup
+from setuptools import setup, find_packages
 
 import versioneer
-
-
-def find_packages(path):
-    for root, _, _ in filter(lambda x: '__init__.py' in x[2], os.walk(path)):
-        yield os.path.relpath(root).replace(os.sep, '.')
 
 
 def find_data_files(where, exts):
@@ -31,19 +26,16 @@ def read(filename):
         return f.read()
 
 
-packages = list(find_packages(os.path.abspath('odo')))
-
-
 setup(name='odo',
       version=versioneer.get_version(),
       cmdclass=versioneer.get_cmdclass(),
       description='Data migration utilities',
-      url='https://github.com/ContinuumIO/odo',
+      url='https://github.com/blaze/odo',
       author='Blaze development team',
       author_email='blaze-dev@continuum.io',
       license='BSD',
       keywords='odo data conversion hdf5 sql blaze',
-      packages=packages,
+      packages=find_packages(),
       install_requires=read('requirements.txt').strip().split('\n'),
       long_description=read('README.rst'),
       package_data={'odo': package_data},

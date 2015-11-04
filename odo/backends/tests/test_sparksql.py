@@ -14,14 +14,15 @@ from contextlib import contextmanager
 import toolz
 from toolz.compatibility import map
 
-from pyspark.sql import Row, SchemaRDD
+from pyspark.sql import Row
+from pyspark.sql.types import (
+    ArrayType, StructField, StructType, IntegerType, StringType
+)
+
 try:
-    from pyspark.sql.types import (ArrayType, StructField, StructType,
-                                   IntegerType)
-    from pyspark.sql.types import StringType
+    from pyspark.sql.utils import AnalysisException
 except ImportError:
-    from pyspark.sql import ArrayType, StructField, StructType, IntegerType
-    from pyspark.sql import StringType
+    AnalysisException = py4j.protocol.Py4JJavaError
 
 import numpy as np
 import pandas as pd
@@ -71,7 +72,7 @@ def ctx(sqlctx, people):
 
 def test_pyspark_to_sparksql(ctx, people):
     sdf = odo(data, ctx, dshape=discover(df))
-    assert isinstance(sdf, (SparkDataFrame, SchemaRDD))
+    assert isinstance(sdf, SparkDataFrame)
     assert (list(map(set, odo(people, list))) ==
             list(map(set, odo(sdf, list))))
 
@@ -83,7 +84,7 @@ def test_pyspark_to_sparksql_raises_on_tuple_dshape(ctx, people):
 
 def test_dataframe_to_sparksql(ctx):
     sdf = odo(df, ctx)
-    assert isinstance(sdf, (SparkDataFrame, SchemaRDD))
+    assert isinstance(sdf, SparkDataFrame)
     assert odo(sdf, list) == odo(df, list)
 
 
@@ -142,7 +143,7 @@ def test_append_spark_df_to_json_lines(ctx):
     sdf = ctx.table('t')
     expected = pd.concat([df, df]).sort('amount').reset_index(drop=True).sort_index(axis=1)
     with tmpfile('.json') as fn:
-        with open(fn, mode='wb') as f:
+        with open(fn, mode='w') as f:
             f.write(out + os.linesep)
 
         uri = 'jsonlines://%s' % fn
@@ -151,7 +152,7 @@ def test_append_spark_df_to_json_lines(ctx):
         tm.assert_frame_equal(result, expected)
 
 
-@pytest.mark.xfail(raises=py4j.protocol.Py4JJavaError,
+@pytest.mark.xfail(raises=(py4j.protocol.Py4JJavaError, AnalysisException),
                    reason='bug in sparksql')
 def test_append(ctx):
     """Add support for odo(SparkDataFrame, SparkDataFrame) when this is fixed.

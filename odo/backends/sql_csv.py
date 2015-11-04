@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import re
 import subprocess
 import uuid
 import mmap
@@ -22,34 +21,37 @@ from ..convert import convert
 from .csv import CSV, infer_header
 from ..temp import Temp
 from .aws import S3
-from .sql import fullname
+from .sql import fullname, getbind
 
 
 class CopyFromCSV(Executable, ClauseElement):
     def __init__(self, element, csv, delimiter=',', header=None, na_value='',
                  lineterminator='\n', quotechar='"', escapechar='\\',
-                 encoding='utf8', skiprows=0, **kwargs):
+                 encoding='utf8', skiprows=0, bind=None, **kwargs):
         if not isinstance(element, sa.Table):
             raise TypeError('element must be a sqlalchemy.Table instance')
         self.element = element
         self.csv = csv
         self.delimiter = delimiter
-        self.header = (header if header is not None else
-                       (csv.has_header
-                        if csv.has_header is not None else infer_header(csv)))
+        self.header = (
+            header if header is not None else
+            (csv.has_header
+             if csv.has_header is not None else infer_header(csv.path))
+        )
         self.na_value = na_value
         self.lineterminator = lineterminator
         self.quotechar = quotechar
         self.escapechar = escapechar
         self.encoding = encoding
         self.skiprows = int(skiprows or self.header)
+        self._bind = getbind(element, bind)
 
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-    @property
-    def bind(self):
-        return self.element.bind
+        @property
+        def bind(self):
+            return self._bind
 
 
 @compiles(CopyFromCSV, 'sqlite')
@@ -147,7 +149,6 @@ try:
     import boto
     from odo.backends.aws import S3
     from redshift_sqlalchemy.dialect import CopyCommand
-    import sqlalchemy as sa
 except ImportError:
     pass
 else:
@@ -161,29 +162,24 @@ else:
         aws_access_key_id = cfg.get('Credentials', 'aws_access_key_id')
         aws_secret_access_key = cfg.get('Credentials', 'aws_secret_access_key')
 
-        options = dict(delimiter=element.delimiter,
-                       ignore_header=int(element.header),
-                       empty_as_null=True,
-                       blanks_as_null=False,
-                       compression=getattr(element, 'compression', ''))
-
-        if getattr(element, 'schema_name', None) is None:
-            # 'public' by default, this is a postgres convention
-            schema_name = (element.element.schema or
-                           sa.inspect(element.bind).default_schema_name)
-        cmd = CopyCommand(schema_name=schema_name,
-                          table_name=element.element.name,
+        compression = getattr(element, 'compression', '').upper() or None
+        cmd = CopyCommand(table=element.element,
                           data_location=element.csv.path,
-                          access_key=aws_access_key_id,
-                          secret_key=aws_secret_access_key,
-                          options=options,
-                          format='CSV')
-        return re.sub(r'\s+(;)', r'\1', re.sub(r'\s+', ' ', str(cmd))).strip()
+                          access_key_id=aws_access_key_id,
+                          secret_access_key=aws_secret_access_key,
+                          format='CSV',
+                          delimiter=element.delimiter,
+                          ignore_header=int(element.header),
+                          empty_as_null=True,
+                          blanks_as_null=False,
+                          compression=compression)
+        return compiler.process(cmd)
 
 
 @append.register(sa.Table, CSV)
-def append_csv_to_sql_table(tbl, csv, **kwargs):
-    dialect = tbl.bind.dialect.name
+def append_csv_to_sql_table(tbl, csv, bind=None, **kwargs):
+    bind = getbind(tbl, bind)
+    dialect = bind.dialect.name
 
     # move things to a temporary S3 bucket if we're using redshift and we
     # aren't already in S3
@@ -196,7 +192,7 @@ def append_csv_to_sql_table(tbl, csv, **kwargs):
         return append(tbl, convert(Temp(SSH(CSV)), csv, **kwargs), **kwargs)
 
     kwargs = merge(csv.dialect, kwargs)
-    stmt = CopyFromCSV(tbl, csv, **kwargs)
-    with tbl.bind.begin() as conn:
+    stmt = CopyFromCSV(tbl, csv, bind=bind, **kwargs)
+    with bind.begin() as conn:
         conn.execute(stmt)
     return tbl
