@@ -491,10 +491,14 @@ def should_create_schema(ddl, target, bind, tables=None, state=None,
 def attach_schema(obj, schema):
     if schema is not None:
         ddl = CreateSchema(schema, quote=True)
-        event.listen(obj,
-                     'before_create',
-                     ddl.execute_if(callable_=should_create_schema,
-                                    dialect='postgresql'))
+        event.listen(
+            obj,
+            'before_create',
+            ddl.execute_if(
+                callable_=should_create_schema,
+                dialect='postgresql'
+            )
+        )
     return obj
 
 
