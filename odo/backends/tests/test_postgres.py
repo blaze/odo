@@ -60,7 +60,7 @@ def sql_fixture(dshape, schema=None):
             finally:
                 t.metadata.bind = bind
                 drop(t)
-                if t.schema:
+                if t.schema is not None:
                     bind.execute(sa.sql.ddl.DropSchema(t.schema))
 
     return fixture
@@ -74,6 +74,7 @@ complex_sql = sql_fixture("""
         Name: string, RegistrationDate: date, ZipCode: int32, Consts: float64
     }
 """)
+sql_with_array = sql_fixture('var * {a: var * float64, b: string}', 'public')
 
 
 def test_simple_into(csv, sql):
@@ -201,3 +202,15 @@ def test_schema_discover(sql_with_schema):
     meta = discover(sql_with_schema.metadata)
     assert meta == dshape('{%s: var * {a: int32, b: ?int32}}' %
                           sql_with_schema.name)
+
+
+def test_discover_array(sql_with_array):
+    sql, bind = sql_with_array
+    expected = dshape('var * {a: var * float64, b: string}')
+    result = discover(sql)
+    assert result == expected
+
+
+def test_nested_records_fail(url):
+    with pytest.raises(TypeError):
+        resource(url, dshape='var * {a: var * float64, b: {c: int64}}')

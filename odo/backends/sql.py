@@ -141,6 +141,11 @@ def discover_postgresql_interval(t):
     return discover(sa.Interval(day_precision=0, second_precision=t.precision))
 
 
+@discover.register(sa.dialects.postgresql.base.ARRAY)
+def discover_postgresql_array(t):
+    return var * discover(t.item_type)
+
+
 @discover.register(sa.dialects.oracle.base.INTERVAL)
 def discover_oracle_interval(t):
     return discover(t.adapt(sa.Interval))
@@ -310,9 +315,15 @@ def dshape_to_table(name, ds, metadata=None, foreign_keys=None,
 
     validate_foreign_keys(ds, foreign_keys)
 
-    cols = dshape_to_alchemy(ds, primary_key=primary_key or frozenset())
-    cols.extend(sa.ForeignKeyConstraint([column_name], [referent])
-                for column_name, referent in foreign_keys.items())
+    cols = dshape_to_alchemy(
+        ds,
+        primary_key=primary_key or frozenset(),
+        dialect=getattr(metadata.bind, 'dialect', None)
+    )
+    cols.extend(
+        sa.ForeignKeyConstraint([column_name], [referent])
+        for column_name, referent in foreign_keys.items()
+    )
     t = sa.Table(name, metadata, *cols, schema=metadata.schema)
     return attach_schema(t, t.schema)
 
@@ -335,7 +346,12 @@ def create_from_datashape(engine, ds, schema=None, foreign_keys=None,
     return engine
 
 
-def dshape_to_alchemy(dshape, primary_key=frozenset()):
+array_types = {
+    'postgresql': sa.dialects.postgresql.ARRAY
+}
+
+
+def dshape_to_alchemy(dshape, primary_key=frozenset(), dialect=None, level=0):
     """
 
     >>> dshape_to_alchemy('int')
@@ -353,23 +369,75 @@ def dshape_to_alchemy(dshape, primary_key=frozenset()):
     if isinstance(dshape, str):
         dshape = datashape.dshape(dshape)
     if isinstance(dshape, Map):
-        return dshape_to_alchemy(dshape.key.measure, primary_key=primary_key)
+        return dshape_to_alchemy(
+            dshape.key.measure,
+            dialect=dialect,
+            level=level + 1,
+            primary_key=primary_key
+        )
     if isinstance(dshape, Option):
-        return dshape_to_alchemy(dshape.ty, primary_key=primary_key)
+        return dshape_to_alchemy(
+            dshape.ty,
+            primary_key=primary_key,
+            level=level + 1,
+            dialect=dialect
+        )
     if str(dshape) in types:
         return types[str(dshape)]
     if isinstance(dshape, datashape.Record):
-        return [sa.Column(name,
-                          dshape_to_alchemy(getattr(typ, 'ty', typ),
-                                            primary_key=primary_key),
-                          primary_key=name in primary_key,
-                          nullable=isinstance(typ[0], Option))
-                for name, typ in dshape.parameters[0]]
+        if 0 <= level <= 1:  # we only allow at most a single level of nesting
+            return [
+                sa.Column(
+                    name,
+                    dshape_to_alchemy(
+                        typ,
+                        dialect=dialect,
+                        level=level + 1,
+                        primary_key=primary_key
+                    ),
+                    nullable=isinstance(typ, Option)
+                )
+                for name, typ in dshape.parameters[0]
+            ]
+        raise TypeError(
+            'nested record dshape not supported by sqlalchemy')
     if isinstance(dshape, datashape.DataShape):
         if isdimension(dshape[0]):
-            return dshape_to_alchemy(dshape[1], primary_key=primary_key)
+            if isscalar(dshape[1]):
+                type_ = array_types.get(dialect.name, None)
+                if type_ is None:
+                    raise TypeError(
+                        'dialect %r has no array type for dshape %s' % (
+                            dialect.name, dshape
+                        )
+                    )
+                return type_(
+                    dshape_to_alchemy(
+                        dshape[1],
+                        dialect=dialect,
+                        level=level + 1,
+                        primary_key=primary_key
+                    )
+                )
+            else:
+                if not level:
+                    return dshape_to_alchemy(
+                        dshape[1],
+                        dialect=dialect,
+                        level=level + 1,
+                        primary_key=primary_key
+                    )
+                raise TypeError(
+                    'nested record dshape not supported by sqlalchemy'
+                )
         else:
-            return dshape_to_alchemy(dshape[0], primary_key=primary_key)
+            return dshape_to_alchemy(
+                dshape[0],
+                dialect=dialect,
+                level=level + 1,
+                primary_key=primary_key
+            )
+
     if isinstance(dshape, datashape.String):
         fixlen = dshape[0].fixlen
         if fixlen is None:
@@ -522,7 +590,7 @@ def resource_sql(uri, *args, **kwargs):
     # we were also given a table name
     if args and isinstance(args[0], (str, unicode)):
         table_name, args = args[0], args[1:]
-        metadata = metadata_of_engine(engine, schema=schema)
+        metadata = metadata_of_engine(engine, schema)
 
         with ignoring(sa.exc.NoSuchTableError):
             return attach_schema(
