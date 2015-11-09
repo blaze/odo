@@ -63,6 +63,8 @@ with ignoring(ImportError):
     from .backends.sparksql import SparkDataFrame
 with ignoring(ImportError):
     from .backends.url import URL
+with ignoring(ImportError):
+    from .backends.dask import dask
 
 
 restart_ordering()  # Restart multipledispatch ordering and do ordering
