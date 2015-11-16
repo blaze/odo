@@ -19,6 +19,8 @@ matrix:
       env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
     - python: 3.4
       env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
+    - python: 3.5
+      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
   allow_failures:
     - python: 2.7
       env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
