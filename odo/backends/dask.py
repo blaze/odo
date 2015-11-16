@@ -66,6 +66,8 @@ def dask_to_numpy(x, **kwargs):
     return np.array(x)
 
 
+@convert.register(pd.DataFrame, dd.DataFrame, cost=10)
+@convert.register(pd.Series, dd.Series, cost=10)
 @convert.register(float, Array, cost=10.)
 def dask_to_float(x, **kwargs):
     return x.compute()
@@ -94,16 +96,6 @@ def bag_to_iterator(x, **kwargs):
 @convert.register(Bag, list)
 def bag_to_iterator(x, **kwargs):
     return db.from_sequence(x, **filter_kwargs(db.from_sequence, kwargs))
-
-
-@convert.register(pd.DataFrame, dd.DataFrame, cost=10)
-def dask_to_pandas_dataframe(x, **kwargs):
-    return x.compute()
-
-
-@convert.register(pd.Series, dd.Series, cost=10)
-def dask_to_pandas_series(x, **kwargs):
-    return x.compute()
 
 
 @convert.register(dd.DataFrame, pd.DataFrame, cost=1.)
