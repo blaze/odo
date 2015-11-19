@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from avro import datafile, io, schema
+from collections import Iterator
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
 from odo.backends.avro import discover, avro_to_DataFrame, avro_to_iterator, resource
@@ -63,6 +64,11 @@ class TestAvro(unittest.TestCase):
         names = ["field_1", "field_2", "field_3", "features"]
         expected_output = pd.DataFrame(test_data, columns=names)
         assert_frame_equal(df, expected_output)
+
+    def test_convert_avro_to_iterator(self):
+        itr = convert(Iterator, self.avrofile)
+        self.assertIsInstance(itr, Iterator)
+        self.assertEqual(list(itr), test_data)
 
 
 if __name__=="__main__":
