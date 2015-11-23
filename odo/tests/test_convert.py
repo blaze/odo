@@ -196,7 +196,7 @@ def test_list_of_strings_to_set():
 
 
 def test_datetimes_persist():
-    typs = [list, tuple, pd.Series, np.ndarray, tuple]
+    typs = [list, tuple, np.ndarray, tuple]
     L = [datetime.datetime.now()] * 3
     ds = discover(L)
 
