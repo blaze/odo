@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 from datetime import datetime
 
-from datashape import discover, Option
-from datashape import dshape
+from datashape import discover, float64, dshape
+from datashape.util.testing import assert_dshape_equal
 from networkx import NetworkXNoPath
 import numpy as np
 import pandas as pd
@@ -28,11 +28,11 @@ def test_discover_series():
     assert discover(s) == 3 * discover(s[0])
 
 
-def test_floats_are_optional():
+def test_floats_are_not_optional():
     df = pd.DataFrame([('Alice', 100), ('Bob', None)],
                       columns=['name', 'amount'])
     ds = discover(df)
-    assert isinstance(ds[1].types[1], Option)
+    assert_dshape_equal(ds[1].types[1], float64)
 
 
 def test_datetime_to_timestamp():

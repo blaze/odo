@@ -43,6 +43,10 @@ API Changes
 
 * Removed support for Python 2.6 (:issue:`333`).
 * Removed support for Python 3.3 (:issue:`335`).
+* ``pandas.DataFrame`` no longer discovers float32 and float64 as option types
+  (:issue:`366`).
+* ``pandas.Series`` now discovers strings and datetimes as option types
+  (:issue:`366`).
 
 Bug Fixes
 ---------
