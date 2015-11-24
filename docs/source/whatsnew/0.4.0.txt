@@ -21,7 +21,7 @@ None
 New Backends
 ------------
 
-None
+* Dask dataframe is now supported.
 
 Improved Backends
 -----------------
