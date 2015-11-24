@@ -23,16 +23,29 @@ null_data = [(1, None), (10, 20), (100, 200)]
 
 @pytest.yield_fixture(scope='module')
 def csv():
+    s = '\n'.join(','.join(map(str, row)) for row in data).encode('utf8')
     with tmpfile('.csv') as fn:
-        with open(fn, 'w') as f:
-            f.write('\n'.join(','.join(map(str, row)) for row in data))
+        with open(fn, 'wb') as f:
+            f.write(s)
         yield CSV(fn)
 
 
-@pytest.fixture
+@pytest.yield_fixture
+def encoding_csv():
+    path = os.path.join(os.path.dirname(__file__), 'encoding.csv')
+    with tmpfile('.csv') as fn:
+        with open(fn, 'wb') as f, open(path, 'r') as g:
+            f.write(g.read().encode('latin1'))
+        yield CSV(fn)
+
+
+@pytest.yield_fixture
 def complex_csv():
-    this_dir = os.path.dirname(__file__)
-    return CSV(os.path.join(this_dir, 'dummydata.csv'), has_header=True)
+    path = os.path.join(os.path.dirname(__file__), 'dummydata.csv')
+    with tmpfile('.csv') as fn:
+        with open(fn, 'wb') as f, open(path, 'rb') as g:
+            f.write(g.read())
+        yield CSV(fn, has_header=True)
 
 
 @pytest.fixture
@@ -94,7 +107,8 @@ def test_append(csv, sql):
 def test_tryexcept_into(csv, sql):
     sql, bind = sql
     with pytest.raises(sa.exc.NotSupportedError):
-        into(sql, csv, quotechar="alpha", bind=bind)  # uses multi-byte character
+        # uses multi-byte character
+        into(sql, csv, quotechar="alpha", bind=bind)
 
 
 def test_no_header_no_columns(csv, sql):
@@ -107,7 +121,9 @@ def test_complex_into(complex_csv, complex_sql):
     complex_sql, bind = complex_sql
     # data from: http://dummydata.me/generate
     into(complex_sql, complex_csv, dshape=discover(complex_sql), bind=bind)
-    assert_allclose(into(list, complex_sql, bind=bind), into(list, complex_csv))
+    assert_allclose(
+        into(list, complex_sql, bind=bind), into(list, complex_csv)
+    )
 
 
 def test_sql_to_csv(sql, csv):
@@ -158,11 +174,9 @@ def test_na_value(sql, csv):
     assert raw == 'a,b\n1,NA\n10,20\n100,200\n'
 
 
-def test_different_encoding(url):
-    encoding = 'latin1'
-    path = os.path.join(os.path.dirname(__file__), 'encoding.csv')
+def test_different_encoding(url, encoding_csv):
     try:
-        sql = odo(path, url, encoding=encoding)
+        sql = odo(encoding_csv, url, encoding='latin1')
     except sa.exc.OperationalError as e:
         pytest.skip(str(e))
     else:
