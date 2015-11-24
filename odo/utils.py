@@ -144,7 +144,14 @@ def filetext(text, extension='', open=open, mode='w'):
             except AttributeError:
                 pass
 
-        yield filename
+        try:
+            yield filename
+        finally:
+            if os.path.exists(filename):
+                try:
+                    os.remove(filename)
+                except OSError:
+                    pass
 
 
 @contextmanager
@@ -164,11 +171,15 @@ def filetexts(d, open=open):
             except AttributeError:
                 pass
 
-    yield list(d)
-
-    for filename in d:
-        if os.path.exists(filename):
-            os.remove(filename)
+    try:
+        yield list(d)
+    finally:
+        for filename in d:
+            if os.path.exists(filename):
+                try:
+                    os.remove(filename)
+                except OSError:
+                    pass
 
 
 def normalize_to_date(dt):
