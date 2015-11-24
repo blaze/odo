@@ -7,6 +7,7 @@ pytest.importorskip('psycopg2')
 
 import os
 import itertools
+import shutil
 
 from datashape import dshape
 
@@ -21,7 +22,7 @@ data = [(1, 2), (10, 20), (100, 200)]
 null_data = [(1, None), (10, 20), (100, 200)]
 
 
-@pytest.yield_fixture(scope='module')
+@pytest.yield_fixture
 def csv():
     s = '\n'.join(','.join(map(str, row)) for row in data).encode('utf8')
     with tmpfile('.csv') as fn:
@@ -43,8 +44,7 @@ def encoding_csv():
 def complex_csv():
     path = os.path.join(os.path.dirname(__file__), 'dummydata.csv')
     with tmpfile('.csv') as fn:
-        with open(fn, 'wb') as f, open(path, 'rb') as g:
-            f.write(g.read())
+        shutil.copy(path, fn)
         yield CSV(fn, has_header=True)
 
 
