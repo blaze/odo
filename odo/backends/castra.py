@@ -80,3 +80,8 @@ with ignoring(ImportError):
 @resource.register(r'.+\.castra')
 def castra_resource(uri, **kwargs):
     return Castra(uri)
+
+
+@resource.register(r'castra://.+')
+def castra_uri_resource(uri, **kwargs):
+    return Castra(uri[len('castra://'):])
