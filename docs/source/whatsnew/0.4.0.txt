@@ -22,7 +22,6 @@ Experimental Features
   currently stable. This feature may break at any time without warning.
   (:issue:`330`).
 
-None
 
 New Backends
 ------------
