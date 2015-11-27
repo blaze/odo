@@ -36,7 +36,6 @@ addons:
 
 services:
     - mongodb
-    - postgres
     - mysql
 
 install:
