@@ -7,7 +7,7 @@ Release |version|
 New Features
 ------------
 
-None
+* Added support for Python 3.5 (:issue:`368`).
 
 Experimental Features
 ---------------------
