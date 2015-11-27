@@ -60,7 +60,7 @@ install:
 
   # Install various deps
   - conda uninstall toolz
-  - pip install -U toolz sas7bdat psycopg2 dill pymongo
+  - pip install -U toolz sas7bdat psycopg2 dill 'pymongo<3'
   - pip install git+git://github.com/blaze/dask.git --upgrade
   - if [ -n "$PANDAS_VERSION" ]; then pip install $PANDAS_VERSION; fi
 
