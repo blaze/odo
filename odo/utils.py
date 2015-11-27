@@ -13,6 +13,7 @@ from multiprocessing.pool import ThreadPool
 from multipledispatch import Dispatcher
 
 from datashape import dshape, Record
+from datashape.discovery import is_zero_time
 
 from toolz import pluck, get, curry, keyfilter
 
@@ -183,7 +184,7 @@ def filetexts(d, open=open):
 
 
 def normalize_to_date(dt):
-    if isinstance(dt, datetime.datetime) and not dt.time():
+    if isinstance(dt, datetime.datetime) and is_zero_time(dt.time()):
         return dt.date()
     else:
         return dt
