@@ -79,8 +79,10 @@ before_script:
   # Creation of an SSH agent for testing forwarding
   - eval $(ssh-agent)
   - ssh-add
+  - "mongo admin --eval 'db.runCommand({setParameter: 1, textSearchEnabled: true});'"
   - mysql -e "create database if not exists test;" -u root
   - psql -c "create database test;" -U postgres
+  - sleep 15
 
 script:
   - conda list numpy
