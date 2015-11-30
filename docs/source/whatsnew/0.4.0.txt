@@ -63,6 +63,8 @@ Bug Fixes
 * Fixed an issue with :issue:`345` that broke Blaze (:issue:`347`).
 * Fixed an issue where empty columns in a CSV file would be coerced to
   ``datetime`` instead of being left as strings (:issue:`342`).
+* Quote table names that need to be quoted in the MySQL and PostgreSQL
+  backends (:issue:`316`, :issue:`371`).
 
 
 Miscellaneous
