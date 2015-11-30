@@ -4,7 +4,6 @@ import pytest
 
 pymysql = pytest.importorskip('pymysql')
 
-from decimal import Decimal
 from datashape import var, DataShape, Record, dshape
 import itertools
 from odo.backends.csv import CSV
@@ -84,11 +83,29 @@ def sql(engine, csv, name):
 @pytest.yield_fixture
 def fsql(engine, fcsv, name):
     dshape = discover(fcsv)
-    dshape = DataShape(var,
-                       Record([(n, typ)
-                               for n, typ in zip('ab', dshape.measure.types)]))
+    dshape = DataShape(
+        var,
+        Record([(n, typ) for n, typ in zip('ab', discover(fcsv).measure.types)])
+    )
     try:
         t = resource('%s::%s' % (url, name), dshape=dshape)
+    except sqlalchemy.exc.OperationalError as e:
+        pytest.skip(str(e))
+    else:
+        try:
+            yield t
+        finally:
+            drop(t)
+
+
+@pytest.yield_fixture
+def quoted_sql(engine, fcsv):
+    dshape = DataShape(
+        var,
+        Record([(n, typ) for n, typ in zip('ab', discover(fcsv).measure.types)])
+    )
+    try:
+        t = resource('%s::foo bar' % url, dshape=dshape)
     except sqlalchemy.exc.OperationalError as e:
         pytest.skip(str(e))
     else:
@@ -260,3 +277,7 @@ def test_decimal(decimal_sql):
     )
     assert isinstance(t.c.a.type, sa.Numeric)
     assert isinstance(t.c.b.type, sa.Numeric)
+
+
+def test_quoted_name(quoted_sql, fcsv):
+    assert odo(fcsv, quoted_sql) is not None
