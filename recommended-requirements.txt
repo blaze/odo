@@ -12,3 +12,4 @@ sas7bdat
 paramiko
 pywebhdfs
 boto
+avro

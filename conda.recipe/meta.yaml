@@ -31,6 +31,7 @@ requirements:
 
 test:
   requires:
+    - avro
     - pytest
     - h5py
     - pytables >=3.0.0
