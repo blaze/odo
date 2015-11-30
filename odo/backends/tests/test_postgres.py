@@ -89,6 +89,20 @@ complex_sql = sql_fixture("""
 """)
 
 
+@pytest.yield_fixture
+def quoted_sql(csv):
+    url = 'postgresql://postgres@localhost/test::foo bar'
+    try:
+        t = resource(url, dshape=discover(csv))
+    except sa.exc.OperationalError as e:
+        pytest.skip(str(e))
+    else:
+        try:
+            yield t
+        finally:
+            drop(t)
+
+
 def test_simple_into(csv, sql):
     sql, bind = sql
     into(sql, csv, dshape=discover(sql), bind=bind)
@@ -215,3 +229,9 @@ def test_schema_discover(sql_with_schema):
     meta = discover(sql_with_schema.metadata)
     assert meta == dshape('{%s: var * {a: int32, b: ?int32}}' %
                           sql_with_schema.name)
+
+
+def test_quoted_name(quoted_sql, csv):
+    s = odo(csv, quoted_sql)
+    t = odo(csv, list)
+    assert sorted(odo(s, list)) == sorted(t)
