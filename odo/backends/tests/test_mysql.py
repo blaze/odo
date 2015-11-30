@@ -280,4 +280,6 @@ def test_decimal(decimal_sql):
 
 
 def test_quoted_name(quoted_sql, fcsv):
-    assert odo(fcsv, quoted_sql) is not None
+    s = odo(fcsv, quoted_sql)
+    t = odo(fcsv, list)
+    assert sorted(odo(s, list)) == sorted(t)
