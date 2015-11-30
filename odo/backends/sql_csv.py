@@ -21,7 +21,7 @@ from ..convert import convert
 from .csv import CSV, infer_header
 from ..temp import Temp
 from .aws import S3
-from .sql import fullname, getbind
+from .sql import getbind
 
 
 class CopyFromCSV(Executable, ClauseElement):
@@ -105,7 +105,7 @@ def compile_from_csv_mysql(element, compiler, **kwargs):
     lineterminator = element.lineterminator.encode('unicode-escape').decode()
     result = r"""
         LOAD DATA {local} INFILE '{path}'
-        INTO TABLE {0.element.name}
+        INTO TABLE {table}
         CHARACTER SET {encoding}
         FIELDS
             TERMINATED BY '{0.delimiter}'
@@ -114,6 +114,7 @@ def compile_from_csv_mysql(element, compiler, **kwargs):
         LINES TERMINATED BY '{0.lineterminator}'
         IGNORE {0.skiprows} LINES;
     """.format(element,
+               table=compiler.preparer.format_table(element.element),
                path=os.path.abspath(element.csv.path),
                local=getattr(element, 'local', ''),
                encoding=encoding,
@@ -130,7 +131,7 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
         raise ValueError('postgres does not allow escapechar longer than 1 '
                          'byte')
     statement = """
-    COPY {fullname} FROM '{path}'
+    COPY {table} FROM '{path}'
         (FORMAT CSV,
          DELIMITER E'{0.delimiter}',
          NULL '{0.na_value}',
@@ -138,11 +139,13 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
          ESCAPE '{0.escapechar}',
          HEADER {header},
          ENCODING '{encoding}')"""
-    return statement.format(element,
-                            fullname=fullname(element.element, compiler),
-                            path=os.path.abspath(element.csv.path),
-                            header=str(element.header).upper(),
-                            encoding=encoding).strip()
+    return statement.format(
+        element,
+        table=compiler.preparer.format_table(element.element),
+        path=os.path.abspath(element.csv.path),
+        header=str(element.header).upper(),
+        encoding=encoding
+    ).strip()
 
 
 try:
@@ -163,16 +166,18 @@ else:
         aws_secret_access_key = cfg.get('Credentials', 'aws_secret_access_key')
 
         compression = getattr(element, 'compression', '').upper() or None
-        cmd = CopyCommand(table=element.element,
-                          data_location=element.csv.path,
-                          access_key_id=aws_access_key_id,
-                          secret_access_key=aws_secret_access_key,
-                          format='CSV',
-                          delimiter=element.delimiter,
-                          ignore_header=int(element.header),
-                          empty_as_null=True,
-                          blanks_as_null=False,
-                          compression=compression)
+        cmd = CopyCommand(
+            table=element.element,
+            data_location=element.csv.path,
+            access_key_id=aws_access_key_id,
+            secret_access_key=aws_secret_access_key,
+            format='CSV',
+            delimiter=element.delimiter,
+            ignore_header=int(element.header),
+            empty_as_null=True,
+            blanks_as_null=False,
+            compression=compression
+        )
         return compiler.process(cmd)
 
 
