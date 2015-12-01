@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import sys
 import subprocess
 import uuid
 import mmap
@@ -89,16 +90,17 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
                fullpath, compiler.preparer.format_table(t)
            ),
            element.bind.url.database]
-    stdout, stderr = subprocess.Popen(
+    stderr = subprocess.check_output(
         cmd,
-        stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         stdin=subprocess.PIPE
-    ).communicate()
-    if stdout:
-        raise RuntimeError(
-            'error: %s from command: %s' % (stdout, ' '.join(cmd))
-        )
+    ).decode(sys.getfilesystemencoding())
+    if stderr:
+        # TODO: this seems like a lot of rigamarole
+        try:
+            raise OSError(stderr)
+        except OSError as e:
+            raise sa.exc.DatabaseError(' '.join(cmd), [], e)
     return ''
 
 
