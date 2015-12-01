@@ -65,6 +65,7 @@ Bug Fixes
   ``datetime`` instead of being left as strings (:issue:`342`).
 * Quote table names that need to be quoted in the MySQL and PostgreSQL
   backends (:issue:`316`, :issue:`371`).
+* Use ``sa.bindparam`` for ``CopyToCSV`` and ``CopyFromCSV`` (:issue:`371`).
 
 
 Miscellaneous
