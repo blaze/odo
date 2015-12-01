@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 from itertools import product
 import pytest
-pytest.importorskip('sqlalchemy')
+sa = pytest.importorskip('sqlalchemy')
 
 from datashape import dshape, discover
 from odo import resource, odo
@@ -17,8 +17,7 @@ data = [(1, 2), (10, 20), (100, 200)]
 @pytest.yield_fixture
 def csv():
     with tmpfile('csv') as filename:
-        csv = odo(data, filename, dshape=ds, has_header=False)
-        yield csv
+        yield odo(data, filename, dshape=ds, has_header=False)
 
 
 def test_simple_into(csv):
@@ -93,3 +92,22 @@ def test_different_encoding():
                 (u'1958.001.500233-9', 1, u'', u'', 4703),
                 (u'1909.017.000018-3', 1, 30.0, u'sumaria', 899)]
     assert result == expected
+
+
+@pytest.yield_fixture
+def quoted_sql():
+    with tmpfile('.db') as db:
+        try:
+            yield resource('sqlite:///%s::foo bar' % db, dshape=ds)
+        except sa.exc.OperationalError as e:
+            pytest.skip(str(e))
+
+
+@pytest.mark.xfail(
+    raises=RuntimeError,
+    reason='How do you use a quoted table name with the SQLite .import command?'
+)
+def test_quoted_name(csv, quoted_sql):
+    s = odo(csv, quoted_sql)
+    t = odo(csv, list)
+    assert sorted(odo(s, list)) == sorted(t)
