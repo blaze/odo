@@ -84,14 +84,21 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
     cmd = ['sqlite3',
            '-nullvalue', repr(element.na_value),
            '-separator', element.delimiter,
-           '-cmd', '.import "%s" %s' % (fullpath, t.name),
+           '-cmd', '.import "%s" %s' % (
+               # FIXME: format_table(t) is correct, but sqlite will complain
+               fullpath, compiler.preparer.format_table(t)
+           ),
            element.bind.url.database]
-    stdout, stderr = subprocess.Popen(cmd,
-                                      stdout=subprocess.PIPE,
-                                      stderr=subprocess.STDOUT,
-                                      stdin=subprocess.PIPE).communicate()
-    assert not stdout, \
-        'error: %s from command: %s' % (stdout, ' '.join(cmd))
+    stdout, stderr = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        stdin=subprocess.PIPE
+    ).communicate()
+    if stdout:
+        raise RuntimeError(
+            'error: %s from command: %s' % (stdout, ' '.join(cmd))
+        )
     return ''
 
 
