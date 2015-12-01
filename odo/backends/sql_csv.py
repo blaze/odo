@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import sys
 import subprocess
 import uuid
 import mmap
@@ -21,7 +22,7 @@ from ..convert import convert
 from .csv import CSV, infer_header
 from ..temp import Temp
 from .aws import S3
-from .sql import fullname, getbind
+from .sql import getbind
 
 
 class CopyFromCSV(Executable, ClauseElement):
@@ -84,65 +85,98 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
     cmd = ['sqlite3',
            '-nullvalue', repr(element.na_value),
            '-separator', element.delimiter,
-           '-cmd', '.import "%s" %s' % (fullpath, t.name),
+           '-cmd', '.import "%s" %s' % (
+               # FIXME: format_table(t) is correct, but sqlite will complain
+               fullpath, compiler.preparer.format_table(t)
+           ),
            element.bind.url.database]
-    stdout, stderr = subprocess.Popen(cmd,
-                                      stdout=subprocess.PIPE,
-                                      stderr=subprocess.STDOUT,
-                                      stdin=subprocess.PIPE).communicate()
-    assert not stdout, \
-        'error: %s from command: %s' % (stdout, ' '.join(cmd))
+    stderr = subprocess.check_output(
+        cmd,
+        stderr=subprocess.STDOUT,
+        stdin=subprocess.PIPE
+    ).decode(sys.getfilesystemencoding())
+    if stderr:
+        # TODO: this seems like a lot of rigamarole
+        try:
+            raise OSError(stderr)
+        except OSError as e:
+            raise sa.exc.DatabaseError(' '.join(cmd), [], e)
     return ''
 
 
 @compiles(CopyFromCSV, 'mysql')
 def compile_from_csv_mysql(element, compiler, **kwargs):
     if element.na_value:
-        raise ValueError('MySQL does not support custom NULL values')
-    encoding = {'utf-8': 'utf8'}.get(element.encoding.lower(),
-                                     element.encoding or 'utf8')
-    escapechar = element.escapechar.encode('unicode-escape').decode()
-    lineterminator = element.lineterminator.encode('unicode-escape').decode()
-    result = r"""
-        LOAD DATA {local} INFILE '{path}'
-        INTO TABLE {0.element.name}
-        CHARACTER SET {encoding}
-        FIELDS
-            TERMINATED BY '{0.delimiter}'
-            ENCLOSED BY '{0.quotechar}'
-            ESCAPED BY '{escapechar}'
-        LINES TERMINATED BY '{0.lineterminator}'
-        IGNORE {0.skiprows} LINES;
-    """.format(element,
-               path=os.path.abspath(element.csv.path),
-               local=getattr(element, 'local', ''),
-               encoding=encoding,
-               lineterminator=lineterminator,
-               escapechar=escapechar).strip()
-    return result
+        raise ValueError(
+            'MySQL does not support custom NULL values for CSV input'
+        )
+    return compiler.process(
+        sa.text(
+            """LOAD DATA {local} INFILE :path
+            INTO TABLE {table}
+            CHARACTER SET :encoding
+            FIELDS
+                TERMINATED BY :delimiter
+                ENCLOSED BY :quotechar
+                ESCAPED BY :escapechar
+            LINES TERMINATED BY :lineterminator
+            IGNORE :skiprows LINES
+            """.format(
+                local=getattr(element, 'local', ''),
+                table=compiler.preparer.format_table(element.element)
+            )
+        ).bindparams(
+            path=os.path.abspath(element.csv.path),
+            encoding=element.encoding or element.bind.execute(
+                'select @@character_set_client'
+            ).scalar(),
+            delimiter=element.delimiter,
+            quotechar=element.quotechar,
+            escapechar=element.escapechar,
+            lineterminator=element.lineterminator,
+            skiprows=int(element.header)
+        ),
+        **kwargs
+    )
 
 
 @compiles(CopyFromCSV, 'postgresql')
 def compile_from_csv_postgres(element, compiler, **kwargs):
-    encoding = {'utf8': 'utf-8'}.get(element.encoding.lower(),
-                                     element.encoding or 'utf8')
     if len(element.escapechar) != 1:
-        raise ValueError('postgres does not allow escapechar longer than 1 '
-                         'byte')
-    statement = """
-    COPY {fullname} FROM '{path}'
-        (FORMAT CSV,
-         DELIMITER E'{0.delimiter}',
-         NULL '{0.na_value}',
-         QUOTE '{0.quotechar}',
-         ESCAPE '{0.escapechar}',
-         HEADER {header},
-         ENCODING '{encoding}')"""
-    return statement.format(element,
-                            fullname=fullname(element.element, compiler),
-                            path=os.path.abspath(element.csv.path),
-                            header=str(element.header).upper(),
-                            encoding=encoding).strip()
+        raise ValueError(
+            'postgres does not allow escape characters longer than 1 byte when '
+            'bulk loading a CSV file'
+        )
+    if element.lineterminator != '\n':
+        raise ValueError(
+            r'PostgreSQL does not support line terminators other than \n'
+        )
+    return compiler.process(
+        sa.text(
+            """
+            COPY {0} FROM :path (
+                FORMAT CSV,
+                DELIMITER :delimiter,
+                NULL :na_value,
+                QUOTE :quotechar,
+                ESCAPE :escapechar,
+                HEADER :header,
+                ENCODING :encoding
+            )
+            """.format(compiler.preparer.format_table(element.element))
+        ).bindparams(
+            path=os.path.abspath(element.csv.path),
+            delimiter=element.delimiter,
+            na_value=element.na_value,
+            quotechar=element.quotechar,
+            escapechar=element.escapechar,
+            header=element.header,
+            encoding=element.encoding or element.bind(
+                'show client_encoding'
+            ).execute().scalar()
+        ),
+        **kwargs
+    )
 
 
 try:
@@ -163,16 +197,18 @@ else:
         aws_secret_access_key = cfg.get('Credentials', 'aws_secret_access_key')
 
         compression = getattr(element, 'compression', '').upper() or None
-        cmd = CopyCommand(table=element.element,
-                          data_location=element.csv.path,
-                          access_key_id=aws_access_key_id,
-                          secret_access_key=aws_secret_access_key,
-                          format='CSV',
-                          delimiter=element.delimiter,
-                          ignore_header=int(element.header),
-                          empty_as_null=True,
-                          blanks_as_null=False,
-                          compression=compression)
+        cmd = CopyCommand(
+            table=element.element,
+            data_location=element.csv.path,
+            access_key_id=aws_access_key_id,
+            secret_access_key=aws_secret_access_key,
+            format='CSV',
+            delimiter=element.delimiter,
+            ignore_header=int(element.header),
+            empty_as_null=True,
+            blanks_as_null=False,
+            compression=compression
+        )
         return compiler.process(cmd)
 
 
