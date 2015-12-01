@@ -105,54 +105,72 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
 @compiles(CopyFromCSV, 'mysql')
 def compile_from_csv_mysql(element, compiler, **kwargs):
     if element.na_value:
-        raise ValueError('MySQL does not support custom NULL values')
-    encoding = {'utf-8': 'utf8'}.get(element.encoding.lower(),
-                                     element.encoding or 'utf8')
-    escapechar = element.escapechar.encode('unicode-escape').decode()
-    lineterminator = element.lineterminator.encode('unicode-escape').decode()
-    result = r"""
-        LOAD DATA {local} INFILE '{path}'
-        INTO TABLE {table}
-        CHARACTER SET {encoding}
-        FIELDS
-            TERMINATED BY '{0.delimiter}'
-            ENCLOSED BY '{0.quotechar}'
-            ESCAPED BY '{escapechar}'
-        LINES TERMINATED BY '{0.lineterminator}'
-        IGNORE {0.skiprows} LINES;
-    """.format(element,
-               table=compiler.preparer.format_table(element.element),
-               path=os.path.abspath(element.csv.path),
-               local=getattr(element, 'local', ''),
-               encoding=encoding,
-               lineterminator=lineterminator,
-               escapechar=escapechar).strip()
-    return result
+        raise ValueError(
+            'MySQL does not support custom NULL values for CSV input'
+        )
+    return compiler.process(
+        sa.text(
+            """LOAD DATA {local} INFILE :path
+            INTO TABLE {table}
+            CHARACTER SET :encoding
+            FIELDS
+                TERMINATED BY :delimiter
+                ENCLOSED BY :quotechar
+                ESCAPED BY :escapechar
+            LINES TERMINATED BY :lineterminator
+            IGNORE :skiprows LINES
+            """.format(
+                local=getattr(element, 'local', ''),
+                table=compiler.preparer.format_table(element.element)
+            )
+        ).bindparams(
+            path=os.path.abspath(element.csv.path),
+            encoding=element.encoding or 'utf8',
+            delimiter=element.delimiter,
+            quotechar=element.quotechar,
+            escapechar=element.escapechar,
+            lineterminator=element.lineterminator,
+            skiprows=int(element.header)
+        ),
+        **kwargs
+    )
 
 
 @compiles(CopyFromCSV, 'postgresql')
 def compile_from_csv_postgres(element, compiler, **kwargs):
-    encoding = {'utf8': 'utf-8'}.get(element.encoding.lower(),
-                                     element.encoding or 'utf8')
     if len(element.escapechar) != 1:
-        raise ValueError('postgres does not allow escapechar longer than 1 '
-                         'byte')
-    statement = """
-    COPY {table} FROM '{path}'
-        (FORMAT CSV,
-         DELIMITER E'{0.delimiter}',
-         NULL '{0.na_value}',
-         QUOTE '{0.quotechar}',
-         ESCAPE '{0.escapechar}',
-         HEADER {header},
-         ENCODING '{encoding}')"""
-    return statement.format(
-        element,
-        table=compiler.preparer.format_table(element.element),
-        path=os.path.abspath(element.csv.path),
-        header=str(element.header).upper(),
-        encoding=encoding
-    ).strip()
+        raise ValueError(
+            'postgres does not allow escape characters longer than 1 byte when '
+            'bulk loading a CSV file'
+        )
+    if element.lineterminator != '\n':
+        raise ValueError(
+            r'PostgreSQL does not support line terminators other than \n'
+        )
+    return compiler.process(
+        sa.text(
+            """
+            COPY {0} FROM :path (
+                FORMAT CSV,
+                DELIMITER :delimiter,
+                NULL :na_value,
+                QUOTE :quotechar,
+                ESCAPE :escapechar,
+                HEADER :header,
+                ENCODING :encoding
+            )
+            """.format(compiler.preparer.format_table(element.element))
+        ).bindparams(
+            path=os.path.abspath(element.csv.path),
+            delimiter=element.delimiter,
+            na_value=element.na_value,
+            quotechar=element.quotechar,
+            escapechar=element.escapechar,
+            header=element.header,
+            encoding=element.encoding
+        ),
+        **kwargs
+    )
 
 
 try:
