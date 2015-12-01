@@ -1,10 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
-from operator import attrgetter
 import os
 import re
 import subprocess
+import sys
 
+from operator import attrgetter
 from itertools import chain
 from collections import Iterator
 from datetime import datetime, date
@@ -712,11 +713,18 @@ def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
     if not find_executable('sqlite3'):
         raise MDNotImplementedError("Could not find sqlite executable")
 
+    # we are sending a SQL string directorly to the SQLite process so we always
+    # need to bind everything before sending it
+    kwargs['literal_binds'] = True
+
     selectable = element.element
-    sql = (compiler.process(sa.select([selectable])
-                            if isinstance(selectable, sa.Table)
-                            else selectable) + ';')
-    sql = re.sub(r'\s{2,}', ' ', re.sub(r'\s*\n\s*', ' ', sql)).encode()
+    sql = compiler.process(
+        selectable.select() if isinstance(selectable, sa.Table) else selectable,
+        **kwargs
+    ) + ';'
+    sql = re.sub(r'\s{2,}', ' ', re.sub(r'\s*\n\s*', ' ', sql)).encode(
+        sys.getfilesystemencoding()  # we send bytes to the process
+    )
     cmd = ['sqlite3', '-csv',
            '-%sheader' % ('no' if not element.header else ''),
            '-separator', element.delimiter,
