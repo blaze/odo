@@ -124,3 +124,16 @@ def test_different_encoding_to_csv():
             with tmpfile('.csv') as fn:
                 with pytest.raises(ValueError):
                     odo(t, fn, encoding='latin1')
+
+
+def test_send_parameterized_query_to_csv():
+    with tmpfile('db') as dbfilename:
+        with filetext('a,b\n1,2\n3,4', extension='csv') as csvfilename:
+            t = odo(
+                csvfilename,
+                'sqlite:///%s::mytable' % dbfilename,
+            )
+        with tmpfile('.csv') as fn:
+            q = t.select(t.c.a == 1)
+            r = odo(q, fn)
+            assert sorted(odo(q, list)) == sorted(odo(r, list))
