@@ -104,7 +104,7 @@ def quoted_sql():
 
 
 @pytest.mark.xfail(
-    raises=RuntimeError,
+    raises=sa.exc.DatabaseError,
     reason='How do you use a quoted table name with the SQLite .import command?'
 )
 def test_quoted_name(csv, quoted_sql):
