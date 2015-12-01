@@ -111,3 +111,16 @@ def test_quoted_name(csv, quoted_sql):
     s = odo(csv, quoted_sql)
     t = odo(csv, list)
     assert sorted(odo(s, list)) == sorted(t)
+
+
+def test_different_encoding_to_csv():
+    with tmpfile('db') as dbfilename:
+        with filetext('a,b\n1,2\n3,4', extension='csv') as csvfilename:
+            t = odo(
+                csvfilename,
+                'sqlite:///%s::mytable' % dbfilename,
+                encoding='latin1'
+            )
+            with tmpfile('.csv') as fn:
+                with pytest.raises(ValueError):
+                    odo(t, fn, encoding='latin1')
