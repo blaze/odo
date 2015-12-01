@@ -502,15 +502,6 @@ def attach_schema(obj, schema):
     return obj
 
 
-def fullname(table, compiler):
-    preparer = compiler.dialect.identifier_preparer
-    fullname = preparer.quote_identifier(table.name)
-    schema = table.schema
-    if schema is not None:
-        fullname = '%s.%s' % (preparer.quote_schema(schema), fullname)
-    return fullname
-
-
 @resource.register(r'(.*sql.*|oracle|redshift)(\+\w+)?://.+')
 def resource_sql(uri, *args, **kwargs):
     engine = create_engine(uri, **filter_kwargs(sa.create_engine, kwargs))
@@ -614,9 +605,19 @@ def select_or_selectable_to_frame(el, bind=None, **kwargs):
 
 class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
 
-    def __init__(self, element, path, delimiter=',', quotechar='"',
-                 lineterminator=r'\n', escapechar='\\', header=True,
-                 na_value='', bind=None):
+    def __init__(
+        self,
+        element,
+        path,
+        delimiter=',',
+        quotechar='"',
+        lineterminator='\n',
+        escapechar='\\',
+        header=True,
+        na_value='',
+        encoding=None,
+        bind=None,
+    ):
         self.element = element
         self.path = path
         self.delimiter = delimiter
@@ -628,6 +629,7 @@ class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
         self.header = header and bind.dialect.name != 'mysql'
         self.escapechar = escapechar
         self.na_value = na_value
+        self.encoding = encoding
 
     @property
     def bind(self):
@@ -637,52 +639,101 @@ class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
 @compiles(CopyToCSV, 'postgresql')
 def compile_copy_to_csv_postgres(element, compiler, **kwargs):
     selectable = element.element
-    istable = isinstance(selectable, sa.Table)
-    template = """COPY %s TO '{path}'
-        WITH CSV {header}
-        DELIMITER '{delimiter}'
-        QUOTE '{quotechar}'
-        NULL '{na_value}'
-        ESCAPE '{escapechar}'
-    """ % ('{query}' if istable else '({query})')
-    processed = (fullname(selectable, compiler)
-                 if istable else compiler.process(selectable))
-    assert processed, ('got empty string from processing element of type %r' %
-                       type(selectable).__name__)
-    return template.format(query=processed,
-                           path=element.path,
-                           header='HEADER' if element.header else '',
-                           delimiter=element.delimiter,
-                           quotechar=element.quotechar,
-                           na_value=element.na_value,
-                           escapechar=element.escapechar)
+    return compiler.process(
+        sa.text(
+            """COPY {0} TO :path
+            WITH (
+                FORMAT CSV,
+                HEADER :header,
+                DELIMITER :delimiter,
+                QUOTE :quotechar,
+                NULL :na_value,
+                ESCAPE :escapechar,
+                ENCODING :encoding
+            )
+            """.format(
+                compiler.preparer.format_table(selectable)
+                if isinstance(selectable, sa.Table)
+                else '({0})'.format(compiler.process(selectable))
+            )
+        ).bindparams(
+            sa.bindparam('path', element.path, type_=sa.String),
+            sa.bindparam('header', element.header, type_=sa.Boolean),
+            sa.bindparam('delimiter', element.delimiter, type_=sa.String),
+            sa.bindparam('quotechar', element.quotechar, type_=sa.String),
+            sa.bindparam('na_value', element.na_value, type_=sa.String),
+            sa.bindparam('escapechar', element.escapechar, type_=sa.String),
+            sa.bindparam(
+                'encoding',
+                # either was passed in or we get the default client encoding
+                element.encoding or element.bind.execute(
+                    sa.text("""
+                        select
+                            pg_encoding_to_char(encoding)
+                        from
+                            pg_database
+                        where datname = :db
+                    """).bindparams(
+                        sa.bindparam(
+                            'db',
+                            value=element.bind.url.database,
+                            type_=sa.String
+                        )
+                    )
+                ).scalar(),
+                type_=sa.String
+            )
+        ),
+        **kwargs
+    )
 
 
 @compiles(CopyToCSV, 'mysql')
 def compile_copy_to_csv_mysql(element, compiler, **kwargs):
     selectable = element.element
-    if isinstance(selectable, sa.Table):
-        processed = 'SELECT * FROM %(table)s' % dict(table=selectable.name)
-    else:
-        processed = compiler.process(selectable)
-    assert processed, ('got empty string from processing element of type %r' %
-                       type(selectable).__name__)
-    template = """{query} INTO OUTFILE '{path}'
-    FIELDS TERMINATED BY '{delimiter}'
-    OPTIONALLY ENCLOSED BY '{quotechar}'
-    ESCAPED BY '{escapechar}'
-    LINES TERMINATED BY '{lineterminator}'"""
-    return template.format(query=processed,
-                           path=element.path,
-                           delimiter=element.delimiter,
-                           lineterminator=element.lineterminator,
-                           escapechar=element.escapechar.encode(
-                               'unicode-escape').decode(),
-                           quotechar=element.quotechar)
+    return compiler.process(
+        sa.text(
+            """{0} INTO OUTFILE :path
+            CHARACTER SET :encoding
+            FIELDS TERMINATED BY :delimiter
+            OPTIONALLY ENCLOSED BY :quotechar
+            ESCAPED BY :escapechar
+            LINES TERMINATED BY :lineterminator
+            """.format(
+                compiler.process(
+                    selectable.select()
+                    if isinstance(selectable, sa.Table) else selectable,
+                    **kwargs
+                )
+            )
+        ).bindparams(
+            sa.bindparam('path', element.path, type_=sa.String),
+            sa.bindparam(
+                'encoding',
+                element.encoding or element.bind.execute(
+                    'select @@character_set_client'
+                ).scalar(),
+                type_=sa.String
+            ),
+            sa.bindparam('delimiter', element.delimiter, type_=sa.String),
+            sa.bindparam('quotechar', element.quotechar, type_=sa.String),
+            sa.bindparam('escapechar', element.escapechar, type_=sa.String),
+            sa.bindparam(
+                'lineterminator',
+                element.lineterminator,
+                type_=sa.String
+            )
+        )
+    )
 
 
 @compiles(CopyToCSV, 'sqlite')
 def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
+    if element.encoding is not None:
+        raise ValueError(
+            "'encoding' keyword argument not supported for "
+            "SQLite to CSV conversion"
+        )
     if not find_executable('sqlite3'):
         raise MDNotImplementedError("Could not find sqlite executable")
 
