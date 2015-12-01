@@ -125,7 +125,9 @@ def compile_from_csv_mysql(element, compiler, **kwargs):
             )
         ).bindparams(
             path=os.path.abspath(element.csv.path),
-            encoding=element.encoding or 'utf8',
+            encoding=element.encoding or element.bind.execute(
+                'select @@character_set_client'
+            ).scalar(),
             delimiter=element.delimiter,
             quotechar=element.quotechar,
             escapechar=element.escapechar,
@@ -167,7 +169,9 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
             quotechar=element.quotechar,
             escapechar=element.escapechar,
             header=element.header,
-            encoding=element.encoding
+            encoding=element.encoding or element.bind(
+                'show client_encoding'
+            ).execute().scalar()
         ),
         **kwargs
     )

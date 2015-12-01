@@ -657,32 +657,15 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
                 else '({0})'.format(compiler.process(selectable))
             )
         ).bindparams(
-            sa.bindparam('path', element.path, type_=sa.String),
-            sa.bindparam('header', element.header, type_=sa.Boolean),
-            sa.bindparam('delimiter', element.delimiter, type_=sa.String),
-            sa.bindparam('quotechar', element.quotechar, type_=sa.String),
-            sa.bindparam('na_value', element.na_value, type_=sa.String),
-            sa.bindparam('escapechar', element.escapechar, type_=sa.String),
-            sa.bindparam(
-                'encoding',
-                # either was passed in or we get the default client encoding
-                element.encoding or element.bind.execute(
-                    sa.text("""
-                        select
-                            pg_encoding_to_char(encoding)
-                        from
-                            pg_database
-                        where datname = :db
-                    """).bindparams(
-                        sa.bindparam(
-                            'db',
-                            value=element.bind.url.database,
-                            type_=sa.String
-                        )
-                    )
-                ).scalar(),
-                type_=sa.String
-            )
+            path=element.path,
+            header=element.header,
+            delimiter=element.delimiter,
+            quotechar=element.quotechar,
+            na_value=element.na_value,
+            escapechar=element.escapechar,
+            encoding=element.encoding or element.bind.execute(
+                'show client_encoding'
+            ).scalar()
         ),
         **kwargs
     )
@@ -707,22 +690,14 @@ def compile_copy_to_csv_mysql(element, compiler, **kwargs):
                 )
             )
         ).bindparams(
-            sa.bindparam('path', element.path, type_=sa.String),
-            sa.bindparam(
-                'encoding',
-                element.encoding or element.bind.execute(
-                    'select @@character_set_client'
-                ).scalar(),
-                type_=sa.String
-            ),
-            sa.bindparam('delimiter', element.delimiter, type_=sa.String),
-            sa.bindparam('quotechar', element.quotechar, type_=sa.String),
-            sa.bindparam('escapechar', element.escapechar, type_=sa.String),
-            sa.bindparam(
-                'lineterminator',
-                element.lineterminator,
-                type_=sa.String
-            )
+            path=element.path,
+            encoding=element.encoding or element.bind.execute(
+                'select @@character_set_client'
+            ).scalar(),
+            delimiter=element.delimiter,
+            quotechar=element.quotechar,
+            escapechar=element.escapechar,
+            lineterminator=element.lineterminator
         )
     )
 
