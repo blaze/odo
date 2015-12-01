@@ -65,10 +65,7 @@ def engine():
 
 @pytest.yield_fixture
 def sql(engine, csv, name):
-    dshape = discover(csv)
-    dshape = DataShape(var,
-                       Record([(n, typ)
-                               for n, typ in zip('ab', dshape.measure.types)]))
+    dshape = var * Record(list(zip('ab', discover(csv).measure.types)))
     try:
         t = resource('%s::%s' % (url, name), dshape=dshape)
     except sqlalchemy.exc.OperationalError as e:
@@ -82,11 +79,7 @@ def sql(engine, csv, name):
 
 @pytest.yield_fixture
 def fsql(engine, fcsv, name):
-    dshape = discover(fcsv)
-    dshape = DataShape(
-        var,
-        Record([(n, typ) for n, typ in zip('ab', discover(fcsv).measure.types)])
-    )
+    dshape = var * Record(list(zip('ab', discover(fcsv).measure.types)))
     try:
         t = resource('%s::%s' % (url, name), dshape=dshape)
     except sqlalchemy.exc.OperationalError as e:
@@ -100,15 +93,12 @@ def fsql(engine, fcsv, name):
 
 @pytest.yield_fixture
 def quoted_sql(engine, fcsv):
-    dshape = DataShape(
-        var,
-        Record([(n, typ) for n, typ in zip('ab', discover(fcsv).measure.types)])
-    )
+    dshape = var * Record(list(zip('ab', discover(fcsv).measure.types)))
     try:
         t = resource('%s::foo bar' % url, dshape=dshape)
     except sqlalchemy.exc.OperationalError as e:
         pytest.skip(str(e))
-    else:
+    finally:
         try:
             yield t
         finally:
@@ -117,16 +107,7 @@ def quoted_sql(engine, fcsv):
 
 @pytest.fixture
 def dcsv():
-    this_dir = os.path.dirname(__file__)
-    file_name = os.path.join(this_dir, 'dummydata.csv')
-    dshape = """var * {
-        Name: string,
-        RegistrationDate: date,
-        ZipCode: int64,
-        Consts: float64
-    }"""
-
-    return CSV(file_name, dshape=dshape)
+    return CSV(os.path.join(os.path.dirname(__file__), 'dummydata.csv'))
 
 
 @pytest.yield_fixture
