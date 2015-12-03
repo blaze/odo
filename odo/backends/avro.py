@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import errno
 import os
+import uuid
 
 from avro import schema, datafile, io
 from avro.schema import AvroException
@@ -12,6 +13,7 @@ from collections import Iterator
 from ..append import append
 from ..convert import convert
 from ..resource import resource
+from ..temp import Temp
 
 AVRO_TYPE_MAP = {
     'string': string,
@@ -227,6 +229,8 @@ def discover_schema(sch):
     else:
         raise Exception(str(type(sch)))
 
+@discover.register(schema.RecordSchema)
+
 @discover.register(AVRO)
 def discover_avro(f, **kwargs):
     return discover_schema(f.schema)
@@ -240,6 +244,13 @@ def avro_to_DataFrame(avro, dshape=None, **kwargs):
     df = df[names]
     return df
 
+@convert.register(Temp(AVRO), Iterator, cost=1.0)
+def convert_iterator_to_temporary_avro(data, schema=None, **kwargs):
+    fn = '.%s.avro' % uuid.uuid1()
+    avro = Temp(AVRO)(fn, schema, **kwargs)
+    return append(avro, data, **kwargs)
+
+
 @convert.register(Iterator, AVRO, cost=1.0)
 def avro_to_iterator(s, **kwargs):
     return s
@@ -247,14 +258,10 @@ def avro_to_iterator(s, **kwargs):
 @append.register(AVRO, Iterator)
 def append_iterator_to_avro(tgt_avro, src_itr, **kwargs):
     for datum in src_itr:
-        try:
-            tgt_avro.writer.append(datum)
-        except:
-            import pdb; pdb.set_trace()
-            _ = 1
+        tgt_avro.writer.append(datum)
     tgt_avro.flush()
 
 @append.register(AVRO, object)  # anything else
-def append_anything_to_list(tgt, src, **kwargs):
+def append_anything_to_iterator(tgt, src, **kwargs):
     source_as_iter = convert(Iterator, src, **kwargs)
     return append(tgt, source_as_iter, **kwargs)

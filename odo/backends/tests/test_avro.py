@@ -71,14 +71,6 @@ class TestAvro(unittest.TestCase):
         expected_output = pd.DataFrame(test_data, columns=names)
         assert_frame_equal(df, expected_output)
 
-    # def test_convert_avro_to_dataframe_roundtrip(self):
-    #     df = convert(pd.DataFrame, self.avrofile)
-    #     self.assertIsInstance(df, pd.DataFrame)
-    #
-    #     avro2 = append(AVRO, pd.DataFrame)
-    #
-    #     #assert_frame_equal(df, expected_output)
-
     def test_convert_avro_to_iterator(self):
         itr = convert(Iterator, self.avrofile)
         self.assertIsInstance(itr, Iterator)
