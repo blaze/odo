@@ -2,11 +2,9 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 from datashape import dshape, DataShape, Option, DateTime, string, TimeDelta
-from datashape import Date, to_numpy_dtype, Tuple, String
+from datashape import Date, to_numpy_dtype, Tuple, String, Decimal
 from datashape.predicates import isscalar, isnumeric, isrecord
 
-
-from .utils import ignoring
 
 def unit_to_dtype(ds):
     """ Convert a datashape Unit instance into a numpy dtype
@@ -38,9 +36,10 @@ def unit_to_dtype(ds):
     if isinstance(ds, DataShape):
         ds = ds.measure
     if isinstance(ds, Option) and isscalar(ds) and isnumeric(ds):
-        with ignoring(NameError):
-            if isinstance(ds.ty, Decimal):
-                return unit_to_dtype(str(ds.ty.to_numpy_dtype()).replace('int', 'float'))
+        if isinstance(ds.ty, Decimal):
+            return unit_to_dtype(
+                str(ds.ty.to_numpy_dtype()).replace('int', 'float')
+            )
         return unit_to_dtype(str(ds).replace('int', 'float').replace('?', ''))
     if isinstance(ds, Option) and isinstance(
         ds.ty, (Date, DateTime, String, TimeDelta)
