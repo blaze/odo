@@ -119,7 +119,10 @@ def dshape_to_pandas(ds):
         ds = ds[0]
 
     dtypes = {
-        name: unit_to_dtype(typ)
+        name: (
+            np.dtype('object')
+            if isinstance(typ, String) else unit_to_dtype(typ)
+        )
         for name, typ in ds.measure.dict.items() if 'date' not in str(typ)
     }
     datetimes = [
