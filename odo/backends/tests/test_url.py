@@ -25,7 +25,7 @@ pytestmark = pytest.mark.skipif(raises(URLError,
                                 reason='unable to connect to google.com')
 
 iris_url = ('https://raw.githubusercontent.com/'
-            'ContinuumIO/blaze/master/blaze/examples/data/iris.csv')
+            'blaze/blaze/master/blaze/examples/data/iris.csv')
 ftp_url = "ftp://athena-dist.mit.edu/pub/XNeXT/README.txt"
 
 
@@ -76,9 +76,13 @@ def test_url_txt_resource():
     assert isinstance(txt, URL(TextFile))
 
 
+@pytest.mark.xfail(
+    raises=URLError,
+    reason='MIT Athena FTP is down as of October 23, 2015'
+)
 def test_ftp_to_local_txt():
     with tmpfile('.txt') as fn:
-        txt = odo(ftp_url, fn)
+        txt = odo(ftp_url, fn, timeout=5)
         path = os.path.abspath(txt.path)
         assert os.path.exists(path)
 

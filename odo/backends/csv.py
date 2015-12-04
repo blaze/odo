@@ -2,23 +2,27 @@ from __future__ import absolute_import, division, print_function
 
 import sys
 import re
-from contextlib import contextmanager
-import datashape
-from datashape import discover, Record, Option
-from datashape.predicates import isrecord
-from datashape.dispatch import dispatch
-from toolz import concat, keyfilter, keymap, merge, valfilter
-import pandas
-import pandas as pd
 import os
 import gzip
 import bz2
 import uuid
 import csv
+
 from glob import glob
+from contextlib import contextmanager
+
+from toolz import concat, keyfilter, keymap, merge, valfilter
+
+import pandas as pd
+
+import datashape
+
+from datashape import discover, Record, Option
+from datashape.predicates import isrecord
+from datashape.dispatch import dispatch
 
 from ..compatibility import unicode, PY2
-from ..utils import keywords, ext
+from ..utils import keywords, ext, sample, tmpfile
 from ..append import append
 from ..convert import convert, ooc_types
 from ..resource import resource
@@ -31,6 +35,35 @@ dialect_terms = '''delimiter doublequote escapechar lineterminator quotechar
 quoting skipinitialspace strict'''.split()
 
 aliases = {'sep': 'delimiter'}
+
+
+class PipeSniffer(csv.Sniffer):
+    """A csv sniffer that adds the ``'|'`` character to the list of preferred
+    delimiters and gives space the least precedence.
+
+    Notes
+    -----
+    The :module:`~csv` module has a list of preferred delimiters that will be
+    returned before the delimiter(s) discovered by parsing the file. This
+    results in a dialect having an incorrect delimiter if the data contain a
+    non preferred delimiter and a preferred one. See the Examples section for
+    an example showing the difference between the two sniffers.
+
+    Examples
+    --------
+    >>> import csv
+    >>> data = 'a|b| c|d'  # space is preferred but '|' is more common
+    >>> csv.Sniffer().sniff(data).delimiter  # incorrect
+    ' '
+    >>> PipeSniffer().sniff(data).delimiter  # correct
+    '|'
+    >>> data = 'a|b|Nov 10, 1981|d'
+    >>> csv.Sniffer().sniff(data).delimiter  # can't handle every case :(
+    ','
+    """
+    def __init__(self, *args, **kwargs):
+        csv.Sniffer.__init__(self, *args, **kwargs)
+        self.preferred = [',', '\t', ';', '|', ':', ' ']
 
 
 def alias(key):
@@ -57,7 +90,19 @@ def infer_header(path, nbytes=10000, encoding='utf-8', **kwargs):
         encoding = 'utf-8'
     with open_file(path, 'rb') as f:
         raw = f.read(nbytes)
-    return csv.Sniffer().has_header(raw if PY2 else raw.decode(encoding))
+    if not raw:
+        return True
+    sniffer = PipeSniffer()
+    decoded = raw.decode(encoding, 'replace')
+    sniffable = decoded.encode(encoding) if PY2 else decoded
+    try:
+        return sniffer.has_header(sniffable)
+    except csv.Error:
+        return None
+
+
+def newlines(encoding):
+    return b'\r\n'.decode(encoding), b'\n'.decode(encoding)
 
 
 def sniff_dialect(path, nbytes, encoding='utf-8'):
@@ -66,10 +111,14 @@ def sniff_dialect(path, nbytes, encoding='utf-8'):
     if encoding is None:
         encoding = 'utf-8'
     with open_file(path, 'rb') as f:
-        raw = f.read(nbytes)
-    dialect = csv.Sniffer().sniff(raw.decode(encoding))
-    dialect.lineterminator = (b'\r\n'
-                              if b'\r\n' in raw else b'\n').decode(encoding)
+        raw = f.read(nbytes).decode(encoding or 'utf-8', 'replace')
+    sniffer = PipeSniffer()
+    try:
+        dialect = sniffer.sniff(raw, delimiters=sniffer.preferred)
+    except csv.Error:
+        return {}
+    crnl, nl = newlines(encoding)
+    dialect.lineterminator = crnl if crnl in raw else nl
     return dialect_to_dict(dialect)
 
 
@@ -99,17 +148,53 @@ class CSV(object):
     def __init__(self, path, has_header=None, encoding='utf-8',
                  sniff_nbytes=10000, **kwargs):
         self.path = path
-        if has_header is None:
-            self.has_header = (not os.path.exists(path) or
-                               infer_header(path, sniff_nbytes))
-        else:
-            self.has_header = has_header
-        self.encoding = encoding if encoding is not None else 'utf-8'
-        kwargs = merge(sniff_dialect(path, sniff_nbytes, encoding=encoding),
-                       keymap(alias, kwargs))
-        self.dialect = valfilter(bool,
-                                 dict((d, kwargs[d])
-                                      for d in dialect_terms if d in kwargs))
+        self._has_header = has_header
+        self.encoding = encoding or 'utf-8'
+        self._kwargs = kwargs
+        self._sniff_nbytes = sniff_nbytes
+
+    def _sniff_dialect(self, path):
+        kwargs = self._kwargs
+        dialect = sniff_dialect(path, self._sniff_nbytes,
+                                encoding=self.encoding)
+        kwargs = merge(dialect, keymap(alias, kwargs))
+        return valfilter(lambda x: x is not None,
+                         dict((d, kwargs[d])
+                              for d in dialect_terms if d in kwargs))
+
+    @property
+    def dialect(self):
+        with sample(self) as fn:
+            return self._sniff_dialect(fn)
+
+    @property
+    def has_header(self):
+        if self._has_header is None:
+            with sample(self) as fn:
+                with open(fn, mode='rb') as f:
+                    raw = f.read()
+                self._has_header = not raw or infer_header(fn,
+                                                           self._sniff_nbytes,
+                                                           encoding=self.encoding)
+        return self._has_header
+
+
+@sample.register(CSV)
+@contextmanager
+def sample_csv(csv, length=8192, **kwargs):
+    should_delete = not os.path.exists(csv.path)
+    if should_delete:
+        with open_file(csv.path, mode='wb'):
+            pass
+    try:
+        with open_file(csv.path, mode='rb') as f:
+            with tmpfile(csv.canonical_extension) as fn:
+                with open(fn, mode='wb') as tmpf:
+                    tmpf.write(f.read(length))
+                yield fn
+    finally:
+        if should_delete:
+            os.remove(csv.path)
 
 
 @append.register(CSV, object)
@@ -211,18 +296,18 @@ def _csv_to_dataframe(c, dshape=None, chunksize=None, **kwargs):
         else:
             header = None
 
-    kwargs = keyfilter(keywords(pandas.read_csv).__contains__, kwargs)
-    return pandas.read_csv(c.path,
-                           header=header,
-                           sep=sep,
-                           encoding=encoding,
-                           dtype=dtypes,
-                           parse_dates=parse_dates,
-                           names=names,
-                           compression=compression,
-                           chunksize=chunksize,
-                           usecols=usecols,
-                           **kwargs)
+    kwargs = keyfilter(keywords(pd.read_csv).__contains__, kwargs)
+    return pd.read_csv(c.path,
+                       header=header,
+                       sep=sep,
+                       encoding=encoding,
+                       dtype=dtypes,
+                       parse_dates=parse_dates,
+                       names=names,
+                       compression=compression,
+                       chunksize=chunksize,
+                       usecols=usecols,
+                       **kwargs)
 
 
 @convert.register(chunks(pd.DataFrame), (Temp(CSV), CSV), cost=10.0)

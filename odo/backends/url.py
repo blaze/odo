@@ -78,7 +78,7 @@ def URL(cls):
 
 @sample.register((URL(CSV), URL(JSONLines)))
 @contextmanager
-def sample_url_line_delimited(data, lines=5, encoding='utf-8'):
+def sample_url_line_delimited(data, lines=5, encoding='utf-8', timeout=None):
     """Get a size `length` sample from an URL CSV or URL line-delimited JSON.
 
     Parameters
@@ -89,7 +89,7 @@ def sample_url_line_delimited(data, lines=5, encoding='utf-8'):
         Number of lines to read into memory
     """
 
-    with closing(urlopen(data.url)) as r:
+    with closing(urlopen(data.url, timeout=timeout)) as r:
         raw = pipe(r, take(lines), map(bytes.strip),
                    curry(codecs.iterdecode, encoding=encoding),
                    b'\n'.decode(encoding).join)
@@ -128,7 +128,7 @@ def resource_url(uri, **kwargs):
 @append.register(CSV, URL(CSV))
 def append_urlX_to_X(target, source, **kwargs):
 
-    with closing(urlopen(source.url)) as r:
+    with closing(urlopen(source.url, timeout=kwargs.pop('timeout', None))) as r:
         chunk_size = 16 * source.chunk_size
         with open(target.path, 'wb') as fp:
             for chunk in iter(curry(r.read, chunk_size), ''):

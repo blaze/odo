@@ -55,3 +55,8 @@ def test_into_string_dshape():
                                       dshape='var * float64'),
                                   np.array([1, 2, 3], dtype='float64'))
 
+
+@pytest.mark.parametrize('dshape', [1, object()])
+def test_into_invalid_dshape(dshape):
+    with pytest.raises(TypeError):
+        into(list, (1, 2, 3), dshape=dshape)

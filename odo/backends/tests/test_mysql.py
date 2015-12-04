@@ -4,7 +4,7 @@ import pytest
 
 pymysql = pytest.importorskip('pymysql')
 
-from datashape import var, DataShape, Record
+from datashape import var, DataShape, Record, dshape
 import itertools
 from odo.backends.csv import CSV
 from odo import resource, odo
@@ -65,10 +65,7 @@ def engine():
 
 @pytest.yield_fixture
 def sql(engine, csv, name):
-    dshape = discover(csv)
-    dshape = DataShape(var,
-                       Record([(n, typ)
-                               for n, typ in zip('ab', dshape.measure.types)]))
+    dshape = var * Record(list(zip('ab', discover(csv).measure.types)))
     try:
         t = resource('%s::%s' % (url, name), dshape=dshape)
     except sqlalchemy.exc.OperationalError as e:
@@ -82,38 +79,63 @@ def sql(engine, csv, name):
 
 @pytest.yield_fixture
 def fsql(engine, fcsv, name):
-    dshape = discover(fcsv)
-    dshape = DataShape(var,
-                       Record([(n, typ)
-                               for n, typ in zip('ab', dshape.measure.types)]))
+    dshape = var * Record(list(zip('ab', discover(fcsv).measure.types)))
     try:
         t = resource('%s::%s' % (url, name), dshape=dshape)
     except sqlalchemy.exc.OperationalError as e:
         pytest.skip(str(e))
     else:
-        yield t
-        drop(t)
+        try:
+            yield t
+        finally:
+            drop(t)
+
+
+@pytest.yield_fixture
+def quoted_sql(engine, fcsv):
+    dshape = var * Record(list(zip('ab', discover(fcsv).measure.types)))
+    try:
+        t = resource('%s::foo bar' % url, dshape=dshape)
+    except sqlalchemy.exc.OperationalError as e:
+        pytest.skip(str(e))
+    finally:
+        try:
+            yield t
+        finally:
+            drop(t)
 
 
 @pytest.fixture
 def dcsv():
-    this_dir = os.path.dirname(__file__)
-    file_name = os.path.join(this_dir, 'dummydata.csv')
-    dshape = """var * {
-        Name: string,
-        RegistrationDate: date,
-        ZipCode: int64,
-        Consts: float64
-    }"""
-
-    return CSV(file_name, dshape=dshape)
+    return CSV(os.path.join(os.path.dirname(__file__), 'dummydata.csv'))
 
 
 @pytest.yield_fixture
 def dsql(engine, dcsv, name):
-    t = resource('%s::%s' % (url, name), dshape=discover(dcsv))
-    yield t
-    drop(t)
+    try:
+        t = resource('%s::%s' % (url, name), dshape=discover(dcsv))
+    except sqlalchemy.exc.OperationalError as e:
+        pytest.skip(str(e))
+    else:
+        try:
+            yield t
+        finally:
+            drop(t)
+
+
+@pytest.yield_fixture
+def decimal_sql(engine, name):
+    try:
+        t = resource('%s::%s' % (url, name),
+                     dshape="var * {a: ?decimal[10, 3], b: decimal[11, 2]}")
+    except sa.exc.OperationalError as e:
+        pytest.skip(str(e))
+    else:
+        try:
+            yield t
+        finally:
+            drop(t)
+
 
 
 def test_csv_mysql_load(sql, csv):
@@ -227,3 +249,18 @@ def test_different_encoding(name):
             assert result == expected
         finally:
             drop(sql)
+
+
+def test_decimal(decimal_sql):
+    t = sa.Table(decimal_sql.name, sa.MetaData(decimal_sql.bind), autoload=True)
+    assert discover(t) == dshape(
+        "var * {a: ?decimal[10, 3], b: decimal[11, 2]}"
+    )
+    assert isinstance(t.c.a.type, sa.Numeric)
+    assert isinstance(t.c.b.type, sa.Numeric)
+
+
+def test_quoted_name(quoted_sql, fcsv):
+    s = odo(fcsv, quoted_sql)
+    t = odo(fcsv, list)
+    assert sorted(odo(s, list)) == sorted(t)

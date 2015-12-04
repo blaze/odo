@@ -12,14 +12,20 @@ source:
 
 requirements:
   build:
-    - python
-
-  run:
-    - python
-    - datashape >=0.4.4
+    - python 2.7*|3.4*
+    - datashape >=0.4.6
     - numpy >=1.7
     - pandas >=0.15.0
-    - toolz
+    - toolz >=0.7.2
+    - multipledispatch >=0.4.7
+    - networkx
+
+  run:
+    - python 2.7*|3.4*
+    - datashape >=0.4.6
+    - numpy >=1.7
+    - pandas >=0.15.0
+    - toolz >=0.7.2
     - multipledispatch >=0.4.7
     - networkx
 
@@ -36,16 +42,16 @@ test:
     - paramiko
     - sqlite3 # [win]
     - boto # [not win]
-    - bokeh # [not py26]
+    - bokeh
     - pytables >=3.0.0
     - pip
-    - pymysql # [not py26]
-    - psycopg2 # [unix and not py26]
+    - pymysql
+    - psycopg2 # [unix]
 
   commands:
     - pip install sas7bdat && py.test -vx --pyargs odo -rsxX
 
 about:
-  home: https://github.com/ContinuumIO/odo/
+  home: https://github.com/blaze/odo/
   license: BSD
   summary: Data migration
