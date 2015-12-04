@@ -716,3 +716,12 @@ def test_numeric_append():
 def test_discover_float_and_real_core_types():
     assert discover(sa.FLOAT()) == float64
     assert discover(sa.REAL()) == float32
+
+
+def test_string_dshape_doc_example():
+    x = np.zeros((10, 2))
+    with tmpfile('.db') as fn:
+        t = odo(
+            x, 'sqlite:///%s::x' % fn, dshape='var * {a: float64, b: float64}'
+        )
+        assert all(row == (0, 0) for row in t.select().execute().fetchall())
