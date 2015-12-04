@@ -65,6 +65,13 @@ def test_pandas_read_supports_datetimes():
         assert df.dtypes['when'] == 'M8[ns]'
 
 
+def test_pandas_read_supports_whitespace_strings():
+    with filetext('a,b, \n1,2, \n2,3, \n', extension='csv') as fn:
+        csv = CSV(fn)
+        ds = discover(csv)
+        assert ds == datashape.dshape("var * {a: int64, b: int64, '': ?string}")
+
+
 def test_pandas_read_supports_missing_integers():
     with filetext('Alice,1\nBob,') as fn:
         ds = datashape.dshape('var * {name: string, val: ?int32}')
@@ -427,3 +434,22 @@ def test_multibyte_encoding_header(multibyte_csv):
 def test_multibyte_encoding_dialect(multibyte_csv):
         c = CSV(multibyte_csv, encoding='utf8', sniff_nbytes=10)
         assert c.dialect['delimiter'] == ','
+
+
+@pytest.mark.parametrize('string_dshape', ['string', 'string[25]'])
+def test_string_n_convert(string_dshape):
+    data = [
+        '2015-03-13,FOO THE BAR',
+        '2014-01-29,BAZ THE QUUX'
+    ]
+    ds = 'var * {k: date, n: %s}' % string_dshape
+    with tmpfile('.csv') as fn:
+        with open(fn, 'w') as f:
+            f.write('\n'.join(data))
+        csv = CSV(fn, has_header=False)
+        result = odo(csv, pd.DataFrame, dshape=ds)
+        assert list(result.columns) == list('kn')
+    raw = [tuple(x.split(',')) for x in data]
+    expected = pd.DataFrame(raw, columns=list('kn'))
+    expected['k'] = pd.to_datetime(expected.k)
+    tm.assert_frame_equal(result, expected)

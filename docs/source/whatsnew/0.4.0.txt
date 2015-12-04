@@ -1,0 +1,79 @@
+Release |version|
+-----------------
+
+:Release: |version|
+:Date: TBD
+
+New Features
+------------
+
+* Added support for Python 3.5 (:issue:`368`).
+
+Experimental Features
+---------------------
+
+.. warning::
+
+   Experimental features are subject to change.
+
+None
+
+New Backends
+------------
+
+None
+
+Improved Backends
+-----------------
+
+* Pandas now includes an edge from ``datetime.datetime`` to
+  ``pandas.Timestamp`` (:issue:`329`).
+* Pandas now includes an edge from ``NoneType`` to ``pandas.Timestamp``.
+  Pandas now includes an edge from
+  ``pandas.tslib.NaTType`` to ``pandas.Timestamp``
+  (:issue:`3321).
+* :func:`~odo.odo.odo` now accepts a new keyword argument `bind` which is the
+  sqlalchemy engine to use when executing the sql commands. This allows us to
+  odo to or from an unbound sqlalchemy object (:issue:`305`).
+* Support ``decimal`` datashapes in the SQL backend (:issue:`337`).
+* Add ``timeout`` parameter to the ``URL`` backend (:issue:`346`).
+* Add support for multipart uploads to S3 (:issue:`344`).
+
+API Changes
+-----------
+
+* Removed support for Python 2.6 (:issue:`333`).
+* Removed support for Python 3.3 (:issue:`335`).
+* ``pandas.DataFrame`` no longer discovers float32 and float64 as option types
+  (:issue:`366`).
+* ``pandas.Series`` now discovers strings and datetimes as option types
+  (:issue:`366`).
+
+Bug Fixes
+---------
+
+* Pandas backend now supports conversion from `nan` to `pandas.NaT`
+  (:issue:`331`).
+* MySQL uses something other than ``sa.NUMERIC`` for native decimal types
+  (:issue:`338`).
+* Fix an issue where ``sqlalchemy.Float`` objects were discovered as ``Decimal``
+  datashapes (:issue:`341`).
+* Fix an issue where ``isdimension`` was being called on the first
+  character of a datashape string instead of on a ``DataShape`` instance
+  (:issue:`345`).
+* Fixed an issue with :issue:`345` that broke Blaze (:issue:`347`).
+* Fixed an issue where empty columns in a CSV file would be coerced to
+  ``datetime`` instead of being left as strings (:issue:`342`).
+* Quote table names that need to be quoted in the MySQL and PostgreSQL
+  backends (:issue:`316`, :issue:`371`).
+* Use ``sa.bindparam`` for ``CopyToCSV`` and ``CopyFromCSV`` (:issue:`371`).
+* Fix inference for unicode string datashapes when using the ``CSV`` backend
+  (:issue:`374`, :issue:`375`).
+
+
+Miscellaneous
+-------------
+
+* When a conversion fails we now raise a
+  :class:`~odo.core.FailedConversionWarning` instead of printing the warning to
+  stdout. This is a subclass of ``UserWarning`` (:issue:`323`).

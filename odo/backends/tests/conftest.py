@@ -13,10 +13,10 @@ def sc():
 @pytest.yield_fixture(scope='session')
 def sqlctx(sc):
     pytest.importorskip('pyspark')
-    from odo.backends.sparksql import HiveContext, SQLContext, SPARK_ONE_TWO
+    from odo.backends.sparksql import HiveContext
 
     try:
-        yield HiveContext(sc) if not SPARK_ONE_TWO else SQLContext(sc)
+        yield HiveContext(sc)
     finally:
         dbpath = 'metastore_db'
         logpath = 'derby.log'

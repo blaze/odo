@@ -5,33 +5,37 @@ language: python
 matrix:
   fast_finish: true
   include:
-    - python: 2.6
-    - python: 2.7
-      env: SPARK_VERSION=1.2
     - python: 2.7
       env: SPARK_VERSION=1.3
     - python: 2.7
       env: SPARK_VERSION=1.4
-    - python: 3.3
+    - python: 2.7
+      env: SPARK_VERSION=1.5
     - python: 3.4
       env: SPARK_VERSION=1.4
-    - python: 2.7
-      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.4
     - python: 3.4
-      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.4
+      env: SPARK_VERSION=1.5
+    - python: 3.5
+      env:
+    - python: 2.7
+      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
+    - python: 3.4
+      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
+    - python: 3.5
+      env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
   allow_failures:
     - python: 2.7
-      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.4
+      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
     - python: 3.4
-      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.4
-
+      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
+    - python: 3.5
+      env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
 
 addons:
   postgresql: "9.3"
 
 services:
     - mongodb
-    - postgres
     - mysql
 
 install:
@@ -45,7 +49,8 @@ install:
   # Install dependencies
   - conda create -n odo python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy
   - conda install -n odo h5py pip cython bcolz coverage networkx toolz multipledispatch
-  - conda install -n odo pytables dynd-python pymongo paramiko boto
+  - conda install -n odo pytables paramiko boto bokeh pymysql
+  # - conda install -n odo dynd-python -c dynd/channel/dev
   - if [ -n "$PANDAS_VERSION" ]; then conda remove -n odo pandas; fi
   - source activate odo
 
@@ -54,21 +59,12 @@ install:
 
   # Install various deps
   - conda uninstall toolz
-  - pip install toolz
-  - pip install sas7bdat
+  - pip install -U toolz sas7bdat psycopg2 dill 'pymongo<3'
   - pip install git+git://github.com/blaze/dask.git --upgrade
   - if [ -n "$PANDAS_VERSION" ]; then pip install $PANDAS_VERSION; fi
-  - pip install dill --upgrade
-  - pip install psycopg2
 
   # install pyspark
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' || $TRAVIS_PYTHON_VERSION == '3.4' ]]; then conda install spark=$SPARK_VERSION -c blaze -c https://conda.binstar.org/blaze/channel/dev -c anaconda-cluster; fi
-
-  # Install Bokeh
-  - if [[ $TRAVIS_PYTHON_VERSION > '2.6' ]]; then conda install bokeh pymysql; fi
-
-  # For bcolz
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda install unittest2 && pip install pymysql; fi
 
   # redshift sqlalchemy dialect
   - pip install --upgrade git+git://github.com/graingert/redshift_sqlalchemy
@@ -82,10 +78,13 @@ before_script:
   # Creation of an SSH agent for testing forwarding
   - eval $(ssh-agent)
   - ssh-add
+  - "mongo admin --eval 'db.runCommand({setParameter: 1, textSearchEnabled: true});'"
   - mysql -e "create database if not exists test;" -u root
   - psql -c "create database test;" -U postgres
+  - sleep 15
 
 script:
+  - conda list numpy
   - py.test -v --doctest-modules --doctest-ignore-import-errors odo
 
 notifications:

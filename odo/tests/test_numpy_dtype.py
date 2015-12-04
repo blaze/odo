@@ -1,34 +1,68 @@
 from __future__ import absolute_import, division, print_function
 
-from odo.numpy_dtype import dshape_to_pandas, unit_to_dtype
-import datashape
+import pytest
+
+from odo.numpy_dtype import dshape_to_pandas, unit_to_dtype, dshape_to_numpy
+from datashape import dshape
 import numpy as np
 
-def test_parameterized_option_instances():
-    dshape1 = datashape.dshape('var * {teststr1: option[string[4]]}')
-    dtypes, parse_dates = dshape_to_pandas(dshape1)
-    assert isinstance(dtypes['teststr1'], np.dtype)
-    
-    dshape2 = datashape.dshape('var * {teststr2: option[string["ascii"]]}')
-    dtypes, parse_dates = dshape_to_pandas(dshape2)
-    assert isinstance(dtypes['teststr2'], np.dtype)
-    
-    dshape3 = datashape.dshape('option[datetime[tz="EST"]]')
-    nptype3 = unit_to_dtype(dshape3)
-    assert isinstance(nptype3, np.dtype)
-    
-    dshape4 = datashape.dshape('option[timedelta[unit="D"]]')
-    nptype4 = unit_to_dtype(dshape4)
-    assert isinstance(nptype4, np.dtype)
 
-    dshape5 = datashape.dshape('decimal[9,2]')
-    nptype5 = unit_to_dtype(dshape5)
-    assert nptype5 == np.float64
+@pytest.mark.parametrize(
+    ['ds', 'expected'],
+    [
+        ('decimal[9,2]', np.float64),
+        ('decimal[9]', np.int32),
+        ('?decimal[9]', np.float32),
+    ]
+)
+def test_decimal(ds, expected):
+    assert unit_to_dtype(dshape(ds)) == expected
 
-    dshape6 = datashape.dshape('decimal[9]')
-    nptype6 = unit_to_dtype(dshape6)
-    assert nptype6 == np.int32
 
-    dshape7 = datashape.dshape('?decimal[9]')
-    nptype7 = unit_to_dtype(dshape7)
-    assert nptype7 == np.float32
+@pytest.mark.parametrize(
+    ['ds', 'field'],
+    [('var * {teststr1: option[string[4]]}', 'teststr1'),
+     ('var * {teststr2: option[string["ascii"]]}', 'teststr2')]
+)
+def test_parameterized_option_instances(ds, field):
+    dtypes, _ = dshape_to_pandas(dshape(ds))
+    assert isinstance(dtypes[field], np.dtype)
+
+
+@pytest.mark.parametrize(
+    'ds',
+    [
+        'option[datetime[tz="EST"]]',
+        'option[timedelta[unit="D"]]'
+    ]
+)
+def test_unit_to_dtype(ds):
+    assert isinstance(unit_to_dtype(ds), np.dtype)
+
+
+@pytest.mark.parametrize(
+    ['ds', 'expected'],
+    [
+        ('{a: int32}', ({'a': np.dtype('int32')}, [])),
+        ('{a: int32, when: datetime}', ({'a': np.dtype('int32')}, ['when'])),
+        ('{a: ?int64}', ({'a': np.dtype('float64')}, []))
+    ]
+)
+def test_dshape_to_pandas(ds, expected):
+    assert dshape_to_pandas(ds) == expected
+
+
+@pytest.mark.parametrize(
+    ['ds', 'dt'],
+    [
+        ('int32', 'int32'),
+        ('?int32', 'float32'),
+        (
+            '{name: string[5, "ascii"], amount: ?int32}',
+            [('name', 'S5'), ('amount', '<f4')]
+        ),
+        ('(int32, float32)', [('f0', '<i4'), ('f1', '<f4')])
+    ]
+)
+def test_dshape_to_numpy(ds, dt):
+    assert dshape_to_numpy(ds) == np.dtype(dt)

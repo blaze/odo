@@ -1,14 +1,27 @@
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
-from datashape import *
-from datashape.predicates import isscalar, isnumeric
+from datashape import dshape, DataShape, Option, DateTime, string, TimeDelta
+from datashape import Date, to_numpy_dtype, Tuple, String
+from datashape.predicates import isscalar, isnumeric, isrecord
+
 
 from .utils import ignoring
 
 def unit_to_dtype(ds):
-    """
+    """ Convert a datashape Unit instance into a numpy dtype
 
+    Parameters
+    ----------
+    ds : DataShape
+        The DataShape instance to convert
+
+    Returns
+    -------
+    np.dtype
+
+    Examples
+    --------
     >>> unit_to_dtype('int32')
     dtype('int32')
     >>> unit_to_dtype('float64')
@@ -29,8 +42,9 @@ def unit_to_dtype(ds):
             if isinstance(ds.ty, Decimal):
                 return unit_to_dtype(str(ds.ty.to_numpy_dtype()).replace('int', 'float'))
         return unit_to_dtype(str(ds).replace('int', 'float').replace('?', ''))
-    if isinstance(ds, Option) and isinstance(ds.ty, (type(date_),
-            type(datetime_), type(string), type(timedelta_))):
+    if isinstance(ds, Option) and isinstance(
+        ds.ty, (Date, DateTime, String, TimeDelta)
+    ):
         ds = ds.ty
     if ds == string:
         return np.dtype('O')
@@ -38,8 +52,19 @@ def unit_to_dtype(ds):
 
 
 def dshape_to_numpy(ds):
-    """
+    """ Convert a datashape to a NumPy dtype
 
+    Parameters
+    ----------
+    ds : DataShape
+        The DataShape instance to convert
+
+    Returns
+    -------
+    np.dtype
+
+    Examples
+    --------
     >>> dshape_to_numpy('int32')
     dtype('int32')
     >>> dshape_to_numpy('?int32')
@@ -56,25 +81,41 @@ def dshape_to_numpy(ds):
     if isinstance(ds, DataShape):
         ds = ds.measure
     if isrecord(ds):
-        return np.dtype([(str(name), unit_to_dtype(typ))
-            for name, typ in zip(ds.names, ds.types)])
+        return np.dtype([
+            (str(name), unit_to_dtype(typ))
+            for name, typ in zip(ds.names, ds.types)
+        ])
     if isinstance(ds, Tuple):
-        return np.dtype([('f%d' % i, unit_to_dtype(typ))
-            for i, typ in enumerate(ds.parameters[0])])
+        return np.dtype([
+            ('f%d' % i, unit_to_dtype(typ))
+            for i, typ in enumerate(ds.parameters[0])
+        ])
     else:
         return unit_to_dtype(ds)
 
 
 def dshape_to_pandas(ds):
-    """
+    """ Convert a datashape to a pair of
+    ``({name1: dtype1, name2: dtype2, ...}, [datecol1, datecol2, ...])``
 
-    >>> dshape_to_pandas('{a: int32}')
+    Parameters
+    ----------
+    ds : DataShape
+        The DataShape instance to convert
+
+    Returns
+    -------
+    ({str: np.dtype}, [str])
+
+    Examples
+    --------
+    >>> dshape_to_pandas('{a: int32}')  # doctest: +SKIP
     ({'a': dtype('int32')}, [])
 
-    >>> dshape_to_pandas('{a: int32, when: datetime}')
+    >>> dshape_to_pandas('{a: int32, when: datetime}')  # doctest: +SKIP
     ({'a': dtype('int32')}, ['when'])
 
-    >>> dshape_to_pandas('{a: ?int64}')
+    >>> dshape_to_pandas('{a: ?int64}')  # doctest: +SKIP
     ({'a': dtype('float64')}, [])
     """
     if isinstance(ds, str):
@@ -82,11 +123,15 @@ def dshape_to_pandas(ds):
     if isinstance(ds, DataShape) and len(ds) == 1:
         ds = ds[0]
 
-    dtypes = dict((name, unit_to_dtype(typ))
-                  for name, typ in ds.measure.dict.items()
-                  if not 'date' in str(typ))
-
-    datetimes = [name for name, typ in ds.measure.dict.items()
-                    if 'date' in str(typ)]
+    dtypes = {
+        name: (
+            np.dtype('object')
+            if isinstance(typ, String) else unit_to_dtype(typ)
+        )
+        for name, typ in ds.measure.dict.items() if 'date' not in str(typ)
+    }
+    datetimes = [
+        name for name, typ in ds.measure.dict.items() if 'date' in str(typ)
+    ]
 
     return dtypes, datetimes

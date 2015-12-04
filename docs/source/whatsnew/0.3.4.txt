@@ -1,7 +1,7 @@
-Release |version|
------------------
+Release 0.3.4
+-------------
 
-:Release: |version|
+:Release: 0.3.4
 :Date: September 15, 2015
 
 New Features
