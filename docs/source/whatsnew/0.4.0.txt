@@ -38,6 +38,7 @@ Improved Backends
 * Support ``decimal`` datashapes in the SQL backend (:issue:`337`).
 * Add ``timeout`` parameter to the ``URL`` backend (:issue:`346`).
 * Add support for multipart uploads to S3 (:issue:`344`).
+* Add support for option decimal types (:issue:`299`).
 
 API Changes
 -----------
