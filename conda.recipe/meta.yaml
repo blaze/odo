@@ -36,7 +36,7 @@ test:
     - pytables >=3.0.0
     - sqlalchemy >=0.8.0
     - bcolz
-    - pymongo >=2.8
+    - pymongo >=2.8,<3
     - dask
     - dynd-python
     - paramiko
