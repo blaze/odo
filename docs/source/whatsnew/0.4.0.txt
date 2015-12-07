@@ -70,6 +70,8 @@ Bug Fixes
 * Use ``sa.bindparam`` for ``CopyToCSV`` and ``CopyFromCSV`` (:issue:`371`).
 * Fix inference for unicode string datashapes when using the ``CSV`` backend
   (:issue:`374`, :issue:`375`).
+* Fix returning Decimals from select statements in the SQLAlchemy backend
+  (:issue:`376`).
 
 
 Miscellaneous

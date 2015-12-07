@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import sys
+import decimal
 
 from operator import attrgetter
 from itertools import chain
@@ -39,7 +40,7 @@ from ..resource import resource
 from ..chunks import Chunks
 from .csv import CSV
 
-base = (int, float, datetime, date, bool, str)
+base = int, float, datetime, date, bool, str, decimal.Decimal
 
 
 # http://docs.sqlalchemy.org/en/latest/core/types.html
@@ -401,8 +402,8 @@ def select_to_iterator(sel, dshape=None, bind=None, **kwargs):
 
 @convert.register(base, sa.sql.Select, cost=300.0)
 def select_to_base(sel, dshape=None, bind=None, **kwargs):
-    assert not dshape or isscalar(dshape), \
-        'dshape should be None or scalar, got %s' % dshape
+    if dshape is not None and not isscalar(dshape):
+        raise ValueError('dshape should be None or scalar, got %s' % dshape)
     with getbind(sel, bind).connect() as conn:
         return conn.execute(sel).scalar()
 

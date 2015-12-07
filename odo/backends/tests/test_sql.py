@@ -725,3 +725,11 @@ def test_string_dshape_doc_example():
             x, 'sqlite:///%s::x' % fn, dshape='var * {a: float64, b: float64}'
         )
         assert all(row == (0, 0) for row in t.select().execute().fetchall())
+
+
+def test_decimal_conversion():
+    data = [(1.0,), (2.0,)]
+    with tmpfile('.db') as fn:
+        t = odo(data, 'sqlite:///%s::x' % fn, dshape='var * {x: decimal[11, 2]}')
+        result = odo(sa.select([sa.func.sum(t.c.x)]), Decimal)
+    assert result == sum(Decimal(r[0]) for r in data)
