@@ -38,7 +38,6 @@ test:
     - bcolz
     - pymongo >=2.8,<3 # [not py35]
     - dask
-    - dynd-python
     - paramiko
     - sqlite3 # [win]
     - boto # [not win]
