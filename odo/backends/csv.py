@@ -261,7 +261,7 @@ def _csv_to_dataframe(c, dshape=None, chunksize=None, **kwargs):
 
     sep = kwargs.pop(
         'sep', kwargs.pop('delimiter', c.dialect.get('delimiter', ',')))
-    encoding = kwargs.get('encoding', c.encoding)
+    encoding = kwargs.pop('encoding', c.encoding)
 
     if dshape:
         dtypes, parse_dates = dshape_to_pandas(dshape)
