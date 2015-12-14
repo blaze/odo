@@ -209,7 +209,7 @@ compressed_open = {'gz': gzip.open, 'bz2': bz2.BZ2File}
 @append.register(CSV, pd.DataFrame)
 def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
     if not os.path.exists(c.path) or not os.path.getsize(c.path):
-        has_header = kwargs.pop('has_header', c.has_header)
+        has_header = kwargs.pop('header', c.has_header)
     else:
         has_header = False
     sep = kwargs.get('sep',
