@@ -98,7 +98,7 @@ def quoted_sql(engine, fcsv):
         t = resource('%s::foo bar' % url, dshape=dshape)
     except sqlalchemy.exc.OperationalError as e:
         pytest.skip(str(e))
-    finally:
+    else:
         try:
             yield t
         finally:
