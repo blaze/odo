@@ -65,6 +65,8 @@ with ignoring(ImportError):
     from .backends.url import URL
 with ignoring(ImportError):
     from .backends.dask import dask
+with ignoring(ImportError):
+    from .backends import castra
 
 
 restart_ordering()  # Restart multipledispatch ordering and do ordering

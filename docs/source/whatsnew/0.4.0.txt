@@ -16,7 +16,12 @@ Experimental Features
 
    Experimental features are subject to change.
 
-None
+* Added a Castra backend that supports conversions to and from pandas.  If dask
+  is installed, you can now use odo to move a castra into a dask dataframe. This
+  also supports appends, ``resource`` and ``drop``. The castra api is not
+  currently stable. This feature may break at any time without warning.
+  (:issue:`330`).
+
 
 New Backends
 ------------
