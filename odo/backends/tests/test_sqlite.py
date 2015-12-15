@@ -108,9 +108,11 @@ def quoted_sql():
     reason='How do you use a quoted table name with the SQLite .import command?'
 )
 def test_quoted_name(csv, quoted_sql):
-    s = odo(csv, quoted_sql)
-    t = odo(csv, list)
-    assert sorted(odo(s, list)) == sorted(t)
+    with tmpfile('csv') as filename:
+        csv = odo(data, filename, dshape=ds, has_header=True)
+        s = odo(csv, quoted_sql)
+        t = odo(csv, list)
+        assert sorted(odo(s, list)) == sorted(t)
 
 
 def test_different_encoding_to_csv():
