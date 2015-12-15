@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+from platform import platform
 from itertools import product
 import pytest
 sa = pytest.importorskip('sqlalchemy')
@@ -82,14 +83,16 @@ def test_different_encoding():
         sql = odo(os.path.join(os.path.dirname(__file__), 'encoding.csv'),
                   'sqlite:///%s::t' % db, encoding=encoding)
         result = odo(sql, list)
-    expected = [(u'1958.001.500131-1A', 1, u'', u'', 899),
-                (u'1958.001.500156-6', 1, u'', u'', 899),
-                (u'1958.001.500162-1', 1, u'', u'', 899),
-                (u'1958.001.500204-2', 1, u'', u'', 899),
-                (u'1958.001.500204-2A', 1, u'', u'', 899),
-                (u'1958.001.500204-2B', 1, u'', u'', 899),
-                (u'1958.001.500223-6', 1, u'', u'', 9610),
-                (u'1958.001.500233-9', 1, u'', u'', 4703),
+
+    NULL = u'' if 'windows' not in platform().lower() else None
+    expected = [(u'1958.001.500131-1A', 1, NULL, NULL, 899),
+                (u'1958.001.500156-6', 1, NULL, NULL, 899),
+                (u'1958.001.500162-1', 1, NULL, NULL, 899),
+                (u'1958.001.500204-2', 1, NULL, NULL, 899),
+                (u'1958.001.500204-2A', 1, NULL, NULL, 899),
+                (u'1958.001.500204-2B', 1, NULL, NULL, 899),
+                (u'1958.001.500223-6', 1, NULL, NULL, 9610),
+                (u'1958.001.500233-9', 1, NULL, NULL, 4703),
                 (u'1909.017.000018-3', 1, 30.0, u'sumaria', 899)]
     assert result == expected
 
@@ -108,9 +111,11 @@ def quoted_sql():
     reason='How do you use a quoted table name with the SQLite .import command?'
 )
 def test_quoted_name(csv, quoted_sql):
-    s = odo(csv, quoted_sql)
-    t = odo(csv, list)
-    assert sorted(odo(s, list)) == sorted(t)
+    with tmpfile('csv') as filename:
+        csv = odo(data, filename, dshape=ds, has_header=True)
+        s = odo(csv, quoted_sql)
+        t = odo(csv, list)
+        assert sorted(odo(s, list)) == sorted(t)
 
 
 def test_different_encoding_to_csv():
