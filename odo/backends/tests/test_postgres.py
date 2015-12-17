@@ -12,7 +12,8 @@ import shutil
 from datashape import dshape
 
 from odo.backends.csv import CSV
-from odo import odo, into, resource, drop, discover
+from odo.backends.sql import select_to_base
+from odo import odo, into, resource, drop, discover, convert
 from odo.utils import assert_allclose, tmpfile
 
 
@@ -235,3 +236,10 @@ def test_quoted_name(quoted_sql, csv):
     s = odo(csv, quoted_sql)
     t = odo(csv, list)
     assert sorted(odo(s, list)) == sorted(t)
+
+
+def test_path_of_reduction(sql):
+    sql, bind = sql
+    result = convert.path(sa.select([sa.func.sum(sql.c.a)]), float)
+    expected = [(sa.sql.Select, float, select_to_base)]
+    assert result == expected
