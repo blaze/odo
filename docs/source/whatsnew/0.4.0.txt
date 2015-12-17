@@ -72,6 +72,8 @@ Bug Fixes
   (:issue:`374`, :issue:`375`).
 * Fix returning Decimals from select statements in the SQLAlchemy backend
   (:issue:`376`).
+* Fix cost of converting a sqlalchemy ``Select`` statement into a scalar
+  (:issue:`384`).
 
 
 Miscellaneous
