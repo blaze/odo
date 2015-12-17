@@ -53,10 +53,18 @@ else:
         return x.resize(size)
 
 
-@convert.register(Array, tuple(arrays), cost=1.)
+@convert.register(Array, tuple(arrays), cost=3.0)
 def array_to_dask(x, name=None, chunks=None, **kwargs):
     if chunks is None:
-        raise ValueError("chunks cannot be None")
+        # chunk into chunks of 1,000 elements along each axis.
+        cs = 1e3
+        chunks = []
+        for i in x.shape:
+            if i > cs:
+                main = (int(cs),) * int((i//cs))
+                rem = (int(i % cs),) if (i % cs) else ()
+                chunks.append(main + rem)
+        chunks = tuple((i,) for i in x.shape)
     return from_array(x, chunks=chunks, name=name,
                       **filter_kwargs(from_array, kwargs))
 
@@ -66,9 +74,9 @@ def dask_to_numpy(x, **kwargs):
     return np.array(x)
 
 
-@convert.register(pd.DataFrame, dd.DataFrame, cost=10)
-@convert.register(pd.Series, dd.Series, cost=10)
-@convert.register(float, Array, cost=10.)
+@convert.register(pd.DataFrame, dd.DataFrame, cost=300)
+@convert.register(pd.Series, dd.Series, cost=300)
+@convert.register(float, Array, cost=300)
 def dask_to_float(x, **kwargs):
     return x.compute()
 
