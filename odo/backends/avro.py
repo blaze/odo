@@ -7,7 +7,7 @@ import uuid
 from avro import schema, datafile, io
 from avro.schema import AvroException
 import pandas as pd
-from datashape import discover, dshape, var, Record, Map, date_, datetime_, \
+from datashape import discover, var, Record, Map, Var, \
     Option, null, string, int32, int64, float64, float32, boolean
 from collections import Iterator
 from ..append import append
@@ -23,22 +23,9 @@ AVRO_TYPE_MAP = {
     'double': float64,
     'float': float32,
     'bool': boolean,
-}
-
-TD_AVRO_TYPES = {
-    "BIGINT": "long",
-    "BYTEINT": "int",
-    "DECIMAL_SHORT": "int",
-    "DECIMAL_LONG": "long",
-    "DECIMAL": "double",
-    "FLOAT": "double",
-    "INT": "int",
-    "INTEGER": "int",
-    "SMALLINT": "int",
-    "CHAR": "string",
-    "DATE": "string",
-    "TIME": "string",
-    "TIMESTAMP": "string"
+    'map': Map,
+    'record': Record,
+    'array': Var,
 }
 
 class AVRO(object):
@@ -225,11 +212,9 @@ def discover_schema(sch):
     elif isinstance(sch, schema.MapSchema):
         return Map(string, discover_schema(sch.values))
     elif isinstance(sch, schema.ArraySchema):
-        raise Exception("ArraySchema TODO")
+        return var * discover_schema(sch.items)
     else:
         raise Exception(str(type(sch)))
-
-@discover.register(schema.RecordSchema)
 
 @discover.register(AVRO)
 def discover_avro(f, **kwargs):
