@@ -214,11 +214,16 @@ def test_csv_to_s3__using_multipart_upload():
     tm.assert_frame_equal(df, result)
 
 
-@pytest.mark.parametrize(['prefix', 'suffix'], zip(['xa', 'za'], ['', '.csv']))
+@pytest.mark.parametrize(
+    ['prefix', 'suffix'],
+    [
+        pytest.mark.xfail(('xa', ''), raises=NotImplementedError),
+        ('za', '.csv')
+    ]
+)
 def test_chunks_of_s3(prefix, suffix):
     uri = 's3://nyqpug/{}*{}'.format(prefix, suffix)
     result = resource(uri)
     assert len(result.data) == 2
-    expected = odo('s3://nyqpug/tips.csv', pd.DataFrame)
+    expected = odo(tips_uri, pd.DataFrame)
     tm.assert_frame_equal(odo(result, pd.DataFrame), expected)
-    tm.assert_frame_equal(odo(uri, pd.DataFrame), expected)
