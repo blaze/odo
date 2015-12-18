@@ -208,24 +208,9 @@ def discover_sqlalchemy_selectable(t):
     return var * Record(records)
 
 
-@memoize
-def metadata_of_engine(engine, schema=None):
-    return sa.MetaData(engine, schema=schema)
-
-
-def create_engine(uri, *args, **kwargs):
-    if ':memory:' in uri:
-        return sa.create_engine(uri, *args, **kwargs)
-    else:
-        return memoized_create_engine(uri, *args, **kwargs)
-
-
-memoized_create_engine = memoize(sa.create_engine)
-
-
 @dispatch(sa.engine.base.Engine, str)
 def discover(engine, tablename):
-    metadata = metadata_of_engine(engine)
+    metadata = sa.MetaData(engine)
     if tablename not in metadata.tables:
         try:
             metadata.reflect(engine,
@@ -238,8 +223,7 @@ def discover(engine, tablename):
 
 @dispatch(sa.engine.base.Engine)
 def discover(engine):
-    metadata = metadata_of_engine(engine)
-    return discover(metadata)
+    return discover(sa.MetaData(engine))
 
 
 @dispatch(sa.MetaData)
@@ -328,7 +312,7 @@ def create_from_datashape(o, ds, **kwargs):
 def create_from_datashape(engine, ds, schema=None, foreign_keys=None,
                           primary_key=None, **kwargs):
     assert isrecord(ds), 'datashape must be Record type, got %s' % ds
-    metadata = metadata_of_engine(engine, schema=schema)
+    metadata = sa.MetaData(engine, schema=schema)
     for name, sub_ds in ds[0].dict.items():
         t = dshape_to_table(name, sub_ds, metadata=metadata,
                             foreign_keys=foreign_keys,
@@ -506,7 +490,8 @@ def attach_schema(obj, schema):
 
 @resource.register(r'(.*sql.*|oracle|redshift)(\+\w+)?://.+')
 def resource_sql(uri, *args, **kwargs):
-    engine = create_engine(uri, **filter_kwargs(sa.create_engine, kwargs))
+    engine = sa.create_engine(uri, connect_args=kwargs.pop('connect_args', {}),
+                              **filter_kwargs(sa.create_engine, kwargs))
     ds = kwargs.pop('dshape', None)
     schema = kwargs.pop('schema', None)
     foreign_keys = kwargs.pop('foreign_keys', None)
@@ -515,7 +500,7 @@ def resource_sql(uri, *args, **kwargs):
     # we were also given a table name
     if args and isinstance(args[0], (str, unicode)):
         table_name, args = args[0], args[1:]
-        metadata = metadata_of_engine(engine, schema=schema)
+        metadata = sa.MetaData(engine, schema=schema)
 
         with ignoring(sa.exc.NoSuchTableError):
             return attach_schema(

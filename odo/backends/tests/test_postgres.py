@@ -243,3 +243,16 @@ def test_path_of_reduction(sql):
     result = convert.path(sa.select([sa.func.sum(sql.c.a)]), float)
     expected = [(sa.sql.Select, float, select_to_base)]
     assert result == expected
+
+
+def test_drop_reflects_database_state(url):
+    data = list(zip(range(5), range(1, 6)))
+    db, tablename = url.split('::')
+
+    t = odo(data, url, dshape='var * {A: int64, B: int64}')
+    assert t.exists()
+    assert resource(url).exists()
+
+    drop(url)
+    with pytest.raises(ValueError):
+        resource(url)  # Table doesn't exist and no dshape

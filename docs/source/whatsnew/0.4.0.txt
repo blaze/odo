@@ -49,6 +49,10 @@ API Changes
   (:issue:`366`).
 * ``pandas.Series`` now discovers strings and datetimes as option types
   (:issue:`366`).
+* Removed caching of SQLAlchemy engine creation to allow dictionary arguments
+  to be passed in (:issue:`328`).
+* Removed caching of SQLAlchemy metadata to prevent stale views of databases
+  (:issue:`328`).
 
 Bug Fixes
 ---------
