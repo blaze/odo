@@ -1,23 +1,51 @@
 from __future__ import absolute_import, division, print_function
 
+import functools
+
 from toolz import merge
+
 from multipledispatch import Dispatcher
+
 from .convert import convert
 from .append import append
 from .resource import resource
 from .utils import ignoring
+
+import datashape
 from datashape import discover
 from datashape.dispatch import namespace
 from datashape.predicates import isdimension
+
 from .compatibility import unicode
+from pandas import DataFrame, Series
+from numpy import ndarray
+
+not_appendable_types = DataFrame, Series, ndarray, tuple
+
+__all__ = 'into',
 
 
 if 'into' not in namespace:
     namespace['into'] = Dispatcher('into')
+
 into = namespace['into']
 
 
+def validate(f):
+    @functools.wraps(f)
+    def wrapped(*args, **kwargs):
+        dshape = kwargs.pop('dshape', None)
+        if isinstance(dshape, (str, unicode)):
+            dshape = datashape.dshape(dshape)
+        if dshape is not None and not isinstance(dshape, datashape.DataShape):
+            raise TypeError('dshape argument is not an instance of DataShape')
+        kwargs['dshape'] = dshape
+        return f(*args, **kwargs)
+    return wrapped
+
+
 @into.register(type, object)
+@validate
 def into_type(a, b, dshape=None, **kwargs):
     with ignoring(NotImplementedError):
         if dshape is None:
@@ -26,6 +54,7 @@ def into_type(a, b, dshape=None, **kwargs):
 
 
 @into.register(object, object)
+@validate
 def into_object(target, source, dshape=None, **kwargs):
     """ Push one dataset into another
 
@@ -94,6 +123,8 @@ def into_object(target, source, dshape=None, **kwargs):
     """
     if isinstance(source, (str, unicode)):
         source = resource(source, dshape=dshape, **kwargs)
+    if type(target) in not_appendable_types:
+        raise TypeError('target of %s type does not support in-place append' % type(target))
     with ignoring(NotImplementedError):
         if dshape is None:
             dshape = discover(source)
@@ -101,6 +132,7 @@ def into_object(target, source, dshape=None, **kwargs):
 
 
 @into.register((str, unicode), object)
+@validate
 def into_string(uri, b, dshape=None, **kwargs):
     if dshape is None:
         dshape = discover(b)
@@ -112,11 +144,13 @@ def into_string(uri, b, dshape=None, **kwargs):
 
 
 @into.register((type, (str, unicode)), (str, unicode))
+@validate
 def into_string_string(a, b, **kwargs):
     return into(a, resource(b, **kwargs), **kwargs)
 
 
 @into.register(object)
+@validate
 def into_curried(o, **kwargs1):
     def curried_into(other, **kwargs2):
         return into(o, other, **merge(kwargs2, kwargs1))

@@ -9,10 +9,11 @@ def odo(source, target, **kwargs):
 
     source: object or string
         The source of your data.  Either an object (e.g. DataFrame),
+        or a string ('filename.csv')
     target: object or string or type
         The target for where you want your data to go.
         Either an object, (e.g. []), a type, (e.g. list)
-        or a string (e.g. 'postgresql://hostname::tablename'
+        or a string (e.g. 'postgresql://hostname::tablename')
     raise_on_errors: bool (optional, defaults to False)
         Raise exceptions rather than reroute around them
     **kwargs:

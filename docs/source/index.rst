@@ -1,6 +1,6 @@
 Odo: Shapeshifting for your data
 ================================
-``odo`` takes two arguments, a target and a source for a data transfer.
+``odo`` takes two arguments, a source and a target for a data transfer.
 
 .. code-block:: python
 
@@ -83,5 +83,5 @@ Developer Documentation
 
 Odo is part of the Open Source Blaze_ projects supported by `Continuum Analytics`_
 
-.. _Blaze: http://continuum.io/open-source/blaze/
+.. _Blaze: http://continuum.io/open-source/blaze
 .. _`Continuum Analytics`: http://continuum.io

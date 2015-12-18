@@ -1,30 +1,37 @@
 from __future__ import absolute_import, division, print_function
 
+from datetime import datetime
+from functools import partial
+
 from datashape import discover
-from datashape import (float32, float64, string, Option, Record, object_,
-        datetime_)
+from datashape import string, object_, datetime_, Option
 import datashape
 
 import pandas as pd
+import numpy as np
+
+from ..convert import convert
 
 
-possibly_missing = set((string, datetime_, float32, float64))
+possibly_missing = frozenset({string, datetime_})
+
+
+def dshape_from_pandas(dtype):
+    dshape = datashape.CType.from_numpy_dtype(dtype)
+    dshape = string if dshape == object_ else dshape
+    return Option(dshape) if dshape in possibly_missing else dshape
+
 
 @discover.register(pd.DataFrame)
 def discover_dataframe(df):
-    obj = object_
-    names = list(df.columns)
-    dtypes = list(map(datashape.CType.from_numpy_dtype, df.dtypes))
-    dtypes = [string if dt == obj else dt for dt in dtypes]
-    odtypes = [Option(dt) if dt in possibly_missing else dt
-                for dt in dtypes]
-    schema = datashape.Record(list(zip(names, odtypes)))
-    return len(df) * schema
+    return len(df) * datashape.Record(
+        zip(df.columns, map(dshape_from_pandas, df.dtypes)),
+    )
 
 
 @discover.register(pd.Series)
 def discover_series(s):
-    return len(s) * datashape.CType.from_numpy_dtype(s.dtype)
+    return len(s) * dshape_from_pandas(s.dtype)
 
 
 def coerce_datetimes(df):
@@ -51,7 +58,37 @@ def coerce_datetimes(df):
     name            object
     dtype: object
     """
-    df2 = df.select_dtypes(include=['object']).apply(pd.to_datetime)
+    objects = df.select_dtypes(include=['object'])
+    # NOTE: In pandas < 0.17, pd.to_datetime(' ') == datetime(...), which is
+    # not what we want.  So we have to remove columns with empty or
+    # whitespace-only strings to prevent erroneous datetime coercion.
+    columns = [
+        c for c in objects.columns
+        if not np.any(objects[c].str.isspace() | objects[c].str.isalpha())
+    ]
+    df2 = objects[columns].apply(partial(pd.to_datetime, errors='ignore'))
+
     for c in df2.columns:
         df[c] = df2[c]
     return df
+
+
+@convert.register(pd.Timestamp, datetime)
+def convert_datetime_to_timestamp(dt, **kwargs):
+    return pd.Timestamp(dt)
+
+
+@convert.register(pd.Timestamp, float)
+def nan_to_nat(fl, **kwargs):
+    try:
+        if np.isnan(fl):
+            # Only nan->nat edge
+            return pd.NaT
+    except TypeError:
+        pass
+    raise NotImplementedError()
+
+
+@convert.register(pd.Timestamp, (pd.tslib.NaTType, type(None)))
+def convert_null_or_nat_to_nat(n, **kwargs):
+    return pd.NaT

@@ -1,12 +1,26 @@
 from __future__ import absolute_import, division, print_function
 
+from contextlib import contextmanager
+from warnings import warn
+
 import networkx as nx
 from datashape import discover
 from .utils import expand_tuples, ignoring
-from contextlib import contextmanager
 
 
 ooc_types = set()  # Out-of-Core types
+
+
+class FailedConversionWarning(UserWarning):
+    def __init__(self, src, dest, exc):
+        self.src = src
+        self.dest = dest
+        self.exc = exc
+
+    def __str__(self):
+        return 'Failed on %s -> %s. Working around\nError message:\n%s' % (
+            self.src.__name__, self.dest.__name__, self.exc,
+        )
 
 
 class NetworkDispatcher(object):
@@ -48,8 +62,7 @@ def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types,
     except NotImplementedError as e:
         if kwargs.get('raise_on_errors'):
             raise
-        print("Failed on %s -> %s. Working around" % (A.__name__, B.__name__))
-        print("Error message:\n%s" % e)
+        warn(FailedConversionWarning(A, B, e))
         new_exclusions = excluded_edges | set([(A, B)])
         return _transform(graph, target, source, excluded_edges=new_exclusions,
                           **kwargs)

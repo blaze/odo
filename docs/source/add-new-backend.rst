@@ -185,8 +185,8 @@ General Notes
 -------------
 
 We pass all keyword arguments from the top-level call to ``odo`` to *all*
-functions.  This allows special keyword arguments to trickle down the right
-right place, e.g. ``delimiter=';'`` makes it to the ``pd.read_csv`` call when
+functions.  This allows special keyword arguments to trickle down to the right
+place, e.g. ``delimiter=';'`` makes it to the ``pd.read_csv`` call when
 interacting with CSV files, but also means that all functions that you write
 must expect and handle unwanted keyword arguments.  This often requires some
 filtering on your part.

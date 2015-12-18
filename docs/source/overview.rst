@@ -9,7 +9,7 @@ data on remote machines, and the Hadoop File System.
 The ``odo`` function
 --------------------
 
-``odo`` takes two arguments, a target and a source for a data transfer.
+``odo`` takes two arguments, a source and a target for a data transfer.
 
 .. code-block:: python
 
@@ -23,11 +23,11 @@ The target and source can take on the following forms
 .. table::
 
    ====== ====== ======================================================
-   Target Source Example
+   Source Target Example
    ====== ====== ======================================================
    Object Object An instance of a ``DataFrame`` or ``list``
    String String ``'file.csv'``, ``'postgresql://hostname::tablename'``
-   Type          ``list``, ``DataFrame``
+          Type   ``list``, ``DataFrame``
    ====== ====== ======================================================
 
 So the following lines would be valid inputs to ``odo``
@@ -43,11 +43,19 @@ So the following lines would be valid inputs to ``odo``
    >>> odo('postgresql://hostname::tablename', 'myfile.json') # Dump Postgres to JSON
    >>> odo('mongodb://hostname/db::collection', pd.DataFrame) # Dump Mongo to DataFrame
 
+.. warning::
+
+   If the target in ``odo(source, target)`` already exists, it must be of a type that
+   supports in-place append.
+
+   .. code-block:: python
+
+      >>> odo('myfile.csv', df) # this will raise TypeError because DataFrame is not appendable
 
 Network Effects
 ---------------
 
-To convert data any pair of formats ``odo.into`` relies on a network of
+To convert data any pair of formats ``odo.odo`` relies on a network of
 pairwise conversions.  We visualize that network below
 
 .. figure:: images/conversions.png

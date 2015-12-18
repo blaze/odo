@@ -8,9 +8,10 @@ from fnmatch import fnmatch
 from contextlib import contextmanager
 from collections import Iterator
 from operator import attrgetter
+from io import BytesIO
 
 import pandas as pd
-from toolz import memoize, first, concat
+from toolz import memoize, first, concat, curry
 
 from .. import (discover, CSV, resource, append, convert, drop, Temp, JSON,
                 JSONLines, chunks)
@@ -241,11 +242,35 @@ def anything_to_s3_text(s3, o, **kwargs):
     return append(s3, convert(Temp(s3.subtype), o, **kwargs), **kwargs)
 
 
+@contextmanager
+def start_multipart_upload_operation(s3):
+    try:
+        multipart_upload = s3.object.bucket.initiate_multipart_upload(s3.key)
+        yield multipart_upload
+    except Exception:
+        for part in multipart_upload:
+            s3.object.bucket.cancel_multipart_upload(part.key_name, part.id)
+        raise
+    else:
+        multipart_upload.complete_upload()
+
+
 @append.register(S3(JSONLines), (JSONLines, Temp(JSONLines)))
 @append.register(S3(JSON), (JSON, Temp(JSON)))
 @append.register(S3(CSV), (CSV, Temp(CSV)))
 @append.register(S3(TextFile), (TextFile, Temp(TextFile)))
-def append_text_to_s3(s3, data, **kwargs):
+def append_text_to_s3(s3, data, multipart=False, part_size=5 << 20, **kwargs):
+    if multipart:
+        with start_multipart_upload_operation(s3) as multipart_upload:
+            with open(data.path, 'rb') as f:
+                parts = enumerate(iter(curry(f.read, part_size), ''), start=1)
+                for part_num, part in parts:
+                    multipart_upload.upload_part_from_file(
+                        BytesIO(part),
+                        part_num=part_num
+                    )
+        return s3
+
     s3.object.set_contents_from_filename(data.path)
     return s3
 
@@ -294,5 +319,3 @@ else:
             raise ValueError('Error code %d, message: %r' % (exit_status,
                                                              stderr.read()))
         return ssh
-
-

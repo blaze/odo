@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
+import warnings
 
-from odo.core import NetworkDispatcher, path
+from odo.core import NetworkDispatcher, path, FailedConversionWarning
 from datashape import discover
 
 d = NetworkDispatcher('foo')
@@ -34,7 +35,14 @@ def test_convert_is_robust_to_failures():
     foo.register(C, B, cost=1.0)(badfunc)
     foo.register(C, A, cost=10.0)(lambda x, **kwargs: 2)
 
-    assert foo(C, A()) == 2
+    with warnings.catch_warnings(record=True) as ws:
+        warnings.simplefilter('always')
+        assert foo(C, A()) == 2
+
+    assert len(ws) == 1
+    w = ws[0].message
+    assert isinstance(w, FailedConversionWarning)
+    assert 'B -> C' in str(w)
 
 
 def test_ooc_behavior():

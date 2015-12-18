@@ -1,13 +1,23 @@
-Release |version|
------------------
+Release 0.3.4
+-------------
 
-:Release: |version|
-:Date: TBD
+:Release: 0.3.4
+:Date: September 15, 2015
 
 New Features
 ------------
 
 * Added support for Spark 1.4 on Python 2.7 and Python 3.4 (:issue:`294`)
+
+Experimental Features
+---------------------
+
+.. warning::
+
+   Experimental features are subject to change.
+
+* Add support for specifying primary and foreign key relationships in the SQL
+  backend (:issue:`274`).
 
 New Backends
 ------------
@@ -40,6 +50,10 @@ Bug Fixes
 * Fix a bug where a non-existent header row was being removed from an S3(CSV)
   because the dialect was set incorrectly (:issue:`293`)
 * Fix a bug where the SparkSQL backend wouldn't work if we didn't have paramiko installed (:issue:`300`)
+* Fix a testing bug where the endlines were being compared and they
+  shouldn't have been (:issue:`312`).
+* Fix a bug where sniffing multibyte encodings potentially chopped off
+  part of the encoded string (:issue:`309`, :issue:`311`).
 
 Miscellaneous
 -------------
