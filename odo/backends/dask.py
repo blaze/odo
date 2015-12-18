@@ -66,10 +66,10 @@ def dask_to_numpy(x, **kwargs):
     return np.array(x)
 
 
-@convert.register(pd.DataFrame, dd.DataFrame, cost=10)
-@convert.register(pd.Series, dd.Series, cost=10)
-@convert.register(float, Array, cost=10.)
-def dask_to_float(x, **kwargs):
+@convert.register(pd.DataFrame, dd.DataFrame, cost=200)
+@convert.register(pd.Series, dd.Series, cost=200)
+@convert.register(float, Array, cost=200)
+def dask_to_other(x, **kwargs):
     return x.compute()
 
 

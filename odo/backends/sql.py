@@ -384,7 +384,7 @@ def select_to_iterator(sel, dshape=None, bind=None, **kwargs):
     return func(rows)
 
 
-@convert.register(base, sa.sql.Select, cost=300.0)
+@convert.register(base, sa.sql.Select, cost=200.0)
 def select_to_base(sel, dshape=None, bind=None, **kwargs):
     if dshape is not None and not isscalar(dshape):
         raise ValueError('dshape should be None or scalar, got %s' % dshape)
