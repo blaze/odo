@@ -22,7 +22,7 @@ def eq(a, b):
 
 def test_convert():
     x = np.arange(600).reshape((20, 30))
-    d = convert(Array, x, chunks=(4, 5))
+    d = convert(Array, x)
     assert isinstance(d, Array)
 
 

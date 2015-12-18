@@ -1,0 +1,11 @@
+Release |version|
+-----------------
+
+:Release: |version|
+:Date: December 17th, 2015
+
+Bug Fixes
+---------
+
+* Tweak dask conversion costs, and give ``array_to_dask`` a default ``chunks``
+  value. This fixes a bug that was holding up the blaze release.
