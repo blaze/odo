@@ -17,7 +17,6 @@ from datashape import coretypes as ct
 from collections import namedtuple, Iterator
 from contextlib import contextmanager
 from .ssh import SSH
-from .sql import metadata_of_engine, sa
 from ..utils import tmpfile, sample, ignoring, raises
 from ..temp import Temp
 from ..append import append
@@ -148,7 +147,7 @@ def resource_hive_table(uri, stored_as='TEXTFILE', external=True, dshape=None, *
         dshape = datashape.dshape(dshape)
     uri, table = uri.split('::')
     engine = resource(uri)
-    metadata = metadata_of_engine(engine)
+    metadata = sa.MetaData(engine)
 
     # If table exists then return it
     with ignoring(sa.exc.NoSuchTableError):
@@ -350,7 +349,7 @@ def create_new_hive_table_from_csv(tbl, data, dshape=None, path=None, **kwargs):
     with tbl.engine.connect() as conn:
         conn.execute(statement)
 
-    metadata = metadata_of_engine(tbl.engine)
+    metadata = sa.MetaData(tbl.engine)
     tbl2 = sa.Table(tbl.name, metadata, autoload=True,
             autoload_with=tbl.engine)
     return tbl2
@@ -380,7 +379,7 @@ def append_remote_csv_to_new_table(tbl, data, dshape=None, **kwargs):
     with tbl.engine.connect() as conn:
         conn.execute(statement)
 
-    metadata = metadata_of_engine(tbl.engine)
+    metadata = sa.MetaData(tbl.engine)
     tbl2 = sa.Table(tbl.name, metadata, autoload=True,
             autoload_with=tbl.engine)
 
