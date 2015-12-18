@@ -237,7 +237,7 @@ def test_quoted_name(quoted_sql, csv):
     assert sorted(odo(s, list)) == sorted(t)
 
 
-def test_fresh_metadata(url):
+def test_drop_reflects_database_state(url):
     data = list(zip(range(5), range(1, 6)))
     db, tablename = url.split('::')
 
