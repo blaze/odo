@@ -238,6 +238,15 @@ def test_quoted_name(quoted_sql, csv):
 
 
 def test_fresh_metadata(url):
-    t = odo(list(zip(range(5), range(1, 6))), url, dshape='var * {A: int64, B: int64}')
+    data = list(zip(range(5), range(1, 6)))
+    db, tablename = url.split('::')
+
+    t = odo(data, url, dshape='var * {A: int64, B: int64}')
+    assert resource(url).exists()
+
     drop(url)
-    assert not sa.MetaData(resource(url.split('::')[0])).tables
+    with pytest.raises(ValueError):
+        resource(url)  # Table doesn't exist and no dshape
+
+    odo(data, url, dshape='var * {A: int64, B: int64}')
+    assert resource(url).exists()
