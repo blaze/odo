@@ -235,3 +235,16 @@ def test_quoted_name(quoted_sql, csv):
     s = odo(csv, quoted_sql)
     t = odo(csv, list)
     assert sorted(odo(s, list)) == sorted(t)
+
+
+def test_drop_reflects_database_state(url):
+    data = list(zip(range(5), range(1, 6)))
+    db, tablename = url.split('::')
+
+    t = odo(data, url, dshape='var * {A: int64, B: int64}')
+    assert t.exists()
+    assert resource(url).exists()
+
+    drop(url)
+    with pytest.raises(ValueError):
+        resource(url)  # Table doesn't exist and no dshape
