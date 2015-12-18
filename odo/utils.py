@@ -13,6 +13,7 @@ from multiprocessing.pool import ThreadPool
 from multipledispatch import Dispatcher
 
 from datashape import dshape, Record
+from datashape.discovery import is_zero_time
 
 from toolz import pluck, get, curry, keyfilter
 
@@ -144,7 +145,14 @@ def filetext(text, extension='', open=open, mode='w'):
             except AttributeError:
                 pass
 
-        yield filename
+        try:
+            yield filename
+        finally:
+            if os.path.exists(filename):
+                try:
+                    os.remove(filename)
+                except OSError:
+                    pass
 
 
 @contextmanager
@@ -164,15 +172,19 @@ def filetexts(d, open=open):
             except AttributeError:
                 pass
 
-    yield list(d)
-
-    for filename in d:
-        if os.path.exists(filename):
-            os.remove(filename)
+    try:
+        yield list(d)
+    finally:
+        for filename in d:
+            if os.path.exists(filename):
+                try:
+                    os.remove(filename)
+                except OSError:
+                    pass
 
 
 def normalize_to_date(dt):
-    if isinstance(dt, datetime.datetime) and not dt.time():
+    if isinstance(dt, datetime.datetime) and is_zero_time(dt.time()):
         return dt.date()
     else:
         return dt

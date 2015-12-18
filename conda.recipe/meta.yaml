@@ -36,17 +36,16 @@ test:
     - pytables >=3.0.0
     - sqlalchemy >=0.8.0
     - bcolz
-    - pymongo >=2.8
+    - pymongo >=2.8,<3 # [not py35]
     - dask
-    - dynd-python
     - paramiko
     - sqlite3 # [win]
     - boto # [not win]
-    - bokeh # [not py26]
+    - bokeh
     - pytables >=3.0.0
     - pip
-    - pymysql # [not py26]
-    - psycopg2 # [unix and not py26]
+    - pymysql
+    - psycopg2 # [unix]
 
   commands:
     - pip install sas7bdat && py.test -vx --pyargs odo -rsxX

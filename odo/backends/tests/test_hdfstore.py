@@ -1,8 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
-import os
+import pytest
 
-from odo.backends.hdfstore import discover
 from contextlib import contextmanager
 from odo.utils import tmpfile
 from odo.chunks import chunks
@@ -12,14 +11,8 @@ import pandas as pd
 from datetime import datetime
 import numpy as np
 
-try:
-    f = pd.HDFStore('foo')
-except (RuntimeError, ImportError) as e:
-    import pytest
-    pytest.skip('skipping test_hdfstore.py %s' % e)
-else:
-    f.close()
-    os.remove('foo')
+pytest.importorskip('tables')
+
 
 df = pd.DataFrame([['a', 1, 10., datetime(2000, 1, 1)],
                    ['ab', 2, 20., datetime(2000, 2, 2)],
@@ -46,7 +39,7 @@ def test_discover():
         assert str(discover(f)) == str(discover({'data': df}))
 
 
-def test_discover():
+def test_discover_nested():
     with tmpfile('hdf5') as fn:
         df.to_hdf(fn, '/a/b/data')
         df.to_hdf(fn, '/a/b/data2')
@@ -55,8 +48,9 @@ def test_discover():
         hdf = pd.HDFStore(fn)
 
         try:
-            assert discover(hdf) == discover({'a': {'b': {'data': df, 'data2': df},
-                                                    'data': df}})
+            assert discover(hdf) == discover(
+                {'a': {'b': {'data': df, 'data2': df}, 'data': df}}
+            )
         finally:
             hdf.close()
 
@@ -81,16 +75,20 @@ def test_chunks():
 def test_resource_no_info():
     with tmpfile('.hdf5') as fn:
         r = resource('hdfstore://' + fn)
-        assert isinstance(r, pd.HDFStore)
-        r.close()
+        try:
+            assert isinstance(r, pd.HDFStore)
+        finally:
+            r.close()
 
 
 def test_resource_of_dataset():
     with tmpfile('.hdf5') as fn:
         ds = datashape.dshape('{x: int32, y: 3 * int32}')
         r = resource('hdfstore://'+fn+'::/x', dshape=ds)
-        assert r
-        r.parent.close()
+        try:
+            assert r
+        finally:
+            r.parent.close()
 
 
 def test_append():
@@ -103,9 +101,11 @@ def test_append():
 def test_into_resource():
     with tmpfile('.hdf5') as fn:
         d = into('hdfstore://' + fn + '::/x', df)
-        assert discover(d) == discover(df)
-        assert eq(into(pd.DataFrame, d), df)
-        d.parent.close()
+        try:
+            assert discover(d) == discover(df)
+            assert eq(into(pd.DataFrame, d), df)
+        finally:
+            d.parent.close()
 
 
 def test_convert_pandas():
@@ -131,25 +131,31 @@ def test_append_other():
     with tmpfile('.hdf5') as fn:
         x = into(np.ndarray, df)
         dset = into('hdfstore://'+fn+'::/data', x)
-        assert discover(dset) == discover(df)
-        dset.parent.close()
+        try:
+            assert discover(dset) == discover(df)
+        finally:
+            dset.parent.close()
 
 
 def test_fixed_shape():
     with tmpfile('.hdf5') as fn:
         df.to_hdf(fn, 'foo')
         r = resource('hdfstore://'+fn+'::/foo')
-        assert isinstance(r.shape, list)
-        assert discover(r).shape == (len(df),)
-        r.parent.close()
+        try:
+            assert isinstance(r.shape, list)
+            assert discover(r).shape == (len(df),)
+        finally:
+            r.parent.close()
 
 
 def test_fixed_convert():
     with tmpfile('.hdf5') as fn:
         df.to_hdf(fn, 'foo')
         r = resource('hdfstore://'+fn+'::/foo')
-        assert eq(convert(pd.DataFrame, r), df)
-        r.parent.close()
+        try:
+            assert eq(convert(pd.DataFrame, r), df)
+        finally:
+            r.parent.close()
 
 
 def test_append_vs_write():

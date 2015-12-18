@@ -154,10 +154,10 @@ I didn't actually finish this timing because a single iteration of inserting
 1,000,000 rows took about 4 minutes and there would be 174 such iterations
 bringing the total loading time to::
 
-  .. code-block:: python
+.. code-block:: python
 
-     >>> 175 * 4 / 60.0  # doctest: +ELLIPSIS
-     11.66...
+   >>> 175 * 4 / 60.0  # doctest: +ELLIPSIS
+   11.66...
 
 11.66 **hours**!
 

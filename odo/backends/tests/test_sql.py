@@ -4,14 +4,19 @@ import pytest
 pytest.importorskip('sqlalchemy')
 
 import os
+from decimal import Decimal
+
 import numpy as np
 import pandas as pd
+
 import sqlalchemy as sa
 import toolz as tz
-from datashape import discover, dshape
+from datashape import discover, dshape, float32, float64
 import datashape
-from odo.backends.sql import (dshape_to_table, create_from_datashape,
-                              dshape_to_alchemy)
+
+from odo.backends.sql import (
+    dshape_to_table, create_from_datashape, dshape_to_alchemy
+)
 from odo.utils import tmpfile, raises
 from odo import convert, append, resource, discover, into, odo, chunks
 
@@ -187,8 +192,8 @@ def test_dshape_to_alchemy():
     assert isinstance(dshape_to_alchemy('string[40, "U8"]'), sa.Unicode)
     assert dshape_to_alchemy('string[40]').length == 40
 
-    assert dshape_to_alchemy('float32').precision == 24
-    assert dshape_to_alchemy('float64').precision == 53
+    assert dshape_to_alchemy('float32') == sa.REAL
+    assert dshape_to_alchemy('float64') == sa.FLOAT
 
 
 def test_dshape_to_table():
@@ -383,7 +388,7 @@ def test_copy_one_table_to_a_foreign_engine():
     with tmpfile('db') as fn1:
         with tmpfile('db') as fn2:
             src = into('sqlite:///%s::points' % fn1, data, dshape=ds)
-            tgt = into('sqlite:///%s::points' % fn2 + '::points',
+            tgt = into('sqlite:///%s::points' % fn2,
                        sa.select([src]), dshape=ds)
 
             assert into(set, src) == into(set, tgt)
@@ -683,3 +688,49 @@ def test_append_chunks():
 def test_append_array_without_column_names():
     with pytest.raises(TypeError):
         odo(np.zeros((2, 2)), 'sqlite:///:memory:::test')
+
+
+def test_numeric_create():
+    tbl = resource(
+        'sqlite:///:memory:::test',
+        dshape='var * {a: ?decimal[11, 2], b: decimal[10, 6]}'
+    )
+    assert tbl.c.a.nullable
+    assert not tbl.c.b.nullable
+    assert isinstance(tbl.c.a.type, sa.NUMERIC)
+    assert isinstance(tbl.c.b.type, sa.NUMERIC)
+
+
+def test_numeric_append():
+    tbl = resource(
+        'sqlite:///:memory:::test',
+        dshape='var * {a: decimal[11, 2], b: ?decimal[10, 6]}'
+    )
+    data = [(1.0, 2.0), (2.0, 3.0)]
+    tbl = odo(data, tbl)
+    assert odo(tbl, list) == list(map(
+        lambda row: tuple(map(Decimal, row)),
+        tbl.select().execute().fetchall()
+    ))
+
+
+def test_discover_float_and_real_core_types():
+    assert discover(sa.FLOAT()) == float64
+    assert discover(sa.REAL()) == float32
+
+
+def test_string_dshape_doc_example():
+    x = np.zeros((10, 2))
+    with tmpfile('.db') as fn:
+        t = odo(
+            x, 'sqlite:///%s::x' % fn, dshape='var * {a: float64, b: float64}'
+        )
+        assert all(row == (0, 0) for row in t.select().execute().fetchall())
+
+
+def test_decimal_conversion():
+    data = [(1.0,), (2.0,)]
+    with tmpfile('.db') as fn:
+        t = odo(data, 'sqlite:///%s::x' % fn, dshape='var * {x: decimal[11, 2]}')
+        result = odo(sa.select([sa.func.sum(t.c.x)]), Decimal)
+    assert result == sum(Decimal(r[0]) for r in data)
