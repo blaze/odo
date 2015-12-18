@@ -247,6 +247,3 @@ def test_fresh_metadata(url):
     drop(url)
     with pytest.raises(ValueError):
         resource(url)  # Table doesn't exist and no dshape
-
-    odo(data, url, dshape='var * {A: int64, B: int64}')
-    assert resource(url).exists()
