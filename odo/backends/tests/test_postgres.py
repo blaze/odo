@@ -235,3 +235,9 @@ def test_quoted_name(quoted_sql, csv):
     s = odo(csv, quoted_sql)
     t = odo(csv, list)
     assert sorted(odo(s, list)) == sorted(t)
+
+
+def test_fresh_metadata(url):
+    t = odo(list(zip(range(5), range(1, 6))), url, dshape='var * {A: int64, B: int64}')
+    drop(url)
+    assert not sa.MetaData(resource(url.split('::')[0])).tables
