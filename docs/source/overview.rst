@@ -43,6 +43,14 @@ So the following lines would be valid inputs to ``odo``
    >>> odo('postgresql://hostname::tablename', 'myfile.json') # Dump Postgres to JSON
    >>> odo('mongodb://hostname/db::collection', pd.DataFrame) # Dump Mongo to DataFrame
 
+.. warning::
+
+   If the target in ``odo(source, target)`` already exists, it must be of a type that
+   supports in-place append.
+
+   .. code-block:: python
+
+      >>> odo('myfile.csv', df) # this will raise TypeError because DataFrame is not appendable
 
 Network Effects
 ---------------

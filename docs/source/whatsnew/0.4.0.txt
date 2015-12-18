@@ -7,7 +7,7 @@ Release |version|
 New Features
 ------------
 
-None
+* Added support for Python 3.5 (:issue:`368`).
 
 Experimental Features
 ---------------------
@@ -21,7 +21,7 @@ None
 New Backends
 ------------
 
-None
+* Dask dataframe is now supported.
 
 Improved Backends
 -----------------
@@ -37,12 +37,18 @@ Improved Backends
   odo to or from an unbound sqlalchemy object (:issue:`305`).
 * Support ``decimal`` datashapes in the SQL backend (:issue:`337`).
 * Add ``timeout`` parameter to the ``URL`` backend (:issue:`346`).
+* Add support for multipart uploads to S3 (:issue:`344`).
+* Add support for option decimal types (:issue:`299`).
 
 API Changes
 -----------
 
 * Removed support for Python 2.6 (:issue:`333`).
 * Removed support for Python 3.3 (:issue:`335`).
+* ``pandas.DataFrame`` no longer discovers float32 and float64 as option types
+  (:issue:`366`).
+* ``pandas.Series`` now discovers strings and datetimes as option types
+  (:issue:`366`).
 
 Bug Fixes
 ---------
@@ -59,6 +65,13 @@ Bug Fixes
 * Fixed an issue with :issue:`345` that broke Blaze (:issue:`347`).
 * Fixed an issue where empty columns in a CSV file would be coerced to
   ``datetime`` instead of being left as strings (:issue:`342`).
+* Quote table names that need to be quoted in the MySQL and PostgreSQL
+  backends (:issue:`316`, :issue:`371`).
+* Use ``sa.bindparam`` for ``CopyToCSV`` and ``CopyFromCSV`` (:issue:`371`).
+* Fix inference for unicode string datashapes when using the ``CSV`` backend
+  (:issue:`374`, :issue:`375`).
+* Fix returning Decimals from select statements in the SQLAlchemy backend
+  (:issue:`376`).
 
 
 Miscellaneous

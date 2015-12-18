@@ -2,13 +2,16 @@ from __future__ import absolute_import, division, print_function
 from collections import Iterator
 
 import numpy as np
+import pandas as pd
 from datashape.dispatch import dispatch
 from datashape import from_numpy
 
+import dask
 from dask.array.core import Array, from_array
 from dask.bag.core import Bag
 import dask.bag as db
 from dask.compatibility import long
+import dask.dataframe as dd
 
 from odo import append, chunks, convert, discover, TextFile
 from ..utils import filter_kwargs
@@ -63,6 +66,8 @@ def dask_to_numpy(x, **kwargs):
     return np.array(x)
 
 
+@convert.register(pd.DataFrame, dd.DataFrame, cost=10)
+@convert.register(pd.Series, dd.Series, cost=10)
 @convert.register(float, Array, cost=10.)
 def dask_to_float(x, **kwargs):
     return x.compute()
@@ -91,3 +96,11 @@ def bag_to_iterator(x, **kwargs):
 @convert.register(Bag, list)
 def bag_to_iterator(x, **kwargs):
     return db.from_sequence(x, **filter_kwargs(db.from_sequence, kwargs))
+
+
+@convert.register(dd.DataFrame, pd.DataFrame, cost=1.)
+def pandas_dataframe_to_dask_dataframe(x, npartitions=None, **kwargs):
+    if npartitions is None:
+        raise ValueError("npartitions cannot be None")
+    return dd.from_pandas(x, npartitions=npartitions,
+                          **filter_kwargs(dd.from_pandas, kwargs))

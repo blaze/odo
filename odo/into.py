@@ -17,7 +17,10 @@ from datashape.dispatch import namespace
 from datashape.predicates import isdimension
 
 from .compatibility import unicode
+from pandas import DataFrame, Series
+from numpy import ndarray
 
+not_appendable_types = DataFrame, Series, ndarray, tuple
 
 __all__ = 'into',
 
@@ -120,6 +123,8 @@ def into_object(target, source, dshape=None, **kwargs):
     """
     if isinstance(source, (str, unicode)):
         source = resource(source, dshape=dshape, **kwargs)
+    if type(target) in not_appendable_types:
+        raise TypeError('target of %s type does not support in-place append' % type(target))
     with ignoring(NotImplementedError):
         if dshape is None:
             dshape = discover(source)

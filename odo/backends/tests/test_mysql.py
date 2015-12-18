@@ -4,7 +4,6 @@ import pytest
 
 pymysql = pytest.importorskip('pymysql')
 
-from decimal import Decimal
 from datashape import var, DataShape, Record, dshape
 import itertools
 from odo.backends.csv import CSV
@@ -66,10 +65,7 @@ def engine():
 
 @pytest.yield_fixture
 def sql(engine, csv, name):
-    dshape = discover(csv)
-    dshape = DataShape(var,
-                       Record([(n, typ)
-                               for n, typ in zip('ab', dshape.measure.types)]))
+    dshape = var * Record(list(zip('ab', discover(csv).measure.types)))
     try:
         t = resource('%s::%s' % (url, name), dshape=dshape)
     except sqlalchemy.exc.OperationalError as e:
@@ -83,10 +79,7 @@ def sql(engine, csv, name):
 
 @pytest.yield_fixture
 def fsql(engine, fcsv, name):
-    dshape = discover(fcsv)
-    dshape = DataShape(var,
-                       Record([(n, typ)
-                               for n, typ in zip('ab', dshape.measure.types)]))
+    dshape = var * Record(list(zip('ab', discover(fcsv).measure.types)))
     try:
         t = resource('%s::%s' % (url, name), dshape=dshape)
     except sqlalchemy.exc.OperationalError as e:
@@ -98,18 +91,23 @@ def fsql(engine, fcsv, name):
             drop(t)
 
 
+@pytest.yield_fixture
+def quoted_sql(engine, fcsv):
+    dshape = var * Record(list(zip('ab', discover(fcsv).measure.types)))
+    try:
+        t = resource('%s::foo bar' % url, dshape=dshape)
+    except sqlalchemy.exc.OperationalError as e:
+        pytest.skip(str(e))
+    else:
+        try:
+            yield t
+        finally:
+            drop(t)
+
+
 @pytest.fixture
 def dcsv():
-    this_dir = os.path.dirname(__file__)
-    file_name = os.path.join(this_dir, 'dummydata.csv')
-    dshape = """var * {
-        Name: string,
-        RegistrationDate: date,
-        ZipCode: int64,
-        Consts: float64
-    }"""
-
-    return CSV(file_name, dshape=dshape)
+    return CSV(os.path.join(os.path.dirname(__file__), 'dummydata.csv'))
 
 
 @pytest.yield_fixture
@@ -260,3 +258,9 @@ def test_decimal(decimal_sql):
     )
     assert isinstance(t.c.a.type, sa.Numeric)
     assert isinstance(t.c.b.type, sa.Numeric)
+
+
+def test_quoted_name(quoted_sql, fcsv):
+    s = odo(fcsv, quoted_sql)
+    t = odo(fcsv, list)
+    assert sorted(odo(s, list)) == sorted(t)

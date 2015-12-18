@@ -16,16 +16,17 @@ import itertools
 import json
 from contextlib import contextmanager, closing
 
+import datashape
+from datashape import string, float64, int64
+from datashape.util.testing import assert_dshape_equal
+import pandas as pd
+import pandas.util.testing as tm
+
 from odo import into, resource, S3, discover, CSV, drop, append, odo
 from odo.backends.aws import get_s3_connection
 from odo.utils import tmpfile
 from odo.compatibility import urlopen
 
-import pandas as pd
-import pandas.util.testing as tm
-
-import datashape
-from datashape import string, float64, int64
 
 from boto.exception import S3ResponseError, NoAuthHandlerFound
 
@@ -142,7 +143,6 @@ def conn():
 
 
 test_bucket_name = 'into-redshift-csvs'
-
 
 _tmps = ('tmp%d' % i for i in itertools.count())
 
@@ -300,29 +300,29 @@ def test_s3_jsonlines_discover():
 def test_s3_csv_discover():
     result = discover(resource('s3://nyqpug/tips.csv'))
     expected = datashape.dshape("""var * {
-      total_bill: ?float64,
-      tip: ?float64,
+      total_bill: float64,
+      tip: float64,
       sex: ?string,
       smoker: ?string,
       day: ?string,
       time: ?string,
       size: int64
       }""")
-    assert result == expected
+    assert_dshape_equal(result, expected)
 
 
 def test_s3_gz_csv_discover():
     result = discover(S3(CSV)('s3://nyqpug/tips.gz'))
     expected = datashape.dshape("""var * {
-      total_bill: ?float64,
-      tip: ?float64,
+      total_bill: float64,
+      tip: float64,
       sex: ?string,
       smoker: ?string,
       day: ?string,
       time: ?string,
       size: int64
       }""")
-    assert result == expected
+    assert_dshape_equal(result, expected)
 
 
 def test_s3_to_sqlite():
@@ -331,3 +331,13 @@ def test_s3_to_sqlite():
                   dshape=discover(resource(tips_uri)))
         lhs = into(list, tb)
         assert lhs == into(list, tips_uri)
+
+
+def test_csv_to_s3__using_multipart_upload():
+    df = pd.DataFrame({'a': ["*" * 5 * 1024 ** 2]})
+    with tmpfile('.csv') as fn:
+        with s3_bucket('.csv') as b:
+            df.to_csv(fn, index=False)
+            s3 = into(b, CSV(fn), multipart=True)
+            result = into(pd.DataFrame, s3)
+    tm.assert_frame_equal(df, result)

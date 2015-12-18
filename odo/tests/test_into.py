@@ -20,6 +20,12 @@ def test_into_append():
     assert result is lst
 
 
+def test_into_append_failure():
+    nd = np.array([1, 2, 3])
+    with pytest.raises(TypeError):
+        odo((4, 5), nd)
+
+
 def test_into_curry():
     assert callable(into(list))
     data = (1, 2, 3)
