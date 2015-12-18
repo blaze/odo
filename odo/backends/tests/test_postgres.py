@@ -242,6 +242,7 @@ def test_fresh_metadata(url):
     db, tablename = url.split('::')
 
     t = odo(data, url, dshape='var * {A: int64, B: int64}')
+    assert t.exists()
     assert resource(url).exists()
 
     drop(url)
