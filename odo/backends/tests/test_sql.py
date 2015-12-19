@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 import sqlalchemy as sa
-
+import toolz as tz
 from datashape import discover, dshape, float32, float64
 import datashape
 
@@ -336,11 +336,11 @@ def test_append_from_select(sqlite_file):
     raw = np.array([(200.0, 'Glenn'),
                     (314.14, 'Hope'),
                     (235.43, 'Bob')], dtype=[('amount', 'float64'),
-                                             ('name', 'S5')])
+                                             ('name', 'U5')])
     raw2 = np.array([(800.0, 'Joe'),
                      (914.14, 'Alice'),
                      (1235.43, 'Ratso')], dtype=[('amount', 'float64'),
-                                                 ('name', 'S5')])
+                                                 ('name', 'U5')])
     t = into('%s::t' % sqlite_file, raw)
     s = into('%s::s' % sqlite_file, raw2)
     t = append(t, s.select())
@@ -356,11 +356,11 @@ def test_append_from_table():
         raw = np.array([(200.0, 'Glenn'),
                         (314.14, 'Hope'),
                         (235.43, 'Bob')], dtype=[('amount', 'float64'),
-                                                 ('name', 'S5')])
+                                                 ('name', 'U5')])
         raw2 = np.array([(800.0, 'Joe'),
                          (914.14, 'Alice'),
                          (1235.43, 'Ratso')], dtype=[('amount', 'float64'),
-                                                     ('name', 'S5')])
+                                                     ('name', 'U5')])
         t = into('sqlite:///%s::t' % fn, raw)
         s = into('sqlite:///%s::s' % fn, raw2)
         t = append(t, s)
@@ -377,8 +377,9 @@ def test_engine_metadata_caching():
         b = resource(
             'sqlite:///' + fn + '::b', dshape=dshape('var * {y: int}'))
 
-        assert a.metadata is b.metadata
-        assert engine is a.bind is b.bind
+        assert a.metadata is not b.metadata
+        assert engine is not a.bind
+        assert engine is not b.bind
 
 
 def test_copy_one_table_to_a_foreign_engine():
