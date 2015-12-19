@@ -51,7 +51,6 @@ class AVRO(object):
         self._uri = uri
         self._schema = schema
         self._codec = codec
-        self._kwargs = kwargs #CURRENTLY UNUSED
 
         if not schema:
             sch = self._get_writers_schema()
