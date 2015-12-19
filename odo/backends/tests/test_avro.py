@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
-#from avro import schema
+import pytest
+schema = pytest.importorskip('avro.schema')
+
 from collections import Iterator
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
@@ -8,9 +10,6 @@ from odo.backends.avro import discover, AVRO
 
 from odo.utils import tmpfile, into_path
 from odo import append, convert, resource, dshape
-
-import pytest
-schema = pytest.importorskip('avro.schema')
 
 test_schema_str = """
 {
