@@ -133,7 +133,7 @@ class AVRO(object):
         """
         rec_writer = io.DatumWriter()
         df_writer = datafile.DataFileWriter(
-            open(uri, 'ab+'),
+            open(uri, 'a+b'),
             rec_writer
         )
         #Check for embedded schema to ensure existing file is an avro file.
@@ -141,8 +141,10 @@ class AVRO(object):
 
         #If writers_schema supplied, check for equality with embedded schema.
         if writers_schema:
-            assert embedded_schema == writers_schema, \
-                "writers_schema embedded in {uri} differs from user supplied schema for appending."
+            try:
+                assert embedded_schema == writers_schema
+            except AssertionError:
+                raise ValueError("writers_schema embedded in {uri} differs from user supplied schema for appending.")
 
         return df_writer
 
@@ -210,11 +212,12 @@ def discover_schema(sch):
     elif isinstance(sch, schema.PrimitiveSchema):
         return AVRO_TYPE_MAP[sch.type]
     elif isinstance(sch, schema.MapSchema):
+        # Avro map types always have string keys, see https://avro.apache.org/docs/1.7.7/spec.html#Maps
         return Map(string, discover_schema(sch.values))
     elif isinstance(sch, schema.ArraySchema):
         return var * discover_schema(sch.items)
     else:
-        raise Exception(str(type(sch)))
+        raise TypeError('Unable to discover avro type %r' % type(sch).__name__)
 
 @discover.register(AVRO)
 def discover_avro(f, **kwargs):
@@ -225,7 +228,7 @@ def avro_to_DataFrame(avro, dshape=None, **kwargs):
     #XXX:AEH:todo - correct for pandas automated type conversions.  e.g. strings containing numbers get cast to numeric.
     #XXX:AEH:todo - column with nulls just becomes an "object" column.
     df = pd.DataFrame([r for r in avro])
-    names = [f.name.decode('utf-8') for f in avro.schema.fields]
+    names = [f.name for f in avro.schema.fields]
     df = df[names]
     return df
 
@@ -238,7 +241,7 @@ def convert_iterator_to_temporary_avro(data, schema=None, **kwargs):
 
 @convert.register(Iterator, AVRO, cost=1.0)
 def avro_to_iterator(s, **kwargs):
-    return s
+    return iter(s)
 
 @append.register(AVRO, Iterator)
 def append_iterator_to_avro(tgt_avro, src_itr, **kwargs):
