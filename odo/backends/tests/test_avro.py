@@ -1,16 +1,16 @@
 from __future__ import absolute_import, division, print_function
 
-from avro import datafile, io, schema
+#from avro import schema
 from collections import Iterator
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
-from odo.backends.avro import discover, avro_to_DataFrame, avro_to_iterator, resource, AVRO
-
-import unittest
-import tempfile
+from odo.backends.avro import discover, AVRO
 
 from odo.utils import tmpfile, into_path
 from odo import append, convert, resource, dshape
+
+import pytest
+schema = pytest.importorskip('avro.schema')
 
 test_schema_str = """
 {
@@ -112,43 +112,46 @@ ds = dshape("""var * {
 
 test_path = into_path('backends', 'tests', 'test_file.avro')
 
-class TestAvro(unittest.TestCase):
+@pytest.fixture
+def avrofile():
+    return resource(test_path)
 
-    def setUp(self):
-        self.avrofile = resource(test_path)
-        self.temp_output = tempfile.NamedTemporaryFile(delete=False, suffix=".avro")
+@pytest.yield_fixture
+def temp_output_path():
+    with tmpfile('.avro') as fn:
+        yield fn
 
-    def tearDown(self):
-        self.temp_output.unlink(self.temp_output.name)
+def test_discover(avrofile):
+    assert discover(avrofile) == ds
 
-    def test_resource_datafile(self):
-        self.assertIsInstance(resource(test_path), AVRO)
+def test_resource_datafile():
+    assert isinstance(resource(test_path), AVRO)
 
-    def test_discover(self):
-        self.assertEquals(discover(self.avrofile), ds)
+def test_convert_avro_to_dataframe(avrofile):
+    df = convert(pd.DataFrame, avrofile)
 
-    def test_convert_avro_to_dataframe(self):
-        df = convert(pd.DataFrame, self.avrofile)
-        self.assertIsInstance(df, pd.DataFrame)
+    assert isinstance(df, pd.DataFrame)
 
-        names = ["field_1", "field_2", "field_3", "features", "words"]
-        expected_output = pd.DataFrame(test_data, columns=names)
-        assert_frame_equal(df, expected_output)
+    names = ["field_1", "field_2", "field_3", "features", "words"]
+    expected_output = pd.DataFrame(test_data, columns=names)
+    assert_frame_equal(df, expected_output)
 
-    def test_convert_avro_to_iterator(self):
-        itr = convert(Iterator, self.avrofile)
-        self.assertIsInstance(itr, Iterator)
-        self.assertEqual(list(itr), test_data)
+def test_convert_avro_to_iterator(avrofile):
+    itr = convert(Iterator, avrofile)
+    assert isinstance(itr, Iterator)
+    assert list(itr) == test_data
 
-    def test_require_schema_for_new_file(self):
-        self.assertRaises(schema.AvroException, AVRO, "doesntexist.avro")
+def test_require_schema_for_new_file():
+    try:
+        x = AVRO("doesntexist.avro")
+        assert False, "Previous line should throw an schema.AvroException"
+    except schema.AvroException:
+        assert True
+    except Exception:
+        assert False
 
-    def test_append_and_convert_round_trip(self):
-        x = AVRO(self.temp_output.name, schema=schema.parse(test_schema_str))
-        append(x, test_data)
-        append(x, test_data)
-        assert convert(list, x) == test_data * 2
-
-
-if __name__=="__main__":
-    unittest.main()
+def test_append_and_convert_round_trip(temp_output_path):
+    x = AVRO(temp_output_path, schema=schema.parse(test_schema_str))
+    append(x, test_data)
+    append(x, test_data)
+    assert convert(list, x) == test_data * 2
