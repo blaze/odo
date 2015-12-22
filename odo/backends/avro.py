@@ -23,7 +23,7 @@ AVRO_TYPE_MAP = {
     'null': null,
     'double': float64,
     'float': float32,
-    'bool': boolean,
+    'boolean': boolean,
     'map': Map,
     'record': Record,
     'array': Var,
