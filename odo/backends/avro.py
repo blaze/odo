@@ -6,6 +6,7 @@ import uuid
 
 from avro import schema, datafile, io
 from avro.schema import AvroException
+from multipledispatch import dispatch
 import pandas as pd
 from datashape import discover, var, Record, Map, Var, \
     Option, null, string, int32, int64, float64, float32, boolean
@@ -195,28 +196,38 @@ class AVRO(object):
 def resource_avro(uri, schema=None, **kwargs):
     return AVRO(uri, schema=schema, **kwargs)
 
+@dispatch(schema.RecordSchema)
 def discover_schema(sch):
-    if isinstance(sch, schema.RecordSchema):
-        return var * Record([(f.name, discover_schema(f.type)) for f in sch.fields])
-    elif isinstance(sch, schema.UnionSchema):
-        try:
-            types = [s.type for s in sch.schemas]
-            assert "null" in types
-            types.remove("null")
-            assert len(types) == 1
-            return Option(AVRO_TYPE_MAP[types[0]])
-        except AssertionError:
-            raise TypeError("odo supports avro UnionSchema only for nullabel fields.  "
-                            "Received {0}".format(str([s.type for s in sch.schemas])))
-    elif isinstance(sch, schema.PrimitiveSchema):
-        return AVRO_TYPE_MAP[sch.type]
-    elif isinstance(sch, schema.MapSchema):
-        # Avro map types always have string keys, see https://avro.apache.org/docs/1.7.7/spec.html#Maps
-        return Map(string, discover_schema(sch.values))
-    elif isinstance(sch, schema.ArraySchema):
-        return var * discover_schema(sch.items)
-    else:
-        raise TypeError('Unable to discover avro type %r' % type(sch).__name__)
+    return var * Record([(f.name, discover_schema(f.type)) for f in sch.fields])
+
+@dispatch(schema.UnionSchema)
+def discover_schema(sch):
+    try:
+        types = [s.type for s in sch.schemas]
+        assert "null" in types
+        types.remove("null")
+        assert len(types) == 1
+        return Option(AVRO_TYPE_MAP[types[0]])
+    except AssertionError:
+        raise TypeError("odo supports avro UnionSchema only for nullable fields." + \
+                        "Received {0}".format(str([s.type for s in sch.schemas])))
+
+@dispatch(schema.PrimitiveSchema)
+def discover_schema(sch):
+    return AVRO_TYPE_MAP[sch.type]
+
+@dispatch(schema.MapSchema)
+def discover_schema(sch):
+    # Avro map types always have string keys, see https://avro.apache.org/docs/1.7.7/spec.html#Maps
+    return Map(string, discover_schema(sch.values))
+
+@dispatch(schema.ArraySchema)
+def discover_schema(sch):
+    return var * discover_schema(sch.items)
+
+@dispatch(object)
+def discover_schema(sch):
+    raise TypeError('Unable to discover avro type %r' % type(sch).__name__)
 
 @discover.register(AVRO)
 def discover_avro(f, **kwargs):
