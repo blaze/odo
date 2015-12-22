@@ -6,26 +6,24 @@ import sys
 pytestmark = pytest.mark.skipif(sys.platform == 'win32',
                                 reason='Requires Mac or Linux')
 
-sa = pytest.importorskip('sqlalchemy')
 boto = pytest.importorskip('boto')
-pytest.importorskip('psycopg2')
-pytest.importorskip('redshift_sqlalchemy')
 
 import os
 import itertools
 import json
 from contextlib import contextmanager, closing
 
-from odo import into, resource, S3, discover, CSV, drop, append
+import datashape
+from datashape import string, float64, int64
+from datashape.util.testing import assert_dshape_equal
+import pandas as pd
+import pandas.util.testing as tm
+
+from odo import into, resource, S3, discover, CSV, drop, append, odo
 from odo.backends.aws import get_s3_connection
 from odo.utils import tmpfile
 from odo.compatibility import urlopen
 
-import pandas as pd
-import pandas.util.testing as tm
-
-import datashape
-from datashape import string, float64, int64
 
 from boto.exception import S3ResponseError, NoAuthHandlerFound
 
@@ -47,57 +45,6 @@ with closing(urlopen('http://httpbin.org/ip')) as url:
     public_ip = json.loads(url.read().decode())['origin']
 
 cidrip = public_ip + '/32'
-
-
-@pytest.fixture(scope='module')
-def rs_auth():
-    # if we aren't authorized and we've tried to authorize then skip, prevents
-    # us from having to deal with timeouts
-
-    # TODO: this will fail if we want to use a testing cluster with a different
-    # security group than 'default'
-    global is_authorized, tried
-
-    if not is_authorized and not tried:
-        if not tried:
-            try:
-                conn = boto.connect_redshift()
-            except NoAuthHandlerFound as e:
-                pytest.skip('authorization to access redshift cluster failed '
-                            '%s' % e)
-            try:
-                conn.authorize_cluster_security_group_ingress('default',
-                                                              cidrip=cidrip)
-            except boto.redshift.exceptions.AuthorizationAlreadyExists:
-                is_authorized = True
-            except Exception as e:
-                pytest.skip('authorization to access redshift cluster failed '
-                            '%s' % e)
-            else:
-                is_authorized = True
-            finally:
-                tried = True
-        else:
-            pytest.skip('authorization to access redshift cluster failed')
-
-
-@pytest.fixture
-def db(rs_auth):
-    key = os.environ.get('REDSHIFT_DB_URI', None)
-    if not key:
-        pytest.skip('Please define a non-empty environment variable called '
-                    'REDSHIFT_DB_URI to test redshift <- S3')
-    else:
-        return key
-
-
-@pytest.yield_fixture
-def temp_tb(db):
-    t = '%s::%s' % (db, next(_tmps))
-    try:
-        yield t
-    finally:
-        drop(resource(t))
 
 
 @pytest.yield_fixture
@@ -143,7 +90,6 @@ def conn():
 
 test_bucket_name = 'into-redshift-csvs'
 
-
 _tmps = ('tmp%d' % i for i in itertools.count())
 
 
@@ -185,56 +131,11 @@ def test_csv_to_s3_into():
     tm.assert_frame_equal(df, result)
 
 
-def test_s3_to_redshift(temp_tb):
-    s3 = resource(tips_uri)
-    table = into(temp_tb, s3)
-
-    assert discover(table) == discover(s3)
-    assert into(set, table) == into(set, s3)
-
-
-def test_redshift_getting_started(temp_tb):
-    dshape = datashape.dshape("""var * {
-        userid: int64,
-        username: ?string[8],
-        firstname: ?string[30],
-        lastname: ?string[30],
-        city: ?string[30],
-        state: ?string[2],
-        email: ?string[100],
-        phone: ?string[14],
-        likesports: ?bool,
-        liketheatre: ?bool,
-        likeconcerts: ?bool,
-        likejazz: ?bool,
-        likeclassical: ?bool,
-        likeopera: ?bool,
-        likerock: ?bool,
-        likevegas: ?bool,
-        likebroadway: ?bool,
-        likemusicals: ?bool,
-    }""")
-    csv = S3(CSV)('s3://awssampledb/tickit/allusers_pipe.txt')
-    table = into(temp_tb, csv, dshape=dshape, delimiter='|')
-
-    # make sure we have a non empty table
-    assert table.count().execute().scalar() == 49989
-
-
 def test_frame_to_s3_to_frame():
     with s3_bucket('.csv') as b:
         s3_csv = into(b, df)
         result = into(pd.DataFrame, s3_csv)
     tm.assert_frame_equal(result, df)
-
-
-def test_csv_to_redshift(tmpcsv, temp_tb):
-    assert into(set, into(temp_tb, tmpcsv)) == into(set, tmpcsv)
-
-
-def test_frame_to_redshift(temp_tb):
-    tb = into(temp_tb, df)
-    assert into(set, tb) == into(set, df)
 
 
 def test_textfile_to_s3():
@@ -270,29 +171,29 @@ def test_s3_jsonlines_discover():
 def test_s3_csv_discover():
     result = discover(resource('s3://nyqpug/tips.csv'))
     expected = datashape.dshape("""var * {
-      total_bill: ?float64,
-      tip: ?float64,
+      total_bill: float64,
+      tip: float64,
       sex: ?string,
       smoker: ?string,
       day: ?string,
       time: ?string,
       size: int64
       }""")
-    assert result == expected
+    assert_dshape_equal(result, expected)
 
 
 def test_s3_gz_csv_discover():
     result = discover(S3(CSV)('s3://nyqpug/tips.gz'))
     expected = datashape.dshape("""var * {
-      total_bill: ?float64,
-      tip: ?float64,
+      total_bill: float64,
+      tip: float64,
       sex: ?string,
       smoker: ?string,
       day: ?string,
       time: ?string,
       size: int64
       }""")
-    assert result == expected
+    assert_dshape_equal(result, expected)
 
 
 def test_s3_to_sqlite():
@@ -301,3 +202,28 @@ def test_s3_to_sqlite():
                   dshape=discover(resource(tips_uri)))
         lhs = into(list, tb)
         assert lhs == into(list, tips_uri)
+
+
+def test_csv_to_s3__using_multipart_upload():
+    df = pd.DataFrame({'a': ["*" * 5 * 1024 ** 2]})
+    with tmpfile('.csv') as fn:
+        with s3_bucket('.csv') as b:
+            df.to_csv(fn, index=False)
+            s3 = into(b, CSV(fn), multipart=True)
+            result = into(pd.DataFrame, s3)
+    tm.assert_frame_equal(df, result)
+
+
+@pytest.mark.parametrize(
+    ['prefix', 'suffix'],
+    [
+        pytest.mark.xfail(('xa', ''), raises=NotImplementedError),
+        ('za', '.csv')
+    ]
+)
+def test_chunks_of_s3(prefix, suffix):
+    uri = 's3://nyqpug/{}*{}'.format(prefix, suffix)
+    result = resource(uri)
+    assert len(result.data) == 2
+    expected = odo(tips_uri, pd.DataFrame)
+    tm.assert_frame_equal(odo(result, pd.DataFrame), expected)

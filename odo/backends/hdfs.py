@@ -17,8 +17,6 @@ from datashape import coretypes as ct
 from collections import namedtuple, Iterator
 from contextlib import contextmanager
 from .ssh import SSH
-from .spark import SparkDataFrame, SchemaRDD
-from .sql import metadata_of_engine, sa
 from ..utils import tmpfile, sample, ignoring, raises
 from ..temp import Temp
 from ..append import append
@@ -149,7 +147,7 @@ def resource_hive_table(uri, stored_as='TEXTFILE', external=True, dshape=None, *
         dshape = datashape.dshape(dshape)
     uri, table = uri.split('::')
     engine = resource(uri)
-    metadata = metadata_of_engine(engine)
+    metadata = sa.MetaData(engine)
 
     # If table exists then return it
     with ignoring(sa.exc.NoSuchTableError):
@@ -351,7 +349,7 @@ def create_new_hive_table_from_csv(tbl, data, dshape=None, path=None, **kwargs):
     with tbl.engine.connect() as conn:
         conn.execute(statement)
 
-    metadata = metadata_of_engine(tbl.engine)
+    metadata = sa.MetaData(tbl.engine)
     tbl2 = sa.Table(tbl.name, metadata, autoload=True,
             autoload_with=tbl.engine)
     return tbl2
@@ -381,7 +379,7 @@ def append_remote_csv_to_new_table(tbl, data, dshape=None, **kwargs):
     with tbl.engine.connect() as conn:
         conn.execute(statement)
 
-    metadata = metadata_of_engine(tbl.engine)
+    metadata = sa.MetaData(tbl.engine)
     tbl2 = sa.Table(tbl.name, metadata, autoload=True,
             autoload_with=tbl.engine)
 
@@ -537,8 +535,6 @@ def resource_hdfs(uri, **kwargs):
 
 
 @append.register(HDFS(TextFile), (Iterator, object))
-@append.register(HDFS(JSONLines), (Iterator, object, SparkDataFrame,
-                                   SchemaRDD))
 @append.register(HDFS(JSON), (list, object))
 @append.register(HDFS(CSV), (chunks(pd.DataFrame), pd.DataFrame, object))
 def append_object_to_hdfs(target, source, **kwargs):

@@ -15,6 +15,7 @@ from .resource import resource
 from .directory import Directory
 from .into import into
 from .odo import odo
+from .create import create
 from .drop import drop
 from .temp import Temp
 from .backends.text import TextFile
@@ -62,6 +63,8 @@ with ignoring(ImportError):
     from .backends.sparksql import SparkDataFrame
 with ignoring(ImportError):
     from .backends.url import URL
+with ignoring(ImportError):
+    from .backends.dask import dask
 
 
 restart_ordering()  # Restart multipledispatch ordering and do ordering

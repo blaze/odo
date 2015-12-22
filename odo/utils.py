@@ -1,16 +1,25 @@
 from __future__ import absolute_import, division, print_function
 
-from datashape import dshape, Record
-from toolz import pluck, get, curry, keyfilter
-from contextlib import contextmanager
-from multiprocessing.pool import ThreadPool
 import inspect
 import datetime
 import tempfile
 import os
 import shutil
 import numpy as np
+
+from contextlib import contextmanager
+from multiprocessing.pool import ThreadPool
+
+from multipledispatch import Dispatcher
+
+from datashape import dshape, Record
+from datashape.discovery import is_zero_time
+
+from toolz import pluck, get, curry, keyfilter
+
 from .compatibility import unicode
+
+sample = Dispatcher('sample')
 
 
 def iter_except(func, exception, first=None):
@@ -136,7 +145,14 @@ def filetext(text, extension='', open=open, mode='w'):
             except AttributeError:
                 pass
 
-        yield filename
+        try:
+            yield filename
+        finally:
+            if os.path.exists(filename):
+                try:
+                    os.remove(filename)
+                except OSError:
+                    pass
 
 
 @contextmanager
@@ -156,15 +172,19 @@ def filetexts(d, open=open):
             except AttributeError:
                 pass
 
-    yield list(d)
-
-    for filename in d:
-        if os.path.exists(filename):
-            os.remove(filename)
+    try:
+        yield list(d)
+    finally:
+        for filename in d:
+            if os.path.exists(filename):
+                try:
+                    os.remove(filename)
+                except OSError:
+                    pass
 
 
 def normalize_to_date(dt):
-    if isinstance(dt, datetime.datetime) and not dt.time():
+    if isinstance(dt, datetime.datetime) and is_zero_time(dt.time()):
         return dt.date()
     else:
         return dt
@@ -263,10 +283,6 @@ def into_path(*path):
     """
     import odo
     return os.path.join(os.path.dirname(odo.__file__), *path)
-
-
-from multipledispatch import Dispatcher
-sample = Dispatcher('sample')
 
 
 @curry

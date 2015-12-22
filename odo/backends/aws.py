@@ -4,12 +4,14 @@ import os
 import uuid
 import zlib
 import re
-
+from fnmatch import fnmatch
 from contextlib import contextmanager
 from collections import Iterator
+from operator import attrgetter
+from io import BytesIO
 
 import pandas as pd
-from toolz import memoize
+from toolz import memoize, first, concat, curry
 
 from .. import (discover, CSV, resource, append, convert, drop, Temp, JSON,
                 JSONLines, chunks)
@@ -101,15 +103,27 @@ def sample_s3_line_delimited(data, length=8192):
     Parameters
     ----------
     data : S3(CSV)
-        A CSV file living in  an S3 bucket
+        A CSV file living in an S3 bucket
     length : int, optional, default ``8192``
         Number of bytes of the file to read
     """
     headers = {'Range': 'bytes=0-%d' % length}
-    raw = data.object.get_contents_as_string(headers=headers)
+    if data.object.exists():
+        key = data.object
+    else:  # we are probably trying to read from a set of files
+        keys = sorted(data.object.bucket.list(prefix=data.object.key),
+                      key=attrgetter('key'))
+        if not keys:
+            # we didn't find anything with a prefix of data.object.key
+            raise ValueError('Object %r does not exist and no keys with a '
+                             'prefix of %r exist' %
+                             (data.object, data.object.key))
+        key = first(keys)
+    raw = key.get_contents_as_string(headers=headers)
 
-    if ext(data.path) == 'gz':
-        raw = zlib.decompress(raw, 32 + zlib.MAX_WBITS)
+    if ext(key.key) == 'gz':
+        # decompressobj allows decompression of partial streams
+        raw = zlib.decompressobj(32 + zlib.MAX_WBITS).decompress(raw)
 
     # this is generally cheap as we usually have a tiny amount of data
     try:
@@ -119,7 +133,7 @@ def sample_s3_line_delimited(data, length=8192):
 
     raw = raw[:index]
 
-    with tmpfile(ext(re.sub('\.gz$', '', data.path))) as fn:
+    with tmpfile(ext(re.sub(r'\.gz$', '', data.path))) as fn:
         # we use wb because without an encoding boto returns bytes
         with open(fn, 'wb') as f:
             f.write(raw)
@@ -136,6 +150,28 @@ def discover_s3_line_delimited(c, length=8192, **kwargs):
 @resource.register('s3://.*\.csv(\.gz)?', priority=18)
 def resource_s3_csv(uri, **kwargs):
     return S3(CSV)(uri, **kwargs)
+
+
+@resource.register('s3://.*\*.csv(\.gz)?', priority=19)
+def resource_s3_csv_glob(uri, **kwargs):
+    con = get_s3_connection()
+    result = urlparse(uri)
+    bucket = con.get_bucket(result.netloc)
+    key = result.path.lstrip('/')
+
+    all_keys = bucket.list(prefix=key.split('*')[0])
+    matched = [k for k in all_keys if fnmatch(k.key, key)]
+    uris = ['s3://{}/{}'.format(bucket.name, k.key) for k in matched]
+    r = resource(uris[0], **kwargs)
+    return chunks(type(r))([resource(u, **kwargs) for u in sorted(uris)])
+
+
+@convert.register(chunks(pd.DataFrame), chunks(S3(CSV)), cost=11.0)
+def convert_gob_of_s3_csvs_to_chunks_of_dataframes(csvs, **kwargs):
+   def _():
+       return concat(convert(chunks(pd.DataFrame), csv, **kwargs)
+                      for csv in csvs)
+   return chunks(pd.DataFrame)(_)
 
 
 @resource.register('s3://.*\.txt(\.gz)?', priority=18)
@@ -206,11 +242,35 @@ def anything_to_s3_text(s3, o, **kwargs):
     return append(s3, convert(Temp(s3.subtype), o, **kwargs), **kwargs)
 
 
+@contextmanager
+def start_multipart_upload_operation(s3):
+    try:
+        multipart_upload = s3.object.bucket.initiate_multipart_upload(s3.key)
+        yield multipart_upload
+    except Exception:
+        for part in multipart_upload:
+            s3.object.bucket.cancel_multipart_upload(part.key_name, part.id)
+        raise
+    else:
+        multipart_upload.complete_upload()
+
+
 @append.register(S3(JSONLines), (JSONLines, Temp(JSONLines)))
 @append.register(S3(JSON), (JSON, Temp(JSON)))
 @append.register(S3(CSV), (CSV, Temp(CSV)))
 @append.register(S3(TextFile), (TextFile, Temp(TextFile)))
-def append_text_to_s3(s3, data, **kwargs):
+def append_text_to_s3(s3, data, multipart=False, part_size=5 << 20, **kwargs):
+    if multipart:
+        with start_multipart_upload_operation(s3) as multipart_upload:
+            with open(data.path, 'rb') as f:
+                parts = enumerate(iter(curry(f.read, part_size), ''), start=1)
+                for part_num, part in parts:
+                    multipart_upload.upload_part_from_file(
+                        BytesIO(part),
+                        part_num=part_num
+                    )
+        return s3
+
     s3.object.set_contents_from_filename(data.path)
     return s3
 

@@ -20,6 +20,12 @@ def test_into_append():
     assert result is lst
 
 
+def test_into_append_failure():
+    nd = np.array([1, 2, 3])
+    with pytest.raises(TypeError):
+        odo((4, 5), nd)
+
+
 def test_into_curry():
     assert callable(into(list))
     data = (1, 2, 3)
@@ -48,3 +54,9 @@ def test_into_string_dshape():
     np.testing.assert_array_equal(odo([1, 2, 3], np.ndarray,
                                       dshape='var * float64'),
                                   np.array([1, 2, 3], dtype='float64'))
+
+
+@pytest.mark.parametrize('dshape', [1, object()])
+def test_into_invalid_dshape(dshape):
+    with pytest.raises(TypeError):
+        into(list, (1, 2, 3), dshape=dshape)
