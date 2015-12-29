@@ -9,14 +9,14 @@ from avro.schema import AvroException
 from multipledispatch import dispatch
 import pandas as pd
 from datashape import discover, var, Record, Map, Var, \
-    Option, null, string, int32, int64, float64, float32, boolean
+    Option, null, string, int8, int32, int64, float64, float32, boolean, bytes_
 from collections import Iterator
 from ..append import append
 from ..convert import convert
 from ..resource import resource
 from ..temp import Temp
 
-AVRO_TYPE_MAP = {
+PRIMITIVE_TYPES_MAP = {
     'string': string,
     'int': int32,
     'long': int64,
@@ -24,10 +24,27 @@ AVRO_TYPE_MAP = {
     'double': float64,
     'float': float32,
     'boolean': boolean,
-    'map': Map,
     'record': Record,
-    'array': Var,
 }
+
+NAMED_TYPES_MAP = {
+    'fixed': bytes_, #TODO
+    'enum': int8, #TODO
+    'record': Record,
+    'error': Record, #TODO
+}
+
+COMPOUND_TYPES_MAP = {
+    'array': Var,
+    'map': Map,
+}
+
+
+AVRO_TYPE_MAP = {}
+AVRO_TYPE_MAP.update(PRIMITIVE_TYPES_MAP)
+AVRO_TYPE_MAP.update(NAMED_TYPES_MAP)
+AVRO_TYPE_MAP.update(COMPOUND_TYPES_MAP)
+
 
 class AVRO(object):
     """Wrapper object for reading and writing an Avro container file
@@ -247,7 +264,6 @@ def convert_iterator_to_temporary_avro(data, schema=None, **kwargs):
     fn = '.%s.avro' % uuid.uuid1()
     avro = Temp(AVRO)(fn, schema, **kwargs)
     return append(avro, data, **kwargs)
-
 
 @convert.register(Iterator, AVRO, cost=1.0)
 def avro_to_iterator(s, **kwargs):
