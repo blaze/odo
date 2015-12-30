@@ -8,8 +8,9 @@ from avro import schema, datafile, io
 from avro.schema import AvroException
 from multipledispatch import dispatch
 import pandas as pd
-from datashape import discover, var, Record, Map, Var, \
+from datashape import dshape, discover, var, Record, Map, Var, \
     Option, null, string, int8, int32, int64, float64, float32, boolean, bytes_
+import datashape.coretypes as ct
 from collections import Iterator
 from ..append import append
 from ..convert import convert
@@ -44,6 +45,19 @@ AVRO_TYPE_MAP = {}
 AVRO_TYPE_MAP.update(PRIMITIVE_TYPES_MAP)
 AVRO_TYPE_MAP.update(NAMED_TYPES_MAP)
 AVRO_TYPE_MAP.update(COMPOUND_TYPES_MAP)
+
+dshape_to_avro_primitive_types = {
+    ct.int8: 'bytes',
+    ct.int16: 'int',
+    ct.int32: 'int',
+    ct.int64: 'long',
+    ct.float32: 'float',
+    ct.float64: 'double',
+    ct.date_: 'long',
+    ct.datetime_: 'long',
+    ct.string: 'string',
+    ct.bool_: 'boolean'
+}
 
 
 class AVRO(object):
@@ -249,6 +263,99 @@ def discover_schema(sch):
 @discover.register(AVRO)
 def discover_avro(f, **kwargs):
     return discover_schema(f.schema)
+
+def make_avsc_object(ds, name="name", namespace="default", depth=0):
+    """
+    Build Avro Schema from datashape definition
+
+    Parameters
+    ----------
+    ds : str, unicode, DataShape, or datashapes.coretypes.*
+    <name>: string -- applied to named schema elements (i.e. record, error, fixed, enum)
+    <namespace>: string -- applied to named schema elements
+    depth=0:  Tracking parameter for recursion depth.  Should not be set by user.
+
+    Examples
+    --------
+    >>> from pprint import pprint
+    >>> pprint(
+    ...   make_avsc_object(
+    ...    "var * {letter: string, value: ?int32}", name="my_record", namespace="com.blaze.odo"
+    ...   )
+    ... )
+    {'fields': [{'name': 'letter', 'type': 'string'},
+                {'name': 'value', 'type': ['null', 'int']}],
+     'name': 'my_record',
+     'namespace': 'com.blaze.odo',
+     'type': 'record'}
+    >>> test_dshape = '''
+    ...    var * {
+    ...      field_1: int32,
+    ...      field_2: string,
+    ...      field_3: ?int64,
+    ...      features: map[string, float64],
+    ...      words: var * string,
+    ...      nested_record: var * {field_1: int64, field_2: float32}
+    ...    }
+    ... '''
+    >>> pprint(make_avsc_object(test_dshape, name="my_record", namespace="com.blaze.odo"))
+    {'fields': [{'name': 'field_1', 'type': 'int'},
+                {'name': 'field_2', 'type': 'string'},
+                {'name': 'field_3', 'type': ['null', 'long']},
+                {'name': 'features', 'type': {'type': 'map', 'values': 'double'}},
+                {'name': 'words', 'type': {'items': 'string', 'type': 'array'}},
+                {'name': 'nested_record',
+                 'type': {'items': {'fields': [{'name': 'field_1',
+                                                'type': 'long'},
+                                               {'name': 'field_2',
+                                                'type': 'float'}],
+                                    'name': 'my_recordd0d1',
+                                    'namespace': 'com.blaze.odo',
+                                    'type': 'record'},
+                          'type': 'array'}}],
+     'name': 'my_record',
+     'namespace': 'com.blaze.odo',
+     'type': 'record'}
+    """
+
+    try:
+        assert depth >= 0
+    except AssertionError:
+        raise ValueError("depth argument must be >= 0")
+
+    #parse string to datashape object if necessary
+    if isinstance(ds, (str, unicode)):
+        ds = dshape(ds)
+    if isinstance(ds, ct.DataShape):
+        if depth>0:
+            assert isinstance(ds.parameters[0], ct.Var), "Cannot support fixed length substructure in Avro schemas"
+            return {"type": "array", "items": make_avsc_object(ds.measure, name=name+"d%d" % depth, namespace=namespace, depth=depth+1)}
+        elif depth==0:
+            ds = ds.measure
+
+    if isinstance(ds, ct.Record):
+        return {
+            "type": "record",
+            "namespace": namespace,
+            "name": name,
+            "fields": [{"type": make_avsc_object(typ, name=name+"d%d" % depth, namespace=namespace, depth=depth+1),
+                        "name": n} for (typ, n) in zip(ds.measure.types, ds.measure.names)]
+
+        }
+    if isinstance(ds, ct.Map):
+        assert ds.key == ct.string, "Avro map types only support string keys.  Cannot form map with key type %s" % ds.key
+        return {
+            "type": "map",
+            "values": make_avsc_object(ds.value, name=name+"d%d" % depth, namespace=namespace, depth=depth+1)
+        }
+
+    if isinstance(ds, ct.Option):
+        return ["null", make_avsc_object(ds.ty, name=name+"d%d" % depth, namespace=namespace, depth=depth+1)]
+    if ds in dshape_to_avro_primitive_types:
+        return dshape_to_avro_primitive_types[ds]
+
+    raise NotImplementedError("No avro type known for %s" % ds)
+
 
 @convert.register(pd.DataFrame, AVRO, cost=4.0)
 def avro_to_DataFrame(avro, dshape=None, **kwargs):
