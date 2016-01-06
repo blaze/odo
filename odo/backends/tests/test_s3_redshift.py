@@ -1,5 +1,5 @@
+import os
 import sys
-
 import pytest
 
 pytestmark = pytest.mark.skipif(sys.platform == 'win32',
@@ -9,6 +9,30 @@ sa = pytest.importorskip('sqlalchemy')
 boto = pytest.importorskip('boto')
 pytest.importorskip('psycopg2')
 pytest.importorskip('redshift_sqlalchemy')
+
+from contextlib import closing
+import json
+import itertools
+import pandas as pd
+
+import datashape
+from odo import into, resource, S3, discover, CSV, drop, odo
+from odo.utils import tmpfile
+from odo.compatibility import urlopen
+
+with closing(urlopen('http://httpbin.org/ip')) as url:
+    public_ip = json.loads(url.read().decode())['origin']
+cidrip = public_ip + '/32'
+
+_tmps = ('tmp%d' % i for i in itertools.count())
+
+df = pd.DataFrame({
+    'a': list('abc'),
+    'b': [1, 2, 3],
+    'c': [1.0, 2.0, 3.0]
+})[['a', 'b', 'c']]
+
+is_authorized = tried = False
 
 
 @pytest.fixture(scope='module')
@@ -24,7 +48,7 @@ def rs_auth():
         if not tried:
             try:
                 conn = boto.connect_redshift()
-            except NoAuthHandlerFound as e:
+            except boto.exception.NoAuthHandlerFound as e:
                 pytest.skip('authorization to access redshift cluster failed '
                             '%s' % e)
             try:
@@ -60,6 +84,17 @@ def temp_tb(db):
         yield t
     finally:
         drop(resource(t))
+
+
+@pytest.yield_fixture
+def tmpcsv():
+    with tmpfile('.csv') as fn:
+        with open(fn, mode='w') as f:
+            df.to_csv(f, index=False)
+        yield fn
+
+
+tips_uri = 's3://nyqpug/tips.csv'
 
 
 def test_s3_to_redshift(temp_tb):
