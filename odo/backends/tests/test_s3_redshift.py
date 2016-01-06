@@ -1,6 +1,8 @@
 import sys
 
+import itertools
 import pytest
+import pandas as pd
 
 pytestmark = pytest.mark.skipif(sys.platform == 'win32',
                                 reason='Requires Mac or Linux')
@@ -9,6 +11,14 @@ sa = pytest.importorskip('sqlalchemy')
 boto = pytest.importorskip('boto')
 pytest.importorskip('psycopg2')
 pytest.importorskip('redshift_sqlalchemy')
+
+_tmps = ('tmp%d' % i for i in itertools.count())
+
+df = pd.DataFrame({
+    'a': list('abc'),
+    'b': [1, 2, 3],
+    'c': [1.0, 2.0, 3.0]
+})[['a', 'b', 'c']]
 
 
 is_authorized = tried = False
@@ -64,6 +74,15 @@ def temp_tb(db):
     finally:
         drop(resource(t))
 
+
+@pytest.yield_fixture
+def tmpcsv():
+    with tmpfile('.csv') as fn:
+        with open(fn, mode='w') as f:
+            df.to_csv(f, index=False)
+        yield fn
+
+tips_uri = 's3://nyqpug/tips.csv'
 
 def test_s3_to_redshift(temp_tb):
     s3 = resource(tips_uri)
