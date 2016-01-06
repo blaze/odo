@@ -1,8 +1,5 @@
+import os
 import sys
-
-import itertools
-import pytest
-import pandas as pd
 
 pytestmark = pytest.mark.skipif(sys.platform == 'win32',
                                 reason='Requires Mac or Linux')
@@ -12,6 +9,21 @@ boto = pytest.importorskip('boto')
 pytest.importorskip('psycopg2')
 pytest.importorskip('redshift_sqlalchemy')
 
+from contextlib import closing
+import json
+import itertools
+import pytest
+import pandas as pd
+
+import datashape
+from odo import into, resource, S3, discover, CSV, drop, odo
+from odo.utils import tmpfile
+from odo.compatibility import urlopen
+
+with closing(urlopen('http://httpbin.org/ip')) as url:
+    public_ip = json.loads(url.read().decode())['origin']
+cidrip = public_ip + '/32'
+
 _tmps = ('tmp%d' % i for i in itertools.count())
 
 df = pd.DataFrame({
@@ -19,7 +31,6 @@ df = pd.DataFrame({
     'b': [1, 2, 3],
     'c': [1.0, 2.0, 3.0]
 })[['a', 'b', 'c']]
-
 
 is_authorized = tried = False
 
@@ -82,7 +93,9 @@ def tmpcsv():
             df.to_csv(f, index=False)
         yield fn
 
+
 tips_uri = 's3://nyqpug/tips.csv'
+
 
 def test_s3_to_redshift(temp_tb):
     s3 = resource(tips_uri)
