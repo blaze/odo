@@ -10,6 +10,8 @@ boto = pytest.importorskip('boto')
 pytest.importorskip('psycopg2')
 pytest.importorskip('redshift_sqlalchemy')
 
+is_authorized = tried = False
+
 
 @pytest.fixture(scope='module')
 def rs_auth():
