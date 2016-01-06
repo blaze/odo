@@ -10,6 +10,7 @@ boto = pytest.importorskip('boto')
 pytest.importorskip('psycopg2')
 pytest.importorskip('redshift_sqlalchemy')
 
+
 is_authorized = tried = False
 
 
@@ -26,7 +27,7 @@ def rs_auth():
         if not tried:
             try:
                 conn = boto.connect_redshift()
-            except NoAuthHandlerFound as e:
+            except boto.exception.NoAuthHandlerFound as e:
                 pytest.skip('authorization to access redshift cluster failed '
                             '%s' % e)
             try:
