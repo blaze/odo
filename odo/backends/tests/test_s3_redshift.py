@@ -1,5 +1,6 @@
 import os
 import sys
+import pytest
 
 pytestmark = pytest.mark.skipif(sys.platform == 'win32',
                                 reason='Requires Mac or Linux')
@@ -12,7 +13,6 @@ pytest.importorskip('redshift_sqlalchemy')
 from contextlib import closing
 import json
 import itertools
-import pytest
 import pandas as pd
 
 import datashape
