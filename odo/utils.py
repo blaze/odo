@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+import warnings
+import functools
 import inspect
 import datetime
 import tempfile
@@ -403,3 +405,23 @@ def copydoc(from_, to):
     """
     to.__doc__ = from_.__doc__
     return to
+
+def deprecated(replacement=None):
+    """A decorator which can be used to mark functions as deprecated.
+    replacement is a callable that will be called with the same args
+    as the decorated function.
+    """
+    def outer(fun):
+        msg = "{} is deprecated".format(fun.__name__)
+        if replacement is not None:
+            msg += "; use {} instead".format(replacement)
+        if fun.__doc__ is None:
+            fun.__doc__ = msg
+    
+        @functools.wraps(fun)
+        def inner(*args, **kwargs):
+            warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
+            return fun(*args, **kwargs)
+    
+        return inner
+    return outer

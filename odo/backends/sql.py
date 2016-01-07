@@ -33,7 +33,7 @@ from toolz import (partition_all, keyfilter, memoize, valfilter, identity,
 from toolz.curried import pluck, map
 
 from ..compatibility import unicode
-from ..utils import keywords, ignoring, iter_except, filter_kwargs
+from ..utils import keywords, ignoring, iter_except, filter_kwargs, deprecated
 from ..convert import convert, ooc_types
 from ..append import append
 from ..resource import resource
@@ -206,6 +206,11 @@ def discover_sqlalchemy_selectable(t):
     for name, column in merge(*fkeys).items():
         records[ordering[name]] = (name, column)
     return var * Record(records)
+
+
+@deprecated(replacement=sa.MetaData)
+def metadata_of_engine(engine, schema=None):
+    return sa.MetaData(engine, schema=schema)
 
 
 @dispatch(sa.engine.base.Engine, str)
