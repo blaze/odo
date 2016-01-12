@@ -1,0 +1,46 @@
+Release |version|
+-----------------
+
+:Release: |version|
+:Date: TBD
+
+New Features
+------------
+
+None
+
+Experimental Features
+---------------------
+
+.. warning::
+
+   Experimental features are subject to change.
+
+None
+
+New Backends
+------------
+
+None
+
+Improved Backends
+-----------------
+
+None
+
+API Changes
+-----------
+
+None
+
+Bug Fixes
+---------
+
+* Fixed a bug in :func:`odo.backends.sql.append_iterator_to_table` where
+  ``None`` would be returned if the iterator was empty. This now correctly
+  returns the table (:issue:`395`).
+
+Miscellaneous
+-------------
+
+None
