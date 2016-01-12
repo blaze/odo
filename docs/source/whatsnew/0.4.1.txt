@@ -1,0 +1,45 @@
+Release |version|
+-----------------
+
+:Release: |version|
+:Date: TBD
+
+New Features
+------------
+
+None
+
+Experimental Features
+---------------------
+
+.. warning::
+
+   Experimental features are subject to change.
+
+None
+
+New Backends
+------------
+
+None
+
+Improved Backends
+-----------------
+
+* Sql backend now support coercing to and from :class:`datetime.timedelta`
+  objects (:issue:`394`).
+
+API Changes
+-----------
+
+None
+
+Bug Fixes
+---------
+
+None
+
+Miscellaneous
+-------------
+
+None
