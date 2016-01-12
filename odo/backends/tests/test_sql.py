@@ -734,3 +734,9 @@ def test_decimal_conversion():
         t = odo(data, 'sqlite:///%s::x' % fn, dshape='var * {x: decimal[11, 2]}')
         result = odo(sa.select([sa.func.sum(t.c.x)]), Decimal)
     assert result == sum(Decimal(r[0]) for r in data)
+
+
+def test_append_empty_iterator_returns_table():
+    with tmpfile('.db') as fn:
+        t = resource('sqlite:///%s::x' % fn, dshape='var * {a: int32}')
+        assert odo(iter([]), t) is t
