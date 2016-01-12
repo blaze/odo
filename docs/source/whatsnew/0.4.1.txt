@@ -40,7 +40,9 @@ None
 Bug Fixes
 ---------
 
-None
+* Fixed a bug in :func:`odo.backends.sql.append_iterator_to_table` where
+  ``None`` would be returned if the iterator was empty. This now correctly
+  returns the table (:issue:`395`).
 
 Miscellaneous
 -------------
