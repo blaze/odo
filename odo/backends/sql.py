@@ -410,7 +410,7 @@ def append_iterator_to_table(t, rows, dshape=None, bind=None, **kwargs):
     try:
         row = next(rows)
     except StopIteration:
-        return
+        return t
     rows = chain([row], rows)
     if isinstance(row, (tuple, list)):
         dshape = dshape and datashape.dshape(dshape)
