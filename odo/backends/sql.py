@@ -9,7 +9,7 @@ import decimal
 from operator import attrgetter
 from itertools import chain
 from collections import Iterator
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from distutils.spawn import find_executable
 
 import pandas as pd
@@ -28,8 +28,8 @@ from datashape import discover, datetime_, date_, float64, int64, int_, string
 from datashape import float32
 from datashape.dispatch import dispatch
 
-from toolz import (partition_all, keyfilter, memoize, valfilter, identity,
-                   concat, curry, merge)
+from toolz import (partition_all, keyfilter, valfilter, identity, concat,
+                   curry, merge)
 from toolz.curried import pluck, map
 
 from ..compatibility import unicode
@@ -40,7 +40,7 @@ from ..resource import resource
 from ..chunks import Chunks
 from .csv import CSV
 
-base = int, float, datetime, date, bool, str, decimal.Decimal
+base = int, float, datetime, date, bool, str, decimal.Decimal, timedelta
 
 
 # http://docs.sqlalchemy.org/en/latest/core/types.html
