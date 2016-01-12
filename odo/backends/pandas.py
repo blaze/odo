@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import partial
 
 from datashape import discover
@@ -78,7 +78,7 @@ def convert_datetime_to_timestamp(dt, **kwargs):
     return pd.Timestamp(dt)
 
 
-@convert.register(pd.Timestamp, float)
+@convert.register((pd.Timestamp, pd.Timedelta), float)
 def nan_to_nat(fl, **kwargs):
     try:
         if np.isnan(fl):
@@ -89,6 +89,13 @@ def nan_to_nat(fl, **kwargs):
     raise NotImplementedError()
 
 
-@convert.register(pd.Timestamp, (pd.tslib.NaTType, type(None)))
+@convert.register((pd.Timestamp, pd.Timedelta), (pd.tslib.NaTType, type(None)))
 def convert_null_or_nat_to_nat(n, **kwargs):
     return pd.NaT
+
+
+@convert.register(pd.Timedelta, timedelta)
+def convert_timedelta_to_pd_timedelta(dt, **kwargs):
+    if dt is None:
+        return pd.NaT
+    return pd.Timedelta(dt)

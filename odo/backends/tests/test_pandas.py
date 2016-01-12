@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from datashape import discover, float64, dshape
 from datashape.util.testing import assert_dshape_equal
@@ -44,16 +44,30 @@ def test_datetime_to_timestamp():
 
 def test_nan_to_nat():
     assert odo(float('nan'), pd.Timestamp) is pd.NaT
+    assert odo(float('nan'), pd.Timedelta) is pd.NaT
     assert odo(np.nan, pd.Timestamp) is pd.NaT
+    assert odo(np.nan, pd.Timedelta) is pd.NaT
 
     with pytest.raises(NetworkXNoPath):
         # Check that only nan can be converted.
         odo(0.5, pd.Timestamp)
 
+    with pytest.raises(NetworkXNoPath):
+        # Check that only nan can be converted.
+        odo(0.5, pd.Timedelta)
+
 
 def test_none_to_nat():
     assert odo(None, pd.Timestamp) is pd.NaT
+    assert odo(None, pd.Timedelta) is pd.NaT
 
 
 def test_nat_to_nat():
     assert odo(pd.NaT, pd.Timestamp) is pd.NaT
+    assert odo(pd.NaT, pd.Timedelta) is pd.NaT
+
+
+def test_timedelta_to_pandas():
+    assert odo(timedelta(days=1), pd.Timedelta) == pd.Timedelta(days=1)
+    assert odo(timedelta(hours=1), pd.Timedelta) == pd.Timedelta(hours=1)
+    assert odo(timedelta(seconds=1), pd.Timedelta) == pd.Timedelta(seconds=1)
