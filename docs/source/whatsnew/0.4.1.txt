@@ -47,4 +47,4 @@ Bug Fixes
 Miscellaneous
 -------------
 
-None
+* Added an `all` extra requirement target when installing via `pip` (:issue:`398`).
