@@ -47,4 +47,6 @@ Bug Fixes
 Miscellaneous
 -------------
 
-* Added an `all` extra requirement target when installing via `pip` (:issue:`398`).
+* Added an `all` extra requirement target when installing via `pip`
+ (:issue:`398`).
+* Removed support for Spark 1.3 (:issue:`400`) based on consensus.
