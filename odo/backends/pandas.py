@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 from datetime import datetime, timedelta
 from functools import partial
 
-from datashape import discover
+from datashape import discover, Categorical
 from datashape import string, object_, datetime_, Option
 import datashape
 
@@ -16,22 +16,23 @@ from ..convert import convert
 possibly_missing = frozenset({string, datetime_})
 
 
-def dshape_from_pandas(dtype):
-    dshape = datashape.CType.from_numpy_dtype(dtype)
+def dshape_from_pandas(col):
+    if isinstance(col.dtype, pd.core.dtypes.CategoricalDtype):
+        return Categorical(col.cat.categories.tolist())
+    dshape = datashape.CType.from_numpy_dtype(col.dtype)
     dshape = string if dshape == object_ else dshape
     return Option(dshape) if dshape in possibly_missing else dshape
 
 
 @discover.register(pd.DataFrame)
 def discover_dataframe(df):
-    return len(df) * datashape.Record(
-        zip(df.columns, map(dshape_from_pandas, df.dtypes)),
-    )
+    return len(df) * datashape.Record([(k, dshape_from_pandas(df[k]))
+                                       for k in df.columns])
 
 
 @discover.register(pd.Series)
 def discover_series(s):
-    return len(s) * dshape_from_pandas(s.dtype)
+    return len(s) * dshape_from_pandas(s)
 
 
 def coerce_datetimes(df):
