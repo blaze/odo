@@ -391,7 +391,7 @@ def filter_kwargs(f, kwargs):
 def copydoc(from_, to):
     """Copies the docstring from one function to another.
 
-    Paramaters
+    Parameters
     ----------
     from_ : any
         The object to copy the docstring from.
