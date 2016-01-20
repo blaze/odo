@@ -77,6 +77,6 @@ def test_categorical_pandas():
     df = pd.DataFrame({'x': list('a'*5 + 'b'*5 + 'c'*5),
                        'y': range(15)}, columns=['x', 'y'])
     df.x = df.x.astype('category')
-    assert discover(df) == 15 * Record([('x', Categorical(['a', 'b', 'c'])),
-                                        ('y', int64)])
-    assert discover(df.x) == 15 * Categorical(['a', 'b', 'c'])
+    assert_dshape_equal(discover(df), 15 * Record([('x',
+                        Categorical(['a', 'b', 'c'])), ('y', int64)]))
+    assert_dshape_equal(discover(df.x), 15 * Categorical(['a', 'b', 'c']))
