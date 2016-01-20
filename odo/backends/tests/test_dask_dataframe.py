@@ -8,10 +8,24 @@ pytest.importorskip('pandas')
 import pandas as pd
 import pandas.util.testing as tm
 import numpy as np
+import datashape as ds
 
 import dask.dataframe as dd
 
-from odo import convert
+from odo import convert, discover
+
+
+def test_discover():
+    df = pd.DataFrame({'x': list('a'*5 + 'b'*5 + 'c'*5),
+                       'y': range(15),
+                       'z': list(map(float, range(15)))},
+                       columns=['x', 'y', 'z'])
+    df.x = df.x.astype('category')
+    ddf = dd.from_pandas(df, npartitions=2)
+    assert discover(ddf) == ds.var * ds.Record([('x', ds.Categorical(['a', 'b', 'c'])),
+                                         ('y', ds.int64),
+                                         ('z', ds.float64)])
+    assert discover(ddf.x) == ds.var * ds.Categorical(['a', 'b', 'c'])
 
 
 def test_convert():
