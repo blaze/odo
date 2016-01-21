@@ -57,8 +57,7 @@ def complex_csv(tmpdir):
 
 @pytest.fixture(scope='module')
 def pg_ip():
-    import os
-    return os.environ.get('PG_IP', 'localhost')
+    return os.environ.get('POSTGRES_IP', 'localhost')
 
 
 @pytest.fixture
