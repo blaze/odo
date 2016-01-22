@@ -109,7 +109,7 @@ def getbind(t, bind):
 
     if isinstance(bind, sa.engine.base.Engine):
         return bind
-    return sa.create_engine(bind)
+    return create_engine(bind)
 
 
 def batch(sel, chunksize=10000, bind=None):
@@ -213,25 +213,34 @@ def metadata_of_engine(engine, schema=None):
     return sa.MetaData(engine, schema=schema)
 
 
-def create_engine(uri, connect_args=frozenset(), **kwargs):
+def create_engine(uri, connect_args=None, **kwargs):
     """Creates a cached sqlalchemy engine.
 
     This differs from ``sa.create_engine``\s api by only accepting
-    ``uri`` positionally and by accepting ``connect_args`` as a frozenset of
-    tuples. This is done so that it may be memoized.
+    ``uri`` positionally.
 
     If the ``uri`` is an in memory sqlite database then this will not memioize
     the engine.
     """
-    connect_args = dict(connect_args)
     return (
-        sa.create_engine
+        _create_engine_hashable_args
         if uri == 'sqlite:///:memory:' else
-        memoized_create_engine
-    )(uri, connect_args=dict(connect_args), **kwargs)
+        _memoized_create_engine_hashable_args
+    )(uri, connect_args=frozenset((connect_args or {}).items()), **kwargs)
 
 
-memoized_create_engine = memoize(sa.create_engine)
+def _create_engine_hashable_args(uri, connect_args=None, **kwargs):
+    """Unpacks non-hashable args for ``sa.create_engine`` and puts that back
+    into whatever structure is expected.
+    """
+    return sa.create_engine(
+        uri,
+        connect_args=dict(connect_args or {}),
+        **kwargs
+    )
+
+
+_memoized_create_engine_hashable_args = memoize(_create_engine_hashable_args)
 
 
 @dispatch(sa.engine.base.Engine, str)
@@ -519,7 +528,7 @@ def resource_sql(uri, *args, **kwargs):
     engine = create_engine(
         uri,
         # roundtrip through a frozenset of tuples so we can cache the dict
-        connect_args=frozenset(kwargs.pop('connect_args', {}).items()),
+        connect_args=kwargs.pop('connect_args', {}),
         **filter_kwargs(sa.create_engine, kwargs)
     )
     ds = kwargs.pop('dshape', None)
