@@ -377,9 +377,8 @@ def test_engine_metadata_caching():
         b = resource(
             'sqlite:///' + fn + '::b', dshape=dshape('var * {y: int}'))
 
-        assert a.metadata is not b.metadata
-        assert engine is not a.bind
-        assert engine is not b.bind
+        assert a.metadata is b.metadata
+        assert engine is a.bind is b.bind
 
 
 def test_copy_one_table_to_a_foreign_engine():
