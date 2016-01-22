@@ -23,35 +23,46 @@ data = [(1, 2), (10, 20), (100, 200)]
 null_data = [(1, None), (10, 20), (100, 200)]
 
 
+@pytest.fixture(scope='module')
+def tmpdir():
+    return os.environ.get('POSTGRES_TMP_DIR', None)
+
+
 @pytest.yield_fixture
-def csv():
+def csv(tmpdir):
     s = '\n'.join(','.join(map(str, row)) for row in data).encode('utf8')
-    with tmpfile('.csv') as fn:
+    with tmpfile('.csv', dir=tmpdir) as fn:
         with open(fn, 'wb') as f:
             f.write(s)
         yield CSV(fn)
 
 
 @pytest.yield_fixture
-def encoding_csv():
+def encoding_csv(tmpdir):
     path = os.path.join(os.path.dirname(__file__), 'encoding.csv')
-    with tmpfile('.csv') as fn:
+    with tmpfile('.csv', dir=tmpdir) as fn:
         with open(fn, 'wb') as f, open(path, 'r') as g:
             f.write(g.read().encode('latin1'))
         yield CSV(fn)
 
 
 @pytest.yield_fixture
-def complex_csv():
+def complex_csv(tmpdir):
     path = os.path.join(os.path.dirname(__file__), 'dummydata.csv')
-    with tmpfile('.csv') as fn:
+    with tmpfile('.csv', dir=tmpdir) as fn:
         shutil.copy(path, fn)
+        os.chmod(fn, 0777)
         yield CSV(fn, has_header=True)
 
 
+@pytest.fixture(scope='module')
+def pg_ip():
+    return os.environ.get('POSTGRES_IP', 'localhost')
+
+
 @pytest.fixture
-def url():
-    return 'postgresql://postgres@localhost/test::%s' % next(names)
+def url(pg_ip):
+    return 'postgresql://postgres@{}/test::{}'.format(pg_ip, next(names))
 
 
 def sql_fixture(dshape, schema=None):
@@ -91,8 +102,8 @@ complex_sql = sql_fixture("""
 
 
 @pytest.yield_fixture
-def quoted_sql(csv):
-    url = 'postgresql://postgres@localhost/test::foo bar'
+def quoted_sql(pg_ip, csv):
+    url = 'postgresql://postgres@{}/test::foo bar'.format(pg_ip)
     try:
         t = resource(url, dshape=discover(csv))
     except sa.exc.OperationalError as e:
@@ -141,20 +152,20 @@ def test_complex_into(complex_csv, complex_sql):
     )
 
 
-def test_sql_to_csv(sql, csv):
+def test_sql_to_csv(sql, csv, tmpdir):
     sql, bind = sql
     sql = odo(csv, sql, bind=bind)
-    with tmpfile('.csv') as fn:
+    with tmpfile('.csv', dir=tmpdir) as fn:
         csv = odo(sql, fn, bind=bind)
         assert odo(csv, list) == data
         assert discover(csv).measure.names == discover(sql).measure.names
 
 
-def test_sql_select_to_csv(sql, csv):
+def test_sql_select_to_csv(sql, csv, tmpdir):
     sql, bind = sql
     sql = odo(csv, sql, bind=bind)
     query = sa.select([sql.c.a])
-    with tmpfile('.csv') as fn:
+    with tmpfile('.csv', dir=tmpdir) as fn:
         csv = odo(query, fn, bind=bind)
         assert odo(csv, list) == [(x,) for x, _ in data]
 
@@ -168,21 +179,21 @@ def test_invalid_escapechar(sql, csv):
         odo(csv, sql, escapechar='', bind=bind)
 
 
-def test_csv_output_is_not_quoted_by_default(sql, csv):
+def test_csv_output_is_not_quoted_by_default(sql, csv, tmpdir):
     sql, bind = sql
     sql = odo(csv, sql, bind=bind)
     expected = "a,b\n1,2\n10,20\n100,200\n"
-    with tmpfile('.csv') as fn:
+    with tmpfile('.csv', dir=tmpdir) as fn:
         csv = odo(sql, fn, bind=bind)
         with open(fn, 'rt') as f:
             result = f.read()
         assert result == expected
 
 
-def test_na_value(sql, csv):
+def test_na_value(sql, csv, tmpdir):
     sql, bind = sql
     sql = odo(null_data, sql, bind=bind)
-    with tmpfile('.csv') as fn:
+    with tmpfile('.csv', dir=tmpdir) as fn:
         csv = odo(sql, fn, na_value='NA', bind=bind)
         with open(csv.path, 'rt') as f:
             raw = f.read()
