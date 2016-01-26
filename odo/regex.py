@@ -3,16 +3,26 @@ from __future__ import absolute_import, division, print_function
 import re
 
 
+_pattern_type = type(re.compile(''))
+
+
 def normalize(r):
-    """
+    """Normalize a regular expression by ensuring that it is wrapped with:
+    '^' and '$'
 
-    >>> normalize('\d*')  # doctest: +SKIP
-    '^\d*$'
+    Parameters
+    ----------
+    r : str or Pattern
+        The pattern to normalize.
 
-    >>> normalize('^\d*$')  # doctest: +SKIP
-    '^\d*$'
+    Returns
+    -------
+    p : Pattern
+        The compiled regex.
     """
-    return '^' + r.lstrip('^').rstrip('$') + '$'
+    if isinstance(r, _pattern_type):
+        r = r.pattern
+    return re.compile('^' + r.lstrip('^').rstrip('$') + '$')
 
 
 class RegexDispatcher(object):
@@ -44,8 +54,8 @@ class RegexDispatcher(object):
     """
     def __init__(self, name):
         self.name = name
-        self.funcs = dict()
-        self.priorities = dict()
+        self.funcs = {}
+        self.priorities = {}
 
     def add(self, regex, func, priority=10):
         self.funcs[normalize(regex)] = func
@@ -58,7 +68,7 @@ class RegexDispatcher(object):
         return _
 
     def dispatch(self, s):
-        funcs = [func for r, func in self.funcs.items() if re.match(r, s)]
+        funcs = (func for r, func in self.funcs.items() if r.match(s))
         return max(funcs, key=self.priorities.get)
 
     def __call__(self, s, *args, **kwargs):
