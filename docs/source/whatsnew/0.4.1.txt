@@ -48,3 +48,6 @@ Miscellaneous
 -------------
 
 * Removed support for Spark 1.3 (:issue:`400`) based on consensus.
+* Compile the regex patterns once when adding to a
+  :class:`~odo.regex.RegexDispatcher` instead of calling :func:`re.match` with
+  strings (:issue:`413`).
