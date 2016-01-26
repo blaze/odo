@@ -31,26 +31,26 @@ class RegexDispatcher(object):
 
     >>> f = RegexDispatcher('f')
 
-    >>> f.register('\d*')               # doctest: +SKIP
+    >>> f.register('\d*')
     ... def parse_int(s):
     ...     return int(s)
 
-    >>> f.register('\d*\.\d*')          # doctest: +SKIP
+    >>> f.register('\d*\.\d*')
     ... def parse_float(s):
     ...     return float(s)
 
     Set priorities to break ties between multiple matches.
     Default priority is set to 10
 
-    >>> f.register('\w*', priority=9)   # doctest: +SKIP
+    >>> f.register('\w*', priority=9)
     ... def parse_str(s):
     ...     return s
 
-    >>> f('123')                        # doctest: +SKIP
-    123
+    >>> type(f('123'))
+    int
 
-    >>> f('123.456')                    # doctest: +SKIP
-    123.456
+    >>> type(f('123.456'))
+    float
     """
     def __init__(self, name):
         self.name = name
@@ -62,6 +62,22 @@ class RegexDispatcher(object):
         self.priorities[func] = priority
 
     def register(self, regex, priority=10):
+        """Register a new handler in this regex dispatcher.
+
+        Parameters
+        ----------
+        regex : str or Pattern
+            The pattern to match against.
+        priority : int, optional
+            The priority for this pattern. This is used to resolve ambigious
+            matches. The highest priority match wins.
+
+        Returns
+        -------
+        decorator : callable
+            A decorator that registers the function with this RegexDispatcher
+            but otherwise returns the function unchanged.
+        """
         def _(func):
             self.add(regex, func, priority)
             return func
@@ -76,4 +92,5 @@ class RegexDispatcher(object):
 
     @property
     def __doc__(self):
+        # take the min to give the docstring of the last fallback function
         return min(self.priorities.items(), key=lambda x: x[1])[0].__doc__
