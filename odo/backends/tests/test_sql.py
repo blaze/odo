@@ -5,20 +5,19 @@ pytest.importorskip('sqlalchemy')
 
 import os
 from decimal import Decimal
+from functools import partial
 
+import datashape
+from datashape import discover, dshape, float32, float64
 import numpy as np
 import pandas as pd
-
 import sqlalchemy as sa
-import toolz as tz
-from datashape import discover, dshape, float32, float64
-import datashape
 
+from odo import convert, append, resource, into, odo, chunks
 from odo.backends.sql import (
     dshape_to_table, create_from_datashape, dshape_to_alchemy
 )
 from odo.utils import tmpfile, raises
-from odo import convert, append, resource, discover, into, odo, chunks
 
 
 def test_resource():
@@ -377,9 +376,8 @@ def test_engine_metadata_caching():
         b = resource(
             'sqlite:///' + fn + '::b', dshape=dshape('var * {y: int}'))
 
-        assert a.metadata is not b.metadata
-        assert engine is not a.bind
-        assert engine is not b.bind
+        assert a.metadata is b.metadata
+        assert engine is a.bind is b.bind
 
 
 def test_copy_one_table_to_a_foreign_engine():
@@ -740,3 +738,22 @@ def test_append_empty_iterator_returns_table():
     with tmpfile('.db') as fn:
         t = resource('sqlite:///%s::x' % fn, dshape='var * {a: int32}')
         assert odo(iter([]), t) is t
+
+
+def test_pass_non_hashable_arg_to_create_engine():
+    with tmpfile('.db') as fn:
+        r = partial(
+            resource,
+            'sqlite:///%s::t' % fn,
+            connect_args={},
+            dshape='var * {a: int32}',
+        )
+        assert r() is r()
+
+    s = partial(
+        resource,
+        'sqlite:///:memory:::t',
+        connect_args={},
+        dshape='var * {a: int32}',
+    )
+    assert s() is not s()
