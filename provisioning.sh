@@ -4,7 +4,7 @@
 
 help(){
   echo " Usage:"
-  echo "   \$ provisioning.sh -t read_write_loc_on_mac [-lt mnt_on_linux_vm] start|stop|restart [mongo|posgres]"
+  echo "   \$ provisioning.sh -t read_write_loc_on_mac [-lt mnt_on_linux_vm] start|stop|restart [mongo|postgres]"
   echo "    If ACTION is not given [start|stop|restart], then start all backends"
   echo
   echo "  To stop all containers: "
