@@ -296,17 +296,14 @@ def make_avsc_object(ds, name="name", namespace="default", depth=0):
 
     Examples
     --------
-    >>> from pprint import pprint
-    >>> pprint(
-    ...   make_avsc_object(
-    ...    "var * {letter: string, value: ?int32}", name="my_record", namespace="com.blaze.odo"
-    ...   )
-    ... )
-    {'fields': [{'name': 'letter', 'type': 'string'},
-                {'name': 'value', 'type': ['null', 'int']}],
-     'name': 'my_record',
-     'namespace': 'com.blaze.odo',
-     'type': 'record'}
+    >>> test_dshape = "var * {letter: string, value: ?int32}"
+    >>> x = make_avsc_object(test_dshape, name="my_record", namespace="com.blaze.odo")
+    >>> x == {'fields': [{'name': 'letter', 'type': 'string'},
+    ...                {'name': 'value', 'type': ['null', 'int']}],
+    ...                 'name': 'my_record',
+    ...                 'namespace': 'com.blaze.odo',
+    ...                  'type': 'record'}
+    True
     >>> test_dshape = '''
     ...    var * {
     ...      field_1: int32,
@@ -317,24 +314,25 @@ def make_avsc_object(ds, name="name", namespace="default", depth=0):
     ...      nested_record: var * {field_1: int64, field_2: float32}
     ...    }
     ... '''
-    >>> pprint(make_avsc_object(test_dshape, name="my_record", namespace="com.blaze.odo"))
-    {'fields': [{'name': 'field_1', 'type': 'int'},
-                {'name': 'field_2', 'type': 'string'},
-                {'name': 'field_3', 'type': ['null', 'long']},
-                {'name': 'features', 'type': {'type': 'map', 'values': 'double'}},
-                {'name': 'words', 'type': {'items': 'string', 'type': 'array'}},
-                {'name': 'nested_record',
-                 'type': {'items': {'fields': [{'name': 'field_1',
-                                                'type': 'long'},
-                                               {'name': 'field_2',
-                                                'type': 'float'}],
-                                    'name': 'my_recordd0d1',
-                                    'namespace': 'com.blaze.odo',
-                                    'type': 'record'},
-                          'type': 'array'}}],
-     'name': 'my_record',
-     'namespace': 'com.blaze.odo',
-     'type': 'record'}
+    >>> x = make_avsc_object(test_dshape, name="my_record", namespace="com.blaze.odo")
+    >>> x == {'fields': [{'name': 'field_1', 'type': 'int'},
+    ...            {'name': 'field_2', 'type': 'string'},
+    ...            {'name': 'field_3', 'type': ['null', 'long']},
+    ...            {'name': 'features', 'type': {'type': 'map', 'values': 'double'}},
+    ...            {'name': 'words', 'type': {'items': 'string', 'type': 'array'}},
+    ...            {'name': 'nested_record',
+    ...             'type': {'items': {'fields': [{'name': 'field_1',
+    ...                                            'type': 'long'},
+    ...                                           {'name': 'field_2',
+    ...                                            'type': 'float'}],
+    ...                                'name': 'my_recordd0d1',
+    ...                                'namespace': 'com.blaze.odo',
+    ...                                'type': 'record'},
+    ...                      'type': 'array'}}],
+    ... 'name': 'my_record',
+    ... 'namespace': 'com.blaze.odo',
+    ... 'type': 'record'}
+    True
     """
 
     try:
