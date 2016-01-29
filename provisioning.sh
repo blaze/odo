@@ -98,26 +98,26 @@ MONGO_CMD="docker run -d -p 27017:27017 mongo"
 
 if [[ "$ACTION" == "start" || "$ACTION" == "restart" ]]
 then
-  # postgres is started or restarted
-  if [[ "$CONTAINER" == "postgres" || -z "$CONTAINER" ]]
+  # ensure TMP_DIR is defined
+  if [[ -z "$TMP_DIR" ]] 
   then
-    # ensure TMP_DIR is defined
-    if [[ -z "$TMP_DIR" ]] 
-    then
-      echo "$ACTION requires a read/write location via -t"
-      echo "optionally you can define mount point for for Linux VM or Windows WM"
-      exit
-    fi
+    echo "$ACTION requires a read/write location via -t"
+    echo "optionally you can define mount point for for Linux VM or Windows WM"
+    exit
+  fi
 
-    # WOULD be nice to exit if TMP_DIR is not world read/write but this is not working
-    ##PERM=`stat -f "%OLp" $TMP_DIR`
-    #echo "perm: $PERM"
-    #if [[ $PERM!="666" && $PERM!="777" ]]
-    #then
-    #  echo "$TMP_DIR needs world read/write permissions"
-    #  exit
-    #fi
+  # WOULD be nice to exit if TMP_DIR is not world read/write but this is not working
+  ##PERM=`stat -f "%OLp" $TMP_DIR`
+  #echo "perm: $PERM"
+  #if [[ $PERM!="666" && $PERM!="777" ]]
+  #then
+  #  echo "$TMP_DIR needs world read/write permissions"
+  #  exit
+  #fi
 
+  # postgres is started or restarted
+  if [[ "$CONTAINER" == "postgres" || "$CONTAINER" == "all" ]]
+  then
     # update postgres command
     POSTGRES_PRE="docker run -d -v $TMP_DIR:$TMP_DIR"
     POSTGRES_POST="-p 5432:5432 -e POSTGRES_DB=test -e POSTGRES_PASSWORD= postgres:9.3"
