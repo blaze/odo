@@ -5,6 +5,7 @@ import os
 import uuid
 import json
 import fastavro
+import six
 from avro import schema, datafile, io
 from avro.schema import AvroException
 from multipledispatch import dispatch
@@ -342,7 +343,7 @@ def make_avsc_object(ds, name="name", namespace="default", depth=0):
         raise ValueError("depth argument must be >= 0")
 
     #parse string to datashape object if necessary
-    if isinstance(ds, (str, unicode)):
+    if isinstance(ds, six.string_types) or isinstance(ds, six.text_type):
         ds = dshape(ds)
     if isinstance(ds, ct.DataShape):
         if depth>0:
