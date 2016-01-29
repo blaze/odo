@@ -51,7 +51,7 @@ def complex_csv(tmpdir):
     path = os.path.join(os.path.dirname(__file__), 'dummydata.csv')
     with tmpfile('.csv', dir=tmpdir) as fn:
         shutil.copy(path, fn)
-        os.chmod(fn, 0777)
+        os.chmod(fn, 0o777)
         yield CSV(fn, has_header=True)
 
 
