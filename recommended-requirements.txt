@@ -13,3 +13,4 @@ paramiko
 pywebhdfs
 boto
 avro
+fastavro

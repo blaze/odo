@@ -1,7 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
 import pytest
-schema = pytest.importorskip('avro.schema')
+
+import avro.schema as schema
+try:
+    from avro.schema import parse #Python 2.x
+except ImportError:
+    from avro.schema import Parse as parse #Python 3.x
 
 from collections import Iterator
 import pandas as pd
@@ -150,7 +155,7 @@ def test_require_schema_for_new_file():
         assert False
 
 def test_append_and_convert_round_trip(temp_output_path):
-    x = AVRO(temp_output_path, schema=schema.parse(test_schema_str))
+    x = AVRO(temp_output_path, schema=parse(test_schema_str))
     append(x, test_data)
     append(x, test_data)
     assert convert(list, x) == test_data * 2

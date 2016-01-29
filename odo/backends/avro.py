@@ -3,7 +3,8 @@ from __future__ import absolute_import, division, print_function
 import errno
 import os
 import uuid
-
+import json
+import fastavro
 from avro import schema, datafile, io
 from avro.schema import AvroException
 from multipledispatch import dispatch
@@ -16,6 +17,11 @@ from ..append import append
 from ..convert import convert
 from ..resource import resource
 from ..temp import Temp
+
+try:
+    from avro.schema import make_avsc_object as schema_from_dict #Python 2.x
+except ImportError:
+    from avro.schema import SchemaFromJSONData as schema_from_dict  #Python 3.x
 
 PRIMITIVE_TYPES_MAP = {
     'string': string,
@@ -91,7 +97,7 @@ class AVRO(object):
             self._schema = sch
 
     def __iter__(self):
-        return self.reader
+        return self.reader.__iter__()
 
     def next(self):
         return self.reader.next()
@@ -110,7 +116,7 @@ class AVRO(object):
         Extract writers schema embedded in an existing Avro file.
         """
         reader = self.reader
-        return schema.parse(self.reader.meta['avro.schema']) if reader else None
+        return schema_from_dict(self.reader.schema) if reader else None
 
     uri = property(lambda self: self._uri)
     codec = property(lambda self: self._codec)
@@ -124,11 +130,10 @@ class AVRO(object):
             return self._reader
         else:
             try:
-                rec_reader = io.DatumReader(readers_schema=self.schema)
-
-                df_reader = datafile.DataFileReader(
+                reader_schema = self.schema.to_json() if self.schema else None
+                df_reader = fastavro.reader(
                     open(self.uri, 'rb'),
-                    rec_reader
+                    reader_schema=reader_schema
                 )
 
                 return df_reader
@@ -168,7 +173,12 @@ class AVRO(object):
             rec_writer
         )
         #Check for embedded schema to ensure existing file is an avro file.
-        embedded_schema = schema.parse(df_writer.get_meta('avro.schema'))
+        try: #Python 2.x API
+            schema_str = df_writer.get_meta('avro.schema')
+        except AttributeError:  #Python 3.x API
+            schema_str = df_writer.GetMeta('avro.schema').decode("utf-8")
+
+        embedded_schema = schema_from_dict(json.loads(schema_str))
 
         #If writers_schema supplied, check for equality with embedded schema.
         if writers_schema:
@@ -198,11 +208,19 @@ class AVRO(object):
         avro.datafile.DataFileWriter
         """
         rec_writer = io.DatumWriter()
-        df_writer = datafile.DataFileWriter(
-            open(uri, 'wb'),
-            rec_writer,
-            writers_schema = sch
-        )
+        try: #Python 2.x API
+            df_writer = datafile.DataFileWriter(
+                open(uri, 'wb'),
+                rec_writer,
+                writers_schema = sch
+            )
+        except TypeError: #Python 3.x API
+            df_writer = datafile.DataFileWriter(
+                open(uri, 'wb'),
+                rec_writer,
+                writer_schema = sch
+            )
+
         return df_writer
 
     @property
