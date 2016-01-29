@@ -63,7 +63,7 @@ install:
   - pip install --upgrade git+git://github.com/blaze/dask.git#egg=dask-dev[complete]
   - if [ -n "$PANDAS_VERSION" ]; then pip install $PANDAS_VERSION; fi
   - if [[ $TRAVIS_PYTHON_VERSION == '3.4' || $TRAVIS_PYTHON_VERSION == '3.5' ]]; then pip install -U avro-python3; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.7']]; then pip install -U avro; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then pip install -U avro; fi
 
   # install pyspark
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' || $TRAVIS_PYTHON_VERSION == '3.4' ]]; then conda install spark=$SPARK_VERSION -c blaze -c https://conda.binstar.org/blaze/channel/dev -c anaconda-cluster; fi
