@@ -1,12 +1,11 @@
 #!/bin/sh
 
-echo "# Usage:"
-echo "# \$ eval \$(provisioning.sh)"
-echo
-
 TMP_DIR="$HOME/tmp"
 MONGO_DOCKER_CID=`docker run -d -p 27017:27017 mongo`
 POSTGRES_DOCKER_CID=`docker run -d -v $TMP_DIR:$TMP_DIR -p 5432:5432 -e POSTGRES_DB=test -e POSTGRES_PASSWORD= postgres:9.3`
+
+mkdir -p "$TMP_DIR"
+chmod 777 "$TMP_DIR"
 
 echo "export POSTGRES_IP="`docker-machine ip default`
 echo "export MONGO_IP="`docker-machine ip default`

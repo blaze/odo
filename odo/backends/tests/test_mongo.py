@@ -76,7 +76,7 @@ def test_discover_empty_db(db):
 
 
 def test_discover_db(bank, db):
-    assert set(discover(db).measure.names) == set(['bank'])
+    assert 'bank' in set(discover(db).measure.names)
 
 
 def test_resource_db(mongo_host_port):
