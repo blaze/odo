@@ -3,18 +3,47 @@
 # run script to start docker containers for postgres and mongo backends.
 
 help(){
-  echo " Usage:"
-  echo "   \$ provisioning.sh -t read_write_loc_on_mac [-lt mnt_on_linux_vm] start|stop|restart [mongo|postgres]"
-  echo "    If ACTION is not given [start|stop|restart], then start all backends"
+  echo "Usage:"
+  echo "   \$ provisioning.sh [-h] -t read_write_loc_on_mac [-lt mnt_on_linux_vm] start|stop|restart [mongo|postgres]"
   echo
-  echo "  To stop all containers: "
+  echo "Synopsis:"
+  echo "    Use this to manage docker containers for various backends used to test blaze eco-system. "
+  echo
+  echo "start|stop|restart"
+  echo "            Perform one of these actions for all backend docker containers. "
+  echo "            start|restart require [-t] be given. If this is not provided, then start all containers."
+  echo "            This is read/write location primarily for PostgresQL container; it is also used to write "
+  echo "            docker_info.txt which provides environment variables that must be set prior to running tests."
+  echo
+  echo "Available options"
+  echo
+  echo "-h|--help   Print this usage help"
+  echo
+  echo "-t|--tmp    Absolute path to read/write location. This must be world r+w. It is required for start|restart "
+  echo "            options. Postgres backend needs this for tests that write data to disc. Mongo tests do not "
+  echo "            use this; however, the script output a text file with config info when any backend is started. "
+  echo "            It is therefore required for all backends."
+  echo
+  echo "-lt|--linux_tmp"
+  echo "            When testing odo on Linux VM; the docker container needs map the TMP_DIR given by "
+  echo "            -t flag above to another mount point given by -lt. When running the tests on Linux VM, the "
+  echo "            docker containers will get this as the location to write data so docker must also have this "
+  echo "            as a mount point. The Linux VM should mount the host's TMP_DIR to this location so both docker "
+  echo "            and the VM point to the same location on the host."
+  echo
+  echo "mongo|postgres"
+  echo "            Specifies the docker container to which the action is to be applied. If this is not provided, "
+  echo "            the action applies to all backend containers."
+  echo
+  echo "Examples:"
+  echo "stop all containers: "
   echo "   \$ provisioning.sh stop"
   echo
-  echo "  start/restart requires -t option: "
-  echo "   \$ provisioning.sh -t ~/tmp"
+  echo "start/restart requires -t option: "
+  echo "   \$ provisioning.sh -t /Users/jsandhu/tmp"
   echo 
-  echo "  restart mongo: "
-  echo "   \$ provisioning.sh -t ~/tmp restart mongo"
+  echo "restart mongo: "
+  echo "   \$ provisioning.sh -t /Users/jsandhu/tmp restart mongo"
   echo 
   exit
 }
