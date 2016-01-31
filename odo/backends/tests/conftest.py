@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import pytest
 
@@ -26,3 +27,14 @@ def sqlctx(sc):
         if os.path.exists(logpath):
             assert os.path.isfile(logpath)
             os.remove(logpath)
+
+
+def pytest_addoption(parser):
+    parser.addoption("-W", "--winskip", action='store_true',
+                     help="skip tests with this marker in windows")
+
+
+def pytest_runtest_setup(item):
+    if ('winskip' in item.keywords and sys.platform.startswith('win') and
+	    (item.config.getoption('--winskip') or item.config.getoption('-W'))):
+        pytest.skip('skip test on windows')
