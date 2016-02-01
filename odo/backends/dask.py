@@ -4,9 +4,8 @@ from collections import Iterator
 import numpy as np
 import pandas as pd
 from datashape.dispatch import dispatch
-from datashape import from_numpy
+from datashape import from_numpy, var
 
-import dask
 from dask.array.core import Array, from_array
 from dask.bag.core import Bag
 import dask.bag as db
@@ -20,6 +19,12 @@ from ..utils import filter_kwargs
 @discover.register(Array)
 def discover_dask_array(a, **kwargs):
     return from_numpy(a.shape, a.dtype)
+
+
+@discover.register(dd.Series)
+@discover.register(dd.DataFrame)
+def discover_dask_dataframe(df):
+    return var * discover(df.head()).measure
 
 
 arrays = [np.ndarray]

@@ -115,12 +115,14 @@ def quoted_sql(pg_ip, csv):
             drop(t)
 
 
+@pytest.mark.winskip
 def test_simple_into(csv, sql):
     sql, bind = sql
     into(sql, csv, dshape=discover(sql), bind=bind)
     assert into(list, sql, bind=bind) == data
 
 
+@pytest.mark.winskip
 def test_append(csv, sql):
     sql, bind = sql
     into(sql, csv, bind=bind)
@@ -137,12 +139,14 @@ def test_tryexcept_into(csv, sql):
         into(sql, csv, quotechar="alpha", bind=bind)
 
 
+@pytest.mark.winskip
 def test_no_header_no_columns(csv, sql):
     sql, bind = sql
     into(sql, csv, bind=bind, dshape=discover(sql))
     assert into(list, sql, bind=bind) == data
 
 
+@pytest.mark.winskip
 def test_complex_into(complex_csv, complex_sql):
     complex_sql, bind = complex_sql
     # data from: http://dummydata.me/generate
@@ -152,6 +156,7 @@ def test_complex_into(complex_csv, complex_sql):
     )
 
 
+@pytest.mark.winskip
 def test_sql_to_csv(sql, csv, tmpdir):
     sql, bind = sql
     sql = odo(csv, sql, bind=bind)
@@ -161,6 +166,7 @@ def test_sql_to_csv(sql, csv, tmpdir):
         assert discover(csv).measure.names == discover(sql).measure.names
 
 
+@pytest.mark.winskip
 def test_sql_select_to_csv(sql, csv, tmpdir):
     sql, bind = sql
     sql = odo(csv, sql, bind=bind)
@@ -179,6 +185,7 @@ def test_invalid_escapechar(sql, csv):
         odo(csv, sql, escapechar='', bind=bind)
 
 
+@pytest.mark.winskip
 def test_csv_output_is_not_quoted_by_default(sql, csv, tmpdir):
     sql, bind = sql
     sql = odo(csv, sql, bind=bind)
@@ -190,6 +197,7 @@ def test_csv_output_is_not_quoted_by_default(sql, csv, tmpdir):
         assert result == expected
 
 
+@pytest.mark.winskip
 def test_na_value(sql, csv, tmpdir):
     sql, bind = sql
     sql = odo(null_data, sql, bind=bind)
@@ -222,11 +230,13 @@ def test_different_encoding(url, encoding_csv):
             drop(sql)
 
 
+@pytest.mark.winskip
 def test_schema(csv, sql_with_schema):
     sql_with_schema, bind = sql_with_schema
     assert odo(odo(csv, sql_with_schema, bind=bind), list, bind=bind) == data
 
 
+@pytest.mark.winskip
 def test_ugly_schema(csv, sql_with_ugly_schema):
     sql_with_ugly_schema, bind = sql_with_ugly_schema
     assert (
@@ -243,6 +253,7 @@ def test_schema_discover(sql_with_schema):
                           sql_with_schema.name)
 
 
+@pytest.mark.winskip
 def test_quoted_name(quoted_sql, csv):
     s = odo(csv, quoted_sql)
     t = odo(csv, list)
@@ -258,7 +269,6 @@ def test_path_of_reduction(sql):
 
 def test_drop_reflects_database_state(url):
     data = list(zip(range(5), range(1, 6)))
-    db, tablename = url.split('::')
 
     t = odo(data, url, dshape='var * {A: int64, B: int64}')
     assert t.exists()
