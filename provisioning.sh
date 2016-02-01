@@ -196,7 +196,9 @@ info_to_file () {
   echo "export MONGO_IP=`docker-machine ip default`" >> $INFO_FILE
   echo "export POSTGRES_TMP_DIR=$TMP_DIR" >> $INFO_FILE
   echo "export POSTGRES_TMP_DIR=$LINUX_TMP" >> $INFO_FILE
-
+  echo "# copy following to define env vars in windows cmd line" >> $INFO_FILE
+  echo "set POSTGRES_IP=`docker-machine ip default`" >> $INFO_FILE
+  echo "set MONGO_IP=`docker-machine ip default`" >> $INFO_FILE
   echo "\nSee $INFO_FILE to set env variables prior to running tests\n"
 }
 
