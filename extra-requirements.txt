@@ -1,0 +1,8 @@
+sqlalchemy >=0.8.0
+h5py
+pymongo >= 2.8, <3
+bcolz
+sas7bdat
+paramiko
+pywebhdfs
+boto
