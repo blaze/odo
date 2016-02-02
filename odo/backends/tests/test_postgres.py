@@ -17,6 +17,11 @@ from odo import odo, into, resource, drop, discover, convert
 from odo.utils import assert_allclose, tmpfile
 
 
+skip_no_rw_loc = \
+    pytest.mark.skipif(os.environ.get('POSTGRES_TMP_DIR') is None,
+                       reason=("Requires a read/write location defined by "
+                               "env var POSTGRES_TMP_DIR"))
+
 names = ('tbl%d' % i for i in itertools.count())
 new_schema = object()
 data = [(1, 2), (10, 20), (100, 200)]
@@ -115,14 +120,14 @@ def quoted_sql(pg_ip, csv):
             drop(t)
 
 
-@pytest.mark.winskip
+@skip_no_rw_loc
 def test_simple_into(csv, sql):
     sql, bind = sql
     into(sql, csv, dshape=discover(sql), bind=bind)
     assert into(list, sql, bind=bind) == data
 
 
-@pytest.mark.winskip
+@skip_no_rw_loc
 def test_append(csv, sql):
     sql, bind = sql
     into(sql, csv, bind=bind)
@@ -139,14 +144,14 @@ def test_tryexcept_into(csv, sql):
         into(sql, csv, quotechar="alpha", bind=bind)
 
 
-@pytest.mark.winskip
+@skip_no_rw_loc
 def test_no_header_no_columns(csv, sql):
     sql, bind = sql
     into(sql, csv, bind=bind, dshape=discover(sql))
     assert into(list, sql, bind=bind) == data
 
 
-@pytest.mark.winskip
+@skip_no_rw_loc
 def test_complex_into(complex_csv, complex_sql):
     complex_sql, bind = complex_sql
     # data from: http://dummydata.me/generate
@@ -156,7 +161,7 @@ def test_complex_into(complex_csv, complex_sql):
     )
 
 
-@pytest.mark.winskip
+@skip_no_rw_loc
 def test_sql_to_csv(sql, csv, tmpdir):
     sql, bind = sql
     sql = odo(csv, sql, bind=bind)
@@ -166,7 +171,7 @@ def test_sql_to_csv(sql, csv, tmpdir):
         assert discover(csv).measure.names == discover(sql).measure.names
 
 
-@pytest.mark.winskip
+@skip_no_rw_loc
 def test_sql_select_to_csv(sql, csv, tmpdir):
     sql, bind = sql
     sql = odo(csv, sql, bind=bind)
@@ -185,7 +190,7 @@ def test_invalid_escapechar(sql, csv):
         odo(csv, sql, escapechar='', bind=bind)
 
 
-@pytest.mark.winskip
+@skip_no_rw_loc
 def test_csv_output_is_not_quoted_by_default(sql, csv, tmpdir):
     sql, bind = sql
     sql = odo(csv, sql, bind=bind)
@@ -197,7 +202,7 @@ def test_csv_output_is_not_quoted_by_default(sql, csv, tmpdir):
         assert result == expected
 
 
-@pytest.mark.winskip
+@skip_no_rw_loc
 def test_na_value(sql, csv, tmpdir):
     sql, bind = sql
     sql = odo(null_data, sql, bind=bind)
@@ -230,13 +235,13 @@ def test_different_encoding(url, encoding_csv):
             drop(sql)
 
 
-@pytest.mark.winskip
+@skip_no_rw_loc
 def test_schema(csv, sql_with_schema):
     sql_with_schema, bind = sql_with_schema
     assert odo(odo(csv, sql_with_schema, bind=bind), list, bind=bind) == data
 
 
-@pytest.mark.winskip
+@skip_no_rw_loc
 def test_ugly_schema(csv, sql_with_ugly_schema):
     sql_with_ugly_schema, bind = sql_with_ugly_schema
     assert (
@@ -253,7 +258,7 @@ def test_schema_discover(sql_with_schema):
                           sql_with_schema.name)
 
 
-@pytest.mark.winskip
+@skip_no_rw_loc
 def test_quoted_name(quoted_sql, csv):
     s = odo(csv, quoted_sql)
     t = odo(csv, list)
