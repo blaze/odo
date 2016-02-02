@@ -14,10 +14,11 @@ from ..convert import convert
 
 
 possibly_missing = frozenset({string, datetime_})
+categorical = type(pd.Categorical.dtype)
 
 
 def dshape_from_pandas(col):
-    if isinstance(col.dtype, pd.core.dtypes.CategoricalDtype):
+    if isinstance(col.dtype, categorical):
         return Categorical(col.cat.categories.tolist())
     dshape = datashape.CType.from_numpy_dtype(col.dtype)
     dshape = string if dshape == object_ else dshape
