@@ -31,6 +31,9 @@ Improved Backends
 * Pandas backend now supports ``timedelta -> pd.TimeDelta``. This includes
   edges from ``None -> pd.NaT`` and ``NaT`` for ``pd.TimeDelta``
   (:issue:`394`).
+* Pandas backend now supports discover on categorical dtypes.
+* Added discover support for :class:`dask.dataframe.DataFrame` and
+  :class:`dask.dataframe.Series` objects.
 
 API Changes
 -----------
