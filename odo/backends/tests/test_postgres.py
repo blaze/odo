@@ -6,6 +6,7 @@ sa = pytest.importorskip('sqlalchemy')
 pytest.importorskip('psycopg2')
 
 import os
+import sys
 import itertools
 import shutil
 
@@ -18,7 +19,7 @@ from odo.utils import assert_allclose, tmpfile
 
 
 skip_no_rw_loc = \
-    pytest.mark.skipif(os.environ.get('POSTGRES_TMP_DIR') is None,
+    pytest.mark.skipif(sys.platform == 'win32' and os.environ.get('POSTGRES_TMP_DIR') is None,
                        reason=("Requires a read/write location defined by "
                                "env var POSTGRES_TMP_DIR"))
 
