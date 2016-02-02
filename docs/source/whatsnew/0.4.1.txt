@@ -54,3 +54,5 @@ Miscellaneous
 * Compile the regex patterns once when adding to a
   :class:`~odo.regex.RegexDispatcher` instead of calling :func:`re.match` with
   strings (:issue:`413`).
+* Added an ``all`` extra requirement target when installing via ``pip``
+  (:issue:`398`).
