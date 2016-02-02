@@ -114,7 +114,7 @@ def scala_set_to_set(ctx, x):
 
 @discover.register(SQLContext)
 def discover_sqlcontext(ctx):
-    table_names = sorted(list(map(str, ctx.tableNames())))
+    table_names = sorted(map(str, ctx.tableNames()))
     dshapes = zip(table_names, map(discover, map(ctx.table, table_names)))
     return datashape.DataShape(datashape.Record(dshapes))
 
