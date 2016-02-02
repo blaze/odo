@@ -53,12 +53,7 @@ def iterable_to_sql_context(ctx, seq, **kwargs):
 def register_table(ctx, srdd, name=None):
     if name is None:
         name = next(_names)
-    try:
-        # spark 1.3 API
-        ctx.registerDataFrameAsTable(srdd, name)
-    except AttributeError:
-        # spark 1.2 API
-        ctx.registerRDDAsTable(srdd, name)
+    ctx.registerDataFrameAsTable(srdd, name)
 
 
 @append.register(SQLContext, (JSONLines, Directory(JSONLines)))
@@ -119,14 +114,7 @@ def scala_set_to_set(ctx, x):
 
 @discover.register(SQLContext)
 def discover_sqlcontext(ctx):
-    try:
-        table_names = list(map(str, ctx.tableNames()))
-    except AttributeError:
-        java_names = ctx._ssql_ctx.catalog().tables().keySet()
-        table_names = list(scala_set_to_set(ctx, java_names))
-
-    table_names.sort()
-
+    table_names = sorted(map(str, ctx.tableNames()))
     dshapes = zip(table_names, map(discover, map(ctx.table, table_names)))
     return datashape.DataShape(datashape.Record(dshapes))
 

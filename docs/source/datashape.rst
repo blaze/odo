@@ -144,7 +144,7 @@ Learn More
 ----------
 
 DataShape is a separate project from ``odo``.  You can learn more about it
-at http://datashape.pydata.org/
+at http://datashape.readthedocs.org/en/latest/
 
 
-.. _DataShape: http://datashape.pydata.org/
+.. _DataShape: http://datashape.readthedocs.org/en/latest/

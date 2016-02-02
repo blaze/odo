@@ -29,11 +29,11 @@ from datashape import float32
 from datashape.dispatch import dispatch
 
 from toolz import (partition_all, keyfilter, valfilter, identity, concat,
-                   curry, merge)
+                   curry, merge, memoize)
 from toolz.curried import pluck, map
 
 from ..compatibility import unicode
-from ..utils import keywords, ignoring, iter_except, filter_kwargs, deprecated
+from ..utils import keywords, ignoring, iter_except, filter_kwargs
 from ..convert import convert, ooc_types
 from ..append import append
 from ..resource import resource
@@ -109,7 +109,7 @@ def getbind(t, bind):
 
     if isinstance(bind, sa.engine.base.Engine):
         return bind
-    return sa.create_engine(bind)
+    return create_engine(bind)
 
 
 def batch(sel, chunksize=10000, bind=None):
@@ -208,9 +208,39 @@ def discover_sqlalchemy_selectable(t):
     return var * Record(records)
 
 
-@deprecated(replacement=sa.MetaData)
+@memoize
 def metadata_of_engine(engine, schema=None):
     return sa.MetaData(engine, schema=schema)
+
+
+def create_engine(uri, connect_args=None, **kwargs):
+    """Creates a cached sqlalchemy engine.
+
+    This differs from ``sa.create_engine``\s api by only accepting
+    ``uri`` positionally.
+
+    If the ``uri`` is an in memory sqlite database then this will not memioize
+    the engine.
+    """
+    return (
+        _create_engine_hashable_args
+        if uri == 'sqlite:///:memory:' else
+        _memoized_create_engine_hashable_args
+    )(uri, connect_args=frozenset((connect_args or {}).items()), **kwargs)
+
+
+def _create_engine_hashable_args(uri, connect_args=None, **kwargs):
+    """Unpacks non-hashable args for ``sa.create_engine`` and puts that back
+    into whatever structure is expected.
+    """
+    return sa.create_engine(
+        uri,
+        connect_args=dict(connect_args or {}),
+        **kwargs
+    )
+
+
+_memoized_create_engine_hashable_args = memoize(_create_engine_hashable_args)
 
 
 @dispatch(sa.engine.base.Engine, str)
@@ -228,7 +258,7 @@ def discover(engine, tablename):
 
 @dispatch(sa.engine.base.Engine)
 def discover(engine):
-    return discover(sa.MetaData(engine))
+    return discover(metadata_of_engine(engine))
 
 
 @dispatch(sa.MetaData)
@@ -317,7 +347,7 @@ def create_from_datashape(o, ds, **kwargs):
 def create_from_datashape(engine, ds, schema=None, foreign_keys=None,
                           primary_key=None, **kwargs):
     assert isrecord(ds), 'datashape must be Record type, got %s' % ds
-    metadata = sa.MetaData(engine, schema=schema)
+    metadata = metadata_of_engine(engine, schema=schema)
     for name, sub_ds in ds[0].dict.items():
         t = dshape_to_table(name, sub_ds, metadata=metadata,
                             foreign_keys=foreign_keys,
@@ -495,8 +525,12 @@ def attach_schema(obj, schema):
 
 @resource.register(r'(.*sql.*|oracle|redshift)(\+\w+)?://.+')
 def resource_sql(uri, *args, **kwargs):
-    engine = sa.create_engine(uri, connect_args=kwargs.pop('connect_args', {}),
-                              **filter_kwargs(sa.create_engine, kwargs))
+    engine = create_engine(
+        uri,
+        # roundtrip through a frozenset of tuples so we can cache the dict
+        connect_args=kwargs.pop('connect_args', {}),
+        **filter_kwargs(sa.create_engine, kwargs)
+    )
     ds = kwargs.pop('dshape', None)
     schema = kwargs.pop('schema', None)
     foreign_keys = kwargs.pop('foreign_keys', None)
@@ -505,13 +539,16 @@ def resource_sql(uri, *args, **kwargs):
     # we were also given a table name
     if args and isinstance(args[0], (str, unicode)):
         table_name, args = args[0], args[1:]
-        metadata = sa.MetaData(engine, schema=schema)
+        metadata = metadata_of_engine(engine, schema=schema)
 
         with ignoring(sa.exc.NoSuchTableError):
             return attach_schema(
-                sa.Table(table_name, metadata, schema=schema,
-                         autoload_with=engine),
-                schema
+                sa.Table(
+                    table_name,
+                    metadata,
+                    autoload_with=engine,
+                ),
+                schema,
             )
         if ds:
             t = dshape_to_table(table_name, ds, metadata=metadata,
@@ -583,6 +620,7 @@ def drop(table, bind=None):
     table.drop(bind=bind, checkfirst=True)
     if table.exists(bind=bind):
         raise ValueError('table %r dropped but still exists' % table.name)
+    metadata_of_engine(bind, schema=table.schema).remove(table)
 
 
 @convert.register(pd.DataFrame, (sa.sql.Select, sa.sql.Selectable), cost=200.0)

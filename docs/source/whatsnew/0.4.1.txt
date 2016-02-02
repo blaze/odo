@@ -50,6 +50,9 @@ Bug Fixes
 Miscellaneous
 -------------
 
-* Added an `all` extra requirement target when installing via `pip`
+* Removed support for Spark 1.2 (:issue:`296`) and Spark 1.3 (:issue:`400`).
+* Compile the regex patterns once when adding to a
+  :class:`~odo.regex.RegexDispatcher` instead of calling :func:`re.match` with
+  strings (:issue:`413`).
+* Added an ``all`` extra requirement target when installing via ``pip``
   (:issue:`398`).
-* Removed support for Spark 1.3 (:issue:`400`) based on consensus.
