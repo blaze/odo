@@ -8,7 +8,6 @@ platform:
   - win-32
   - win-64
 engine:
-  - python=2.6
   - python=2.7
   - python=3.3
   - python=3.4
@@ -32,15 +31,4 @@ build_targets: conda
 
 notifications:
   email:
-    recipients: ['mrocklin@continuum.io', 'phillip.cloud@continuum.io']
-
----
-platform: win-32
-engine: python=2.6
-env: LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
-exclude: true
----
-platform: win-64
-engine: python=2.6
-env: LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
-exclude: true
+    recipients: ['ksmith@continuum.io', 'lransom@continuum.io']

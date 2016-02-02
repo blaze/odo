@@ -1,0 +1,58 @@
+Release |version|
+-----------------
+
+:Release: |version|
+:Date: TBD
+
+New Features
+------------
+
+None
+
+Experimental Features
+---------------------
+
+.. warning::
+
+   Experimental features are subject to change.
+
+None
+
+New Backends
+------------
+
+None
+
+Improved Backends
+-----------------
+
+* Sql backend now support coercing to and from :class:`datetime.timedelta`
+  objects (:issue:`394`).
+* Pandas backend now supports ``timedelta -> pd.TimeDelta``. This includes
+  edges from ``None -> pd.NaT`` and ``NaT`` for ``pd.TimeDelta``
+  (:issue:`394`).
+* Pandas backend now supports discover on categorical dtypes.
+* Added discover support for :class:`dask.dataframe.DataFrame` and
+  :class:`dask.dataframe.Series` objects.
+
+API Changes
+-----------
+
+None
+
+Bug Fixes
+---------
+
+* Fixed a bug in :func:`odo.backends.sql.append_iterator_to_table` where
+  ``None`` would be returned if the iterator was empty. This now correctly
+  returns the table (:issue:`395`).
+
+Miscellaneous
+-------------
+
+* Removed support for Spark 1.2 (:issue:`296`) and Spark 1.3 (:issue:`400`).
+* Compile the regex patterns once when adding to a
+  :class:`~odo.regex.RegexDispatcher` instead of calling :func:`re.match` with
+  strings (:issue:`413`).
+* Added an ``all`` extra requirement target when installing via ``pip``
+  (:issue:`398`).

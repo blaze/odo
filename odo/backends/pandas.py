@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import partial
 
-from datashape import discover
+from datashape import discover, Categorical
 from datashape import string, object_, datetime_, Option
 import datashape
 
@@ -14,24 +14,26 @@ from ..convert import convert
 
 
 possibly_missing = frozenset({string, datetime_})
+categorical = type(pd.Categorical.dtype)
 
 
-def dshape_from_pandas(dtype):
-    dshape = datashape.CType.from_numpy_dtype(dtype)
+def dshape_from_pandas(col):
+    if isinstance(col.dtype, categorical):
+        return Categorical(col.cat.categories.tolist())
+    dshape = datashape.CType.from_numpy_dtype(col.dtype)
     dshape = string if dshape == object_ else dshape
     return Option(dshape) if dshape in possibly_missing else dshape
 
 
 @discover.register(pd.DataFrame)
 def discover_dataframe(df):
-    return len(df) * datashape.Record(
-        zip(df.columns, map(dshape_from_pandas, df.dtypes)),
-    )
+    return len(df) * datashape.Record([(k, dshape_from_pandas(df[k]))
+                                       for k in df.columns])
 
 
 @discover.register(pd.Series)
 def discover_series(s):
-    return len(s) * dshape_from_pandas(s.dtype)
+    return len(s) * dshape_from_pandas(s)
 
 
 def coerce_datetimes(df):
@@ -78,7 +80,7 @@ def convert_datetime_to_timestamp(dt, **kwargs):
     return pd.Timestamp(dt)
 
 
-@convert.register(pd.Timestamp, float)
+@convert.register((pd.Timestamp, pd.Timedelta), float)
 def nan_to_nat(fl, **kwargs):
     try:
         if np.isnan(fl):
@@ -89,6 +91,13 @@ def nan_to_nat(fl, **kwargs):
     raise NotImplementedError()
 
 
-@convert.register(pd.Timestamp, (pd.tslib.NaTType, type(None)))
+@convert.register((pd.Timestamp, pd.Timedelta), (pd.tslib.NaTType, type(None)))
 def convert_null_or_nat_to_nat(n, **kwargs):
     return pd.NaT
+
+
+@convert.register(pd.Timedelta, timedelta)
+def convert_timedelta_to_pd_timedelta(dt, **kwargs):
+    if dt is None:
+        return pd.NaT
+    return pd.Timedelta(dt)

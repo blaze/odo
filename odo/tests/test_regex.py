@@ -1,22 +1,24 @@
 from __future__ import absolute_import, division, print_function
 
 from odo.regex import RegexDispatcher
+
 import re
+
 
 def test_regex_dispatcher():
     foo = RegexDispatcher('foo')
 
-    @foo.register('\d*', priority=9)
+    @foo.register(r'\d*', priority=9)
     def a(s):
         """ A's docstring """
         return int(s)
 
-    @foo.register('\D*')
+    @foo.register(re.compile(r'\D*'))
     def b(s):
         """ B's docstring """
         return s
 
-    @foo.register('0\d*', priority=11)
+    @foo.register(r'0\d*', priority=11)
     def c(s):
         """ C's docstring """
         return s
