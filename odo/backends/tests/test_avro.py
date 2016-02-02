@@ -148,11 +148,12 @@ def test_convert_avro_to_iterator(avrofile):
 def test_require_schema_for_new_file():
     try:
         x = AVRO("doesntexist.avro")
+        sch = x.schema
         assert False, "Previous line should throw an schema.AvroException"
     except schema.AvroException:
         assert True
-    except Exception:
-        assert False
+    except Exception as e:
+        assert False, "Expected AvroException, got exception of type %s" % str(type(e))
 
 def test_append_and_convert_round_trip(temp_output_path):
     x = AVRO(temp_output_path, schema=parse(test_schema_str))

@@ -94,12 +94,6 @@ class AVRO(object):
         self._schema = schema
         self._codec = codec
 
-        if not schema:
-            sch = self._get_writers_schema()
-            if sch is None:
-                raise AvroException("Couldn't extract writers schema from '{0}'.  User must provide a valid schema".format(uri))
-            self._schema = sch
-
     def __iter__(self):
         return self.reader.__iter__()
 
@@ -124,7 +118,15 @@ class AVRO(object):
 
     path = property(lambda self: self._path)
     codec = property(lambda self: self._codec)
-    schema = property(lambda self: self._schema)
+
+    @property
+    def schema(self):
+        if not self._schema:
+            sch = self._get_writers_schema()
+            if sch is None:
+                raise AvroException("Couldn't extract writers schema from '{0}'.  User must provide a valid schema".format(self.path))
+            self._schema = sch
+        return self._schema
 
     @property
     def reader(self):
@@ -134,7 +136,7 @@ class AVRO(object):
             return self._reader
         else:
             try:
-                reader_schema = self.schema.to_json() if self.schema else None
+                reader_schema = self._schema.to_json() if self._schema else None
                 df_reader = fastavro.reader(
                     open(self.path, 'rb'),
                     reader_schema=reader_schema
