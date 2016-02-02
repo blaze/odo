@@ -25,14 +25,14 @@ except ImportError:
     from avro.schema import SchemaFromJSONData as schema_from_dict  #Python 3.x
 
 PRIMITIVE_TYPES_MAP = {
+    'null': null,
+    'boolean': boolean,
     'string': string,
+    'bytes': int8,
     'int': int32,
     'long': int64,
-    'null': null,
     'double': float64,
     'float': float32,
-    'boolean': boolean,
-    'record': Record,
 }
 
 NAMED_TYPES_MAP = {
@@ -45,6 +45,9 @@ NAMED_TYPES_MAP = {
 COMPOUND_TYPES_MAP = {
     'array': Var,
     'map': Map,
+    'union': null, #TODO
+    'request': null, #TODO
+    'error_union': null, #TODO
 }
 
 
