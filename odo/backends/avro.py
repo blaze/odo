@@ -89,8 +89,8 @@ class AVRO(object):
         compression codec.  Valid values: 'null', 'deflate', 'snappy'
 
     """
-    def __init__(self, uri, schema=None, codec='null', **kwargs):
-        self._uri = uri
+    def __init__(self, path, schema=None, codec='null', **kwargs):
+        self._path = path
         self._schema = schema
         self._codec = codec
 
@@ -122,7 +122,7 @@ class AVRO(object):
         reader = self.reader
         return schema_from_dict(self.reader.schema) if reader else None
 
-    uri = property(lambda self: self._uri)
+    path = property(lambda self: self._path)
     codec = property(lambda self: self._codec)
     schema = property(lambda self: self._schema)
 
@@ -136,7 +136,7 @@ class AVRO(object):
             try:
                 reader_schema = self.schema.to_json() if self.schema else None
                 df_reader = fastavro.reader(
-                    open(self.uri, 'rb'),
+                    open(self.path, 'rb'),
                     reader_schema=reader_schema
                 )
 
@@ -150,7 +150,7 @@ class AVRO(object):
                 return None
 
     @staticmethod
-    def _get_append_writer(uri, writers_schema=None):
+    def _get_append_writer(uri, writers_schema=None, codec='null'):
         """
         Returns an isntance of avro.datafile.DataFileWriter for appending
         to an existing avro file at `uri`.  Does not take a writers schema,
@@ -174,7 +174,8 @@ class AVRO(object):
         rec_writer = io.DatumWriter()
         df_writer = datafile.DataFileWriter(
             open(uri, 'a+b'),
-            rec_writer
+            rec_writer,
+            codec=codec
         )
         #Check for embedded schema to ensure existing file is an avro file.
         try: #Python 2.x API
@@ -194,7 +195,7 @@ class AVRO(object):
         return df_writer
 
     @staticmethod
-    def _get_new_writer(uri, sch):
+    def _get_new_writer(uri, sch, codec='null'):
         """
         Returns an isntance of avro.datafile.DataFileWriter for writing
         to a new avro file at `uri`.
@@ -216,13 +217,15 @@ class AVRO(object):
             df_writer = datafile.DataFileWriter(
                 open(uri, 'wb'),
                 rec_writer,
-                writers_schema = sch
+                writers_schema = sch,
+                codec=codec
             )
         except TypeError: #Python 3.x API
             df_writer = datafile.DataFileWriter(
                 open(uri, 'wb'),
                 rec_writer,
-                writer_schema = sch
+                writer_schema = sch,
+                codec=codec
             )
 
         return df_writer
@@ -232,10 +235,10 @@ class AVRO(object):
         if hasattr(self, '_writer'):
             return self._writer
         else:
-            if os.path.exists(self.uri) and os.path.getsize(self.uri) > 0:
-                df_writer = self._get_append_writer(self.uri, self.schema)
+            if os.path.exists(self.path) and os.path.getsize(self.path) > 0:
+                df_writer = self._get_append_writer(self.path, self.schema, codec=self.codec)
             else:
-                df_writer = self._get_new_writer(self.uri, self.schema)
+                df_writer = self._get_new_writer(self.path, self.schema, codec=self.codec)
             self._writer = df_writer
         return df_writer
 
@@ -244,10 +247,9 @@ class AVRO(object):
             self._writer.close()
             del(self._writer)
 
-
 @resource.register('.+\.(avro)')
-def resource_avro(uri, schema=None, **kwargs):
-    return AVRO(uri, schema=schema, **kwargs)
+def resource_avro(uri, schema=None, codec='null', **kwargs):
+    return AVRO(uri, schema=schema, codec=codec, **kwargs)
 
 @dispatch(schema.RecordSchema)
 def discover_schema(sch):
