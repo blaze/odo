@@ -36,8 +36,3 @@ def test_convert_different_types(x, typ, expected):
     assert isinstance(y, typ)
     assert isinstance(convert(nd.array, y), nd.array)
     assert all(lhs == rhs for lhs, rhs in zip(y, expected))
-
-
-def test_convert_struct():
-    x = nd.array([('a', 1)], type='1 * {a: string, b: int32}')
-    assert convert(list, x) == [{'a': 'a', 'b': 1}]

@@ -6,6 +6,7 @@ sa = pytest.importorskip('sqlalchemy')
 pytest.importorskip('psycopg2')
 
 import os
+import sys
 import itertools
 import shutil
 
@@ -17,41 +18,57 @@ from odo import odo, into, resource, drop, discover, convert
 from odo.utils import assert_allclose, tmpfile
 
 
+skip_no_rw_loc = \
+    pytest.mark.skipif(sys.platform == 'win32' and os.environ.get('POSTGRES_TMP_DIR') is None,
+                       reason=("Requires a read/write location defined by "
+                               "env var POSTGRES_TMP_DIR"))
+
 names = ('tbl%d' % i for i in itertools.count())
 new_schema = object()
 data = [(1, 2), (10, 20), (100, 200)]
 null_data = [(1, None), (10, 20), (100, 200)]
 
 
+@pytest.fixture(scope='module')
+def tmpdir():
+    return os.environ.get('POSTGRES_TMP_DIR', None)
+
+
 @pytest.yield_fixture
-def csv():
+def csv(tmpdir):
     s = '\n'.join(','.join(map(str, row)) for row in data).encode('utf8')
-    with tmpfile('.csv') as fn:
+    with tmpfile('.csv', dir=tmpdir) as fn:
         with open(fn, 'wb') as f:
             f.write(s)
         yield CSV(fn)
 
 
 @pytest.yield_fixture
-def encoding_csv():
+def encoding_csv(tmpdir):
     path = os.path.join(os.path.dirname(__file__), 'encoding.csv')
-    with tmpfile('.csv') as fn:
+    with tmpfile('.csv', dir=tmpdir) as fn:
         with open(fn, 'wb') as f, open(path, 'r') as g:
             f.write(g.read().encode('latin1'))
         yield CSV(fn)
 
 
 @pytest.yield_fixture
-def complex_csv():
+def complex_csv(tmpdir):
     path = os.path.join(os.path.dirname(__file__), 'dummydata.csv')
-    with tmpfile('.csv') as fn:
+    with tmpfile('.csv', dir=tmpdir) as fn:
         shutil.copy(path, fn)
+        os.chmod(fn, 0o777)
         yield CSV(fn, has_header=True)
 
 
+@pytest.fixture(scope='module')
+def pg_ip():
+    return os.environ.get('POSTGRES_IP', 'localhost')
+
+
 @pytest.fixture
-def url():
-    return 'postgresql://postgres@localhost/test::%s' % next(names)
+def url(pg_ip):
+    return 'postgresql://postgres@{}/test::{}'.format(pg_ip, next(names))
 
 
 def sql_fixture(dshape, schema=None):
@@ -91,8 +108,8 @@ complex_sql = sql_fixture("""
 
 
 @pytest.yield_fixture
-def quoted_sql(csv):
-    url = 'postgresql://postgres@localhost/test::foo bar'
+def quoted_sql(pg_ip, csv):
+    url = 'postgresql://postgres@{}/test::foo bar'.format(pg_ip)
     try:
         t = resource(url, dshape=discover(csv))
     except sa.exc.OperationalError as e:
@@ -104,12 +121,14 @@ def quoted_sql(csv):
             drop(t)
 
 
+@skip_no_rw_loc
 def test_simple_into(csv, sql):
     sql, bind = sql
     into(sql, csv, dshape=discover(sql), bind=bind)
     assert into(list, sql, bind=bind) == data
 
 
+@skip_no_rw_loc
 def test_append(csv, sql):
     sql, bind = sql
     into(sql, csv, bind=bind)
@@ -126,12 +145,14 @@ def test_tryexcept_into(csv, sql):
         into(sql, csv, quotechar="alpha", bind=bind)
 
 
+@skip_no_rw_loc
 def test_no_header_no_columns(csv, sql):
     sql, bind = sql
     into(sql, csv, bind=bind, dshape=discover(sql))
     assert into(list, sql, bind=bind) == data
 
 
+@skip_no_rw_loc
 def test_complex_into(complex_csv, complex_sql):
     complex_sql, bind = complex_sql
     # data from: http://dummydata.me/generate
@@ -141,20 +162,22 @@ def test_complex_into(complex_csv, complex_sql):
     )
 
 
-def test_sql_to_csv(sql, csv):
+@skip_no_rw_loc
+def test_sql_to_csv(sql, csv, tmpdir):
     sql, bind = sql
     sql = odo(csv, sql, bind=bind)
-    with tmpfile('.csv') as fn:
+    with tmpfile('.csv', dir=tmpdir) as fn:
         csv = odo(sql, fn, bind=bind)
         assert odo(csv, list) == data
         assert discover(csv).measure.names == discover(sql).measure.names
 
 
-def test_sql_select_to_csv(sql, csv):
+@skip_no_rw_loc
+def test_sql_select_to_csv(sql, csv, tmpdir):
     sql, bind = sql
     sql = odo(csv, sql, bind=bind)
     query = sa.select([sql.c.a])
-    with tmpfile('.csv') as fn:
+    with tmpfile('.csv', dir=tmpdir) as fn:
         csv = odo(query, fn, bind=bind)
         assert odo(csv, list) == [(x,) for x, _ in data]
 
@@ -168,21 +191,23 @@ def test_invalid_escapechar(sql, csv):
         odo(csv, sql, escapechar='', bind=bind)
 
 
-def test_csv_output_is_not_quoted_by_default(sql, csv):
+@skip_no_rw_loc
+def test_csv_output_is_not_quoted_by_default(sql, csv, tmpdir):
     sql, bind = sql
     sql = odo(csv, sql, bind=bind)
     expected = "a,b\n1,2\n10,20\n100,200\n"
-    with tmpfile('.csv') as fn:
+    with tmpfile('.csv', dir=tmpdir) as fn:
         csv = odo(sql, fn, bind=bind)
         with open(fn, 'rt') as f:
             result = f.read()
         assert result == expected
 
 
-def test_na_value(sql, csv):
+@skip_no_rw_loc
+def test_na_value(sql, csv, tmpdir):
     sql, bind = sql
     sql = odo(null_data, sql, bind=bind)
-    with tmpfile('.csv') as fn:
+    with tmpfile('.csv', dir=tmpdir) as fn:
         csv = odo(sql, fn, na_value='NA', bind=bind)
         with open(csv.path, 'rt') as f:
             raw = f.read()
@@ -211,11 +236,13 @@ def test_different_encoding(url, encoding_csv):
             drop(sql)
 
 
+@skip_no_rw_loc
 def test_schema(csv, sql_with_schema):
     sql_with_schema, bind = sql_with_schema
     assert odo(odo(csv, sql_with_schema, bind=bind), list, bind=bind) == data
 
 
+@skip_no_rw_loc
 def test_ugly_schema(csv, sql_with_ugly_schema):
     sql_with_ugly_schema, bind = sql_with_ugly_schema
     assert (
@@ -232,6 +259,7 @@ def test_schema_discover(sql_with_schema):
                           sql_with_schema.name)
 
 
+@skip_no_rw_loc
 def test_quoted_name(quoted_sql, csv):
     s = odo(csv, quoted_sql)
     t = odo(csv, list)
@@ -247,7 +275,6 @@ def test_path_of_reduction(sql):
 
 def test_drop_reflects_database_state(url):
     data = list(zip(range(5), range(1, 6)))
-    db, tablename = url.split('::')
 
     t = odo(data, url, dshape='var * {A: int64, B: int64}')
     assert t.exists()
