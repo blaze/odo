@@ -86,9 +86,9 @@ def test_different_encoding():
         result = odo(sql, list)
 
     NULL = u''
-    if ('windows' in platform().lower() and
-        sys.version_info.major > 2):
-        NULL = None
+    # if ('windows' in platform().lower() and
+        # sys.version_info.major > 2):
+        # NULL = None
 
     expected = [(u'1958.001.500131-1A', 1, NULL, NULL, 899),
                 (u'1958.001.500156-6', 1, NULL, NULL, 899),
