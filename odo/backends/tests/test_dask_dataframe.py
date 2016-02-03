@@ -9,7 +9,7 @@ import pandas as pd
 import pandas.util.testing as tm
 import numpy as np
 import dask.dataframe as dd
-from datashape import var, Record, int64, float64, Categorical
+from datashape import var, Record, integral, float64, Categorical
 from datashape.util.testing import assert_dshape_equal
 
 from odo import convert, discover
@@ -24,7 +24,7 @@ def test_discover():
     ddf = dd.from_pandas(df, npartitions=2)
     assert_dshape_equal(discover(ddf),
                         var * Record([('x', Categorical(['a', 'b', 'c'])),
-                                            ('y', int64), ('z', float64)]))
+                                            ('y', integral), ('z', float64)]))
     assert_dshape_equal(discover(ddf.x), var * Categorical(['a', 'b', 'c']))
 
 

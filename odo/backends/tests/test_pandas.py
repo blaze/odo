@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from datetime import datetime, timedelta
 
-from datashape import discover, float64, dshape, Record, Categorical, int64
+from datashape import discover, float64, dshape, Record, Categorical, integral
 from datashape.util.testing import assert_dshape_equal
 from networkx import NetworkXNoPath
 import numpy as np
@@ -78,5 +78,5 @@ def test_categorical_pandas():
                        'y': range(15)}, columns=['x', 'y'])
     df.x = df.x.astype('category')
     assert_dshape_equal(discover(df), 15 * Record([('x',
-                        Categorical(['a', 'b', 'c'])), ('y', int64)]))
+                        Categorical(['a', 'b', 'c'])), ('y', integral)]))
     assert_dshape_equal(discover(df.x), 15 * Categorical(['a', 'b', 'c']))
