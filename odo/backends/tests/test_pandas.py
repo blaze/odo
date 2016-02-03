@@ -75,7 +75,8 @@ def test_timedelta_to_pandas():
 
 def test_categorical_pandas():
     df = pd.DataFrame({'x': list('a'*5 + 'b'*5 + 'c'*5),
-                       'y': range(15)}, columns=['x', 'y'])
+                       'y': np.arange(15, dtype=np.int64)},
+		      columns=['x', 'y'])
     df.x = df.x.astype('category')
     assert_dshape_equal(discover(df), 15 * Record([('x',
                         Categorical(['a', 'b', 'c'])), ('y', int64)]))

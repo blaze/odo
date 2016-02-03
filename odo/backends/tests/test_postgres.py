@@ -17,11 +17,13 @@ from odo.backends.sql import select_to_base
 from odo import odo, into, resource, drop, discover, convert
 from odo.utils import assert_allclose, tmpfile
 
+@pytest.fixture(scope='module')
+def pg_ip():
+    return os.environ.get('POSTGRES_IP', 'localhost')
 
 skip_no_rw_loc = \
-    pytest.mark.skipif(sys.platform == 'win32' and os.environ.get('POSTGRES_TMP_DIR') is None,
-                       reason=("Requires a read/write location defined by "
-                               "env var POSTGRES_TMP_DIR"))
+    pytest.mark.skipif(pg_ip() != 'localhost',
+                       reason=("Skipping tests with remote PG server (%s)" % pg_ip()))
 
 names = ('tbl%d' % i for i in itertools.count())
 new_schema = object()
@@ -59,11 +61,6 @@ def complex_csv(tmpdir):
         shutil.copy(path, fn)
         os.chmod(fn, 0o777)
         yield CSV(fn, has_header=True)
-
-
-@pytest.fixture(scope='module')
-def pg_ip():
-    return os.environ.get('POSTGRES_IP', 'localhost')
 
 
 @pytest.fixture
