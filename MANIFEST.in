@@ -2,6 +2,7 @@ recursive-include odo *.py
 recursive-include docs *.rst
 
 include requirements.txt
+include extra-requirements.txt
 include setup.py
 include README.rst
 include LICENSE
