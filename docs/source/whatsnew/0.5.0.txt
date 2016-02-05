@@ -1,0 +1,46 @@
+Release |version|
+-----------------
+
+:Release: |version|
+:Date: TBD
+
+New Features
+------------
+
+None
+
+Experimental Features
+---------------------
+
+.. warning::
+
+   Experimental features are subject to change.
+
+None
+
+New Backends
+------------
+
+None
+
+Improved Backends
+-----------------
+
+None
+
+API Changes
+-----------
+
+None
+
+Bug Fixes
+---------
+
+None
+
+Miscellaneous
+-------------
+
+* Removed DyND backend in conjunction with Blaze's removal of same.  This was
+  done on the recommendation of the DyND developers.  DyND will be
+  re-incorporated into Odo once it reaches its 1.0 release.
