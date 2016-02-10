@@ -36,8 +36,6 @@ with ignoring(ImportError):
 with ignoring(ImportError):
     from .backends.pytables import PyTables
 with ignoring(ImportError):
-    from .backends.dynd import nd
-with ignoring(ImportError):
     from .backends import sql
 with ignoring(ImportError):
     from .backends import mongo

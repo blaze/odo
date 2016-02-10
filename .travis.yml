@@ -48,7 +48,6 @@ install:
   - conda create -n odo python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy
   - conda install -n odo h5py pip cython bcolz coverage networkx toolz multipledispatch
   - conda install -n odo pytables paramiko boto bokeh pymysql
-  # - conda install -n odo dynd-python -c dynd/channel/dev
   - if [ -n "$PANDAS_VERSION" ]; then conda remove -n odo pandas; fi
   - source activate odo
 
