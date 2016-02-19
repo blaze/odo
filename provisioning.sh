@@ -4,7 +4,7 @@
 
 help(){
   echo "Usage:"
-  echo "   \$ provisioning.sh [-h] -t read_write_loc_on_mac [-lt mnt_on_linux_vm] start|stop|restart [mongo|postgres]"
+  echo "   \$ provisioning.sh [-h] -t read_write_loc_on_mac [-lt mnt_on_linux_vm][-m additiona_mount_point] start|stop|restart [mongo|postgres]"
   echo
   echo "Synopsis:"
   echo "    Use this to manage docker containers for various backends used to test blaze eco-system. "
@@ -31,6 +31,10 @@ help(){
   echo "            as a mount point. The Linux VM should mount the host's TMP_DIR to this location so both docker "
   echo "            and the VM point to the same location on the host."
   echo
+  echo "-m|--mnt"   Additional mount point for docker. Primarily used to find data for loading into DB. For
+  echo "            instance, if blaze project is in HOME_DIR, then adding -m ~/blaze/blaze/examples/data allows "
+  echo "            the postgres to read data running tests that load data into DB from here. "
+  echo
   echo "mongo|postgres"
   echo "            Specifies the docker container to which the action is to be applied. If this is not provided, "
   echo "            the action applies to all backend containers."
@@ -50,6 +54,7 @@ help(){
 
 # default action applies to all containers
 CONTAINER=all
+MNT_DIR=()
 
 # process command line arguments
 while [[ $# > 0 ]]
@@ -69,6 +74,11 @@ do
       # TMP_DIR is required if start/restart and postgres.
       # Easiest to use it w/ flag for now
       TMP_DIR="$2"; 
+      shift;;
+
+    -m|--mnt)
+      # additional read only mount points primarily used for finding data to load into DB - only postgres right now
+      MNT_DIR+=("$2");
       shift;;
 
     start|stop|restart)
@@ -125,6 +135,11 @@ then
     then
       POSTGRES_PRE="$POSTGRES_PRE -v $TMP_DIR:$LINUX_TMP"
     fi
+    # add additional mount points
+    for m in "${MNT_DIR[@]}"
+    do
+      POSTGRES_PRE="$POSTGRES_PRE -v $m:$m"
+    done
     POSTGRES_CMD="$POSTGRES_PRE $POSTGRES_POST"
   fi
 fi
