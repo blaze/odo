@@ -36,7 +36,8 @@ None
 Bug Fixes
 ---------
 
-None
+* Fixed an issue whereby column names from SQLAlchemy would not be a standard
+  string type (:issue:`433`).
 
 Miscellaneous
 -------------

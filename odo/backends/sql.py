@@ -199,13 +199,31 @@ def discover_sqlalchemy_column(c):
 
 @discover.register(sa.sql.FromClause)
 def discover_sqlalchemy_selectable(t):
-    ordering = dict((c, i) for i, c in enumerate(c for c in t.columns.keys()))
-    records = list(sum([discover(c).parameters[0] for c in t.columns], ()))
-    fkeys = [discover(fkey, t, parent_measure=Record(records))
+    ordering = {str(c): i for i, c in enumerate(c for c in t.columns.keys())}
+    record = list(_process_columns(t.columns))
+    fkeys = [discover(fkey, t, parent_measure=Record(record))
              for fkey in t.foreign_keys]
     for name, column in merge(*fkeys).items():
-        records[ordering[name]] = (name, column)
-    return var * Record(records)
+        record[ordering[name]] = (name, column)
+    return var * Record(record)
+
+
+def _process_columns(columns):
+    """Process the dshapes of the columns of a table.
+
+    Parameters
+    ----------
+    columns : iterable[column]
+        The columns to process.
+
+    Yields
+    ------
+    record_entry : tuple[str, dshape]
+        A record entry containing the name and type of each column.
+    """
+    for col in columns:
+        (name, dtype), = discover(col).fields
+        yield str(name), dtype
 
 
 @memoize
