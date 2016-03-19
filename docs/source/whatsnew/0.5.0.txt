@@ -7,7 +7,9 @@ Release |version|
 New Features
 ------------
 
-None
+* For conversions that go through chunked pandas DataFrames, adding the
+  keyword `add_index=True` will append a unique index column onto the data.
+  Otherwise, the index will likely repeat each chunk.
 
 Experimental Features
 ---------------------
