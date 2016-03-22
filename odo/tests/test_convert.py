@@ -3,7 +3,8 @@ from __future__ import absolute_import, division, print_function
 import pytest
 from odo.convert import (convert, list_to_numpy, iterator_to_numpy_chunks,
                          dataframe_to_chunks_dataframe, numpy_to_chunks_numpy,
-                         chunks_dataframe_to_dataframe)
+                         chunks_dataframe_to_dataframe,
+                         iterator_to_DataFrame_chunks)
 from odo.chunks import chunks
 from datashape import discover, dshape
 from collections import Iterator
@@ -228,7 +229,17 @@ def test_pandas_and_chunks_pandas():
     assert len(list(c)) == 2
 
     df2 = chunks_dataframe_to_dataframe(c)
-    assert str(df2) == str(df)
+    tm.assert_frame_equal(df, df2)
+
+
+def test_iterator_to_DataFrame_chunks():
+    data = ((0, 1), (2, 3), (4, 5), (6, 7))
+    df1 = pd.DataFrame(list(data))
+    df2 = iterator_to_DataFrame_chunks(data, chunksize=2, add_index=True)
+    df2 = pd.concat(df2, axis=0)
+    tm.assert_frame_equal(df1, df2)
+    df2 = convert(pd.DataFrame, data, chunksize=2, add_index=True)
+    tm.assert_almost_equal(df1, df2)
 
 
 def test_recarray():

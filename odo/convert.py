@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 import pandas as pd
 from datashape.predicates import isscalar
-from toolz import concat, partition_all
+from toolz import concat, partition_all, compose
 from collections import Iterator, Iterable
 import datashape
 from datashape import discover
@@ -206,6 +206,12 @@ def iterator_to_numpy_chunks(seq, chunksize=1024, **kwargs):
 @convert.register(chunks(pd.DataFrame), Iterator, cost=10.0)
 def iterator_to_DataFrame_chunks(seq, chunksize=1024, **kwargs):
     seq2 = partition_all(chunksize, seq)
+
+    if kwargs.get('add_index'):
+        mkindex = _add_index
+    else:
+        mkindex = _ignore_index
+
     try:
         first, rest = next(seq2), seq2
     except StopIteration:
@@ -213,12 +219,28 @@ def iterator_to_DataFrame_chunks(seq, chunksize=1024, **kwargs):
             yield convert(pd.DataFrame, [], **kwargs)
     else:
         df = convert(pd.DataFrame, first, **kwargs)
+        df1, n1 = mkindex(df, 0)
 
         def _():
-            yield df
+            n = n1
+            yield df1
             for i in rest:
-                yield convert(pd.DataFrame, i, **kwargs)
+                df = convert(pd.DataFrame, i, **kwargs)
+                df, n = mkindex(df, n)
+                yield df
     return chunks(pd.DataFrame)(_)
+
+
+def _ignore_index(df, start):
+    return df, start
+
+
+def _add_index(df, start, _idx_type=getattr(pd, 'RangeIndex',
+                                            compose(pd.Index, np.arange))):
+    stop = start + len(df)
+    idx = _idx_type(start=start, stop=stop)
+    df.index = idx
+    return df, stop
 
 
 @convert.register(tuple, np.record)
