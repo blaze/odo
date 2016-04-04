@@ -133,6 +133,9 @@ def append_urlX_to_X(target, source, **kwargs):
         with open(target.path, 'wb') as fp:
             for chunk in iter(curry(r.read, chunk_size), ''):
                 fp.write(chunk)
+                # NOTE: `HTTPResponse.read` returns b'' indefinitely once it is
+                # finished, so we have to explicitly test for an empty `chunk`
+                # and break to exit this loop.
                 if not chunk:
                     break
             return target
