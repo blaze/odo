@@ -35,10 +35,8 @@ def test_url_resource():
 
 
 def test_small_chunk_size():
-    url_csv = resource(iris_url)
-    normal = convert(Temp(CSV), url_csv)
-    url_csv.chunk_size = 1
-    small_chunk = convert(Temp(CSV), url_csv)
+    normal = convert(Temp(CSV), resource(iris_url))
+    small_chunk = convert(Temp(CSV), resource(iris_url, chunk_size=1))
     with open(normal.path, 'rb') as fn:
         normal_data = fn.read()
     with open(small_chunk.path, 'rb') as fn:
