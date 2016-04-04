@@ -34,6 +34,17 @@ def test_url_resource():
     assert isinstance(csv, URL(CSV))
 
 
+def test_small_chunk_size():
+    normal = convert(Temp(CSV), resource(iris_url))
+    small_chunk = convert(Temp(CSV), resource(iris_url, chunk_size=1))
+    with open(normal.path, 'rb') as fn:
+        normal_data = fn.read()
+    with open(small_chunk.path, 'rb') as fn:
+        small_chunk_data = fn.read()
+    assert normal_data == small_chunk_data
+
+
+
 def test_sample_different_line_counts():
     with sample(resource(iris_url), lines=10) as fn:
         with open(fn, 'r') as f:

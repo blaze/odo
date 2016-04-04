@@ -40,6 +40,8 @@ Bug Fixes
 
 * Fixed an issue whereby column names from SQLAlchemy would not be a standard
   string type (:issue:`433`).
+* Fixed a bug with ``URL(CSV)`` resources when downloading to ensure all data
+  is downloaded completely (:issue:`439`).
 
 Miscellaneous
 -------------
