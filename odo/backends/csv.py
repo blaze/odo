@@ -333,11 +333,6 @@ def discover_csv(c, nrows=1000, **kwargs):
     df = csv_to_dataframe(c, nrows=nrows, **kwargs)
     df = coerce_datetimes(df)
 
-    if (list(df.columns) != list(range(len(df.columns))) and
-            any(re.match(r'^[-\d_]*$', c) is not None for c in df.columns)):
-        df = csv_to_dataframe(c, chunksize=50, has_header=False).get_chunk()
-        df = coerce_datetimes(df)
-
     columns = [str(c) if not isinstance(c, (str, unicode)) else c
                for c in df.columns]
     df.columns = [c.strip() for c in columns]
