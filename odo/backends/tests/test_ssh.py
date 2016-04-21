@@ -27,8 +27,8 @@ except socket.error:
     pytest.skip('Could not connect')
 except paramiko.PasswordRequiredException as e:
     pytest.skip(str(e))
-except paramiko.SSHException as e:
-    pytest.skip(str(e))
+except paramiko.SSHException:
+    pytest.skip('Could not connect')
 
 
 def test_resource():
