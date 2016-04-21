@@ -32,10 +32,10 @@ requirements:
 test:
   requires:
     - pytest
-    - h5py # [not win]
-    - pytables >=3.0.0 # [not win]
+    - h5py
+    - pytables >=3.0.0
     - sqlalchemy >=0.8.0
-    - bcolz # [not win]
+    - bcolz
     - pymongo >=2.8,<3 # [not (py35 or win)]
     - dask
     - paramiko # [not win]
