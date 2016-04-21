@@ -29,6 +29,8 @@ except paramiko.PasswordRequiredException as e:
     pytest.skip(str(e))
 except paramiko.SSHException:
     pytest.skip('Could not connect')
+except TypeError:
+    pytest.skip('Could not connect')
 
 
 def test_resource():
