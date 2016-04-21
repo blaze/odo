@@ -27,9 +27,13 @@ except socket.error:
     pytest.skip('Could not connect')
 except paramiko.PasswordRequiredException as e:
     pytest.skip(str(e))
-except paramiko.SSHException:
-    pytest.skip('Could not connect')
+except paramiko.SSHException as e:
+    pytest.skip(str(e))
 except TypeError:
+    # NOTE: This is a workaround for paramiko version 1.16.0 on Python 3.4,
+    # that raises a TypeError due to improper indexing internally into
+    # dict_keys when a ConnectionRefused error is raised.
+    # KWS 2016-04-21.
     pytest.skip('Could not connect')
 
 
