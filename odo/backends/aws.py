@@ -156,7 +156,7 @@ def resource_s3_csv(uri, **kwargs):
 def resource_s3_csv_glob(uri, **kwargs):
     con = get_s3_connection()
     result = urlparse(uri)
-    bucket = con.get_bucket(result.netloc)
+    bucket = con.get_bucket(result.netloc, validate=False)
     key = result.path.lstrip('/')
 
     all_keys = bucket.list(prefix=key.split('*')[0])
