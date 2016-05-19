@@ -1,8 +1,8 @@
 Release 0.3.3
--------------
+=============
 
 :Release: 0.3.3
-:Date: July 7th, 2015
+:Date: July 7, 2015
 
 New Backends
 ------------
