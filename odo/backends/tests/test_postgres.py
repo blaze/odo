@@ -281,8 +281,8 @@ def test_quoted_name(quoted_sql, csv):
 
 def test_path_of_reduction(sql):
     sql, bind = sql
-    result = convert.path(sa.select([sa.func.sum(sql.c.a)]), float)
-    expected = [(sa.sql.Select, float, select_to_base)]
+    result = list(convert.path(sa.select([sa.func.sum(sql.c.a)]), float))
+    expected = [(sa.sql.Select, float, select_to_base, 200)]
     assert result == expected
 
 

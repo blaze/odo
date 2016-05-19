@@ -5,6 +5,7 @@ import re
 import subprocess
 import sys
 import decimal
+import warnings
 
 from operator import attrgetter
 from itertools import chain
@@ -305,13 +306,22 @@ def discover(metadata):
         try:
             pairs.append([name, discover(table)])
         except sa.exc.CompileError as e:
-            print("Can not discover type of table %s.\n" % name +
-                  "SQLAlchemy provided this error message:\n\t%s" % e.message +
-                  "\nSkipping.")
+            warnings.warn(
+                "Can not discover type of table {name}.\n"
+                "SQLAlchemy provided this error message:\n\t{msg}"
+                "\nSkipping.".format(
+                    name=name,
+                    msg=e.message,
+                ),
+                stacklevel=3,
+            )
         except NotImplementedError as e:
-            print("Blaze does not understand a SQLAlchemy type.\n"
-                  "Blaze provided the following error:\n\t%s" % "\n\t".join(e.args) +
-                  "\nSkipping.")
+            warnings.warn(
+                "Odo does not understand a SQLAlchemy type.\n"
+                "Odo provided the following error:\n\t{msg}"
+                "\nSkipping.".format(msg="\n\t".join(e.args)),
+                stacklevel=3,
+            )
     return DataShape(Record(pairs))
 
 
