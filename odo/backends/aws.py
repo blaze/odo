@@ -25,13 +25,12 @@ from ..utils import tmpfile, ext, sample, filter_kwargs, copydoc
 
 
 @memoize
-def get_s3_connection(aws_access_key_id=None,
-                      aws_secret_access_key=None,
-                      anon=False, **kwargs):
+def get_s3_connection(aws_access_key_id=None, aws_secret_access_key=None,
+                      anon=False, profile_name=None, **kwargs):
     import boto
 
-    if 'profile_name' in kwargs:
-        return boto.connect_s3(profile_name=kwargs['profile_name'])
+    if profile_name:
+        return boto.connect_s3(profile_name=profile_name)
 
     cfg = boto.Config()
 
