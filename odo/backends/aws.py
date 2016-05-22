@@ -78,6 +78,7 @@ class _S3(object):
                                         **kwargs)
         try:
             bucket = self.s3.get_bucket(self.bucket,
+                                        validate=False,
                                         **filter_kwargs(self.s3.get_bucket,
                                                         kwargs))
         except boto.exception.S3ResponseError:
