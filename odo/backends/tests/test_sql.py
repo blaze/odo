@@ -278,6 +278,24 @@ def test_discover_oracle_intervals(freq):
     assert discover(t) == dshape('var * {dur: ?timedelta[unit="%s"]}' % freq)
 
 
+def test_mssql_types():
+    typ = sa.dialects.mssql.BIT()
+    t = sa.Table('t', sa.MetaData(), sa.Column('bit', typ))
+    assert_dshape_equal(discover(t), dshape('var * {bit: ?bool}'))
+    typ = sa.dialects.mssql.DATETIMEOFFSET()
+    t = sa.Table('t', sa.MetaData(), sa.Column('dt', typ))
+    assert_dshape_equal(discover(t), dshape('var * {dt: ?string}'))
+    typ = sa.dialects.mssql.MONEY()
+    t = sa.Table('t', sa.MetaData(), sa.Column('money', typ))
+    assert_dshape_equal(discover(t), dshape('var * {money: ?float64}'))
+    typ = sa.dialects.mssql.SMALLMONEY()
+    t = sa.Table('t', sa.MetaData(), sa.Column('money', typ))
+    assert_dshape_equal(discover(t), dshape('var * {money: ?float32}'))
+    typ = sa.dialects.mssql.UNIQUEIDENTIFIER()
+    t = sa.Table('t', sa.MetaData(), sa.Column('uuid', typ))
+    assert_dshape_equal(discover(t), dshape('var * {uuid: ?string}'))
+
+
 def test_create_from_datashape():
     engine = sa.create_engine('sqlite:///:memory:')
     ds = dshape('''{bank: var * {name: string, amount: int},

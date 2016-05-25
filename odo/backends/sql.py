@@ -18,6 +18,7 @@ from sqlalchemy import inspect
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy import event
 from sqlalchemy.schema import CreateSchema
+from sqlalchemy.dialects import mssql
 
 from multipledispatch import MDNotImplementedError
 
@@ -84,6 +85,11 @@ revtypes.update({
     sa.Float: float64,
     sa.Float(precision=24): float32,
     sa.Float(precision=53): float64,
+    mssql.BIT: datashape.bool_,
+    mssql.DATETIMEOFFSET: string,
+    mssql.MONEY: float64,
+    mssql.SMALLMONEY: float32,
+    mssql.UNIQUEIDENTIFIER: string
 })
 
 # interval types are special cased in discover_typeengine so remove them from
@@ -172,7 +178,7 @@ def discover_typeengine(typ):
     if isinstance(typ, (sa.NUMERIC, sa.DECIMAL)):
         return datashape.Decimal(precision=typ.precision, scale=typ.scale)
     if isinstance(typ, (sa.String, sa.Unicode)):
-        return datashape.String(typ.length, typ.collation)
+        return datashape.String(typ.length, 'U8')
     else:
         for k, v in revtypes.items():
             if isinstance(k, type) and (isinstance(typ, k) or
