@@ -281,19 +281,19 @@ def test_discover_oracle_intervals(freq):
 def test_mssql_types():
     typ = sa.dialects.mssql.BIT()
     t = sa.Table('t', sa.MetaData(), sa.Column('bit', typ))
-    assert discover(t) == dshape('var * {bit: ?bool}')
+    assert_dshape_equal(discover(t), dshape('var * {bit: ?bool}'))
     typ = sa.dialects.mssql.DATETIMEOFFSET()
     t = sa.Table('t', sa.MetaData(), sa.Column('dt', typ))
-    assert discover(t) == dshape('var * {dt: ?string}')
+    assert_dshape_equal(discover(t), dshape('var * {dt: ?string}'))
     typ = sa.dialects.mssql.MONEY()
     t = sa.Table('t', sa.MetaData(), sa.Column('money', typ))
-    assert discover(t) == dshape('var * {money: ?float64}')
+    assert_dshape_equal(discover(t), dshape('var * {money: ?float64}'))
     typ = sa.dialects.mssql.SMALLMONEY()
     t = sa.Table('t', sa.MetaData(), sa.Column('money', typ))
-    assert discover(t) == dshape('var * {money: ?float32}')
+    assert_dshape_equal(discover(t), dshape('var * {money: ?float32}'))
     typ = sa.dialects.mssql.UNIQUEIDENTIFIER()
     t = sa.Table('t', sa.MetaData(), sa.Column('uuid', typ))
-    assert discover(t) == dshape('var * {uuid: ?string}')
+    assert_dshape_equal(discover(t), dshape('var * {uuid: ?string}'))
 
 
 def test_create_from_datashape():
