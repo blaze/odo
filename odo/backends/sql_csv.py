@@ -181,8 +181,7 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
 
 try:
     import boto
-    from odo.backends.aws import S3
-    from redshift_sqlalchemy.dialect import CopyCommand
+    from sqlalchemy_redshift.dialect import CopyCommand
 except ImportError:
     pass
 else:
@@ -198,7 +197,7 @@ else:
 
         compression = getattr(element, 'compression', '').upper() or None
         cmd = CopyCommand(
-            table=element.element,
+            to=element.element,
             data_location=element.csv.path,
             access_key_id=aws_access_key_id,
             secret_access_key=aws_secret_access_key,
