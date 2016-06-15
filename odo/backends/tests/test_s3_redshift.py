@@ -8,7 +8,7 @@ pytestmark = pytest.mark.skipif(sys.platform == 'win32',
 sa = pytest.importorskip('sqlalchemy')
 boto = pytest.importorskip('boto')
 pytest.importorskip('psycopg2')
-pytest.importorskip('redshift_sqlalchemy')
+pytest.importorskip('sqlalchemy_redshift')
 
 from contextlib import closing
 import json
