@@ -33,6 +33,7 @@ test:
   requires:
     - avro # [py27]
     - avro-python3 # [not py27]
+    - fastavro
     - pytest
     - h5py
     - pytables >=3.0.0
