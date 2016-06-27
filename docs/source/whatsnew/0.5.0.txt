@@ -1,0 +1,51 @@
+Release |version|
+-----------------
+
+:Release: |version|
+:Date: TBD
+
+New Features
+------------
+
+* For conversions that go through chunked pandas DataFrames, adding the
+  keyword `add_index=True` will append a unique index column onto the data.
+  Otherwise, the index will likely repeat each chunk.
+
+Experimental Features
+---------------------
+
+.. warning::
+
+   Experimental features are subject to change.
+
+None
+
+New Backends
+------------
+
+None
+
+Improved Backends
+-----------------
+
+None
+
+API Changes
+-----------
+
+None
+
+Bug Fixes
+---------
+
+* Fixed an issue whereby column names from SQLAlchemy would not be a standard
+  string type (:issue:`433`).
+* Fixed a bug with ``URL(CSV)`` resources when downloading to ensure all data
+  is downloaded completely (:issue:`439`).
+
+Miscellaneous
+-------------
+
+* Removed DyND backend in conjunction with Blaze's removal of same.  This was
+  done on the recommendation of the DyND developers.  DyND will be
+  re-incorporated into Odo once it reaches its 1.0 release.

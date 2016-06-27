@@ -17,7 +17,7 @@ from odo import convert, discover
 
 def test_discover():
     df = pd.DataFrame({'x': list('a'*5 + 'b'*5 + 'c'*5),
-                       'y': range(15),
+                       'y': np.arange(15, dtype=np.int64),
                        'z': list(map(float, range(15)))},
                        columns=['x', 'y', 'z'])
     df.x = df.x.astype('category')

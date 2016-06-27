@@ -131,9 +131,9 @@ def append_urlX_to_X(target, source, **kwargs):
     with closing(urlopen(source.url, timeout=kwargs.pop('timeout', None))) as r:
         chunk_size = 16 * source.chunk_size
         with open(target.path, 'wb') as fp:
-            for chunk in iter(curry(r.read, chunk_size), ''):
+            for chunk in iter(curry(r.read, chunk_size), b''):
                 fp.write(chunk)
-                return target
+            return target
 
 
 @convert.register(Temp(TextFile), (Temp(URL(TextFile)), URL(TextFile)))

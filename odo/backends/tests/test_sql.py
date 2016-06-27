@@ -9,6 +9,7 @@ from functools import partial
 
 import datashape
 from datashape import discover, dshape, float32, float64
+from datashape.util.testing import assert_dshape_equal
 import numpy as np
 import pandas as pd
 import sqlalchemy as sa
@@ -18,6 +19,8 @@ from odo.backends.sql import (
     dshape_to_table, create_from_datashape, dshape_to_alchemy
 )
 from odo.utils import tmpfile, raises
+
+from six import string_types
 
 
 def test_resource():
@@ -86,10 +89,10 @@ def test_discover():
                  sa.Column('name', sa.String),
                  sa.Column('amount', sa.Integer),
                  sa.Column('timestamp', sa.DateTime, primary_key=True))
-
-    assert discover(s) == \
-        dshape('var * {name: ?string, amount: ?int32, timestamp: datetime}')
-
+    ds = dshape('var * {name: ?string, amount: ?int32, timestamp: datetime}')
+    assert_dshape_equal(discover(s), ds)
+    for name in ds.measure.names:
+        assert isinstance(name, string_types)
 
 def test_discover_numeric_column():
     assert discover(sa.String()) == datashape.string
@@ -147,6 +150,8 @@ def test_select_to_iterator():
 
     result = convert(list, sel3, dshape=discover(t))
     assert type(result[0]) is tuple
+    for res in result:
+        assert isinstance(res[0], string_types)
 
 
 def test_discovery_engine():
@@ -271,6 +276,24 @@ def test_discover_oracle_intervals(freq):
                                            second_precision=prec.get(freq, 0))
     t = sa.Table('t', sa.MetaData(), sa.Column('dur', typ))
     assert discover(t) == dshape('var * {dur: ?timedelta[unit="%s"]}' % freq)
+
+
+def test_mssql_types():
+    typ = sa.dialects.mssql.BIT()
+    t = sa.Table('t', sa.MetaData(), sa.Column('bit', typ))
+    assert_dshape_equal(discover(t), dshape('var * {bit: ?bool}'))
+    typ = sa.dialects.mssql.DATETIMEOFFSET()
+    t = sa.Table('t', sa.MetaData(), sa.Column('dt', typ))
+    assert_dshape_equal(discover(t), dshape('var * {dt: ?string}'))
+    typ = sa.dialects.mssql.MONEY()
+    t = sa.Table('t', sa.MetaData(), sa.Column('money', typ))
+    assert_dshape_equal(discover(t), dshape('var * {money: ?float64}'))
+    typ = sa.dialects.mssql.SMALLMONEY()
+    t = sa.Table('t', sa.MetaData(), sa.Column('money', typ))
+    assert_dshape_equal(discover(t), dshape('var * {money: ?float32}'))
+    typ = sa.dialects.mssql.UNIQUEIDENTIFIER()
+    t = sa.Table('t', sa.MetaData(), sa.Column('uuid', typ))
+    assert_dshape_equal(discover(t), dshape('var * {uuid: ?string}'))
 
 
 def test_create_from_datashape():

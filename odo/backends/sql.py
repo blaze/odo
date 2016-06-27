@@ -18,6 +18,7 @@ from sqlalchemy import inspect
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy import event
 from sqlalchemy.schema import CreateSchema
+from sqlalchemy.dialects import mssql
 
 from multipledispatch import MDNotImplementedError
 
@@ -84,6 +85,11 @@ revtypes.update({
     sa.Float: float64,
     sa.Float(precision=24): float32,
     sa.Float(precision=53): float64,
+    mssql.BIT: datashape.bool_,
+    mssql.DATETIMEOFFSET: string,
+    mssql.MONEY: float64,
+    mssql.SMALLMONEY: float32,
+    mssql.UNIQUEIDENTIFIER: string
 })
 
 # interval types are special cased in discover_typeengine so remove them from
@@ -172,7 +178,7 @@ def discover_typeengine(typ):
     if isinstance(typ, (sa.NUMERIC, sa.DECIMAL)):
         return datashape.Decimal(precision=typ.precision, scale=typ.scale)
     if isinstance(typ, (sa.String, sa.Unicode)):
-        return datashape.String(typ.length, typ.collation)
+        return datashape.String(typ.length, 'U8')
     else:
         for k, v in revtypes.items():
             if isinstance(k, type) and (isinstance(typ, k) or
@@ -199,13 +205,31 @@ def discover_sqlalchemy_column(c):
 
 @discover.register(sa.sql.FromClause)
 def discover_sqlalchemy_selectable(t):
-    ordering = dict((c, i) for i, c in enumerate(c for c in t.columns.keys()))
-    records = list(sum([discover(c).parameters[0] for c in t.columns], ()))
-    fkeys = [discover(fkey, t, parent_measure=Record(records))
+    ordering = {str(c): i for i, c in enumerate(c for c in t.columns.keys())}
+    record = list(_process_columns(t.columns))
+    fkeys = [discover(fkey, t, parent_measure=Record(record))
              for fkey in t.foreign_keys]
     for name, column in merge(*fkeys).items():
-        records[ordering[name]] = (name, column)
-    return var * Record(records)
+        record[ordering[name]] = (name, column)
+    return var * Record(record)
+
+
+def _process_columns(columns):
+    """Process the dshapes of the columns of a table.
+
+    Parameters
+    ----------
+    columns : iterable[column]
+        The columns to process.
+
+    Yields
+    ------
+    record_entry : tuple[str, dshape]
+        A record entry containing the name and type of each column.
+    """
+    for col in columns:
+        (name, dtype), = discover(col).fields
+        yield str(name), dtype
 
 
 @memoize

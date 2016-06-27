@@ -3,16 +3,23 @@ from __future__ import absolute_import, division, print_function
 import pytest
 pymongo = pytest.importorskip('pymongo')
 
+import os
 from odo import discover, convert, append, resource, dshape, odo
 from toolz import pluck
 from copy import deepcopy
 from bson.objectid import ObjectId
 
+@pytest.fixture(scope='module')
+def mongo_host_port():
+    import os
+    return (os.environ.get('MONGO_IP', 'localhost'),
+            os.environ.get('MONGO_PORT', 27017))
 
 @pytest.fixture(scope='module')
-def conn():
+def conn(mongo_host_port):
+    host, port = mongo_host_port
     try:
-        return pymongo.MongoClient()
+        return pymongo.MongoClient(host=host, port=port)
     except pymongo.errors.ConnectionFailure:
         pytest.skip('No mongo server running')
 
@@ -69,21 +76,22 @@ def test_discover_empty_db(db):
 
 
 def test_discover_db(bank, db):
-    assert set(discover(db).measure.names) == set(['system.indexes', 'bank'])
+    assert 'bank' in set(discover(db).measure.names)
 
 
-def test_resource_db():
-    db = resource('mongodb://localhost:27017/_test_db')
+def test_resource_db(mongo_host_port):
+    db = resource('mongodb://{}:{}/_test_db'.format(*mongo_host_port))
     assert db.name == '_test_db'
     assert discover(db).measure.names == []
 
 
-def test_resource_collection():
-    coll = resource('mongodb://localhost:27017/db::mycoll')
+def test_resource_collection(mongo_host_port):
+    host, port = mongo_host_port
+    coll = resource('mongodb://{}:{}/db::mycoll'.format(*mongo_host_port))
     assert coll.name == 'mycoll'
     assert coll.database.name == 'db'
-    assert coll.database.connection.host == 'localhost'
-    assert coll.database.connection.port == 27017
+    assert coll.database.connection.host == host
+    assert coll.database.connection.port == port
 
 
 def test_append_convert(empty_bank, raw_bank):

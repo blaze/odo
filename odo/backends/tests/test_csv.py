@@ -254,6 +254,15 @@ def test_header_disagrees_with_dshape():
             'name', 'bal']
 
 
+def test_header_mix_str_digits():
+    ds = datashape.dshape('''var * {"On- or Off- Budget": ?string,
+                                    "1990": ?string}''')
+    with filetext('On- or Off- Budget,1990\nOn Budget,-628\nOff budget,"5,962"\n') as fn:
+        csv = CSV(fn, has_header=True)
+        df = convert(pd.DataFrame, csv)
+        assert discover(csv).measure == ds.measure
+
+
 def test_raise_errors_quickly_on_into_chunks_dataframe():
     with filetext('name,val\nAlice,100\nBob,foo', extension='csv') as fn:
         ds = datashape.dshape('var * {name: string, val: int}')
