@@ -6,3 +6,5 @@ sas7bdat
 paramiko
 pywebhdfs
 boto
+elasticsearch > 2
+elasticsearch-dsl > 2
