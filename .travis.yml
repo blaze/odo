@@ -36,6 +36,9 @@ services:
     - mongodb
     - mysql
 
+before_install:
+  - curl -O https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-2.3.4.deb && sudo dpkg -i --force-confnew elasticsearch-2.3.4.deb && sudo service elasticsearch restart
+
 install:
   # Install conda
   - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
