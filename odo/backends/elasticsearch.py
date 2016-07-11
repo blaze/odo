@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 
 import json
 import re
-import warnings
 from collections import Iterator
 
 import elasticsearch
@@ -25,8 +24,8 @@ class DocumentCollection(Index):
     Parametrized ElasticSearch Index
     """
 
-    def __init__(self, name, doc_type, using='default'):
-        super(DocumentCollection, self).__init__(name=name, using=using)
+    def __init__(self, index_name, doc_type, using='default'):
+        super(DocumentCollection, self).__init__(name=index_name, using=using)
         self._doc_type = doc_type
 
     def search(self):
@@ -37,7 +36,22 @@ class DocumentCollection(Index):
         )
 
     def delete(self, **kwargs):
-        warnings.warn('Deletion of specific document type is unsupported from ES 2.x, dropping the whole index')
+        """
+        Delete implementation for ES2
+        Similar to https://www.elastic.co/guide/en/elasticsearch/plugins/current/delete-by-query-usage.html
+        
+        """
+        doctype_ids = (document.meta.id for document in self.search().fields([]).scan())
+        helpers.bulk(self.connection,
+                     ({
+                          '_op_type': 'delete',
+                          '_index': self._name,
+                          '_type': self._doc_type,
+                          '_id': i,
+                      } for i in doctype_ids),
+                     chunk_size=1024)
+
+    def delete_index(self, **kwargs):
         super(DocumentCollection, self).delete(**kwargs)
 
     def __repr__(self):

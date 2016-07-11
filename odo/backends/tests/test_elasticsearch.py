@@ -32,25 +32,28 @@ def conn(elastic_host_port):
 
 @pytest.yield_fixture
 def doc_collection(conn):
-    dc = DocumentCollection(name='test_', doc_type='bank', using=conn)
+    dc = DocumentCollection(index_name='test_', doc_type='bank', using=conn)
     try:
         dc.create()
         yield dc
-    except es.ElasticSearchException:
-        dc.delete()
+    except es.ElasticsearchException:
+        dc.delete_index()
         yield dc
     finally:
-        dc.delete()
+        dc.delete_index()
 
 
 @pytest.yield_fixture
 def empty_bank(conn):
-    dc = DocumentCollection(name='test_empty_', doc_type='bank', using=conn)
+    dc = DocumentCollection(index_name='test_empty_', doc_type='bank', using=conn)
     try:
         dc.create()
         yield dc
+    except es.ElasticsearchException:
+        dc.delete_index()
+        yield dc
     finally:
-        dc.delete()
+        dc.delete_index()
 
 
 @pytest.fixture
@@ -71,8 +74,8 @@ def bank(doc_collection, raw_bank):
         time.sleep(SMALL_SLEEP_UNTIL_DOCUMENTS_AVAILABLE_FOR_QUERYING)
         yield doc_collection
     finally:
-        print('Collection will be dropped with entire index')
-        pass
+        doc_collection.delete()
+        time.sleep(SMALL_SLEEP_UNTIL_DOCUMENTS_AVAILABLE_FOR_QUERYING)
 
 
 ds = dshape('var * {name: string, amount: int}')
