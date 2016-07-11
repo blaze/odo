@@ -31,9 +31,7 @@ addons:
 services:
     - mongodb
     - mysql
-
-before_install:
-  - curl -O https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-2.3.4.deb && sudo dpkg -i --force-confnew elasticsearch-2.3.4.deb && sudo service elasticsearch restart
+    - elasticsesarch
 
 install:
   # Install conda

@@ -1,9 +1,7 @@
 import time
 
 import pytest
-from bson import ObjectId
 from datashape import dshape
-from odo import convert
 from odo import odo, resource, discover, append
 from odo.backends.elasticsearch import DocumentCollection
 from toolz import pluck
@@ -102,4 +100,3 @@ def test_append_convert(empty_bank, raw_bank):
     assert set(odo(empty_bank, list, dshape=ds)) == set(list(
         pluck(ds.measure.names, raw_bank)
     ))
-
