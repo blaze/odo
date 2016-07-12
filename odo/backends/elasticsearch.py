@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-import json
 import re
 from collections import Iterator
 
@@ -60,7 +59,7 @@ class DocumentCollection(Index):
             host=host['host'], port=host['port'], index=self._doc_type, doctype=self._name)
 
     def bulk_insert(self, documents_iter, chunksize=1024):
-        bulk_iter = ({'_type': self._doc_type, '_index': self._name, '_source': json.dumps(d)} for d in documents_iter)
+        bulk_iter = ({'_type': self._doc_type, '_index': self._name, '_source': d} for d in documents_iter)
         helpers.bulk(self.connection, bulk_iter, chunk_size=chunksize)
 
     def head(self, n):
@@ -162,6 +161,7 @@ def resource_elasticsearch(uri, doctype=None, **kwargs):
 
 
 def _resource_elasticsearch(conn_info_dict, doctype):
+    assert doctype, 'Using the elasticsearch backend without a doctype is not supported!'
     auth_info = None
     if conn_info_dict.get('user'):  # need to authenticate
         auth_info = (conn_info_dict['user'], conn_info_dict['pass'])
