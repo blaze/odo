@@ -1,0 +1,45 @@
+Release 0.5.1
+-----------------
+
+:Release: 0.5.1
+:Date: TBD
+
+New Features
+------------
+
+None
+
+Experimental Features
+---------------------
+
+.. warning::
+
+   Experimental features are subject to change.
+
+None
+
+New Backends
+------------
+
+None
+
+Improved Backends
+-----------------
+
+None
+
+API Changes
+-----------
+
+None
+
+Bug Fixes
+---------
+
+* Fixes bugs to allow access to MSSQL (:issue:`430`).
+
+Miscellaneous
+-------------
+
+* For the AWS S3 backend, validation was disabled when calling
+  ``get_bucket()``; see `conda/conda#2126` for rationale (:issue:`448`).
