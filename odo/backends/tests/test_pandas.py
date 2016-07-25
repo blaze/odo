@@ -1,8 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
+from collections import OrderedDict
 from datetime import datetime, timedelta
+from distutils.version import StrictVersion
 
-from datashape import discover, float64, dshape, Record, Categorical, int64
+from datashape import (
+    discover, float64, dshape, Record, Categorical, DateTime, Option, int64
+)
 from datashape.util.testing import assert_dshape_equal
 from networkx import NetworkXNoPath
 import numpy as np
@@ -81,3 +85,35 @@ def test_categorical_pandas():
     assert_dshape_equal(discover(df), 15 * Record([('x',
                         Categorical(['a', 'b', 'c'])), ('y', int64)]))
     assert_dshape_equal(discover(df.x), 15 * Categorical(['a', 'b', 'c']))
+
+
+@pytest.mark.skipif(
+    StrictVersion(pd.__version__) < StrictVersion('0.17'),
+    reason="Pandas before DatetimeTZ",
+)
+def test_datetimetz_pandas():
+    df = pd.DataFrame(
+        OrderedDict([
+            ('naive', pd.date_range('2014', periods=5)),
+            ('Europe/Moscow', pd.date_range('2014', periods=5, tz='Europe/Moscow')),
+            ('UTC', pd.date_range('2014', periods=5, tz='UTC')),
+            ('US/Eastern', pd.date_range('2014', periods=5, tz='US/Eastern')),
+        ])
+    )
+
+    assert_dshape_equal(
+        discover(df),
+        5 * Record([
+            ('naive', Option(DateTime(tz=None))),
+            ('Europe/Moscow', Option(DateTime(tz='Europe/Moscow'))),
+            ('UTC', Option(DateTime(tz='UTC'))),
+            ('US/Eastern', Option(DateTime(tz='US/Eastern'))),
+        ])
+    )
+
+    assert_dshape_equal(discover(df.naive), 5 * Option(DateTime(tz=None)))
+    for tz in ('Europe/Moscow', 'UTC', 'US/Eastern'):
+        assert_dshape_equal(
+            discover(df[tz]),
+            5 * Option(DateTime(tz=tz))
+        )
