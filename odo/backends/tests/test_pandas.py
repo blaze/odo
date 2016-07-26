@@ -5,7 +5,14 @@ from datetime import datetime, timedelta
 from distutils.version import StrictVersion
 
 from datashape import (
-    discover, float64, dshape, Record, Categorical, DateTime, Option, int64
+    Categorical,
+    DateTime,
+    Option,
+    Record,
+    discover,
+    dshape,
+    float64,
+    int64,
 )
 from datashape.util.testing import assert_dshape_equal
 from networkx import NetworkXNoPath
