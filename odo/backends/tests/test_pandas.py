@@ -110,12 +110,12 @@ def test_datetimetz_pandas():
 
     assert_dshape_equal(
         discover(df),
-        5 * Record([
-            ('naive', Option(DateTime(tz=None))),
-            ('Europe/Moscow', Option(DateTime(tz='Europe/Moscow'))),
-            ('UTC', Option(DateTime(tz='UTC'))),
-            ('US/Eastern', Option(DateTime(tz='US/Eastern'))),
-        ])
+        5 * Record[
+            'naive': Option(DateTime(tz=None)),
+            'Europe/Moscow': Option(DateTime(tz='Europe/Moscow')),
+            'UTC': Option(DateTime(tz='UTC')),
+            'US/Eastern': Option(DateTime(tz='US/Eastern')),
+        ]
     )
 
     assert_dshape_equal(discover(df.naive), 5 * Option(DateTime(tz=None)))
