@@ -185,33 +185,33 @@ def resource_s3_json_lines(uri, **kwargs):
 
 
 @drop.register((S3(CSV), S3(JSON), S3(JSONLines), S3(TextFile)))
-def drop_s3(s3):
-    s3.object.delete()
+def drop_s3(s3_object):
+    s3_object.object.delete()
 
 
 @drop.register((Temp(S3(CSV)), Temp(S3(JSON)), Temp(S3(JSONLines)),
                 Temp(S3(TextFile))))
-def drop_temp_s3(s3):
-    s3.object.delete()
-    s3.object.bucket.delete()
+def drop_temp_s3(s3_object):
+    s3_object.object.delete()
+    s3_object.object.bucket.delete()
 
 
 @convert.register(Temp(CSV), (Temp(S3(CSV)), S3(CSV)))
 @convert.register(Temp(JSON), (Temp(S3(JSON)), S3(JSON)))
 @convert.register(Temp(JSONLines), (Temp(S3(JSONLines)), S3(JSONLines)))
 @convert.register(Temp(TextFile), (Temp(S3(TextFile)), S3(TextFile)))
-def s3_text_to_temp_text(s3, **kwargs):
-    tmp_filename = '.%s.%s' % (uuid.uuid1(), ext(s3.path))
-    s3.object.get_contents_to_filename(tmp_filename)
-    return Temp(s3.subtype)(tmp_filename, **kwargs)
+def s3_text_to_temp_text(s3_object, **kwargs):
+    tmp_filename = '.%s.%s' % (uuid.uuid1(), ext(s3_object.path))
+    s3_object.object.get_contents_to_filename(tmp_filename)
+    return Temp(s3_object.subtype)(tmp_filename, **kwargs)
 
 
 @append.register(CSV, S3(CSV))
 @append.register(JSON, S3(JSON))
 @append.register(JSONLines, S3(JSONLines))
 @append.register(TextFile, S3(TextFile))
-def s3_text_to_text(data, s3, **kwargs):
-    return append(data, convert(Temp(s3.subtype), s3, **kwargs), **kwargs)
+def s3_text_to_text(data, s3_object, **kwargs):
+    return append(data, convert(Temp(s3_object.subtype), s3_object, **kwargs), **kwargs)
 
 
 @append.register((S3(CSV), Temp(S3(CSV))), (S3(CSV), Temp(S3(CSV))))
@@ -238,18 +238,18 @@ def text_to_temp_s3_text(data, **kwargs):
 
 @append.register((S3(CSV), S3(JSON), S3(JSONLines), S3(TextFile)),
                  (pd.DataFrame, chunks(pd.DataFrame), (list, Iterator)))
-def anything_to_s3_text(s3, o, **kwargs):
-    return append(s3, convert(Temp(s3.subtype), o, **kwargs), **kwargs)
+def anything_to_s3_text(s3_object, o, **kwargs):
+    return append(s3_object, convert(Temp(s3_object.subtype), o, **kwargs), **kwargs)
 
 
 @contextmanager
-def start_multipart_upload_operation(s3):
+def start_multipart_upload_operation(s3_object):
     try:
-        multipart_upload = s3.object.bucket.initiate_multipart_upload(s3.key)
+        multipart_upload = s3_object.object.bucket.initiate_multipart_upload(s3_object.key)
         yield multipart_upload
     except Exception:
         for part in multipart_upload:
-            s3.object.bucket.cancel_multipart_upload(part.key_name, part.id)
+            s3_object.object.bucket.cancel_multipart_upload(part.key_name, part.id)
         raise
     else:
         multipart_upload.complete_upload()
@@ -259,9 +259,9 @@ def start_multipart_upload_operation(s3):
 @append.register(S3(JSON), (JSON, Temp(JSON)))
 @append.register(S3(CSV), (CSV, Temp(CSV)))
 @append.register(S3(TextFile), (TextFile, Temp(TextFile)))
-def append_text_to_s3(s3, data, multipart=False, part_size=5 << 20, **kwargs):
+def append_text_to_s3(s3_object, data, multipart=False, part_size=5 << 20, **kwargs):
     if multipart:
-        with start_multipart_upload_operation(s3) as multipart_upload:
+        with start_multipart_upload_operation(s3_object) as multipart_upload:
             with open(data.path, 'rb') as f:
                 parts = enumerate(iter(curry(f.read, part_size), ''), start=1)
                 for part_num, part in parts:
@@ -269,10 +269,10 @@ def append_text_to_s3(s3, data, multipart=False, part_size=5 << 20, **kwargs):
                         BytesIO(part),
                         part_num=part_num
                     )
-        return s3
+        return s3_object
 
-    s3.object.set_contents_from_filename(data.path)
-    return s3
+    s3_object.object.set_contents_from_filename(data.path)
+    return s3_object
 
 
 try:
@@ -306,11 +306,11 @@ else:
 
 
     @append.register(_SSH, _S3)
-    def s3_to_ssh(ssh, s3, url_timeout=600, **kwargs):
-        if s3.s3.anon:
-            url = 'https://%s.s3.amazonaws.com/%s' % (s3.bucket, s3.object.name)
+    def s3_to_ssh(ssh, s3_object, url_timeout=600, **kwargs):
+        if s3_object.s3.anon:
+            url = 'https://%s.s3.amazonaws.com/%s' % (s3_object.bucket, s3_object.object.name)
         else:
-            url = s3.object.generate_url(url_timeout)
+            url = s3_object.object.generate_url(url_timeout)
         command = "wget '%s' -qO- >> '%s'" % (url, ssh.path)
         conn = connect(**ssh.auth)
         _, stdout, stderr = conn.exec_command(command)
