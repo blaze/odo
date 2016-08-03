@@ -82,7 +82,7 @@ before_script:
 
 script:
   - conda list numpy
-  - rm -rf build
+  - git clean -f -x
   - py.test -v --doctest-modules --doctest-ignore-import-errors odo
 
 notifications:
