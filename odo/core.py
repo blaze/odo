@@ -50,7 +50,7 @@ def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types,
     x = source
     excluded_edges = excluded_edges or set()
     with ignoring(NotImplementedError):
-        if 'dshape' not in kwargs:
+        if 'dshape' not in kwargs or kwargs['dshape'] is None:
             kwargs['dshape'] = discover(x)
     pth = path(graph, type(source), target,
                excluded_edges=excluded_edges,
