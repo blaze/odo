@@ -85,7 +85,7 @@ script:
   - echo '[pytest]' > pytest.ini
   - echo "addopts = -vv -r sxX --doctest-modules --doctest-ignore-import-errors --doctest-glob='*.rst' --pyargs odo" >> pytest.ini
   - echo 'norecursedirs = docs/source/scripts' >> pytest.ini
-  - py.test
+  - py.test -p no:cacheprovider
 
 notifications:
   email: false
