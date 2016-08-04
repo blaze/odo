@@ -47,7 +47,7 @@ install:
   # Install dependencies
   - conda create -n odo python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy
   - conda install -n odo h5py pip cython bcolz coverage networkx toolz multipledispatch
-  - conda install -n odo pytables paramiko boto bokeh pymysql
+  - conda install -n odo pytables paramiko boto boto3 bokeh pymysql
   - if [ -n "$PANDAS_VERSION" ]; then conda remove -n odo pandas; fi
   - source activate odo
 
@@ -57,7 +57,7 @@ install:
   # Install various deps
   - conda uninstall toolz
   - pip install -U toolz sas7bdat psycopg2 dill 'pymongo<3'
-  - pip install --upgrade git+git://github.com/blaze/dask.git#egg=dask-dev[complete]
+  - pip install git+git://github.com/blaze/dask.git#egg=dask-dev[complete]
   - if [ -n "$PANDAS_VERSION" ]; then pip install $PANDAS_VERSION; fi
 
   # install pyspark
@@ -82,7 +82,10 @@ before_script:
 
 script:
   - conda list numpy
-  - py.test -v --doctest-modules --doctest-ignore-import-errors odo
+  - echo '[pytest]' > pytest.ini
+  - echo "addopts = -vv -r sxX --doctest-modules --doctest-ignore-import-errors --doctest-glob='*.rst' --pyargs odo" >> pytest.ini
+  - echo 'norecursedirs = docs/source/scripts' >> pytest.ini
+  - py.test -p no:cacheprovider
 
 notifications:
   email: false
