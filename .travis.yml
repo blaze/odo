@@ -82,7 +82,10 @@ before_script:
 
 script:
   - conda list numpy
-  - py.test -v --doctest-modules --doctest-ignore-import-errors odo
+  - echo '[pytest]' > pytest.ini
+  - echo "addopts = -vv -r sxX --doctest-modules --doctest-ignore-import-errors --doctest-glob='*.rst' --pyargs odo" >> pytest.ini
+  - echo 'norecursedirs = docs/source/scripts' >> pytest.ini
+  - py.test
 
 notifications:
   email: false
