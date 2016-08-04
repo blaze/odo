@@ -148,14 +148,14 @@ def append_anything_to_index(index, o, **kwargs):
 
 @resource.register(r'elasticsearch://\w*:\w*@\w*.*', priority=11)
 def resource_elasticsearch_with_authentication(uri, doctype=None, **kwargs):
-    pattern = r'elasticsearch://(?P<user>\w*):(?P<pass>\w*)@(?P<hostport>.*:?\d*)/(?P<index>\w+)'
+    pattern = r'elasticsearch://(?P<user>\w*):(?P<pass>\w*)@(?P<hostport>.*:?\d*)/(?P<index>[\w\.\-\_]+'
     d = re.search(pattern, uri).groupdict()
     return _resource_elasticsearch(d, doctype)
 
 
 @resource.register(r'elasticsearch://.+')
 def resource_elasticsearch(uri, doctype=None, **kwargs):
-    pattern = r'elasticsearch://(?P<hostport>.*:?\d*)/(?P<index>\w+)'
+    pattern = r'elasticsearch://(?P<hostport>.*:?\d*)/(?P<index>[\w\.\-\_]+)'
     d = re.search(pattern, uri).groupdict()
     return _resource_elasticsearch(d, doctype)
 
