@@ -58,7 +58,6 @@ install:
   # Install various deps
   - conda uninstall toolz
   - pip install -U toolz sas7bdat psycopg2 dill 'pymongo<3' 'elasticsearch>=2.0.0,<3.0.0' 'elasticsearch-dsl>=2.0.0,<3.0.0'
-  - pip install -U toolz sas7bdat psycopg2 dill 'pymongo<3'
   - pip install git+git://github.com/blaze/dask.git#egg=dask-dev[complete]
   - if [ -n "$PANDAS_VERSION" ]; then pip install $PANDAS_VERSION; fi
 
