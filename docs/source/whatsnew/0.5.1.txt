@@ -37,6 +37,7 @@ Bug Fixes
 ---------
 
 * Fixes bugs to allow access to MSSQL (:issue:`430`).
+* Adds workaround to skip ssh tests on Py2 due to paramiko hang (:issue:`474`).
 
 Miscellaneous
 -------------
