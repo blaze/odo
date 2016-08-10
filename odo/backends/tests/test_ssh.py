@@ -20,6 +20,12 @@ import socket
 
 skipif = pytest.mark.skipif
 
+if sys.version_info[0] == 2:
+    # NOTE: this is a workaround for paramiko on Py2; connect() hangs without
+    # raising an exception.  Shows up on paramiko 1.16.0 and 2.0.2 with Py 2.7.
+    # KWS: 2016-08-10.
+    pytest.skip('could not connect')
+
 try:
     ssh = connect(hostname='localhost')
     ssh.close()
