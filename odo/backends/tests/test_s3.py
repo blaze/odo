@@ -25,7 +25,7 @@ from odo.utils import tmpfile
 from odo.compatibility import urlopen
 
 
-from boto.exception import S3ResponseError, NoAuthHandlerFound
+from boto.exception import S3ResponseError
 
 tips_uri = 's3://nyqpug/tips.csv'
 
