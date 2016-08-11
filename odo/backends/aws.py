@@ -243,9 +243,10 @@ def anything_to_s3_text(s3_object, o, **kwargs):
 
 
 @contextmanager
-def start_multipart_upload_operation(s3_object):
+def start_multipart_upload_operation(s3_object, **kwargs):
+    multipart_upload = s3_object.object.bucket.initiate_multipart_upload(s3_object.key, **kwargs)
+
     try:
-        multipart_upload = s3_object.object.bucket.initiate_multipart_upload(s3_object.key)
         yield multipart_upload
     except Exception:
         for part in multipart_upload:
@@ -261,7 +262,8 @@ def start_multipart_upload_operation(s3_object):
 @append.register(S3(TextFile), (TextFile, Temp(TextFile)))
 def append_text_to_s3(s3_object, data, multipart=False, part_size=5 << 20, **kwargs):
     if multipart:
-        with start_multipart_upload_operation(s3_object) as multipart_upload:
+        filtered_kwargs = filter_kwargs(s3_object.object.bucket.initiate_multipart_upload, kwargs)
+        with start_multipart_upload_operation(s3_object, **filtered_kwargs) as multipart_upload:
             with open(data.path, 'rb') as f:
                 parts = enumerate(iter(curry(f.read, part_size), ''), start=1)
                 for part_num, part in parts:
@@ -271,7 +273,8 @@ def append_text_to_s3(s3_object, data, multipart=False, part_size=5 << 20, **kwa
                     )
         return s3_object
 
-    s3_object.object.set_contents_from_filename(data.path)
+    s3_object.object.set_contents_from_filename(
+        data.path, **filter_kwargs(s3_object.object.set_contents_from_filename, kwargs))
     return s3_object
 
 
