@@ -93,34 +93,34 @@ test_bucket_name = 'into-redshift-csvs'
 _tmps = ('tmp%d' % i for i in itertools.count())
 
 
-def test_s3_encrypted_upload():
+@pytest.fixture
+def s3_encryption_bucket():
     test_bucket = os.getenv('ODO_S3_ENCRYPTION_BUCKET')
     if not test_bucket:
         pytest.skip('No bucket defined that requires server-side encryption')
+    return test_bucket
 
+
+def test_s3_encrypted_upload(s3_encryption_bucket):
     s3_connection = boto.connect_s3()
 
     df = tm.makeMixedDataFrame()
     with tmpfile('.csv') as fn:
         df.to_csv(fn, index=False)
-        s3_uri = 's3://{bucket}/{fn}'.format(bucket=test_bucket, fn=os.path.basename(fn))
+        s3_uri = 's3://{bucket}/{fn}'.format(bucket=s3_encryption_bucket, fn=os.path.basename(fn))
         odo(fn, s3_uri, s3=s3_connection, encrypt_key=True)
         result = odo(s3_uri, pd.DataFrame, s3=s3_connection)
 
     tm.assert_frame_equal(df, result)
 
 
-def test_s3_encrypted_multipart_upload():
-    test_bucket = os.getenv('ODO_S3_ENCRYPTION_BUCKET')
-    if not test_bucket:
-        pytest.skip('No bucket defined that requires server-side encryption')
-
+def test_s3_encrypted_multipart_upload(s3_encryption_bucket):
     s3_connection = boto.connect_s3()
 
     df = tm.makeMixedDataFrame()
     with tmpfile('.csv') as fn:
         df.to_csv(fn, index=False)
-        s3_uri = 's3://{bucket}/{fn}'.format(bucket=test_bucket, fn=os.path.basename(fn))
+        s3_uri = 's3://{bucket}/{fn}'.format(bucket=s3_encryption_bucket, fn=os.path.basename(fn))
         odo(fn, s3_uri, s3=s3_connection, encrypt_key=True, multipart=True)
         result = odo(s3_uri, pd.DataFrame, s3=s3_connection)
 
