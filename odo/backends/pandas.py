@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 from datetime import datetime, timedelta
 from functools import partial
 
-from datashape import discover, Categorical
+from datashape import discover, Categorical, DateTime
 from datashape import string, object_, datetime_, Option
 import datashape
 
@@ -20,6 +20,14 @@ categorical = type(pd.Categorical.dtype)
 def dshape_from_pandas(col):
     if isinstance(col.dtype, categorical):
         return Categorical(col.cat.categories.tolist())
+    elif col.dtype.kind == 'M':
+        tz = getattr(col.dtype, 'tz', None)
+        if tz is not None:
+            # Pandas stores this as a pytz.tzinfo, but DataShape wants a
+            # string.
+            tz = str(tz)
+        return Option(DateTime(tz=tz))
+
     dshape = datashape.CType.from_numpy_dtype(col.dtype)
     dshape = string if dshape == object_ else dshape
     return Option(dshape) if dshape in possibly_missing else dshape
