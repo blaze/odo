@@ -158,7 +158,7 @@ class CSV(object):
             if isinstance(user_dshape, (str, unicode)):
                 user_dshape = datashape.dshape(user_dshape)
             if not isrecord(user_dshape.measure):
-                raise TypeError('Please provide a Record dshape for t')
+                raise TypeError('Please provide a Record dshape for the csv')
         self._dshape = user_dshape
 
     def _sniff_dialect(self, path):
