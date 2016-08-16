@@ -399,11 +399,15 @@ def test_discover_with_dotted_names():
     assert dshape.measure.names == [u'a.b', u'c.d']
 
 def test_discover_csv_with_fixed_dshape():
-    with filetext('name,val\nAlice,1\nBob,2') as fn:
+    with filetext('name,val\nAlice,1\n,0\nBob,2') as fn:
         ds = datashape.dshape('var * {name: string, val: float64}')
-        csv = CSV(fn, dshape=ds)
-        ds1 = discover(csv)
+        csv1 = CSV(fn, user_dshape=ds)
+        ds1 = discover(csv1)
         assert ds1 == ds
+        csv2 = CSV(fn, has_header=True)
+        ds2 = discover(csv2)
+        assert ds1 != ds2
+        
 
 
 try:
