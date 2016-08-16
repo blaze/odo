@@ -337,8 +337,8 @@ def CSV_to_chunks_of_dataframes(c, chunksize=2 ** 20, **kwargs):
 
 @discover.register(CSV)
 def discover_csv(c, nrows=1000, **kwargs):
-    #if c._dshape:
-    #    return c._dshape
+    if c._dshape:
+        return c._dshape
 
     df = csv_to_dataframe(c, nrows=nrows, **kwargs)
     df = coerce_datetimes(df)
