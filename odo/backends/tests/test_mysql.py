@@ -203,7 +203,7 @@ def test_sql_to_csv(sql, csv):
         assert odo(csv, list) == data
 
         # explicitly test that we do NOT preserve the header here
-        assert discover(csv).measure.names != discover(sql).measure.names
+        assert discover(csv).measure != discover(sql).measure
 
 
 def test_sql_select_to_csv(sql, csv):
