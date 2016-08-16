@@ -398,6 +398,13 @@ def test_discover_with_dotted_names():
     assert dshape == datashape.dshape('var * {"a.b": int64, "c.d": int64}')
     assert dshape.measure.names == [u'a.b', u'c.d']
 
+def test_discover_csv_with_fixed_dshape():
+    with filetext('name,val\nAlice,1\nBob,2') as fn:
+        ds = datashape.dshape('var * {name: string, val: float64}')
+        csv = CSV(fn, dshape=ds)
+        ds1 = discover(csv)
+        assert ds1 == ds
+
 
 try:
     unichr

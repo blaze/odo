@@ -18,7 +18,7 @@ import pandas as pd
 import datashape
 
 from datashape import discover, Record, Option
-from datashape.predicates import isrecord, isdimension
+from datashape.predicates import isrecord
 from datashape.dispatch import dispatch
 
 from ..compatibility import unicode, PY2
@@ -140,8 +140,8 @@ class CSV(object):
         If the csv file has a header or not
     encoding : str (default utf-8)
         File encoding
-    dshape: datashape or string representation
-        used specified datashape
+    _dshape: datashape or string representation
+        pre-determined datashape
     kwargs : other...
         Various choices about dialect
     """
@@ -154,11 +154,9 @@ class CSV(object):
         self.encoding = encoding or 'utf-8'
         self._kwargs = kwargs
         self._sniff_nbytes = sniff_nbytes
-        if dshape:
-            if isinstance(dshape, (str, unicode)):
-                dshape = datashape.dshape(dshape)
-            dshape = None if isdimension(dshape.subshape[0][0])  else dshape
         self._dshape = dshape
+        if isinstance(self._dshape, str):
+            self._dshape = datashape.dshape(self._dshape)
 
     def _sniff_dialect(self, path):
         kwargs = self._kwargs
