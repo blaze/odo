@@ -37,9 +37,10 @@ def unit_to_dtype(ds):
         ds = ds.measure
     if isinstance(ds, Option) and isscalar(ds) and isnumeric(ds):
         if isinstance(ds.ty, Decimal):
-            return unit_to_dtype(
-                str(ds.ty.to_numpy_dtype()).replace('int', 'float')
-            )
+            str_np_dtype = str(ds.ty.to_numpy_dtype()).replace('int', 'float')
+            if str_np_dtype == 'float8':  # not a valid dtype, so increase
+                str_np_dtype = 'float16'
+            return unit_to_dtype(str_np_dtype)
         return unit_to_dtype(str(ds).replace('int', 'float').replace('?', ''))
     if isinstance(ds, Option) and isinstance(
         ds.ty, (Date, DateTime, String, TimeDelta)
