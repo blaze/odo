@@ -35,7 +35,9 @@ class Chunks(object):
     def __iter__(self):
         if callable(self.data):
             return self.data()
-        elif isinstance(self.data, list) and len(self.data) and callable(self.data[0]):
+        elif (isinstance(self.data, list) and
+              len(self.data) and
+              callable(self.data[0])):
             # If this is a set of callables, evaluate
             # them using dask before returning an iterator for them
             p = []

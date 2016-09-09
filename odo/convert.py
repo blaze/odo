@@ -218,14 +218,8 @@ def iterator_to_DataFrame_chunks(seq, chunksize=1024, **kwargs):
         return chunks(pd.DataFrame)(data)
 
     # TODO: Decide whether we should support the `add_index` flag at all.
-    #       If not, the following code can be removed (and an exception be
-    #       raised.
-    #
-    #else:
-    #    raise ValueError("The 'add_index' flag is not supported by this backend.")
-
-    # Otherwise, we need to post-process the converted DataFrame objects,
-    # so we use an iterator...
+    # If so, we need to post-process the converted DataFrame objects sequencially,
+    # so we can't parallelize the process.
     try:
         first, rest = next(seq2), seq2
     except StopIteration:
