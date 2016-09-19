@@ -370,8 +370,12 @@ def convert_glob_of_csvs_to_chunks_of_dataframes(csvs, **kwargs):
     f = partial(convert, chunks(pd.DataFrame), **kwargs)
 
     def df_gen():
-        dsk = {}
+        # build up a dask graph to run all of the `convert` calls concurrently
+
+        # use a list to hold the requested key names to ensure that we return
+        # the results in the correct order
         p = []
+        dsk = {}
         for n, csv_ in enumerate(csvs):
             key = 'p%d' % n
             dsk[key] = f, csv_
