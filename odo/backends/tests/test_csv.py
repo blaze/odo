@@ -462,3 +462,19 @@ def test_string_n_convert(string_dshape):
     expected = pd.DataFrame(raw, columns=list('kn'))
     expected['k'] = pd.to_datetime(expected.k)
     tm.assert_frame_equal(result, expected)
+
+
+def test_globbed_csv_to_chunks_of_dataframe():
+    header = 'a,b,c\n'
+    d = {'a-1.csv': header + '1,2,3\n4,5,6\n',
+         'a-2.csv': header + '7,8,9\n10,11,12\n'}
+
+    with filetexts(d):
+        dfs = list(odo('a-*.csv', chunks(pd.DataFrame)))
+
+    assert len(dfs) == 2
+    columns = 'a', 'b', 'c'
+    tm.assert_frame_equal(dfs[0],
+                          pd.DataFrame([[1, 2, 3], [4, 5, 6]], columns=columns))
+    tm.assert_frame_equal(dfs[1],
+                          pd.DataFrame([[7, 8, 9], [10, 11, 12]], columns=columns))

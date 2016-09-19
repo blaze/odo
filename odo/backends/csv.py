@@ -15,6 +15,7 @@ from toolz import concat, keyfilter, keymap, merge, valfilter
 
 import pandas as pd
 
+from dask.threaded import get as dsk_get
 import datashape
 
 from datashape import discover, Record, Option
@@ -366,8 +367,19 @@ def resource_glob(uri, **kwargs):
 @convert.register(chunks(pd.DataFrame), (chunks(CSV), chunks(Temp(CSV))),
                   cost=10.0)
 def convert_glob_of_csvs_to_chunks_of_dataframes(csvs, **kwargs):
-    data = [partial(convert, chunks(pd.DataFrame), csv, **kwargs) for csv in csvs]
-    return chunks(pd.DataFrame)(data)
+    f = partial(convert, chunks(pd.DataFrame), **kwargs)
+
+    def df_gen():
+        dsk = {}
+        p = []
+        for n, csv_ in enumerate(csvs):
+            key = 'p%d' % n
+            dsk[key] = f, csv_
+            p.append(key)
+
+        return concat(dsk_get(dsk, p))
+
+    return chunks(pd.DataFrame)(df_gen)
 
 
 @convert.register(Temp(CSV), (pd.DataFrame, chunks(pd.DataFrame)))
