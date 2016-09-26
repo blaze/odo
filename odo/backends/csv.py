@@ -19,7 +19,7 @@ from dask.threaded import get as dsk_get
 import datashape
 
 from datashape import discover, Record, Option
-from datashape.predicates import isrecord
+from datashape.predicates import isrecord, isdimension
 from datashape.dispatch import dispatch
 
 from ..compatibility import unicode, PY2
@@ -142,18 +142,26 @@ class CSV(object):
         If the csv file has a header or not
     encoding : str (default utf-8)
         File encoding
+    user_dshape: datashape or string representation
+        user specified datashape
     kwargs : other...
         Various choices about dialect
     """
     canonical_extension = 'csv'
 
     def __init__(self, path, has_header=None, encoding='utf-8',
-                 sniff_nbytes=10000, **kwargs):
+                 sniff_nbytes=10000, user_dshape=None, **kwargs):
         self.path = path
         self._has_header = has_header
         self.encoding = encoding or 'utf-8'
         self._kwargs = kwargs
         self._sniff_nbytes = sniff_nbytes
+        if user_dshape:
+            if isinstance(user_dshape, (str, unicode)):
+                user_dshape = datashape.dshape(user_dshape)
+            if not isrecord(user_dshape.measure):
+                raise TypeError('Please provide a Record dshape for the csv')
+        self._dshape = user_dshape
 
     def _sniff_dialect(self, path):
         kwargs = self._kwargs
@@ -329,6 +337,9 @@ def CSV_to_chunks_of_dataframes(c, chunksize=2 ** 20, **kwargs):
 
 @discover.register(CSV)
 def discover_csv(c, nrows=1000, **kwargs):
+    if c._dshape:
+        return c._dshape
+
     df = csv_to_dataframe(c, nrows=nrows, **kwargs)
     df = coerce_datetimes(df)
 
