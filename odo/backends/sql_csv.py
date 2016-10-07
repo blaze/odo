@@ -85,11 +85,11 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
     cmd = ['sqlite3',
            '-nullvalue', repr(element.na_value),
            '-separator', element.delimiter,
-           '-cmd', '.import "%s" %s' % (
+           element.bind.url.database,
+           '.import "%s" %s' % (
                # FIXME: format_table(t) is correct, but sqlite will complain
                fullpath, compiler.preparer.format_table(t)
-           ),
-           element.bind.url.database]
+           )]
     stderr = subprocess.check_output(
         cmd,
         stderr=subprocess.STDOUT,
