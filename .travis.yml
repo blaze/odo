@@ -45,7 +45,7 @@ install:
   - conda update conda
 
   # Install dependencies
-  - conda create -n odo python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy
+  - conda create -n odo python=$TRAVIS_PYTHON_VERSION 'pytest<3' numpy pandas sqlalchemy
   - conda install -n odo h5py pip cython bcolz coverage networkx toolz multipledispatch
   - conda install -n odo pytables paramiko boto boto3 bokeh pymysql
   - if [ -n "$PANDAS_VERSION" ]; then conda remove -n odo pandas; fi
@@ -56,11 +56,9 @@ install:
 
   # Install various deps
   - conda uninstall toolz
-  - pip install -U toolz sas7bdat psycopg2 dill 'pymongo<3' fastavro
+  - pip install -U toolz sas7bdat psycopg2 dill 'pymongo<3'
   - pip install git+git://github.com/blaze/dask.git#egg=dask-dev[complete]
   - if [ -n "$PANDAS_VERSION" ]; then pip install $PANDAS_VERSION; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == '3.4' || $TRAVIS_PYTHON_VERSION == '3.5' ]]; then pip install -U avro-python3; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then pip install -U avro; fi
 
   # install pyspark
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' || $TRAVIS_PYTHON_VERSION == '3.4' ]]; then conda install spark=$SPARK_VERSION -c blaze -c https://conda.binstar.org/blaze/channel/dev -c anaconda-cluster; fi
