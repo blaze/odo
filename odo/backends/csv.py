@@ -15,6 +15,7 @@ from toolz import concat, keyfilter, keymap, merge, valfilter
 
 import pandas as pd
 
+from dask.threaded import get as dsk_get
 import datashape
 
 from datashape import discover, Record, Option
@@ -30,6 +31,7 @@ from ..chunks import chunks
 from ..temp import Temp
 from ..numpy_dtype import dshape_to_pandas
 from .pandas import coerce_datetimes
+from functools import partial
 
 dialect_terms = '''delimiter doublequote escapechar lineterminator quotechar
 quoting skipinitialspace strict'''.split()
@@ -321,11 +323,8 @@ def CSV_to_chunks_of_dataframes(c, chunksize=2 ** 20, **kwargs):
     else:
         rest = []
 
-    def _():
-        yield first
-        for df in rest:
-            yield df
-    return chunks(pd.DataFrame)(_)
+    data = [first] + rest
+    return chunks(pd.DataFrame)(data)
 
 
 @discover.register(CSV)
@@ -368,10 +367,23 @@ def resource_glob(uri, **kwargs):
 @convert.register(chunks(pd.DataFrame), (chunks(CSV), chunks(Temp(CSV))),
                   cost=10.0)
 def convert_glob_of_csvs_to_chunks_of_dataframes(csvs, **kwargs):
-    def _():
-        return concat(convert(chunks(pd.DataFrame), csv, **kwargs)
-                      for csv in csvs)
-    return chunks(pd.DataFrame)(_)
+    f = partial(convert, chunks(pd.DataFrame), **kwargs)
+
+    def df_gen():
+        # build up a dask graph to run all of the `convert` calls concurrently
+
+        # use a list to hold the requested key names to ensure that we return
+        # the results in the correct order
+        p = []
+        dsk = {}
+        for n, csv_ in enumerate(csvs):
+            key = 'p%d' % n
+            dsk[key] = f, csv_
+            p.append(key)
+
+        return concat(dsk_get(dsk, p))
+
+    return chunks(pd.DataFrame)(df_gen)
 
 
 @convert.register(Temp(CSV), (pd.DataFrame, chunks(pd.DataFrame)))

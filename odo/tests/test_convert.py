@@ -285,3 +285,18 @@ def test_ndarray_to_df_preserves_field_names():
     assert (convert(pd.DataFrame, arr, dshape=ds).columns == ['a', 'b']).all()
     # no dshape is passed.
     assert (convert(pd.DataFrame, arr).columns == [0, 1]).all()
+
+
+def test_iterator_to_df():
+    ds = dshape('var * int32')
+    it = iter([1, 2, 3])
+    df = convert(pd.DataFrame, it, dshape=ds)
+    assert df[0].tolist() == [1, 2, 3]
+
+    it = iter([1, 2, 3])
+    df = convert(pd.DataFrame, it, dshape=None)
+    assert df[0].tolist() == [1, 2, 3]
+
+    it = iter([1, 2, 3])
+    df = convert(pd.DataFrame, it)
+    assert df[0].tolist() == [1, 2, 3]

@@ -1,0 +1,45 @@
+Release |version|
+-----------------
+
+:Release: |version|
+:Date: TBD
+
+New Features
+------------
+
+None
+
+Experimental Features
+---------------------
+
+.. warning::
+
+   Experimental features are subject to change.
+
+None
+
+New Backends
+------------
+
+None
+
+Improved Backends
+-----------------
+
+* Optimized `chunks` backend to allow parallel evaluation using `dask`
+  whenever the iteratable is a list of callables.
+
+API Changes
+-----------
+
+None
+
+Bug Fixes
+---------
+
+None
+
+Miscellaneous
+-------------
+
+None
