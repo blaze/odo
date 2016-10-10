@@ -18,29 +18,28 @@ from odo.temp import _Temp, Temp
 from odo.compatibility import ON_TRAVIS_CI
 import socket
 
-skipif = pytest.mark.skipif
 
 if sys.version_info[0] == 2:
     # NOTE: this is a workaround for paramiko on Py2; connect() hangs without
     # raising an exception.  Shows up on paramiko 1.16.0 and 2.0.2 with Py 2.7.
     # KWS: 2016-08-10.
-    pytest.skip('could not connect')
+    pytest.mark.skip('could not connect')
 
 try:
     ssh = connect(hostname='localhost')
     ssh.close()
 except socket.error:
-    pytest.skip('Could not connect')
+    pytest.mark.skip('Could not connect')
 except paramiko.PasswordRequiredException as e:
-    pytest.skip(str(e))
+    pytest.mark.skip(str(e))
 except paramiko.SSHException as e:
-    pytest.skip(str(e))
+    pytest.mark.skip(str(e))
 except TypeError:
     # NOTE: This is a workaround for paramiko version 1.16.0 on Python 3.4,
     # that raises a TypeError due to improper indexing internally into
     # dict_keys when a ConnectionRefused error is raised.
     # KWS 2016-04-21.
-    pytest.skip('Could not connect')
+    pytest.mark.skip('Could not connect')
 
 
 def test_resource():
@@ -147,7 +146,7 @@ def test_convert_local_file_to_temp_ssh_file():
         assert into(list, csv) == into(list, scsv)
 
 
-@skipif(ON_TRAVIS_CI, reason="Don't know")
+@pytest.mark.skipif(ON_TRAVIS_CI, reason="Don't know")
 def test_temp_ssh_files():
     with filetext('name,balance\nAlice,100\nBob,200', extension='csv') as fn:
         csv = CSV(fn)
@@ -157,7 +156,7 @@ def test_temp_ssh_files():
         assert isinstance(scsv, _Temp)
 
 
-@skipif(ON_TRAVIS_CI, reason="Don't know")
+@pytest.mark.skipif(ON_TRAVIS_CI, reason="Don't know")
 def test_convert_through_temporary_local_storage():
     with filetext('name,quantity\nAlice,100\nBob,200', extension='csv') as fn:
         csv = CSV(fn)
@@ -173,8 +172,8 @@ def test_convert_through_temporary_local_storage():
         assert (into(np.ndarray, sjson) == into(np.ndarray, df)).all()
 
 
-@skipif(ON_TRAVIS_CI and sys.version_info[0] == 3,
-        reason='Strange hanging on travis for python33 and python34')
+@pytest.mark.skipif(ON_TRAVIS_CI and sys.version_info[0] == 3,
+                    reason='Strange hanging on travis for python33 and python34')
 def test_ssh_csv_to_s3_csv():
     # for some reason this can only be run in the same file as other ssh tests
     # and must be a Temp(SSH(CSV)) otherwise tests above this one fail
@@ -187,8 +186,8 @@ def test_ssh_csv_to_s3_csv():
             assert discover(result) == discover(resource(b))
 
 
-@skipif(ON_TRAVIS_CI and sys.version_info[0] == 3,
-        reason='Strange hanging on travis for python33 and python34')
+@pytest.mark.skipif(ON_TRAVIS_CI and sys.version_info[0] == 3,
+                    reason='Strange hanging on travis for python33 and python34')
 def test_s3_to_ssh():
     pytest.importorskip('boto')
 
