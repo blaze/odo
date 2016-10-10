@@ -95,7 +95,13 @@ def bag_to_iterator(x, **kwargs):
 
 @convert.register(Bag, chunks(TextFile))
 def bag_to_iterator(x, **kwargs):
-    return db.from_filenames([tf.path for tf in x])
+    try:
+        from_filenames = db.from_filenames
+    except AttributeError:
+        # dask.bag.from_filenames renamed to dask.bag.read_text.
+        # http://dask.pydata.org/en/latest/changelog.html#id7
+        from_filenames = db.read_text
+    return from_filenames([tf.path for tf in x])
 
 
 @convert.register(Bag, list)
