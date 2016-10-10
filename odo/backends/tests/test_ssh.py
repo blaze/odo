@@ -24,23 +24,23 @@ if sys.version_info[0] == 2:
     # NOTE: this is a workaround for paramiko on Py2; connect() hangs without
     # raising an exception.  Shows up on paramiko 1.16.0 and 2.0.2 with Py 2.7.
     # KWS: 2016-08-10.
-    pytest.skip('could not connect')
+    pytest.mark.skip('could not connect')
 
 try:
     ssh = connect(hostname='localhost')
     ssh.close()
 except socket.error:
-    pytest.skip('Could not connect')
+    pytest.mark.skip('Could not connect')
 except paramiko.PasswordRequiredException as e:
-    pytest.skip(str(e))
+    pytest.mark.skip(str(e))
 except paramiko.SSHException as e:
-    pytest.skip(str(e))
+    pytest.mark.skip(str(e))
 except TypeError:
     # NOTE: This is a workaround for paramiko version 1.16.0 on Python 3.4,
     # that raises a TypeError due to improper indexing internally into
     # dict_keys when a ConnectionRefused error is raised.
     # KWS 2016-04-21.
-    pytest.skip('Could not connect')
+    pytest.mark.skip('Could not connect')
 
 
 def test_resource():
