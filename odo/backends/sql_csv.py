@@ -151,32 +151,55 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
         raise ValueError(
             r'PostgreSQL does not support line terminators other than \n'
         )
-    return compiler.process(
-        sa.text(
-            """
-            COPY {0} FROM :path (
-                FORMAT CSV,
-                DELIMITER :delimiter,
-                NULL :na_value,
-                QUOTE :quotechar,
-                ESCAPE :escapechar,
-                HEADER :header,
-                ENCODING :encoding
-            )
-            """.format(compiler.preparer.format_table(element.element))
-        ).bindparams(
-            path=os.path.abspath(element.csv.path),
-            delimiter=element.delimiter,
-            na_value=element.na_value,
-            quotechar=element.quotechar,
-            escapechar=element.escapechar,
-            header=element.header,
-            encoding=element.encoding or element.bind(
-                'show client_encoding'
-            ).execute().scalar()
-        ),
-        **kwargs
-    )
+    postgres_version = element.bind.execute('select version()').scalar()
+    if int(postgres_version.split()[1].split('.')[0]) >= 9:
+      return compiler.process(
+          sa.text(
+              """
+              COPY {0} FROM :path (
+                  FORMAT CSV,
+                  DELIMITER :delimiter,
+                  NULL :na_value,
+                  QUOTE :quotechar,
+                  ESCAPE :escapechar,
+                  HEADER :header,
+                  ENCODING :encoding
+              )
+              """.format(compiler.preparer.format_table(element.element))
+          ).bindparams(
+              path=os.path.abspath(element.csv.path),
+              delimiter=element.delimiter,
+              na_value=element.na_value,
+              quotechar=element.quotechar,
+              escapechar=element.escapechar,
+              header=element.header,
+              encoding=element.encoding or element.bind.execute(
+                  'show client_encoding'
+              ).scalar()
+          ),
+          **kwargs
+      )
+    else:
+      return compiler.process(
+          sa.text((
+              """
+              COPY {0} FROM :path
+                  NULL :na_value
+                  DELIMITER :delimiter
+                  CSV %s
+                      QUOTE :quotechar
+                      ESCAPE :escapechar
+              """ % ('HEADER' if element.header else '')
+          ).format(compiler.preparer.format_table(element.element))
+          ).bindparams(
+              path=os.path.abspath(element.csv.path),
+              delimiter=element.delimiter,
+              na_value=element.na_value,
+              quotechar=element.quotechar,
+              escapechar=element.escapechar,
+          ),
+          **kwargs
+      )
 
 
 try:
