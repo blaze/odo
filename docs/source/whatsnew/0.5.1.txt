@@ -26,6 +26,8 @@ None
 Improved Backends
 -----------------
 
+* Sqlalchemy-redshift upgraded to 5.0 and installed from PyPI (:issue: `478`).
+
 None
 
 API Changes
