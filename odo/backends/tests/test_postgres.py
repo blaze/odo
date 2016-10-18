@@ -3,10 +3,9 @@ from __future__ import absolute_import, division, print_function
 import pytest
 
 sa = pytest.importorskip('sqlalchemy')
-pytest.importorskip('psycopg2')
+psycopg2 = pytest.importorskip('psycopg2')
 
 import os
-import sys
 import itertools
 import shutil
 
@@ -16,6 +15,7 @@ from odo.backends.csv import CSV
 from odo.backends.sql import select_to_base
 from odo import odo, into, resource, drop, discover, convert
 from odo.utils import assert_allclose, tmpfile
+
 
 @pytest.fixture(scope='module')
 def pg_ip():
@@ -137,7 +137,7 @@ def test_append(csv, sql):
 
 def test_tryexcept_into(csv, sql):
     sql, bind = sql
-    with pytest.raises(sa.exc.NotSupportedError):
+    with pytest.raises(psycopg2.NotSupportedError):
         # uses multi-byte character
         into(sql, csv, quotechar="alpha", bind=bind)
 

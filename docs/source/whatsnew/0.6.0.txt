@@ -29,6 +29,10 @@ Improved Backends
 * Optimized `chunks` backend to allow parallel evaluation using `dask`
   whenever the iteratable is a list of callables.
 
+* Improved performance of CSV -> SQL Table.
+
+* Improved performance of pandas DataFrame -> SQL Table.
+
 API Changes
 -----------
 

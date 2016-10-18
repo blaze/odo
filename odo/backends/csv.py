@@ -7,6 +7,7 @@ import gzip
 import bz2
 import uuid
 import csv
+from tempfile import NamedTemporaryFile
 
 from glob import glob
 from contextlib import contextmanager
@@ -78,11 +79,26 @@ def alias(key):
     return aliases.get(key, key)
 
 
+class ModeProxy(object):
+    """Gzipped files use int enums for mode so we want to proxy it to provide
+    The proper string version.
+    """
+    def __init__(self, file, mode):
+        self._file = file
+        self.mode = mode
+
+    def __getattr__(self, attr):
+        return getattr(self._file, attr)
+
+    def __iter__(self):
+        return iter(self._file)
+
+
 @contextmanager
 def open_file(path, *args, **kwargs):
     f = compressed_open.get(ext(path), open)(path, *args, **kwargs)
     try:
-        yield f
+        yield ModeProxy(f, kwargs.get('mode', 'r'))
     finally:
         f.close()
 
@@ -148,12 +164,13 @@ class CSV(object):
     canonical_extension = 'csv'
 
     def __init__(self, path, has_header=None, encoding='utf-8',
-                 sniff_nbytes=10000, **kwargs):
+                 sniff_nbytes=10000, buffer=None, **kwargs):
         self.path = path
         self._has_header = has_header
         self.encoding = encoding or 'utf-8'
         self._kwargs = kwargs
         self._sniff_nbytes = sniff_nbytes
+        self._buffer = buffer
 
     def _sniff_dialect(self, path):
         kwargs = self._kwargs
@@ -180,16 +197,32 @@ class CSV(object):
                                                            encoding=self.encoding)
         return self._has_header
 
+    def open(self, mode='rb', **kwargs):
+        buf = self._buffer
+        if buf is not None:
+            buf.seek(0)
+            return buf
+
+        return open_file(self.path, mode=mode, **kwargs)
+
 
 @sample.register(CSV)
 @contextmanager
 def sample_csv(csv, length=8192, **kwargs):
-    should_delete = not os.path.exists(csv.path)
-    if should_delete:
-        with open_file(csv.path, mode='wb'):
+    should_delete = False
+    if csv.path is None:
+        mgr = NamedTemporaryFile(suffix='.csv', mode='wb+')
+    elif not os.path.exists(csv.path):
+        with csv.open(mode='ab'):
+            # ensure the file gets created
             pass
+        mgr = csv.open(mode='rb')
+        should_delete = True
+    else:
+        mgr = csv.open(mode='rb')
+
     try:
-        with open_file(csv.path, mode='rb') as f:
+        with mgr as f:
             with tmpfile(csv.canonical_extension) as fn:
                 with open(fn, mode='wb') as tmpf:
                     tmpf.write(f.read(length))
@@ -224,16 +257,11 @@ def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
             kwargs['encoding'] = encoding
         elif sys.version_info[0] == 2:
             kwargs['mode'] = 'ab' if sys.platform == 'win32' else 'at'
-        f = compressed_open[ext(c.path)](c.path, **kwargs)
-    else:
-        f = c.path
 
-    try:
+    with c.open(mode=kwargs.get('mode', 'a')) as f:
         df.to_csv(f, mode='a', header=has_header, index=False, sep=sep,
                   encoding=encoding)
-    finally:
-        if hasattr(f, 'close'):
-            f.close()
+
     return c
 
 
@@ -278,17 +306,14 @@ def _csv_to_dataframe(c, dshape=None, chunksize=None, **kwargs):
     if parse_dates and usecols:
         parse_dates = [col for col in parse_dates if col in usecols]
 
-    compression = kwargs.pop('compression',
-                             {'gz': 'gzip', 'bz2': 'bz2'}.get(ext(c.path)))
-
     # See read_csv docs for header for reasoning
     if names:
         try:
-            found_names = pd.read_csv(c.path, encoding=encoding,
-                                      compression=compression, nrows=1)
+            with c.open() as f:
+                found_names = pd.read_csv(f, nrows=1)
         except StopIteration:
-            found_names = pd.read_csv(c.path, encoding=encoding,
-                                      compression=compression)
+            with c.open() as f:
+                found_names = pd.read_csv(f)
     if names and header == 'infer':
         if [n.strip() for n in found_names] == [n.strip() for n in names]:
             header = 0
@@ -299,17 +324,17 @@ def _csv_to_dataframe(c, dshape=None, chunksize=None, **kwargs):
             header = None
 
     kwargs = keyfilter(keywords(pd.read_csv).__contains__, kwargs)
-    return pd.read_csv(c.path,
-                       header=header,
-                       sep=sep,
-                       encoding=encoding,
-                       dtype=dtypes,
-                       parse_dates=parse_dates,
-                       names=names,
-                       compression=compression,
-                       chunksize=chunksize,
-                       usecols=usecols,
-                       **kwargs)
+    with c.open() as f:
+        return pd.read_csv(f,
+                           header=header,
+                           sep=sep,
+                           encoding=encoding,
+                           dtype=dtypes,
+                           parse_dates=parse_dates,
+                           names=names,
+                           chunksize=chunksize,
+                           usecols=usecols,
+                           **kwargs)
 
 
 @convert.register(chunks(pd.DataFrame), (Temp(CSV), CSV), cost=10.0)
@@ -395,7 +420,8 @@ def convert_dataframes_to_temporary_csv(data, **kwargs):
 
 @dispatch(CSV)
 def drop(c):
-    os.unlink(c.path)
+    if c.path is not None:
+        os.unlink(c.path)
 
 
 ooc_types.add(CSV)

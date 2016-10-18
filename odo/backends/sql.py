@@ -34,7 +34,13 @@ from toolz import (partition_all, keyfilter, valfilter, identity, concat,
 from toolz.curried import pluck, map
 
 from ..compatibility import unicode
-from ..utils import keywords, ignoring, iter_except, filter_kwargs
+from ..utils import (
+    keywords,
+    ignoring,
+    iter_except,
+    filter_kwargs,
+    literal_compile,
+)
 from ..convert import convert, ooc_types
 from ..append import append
 from ..resource import resource
@@ -695,7 +701,7 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
     selectable = element.element
     return compiler.process(
         sa.text(
-            """COPY {0} TO :path
+            """COPY {0} TO STDOUT
             WITH (
                 FORMAT CSV,
                 HEADER :header,
@@ -711,7 +717,6 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
                 else '({0})'.format(compiler.process(selectable))
             )
         ).bindparams(
-            path=element.path,
             header=element.header,
             delimiter=element.delimiter,
             quotechar=element.quotechar,
@@ -799,8 +804,15 @@ def append_table_to_csv(csv, selectable, dshape=None, bind=None, **kwargs):
         bind=bind,
         **kwargs
     )
-    with getbind(selectable, bind).begin() as conn:
-        conn.execute(stmt)
+
+    bind = getbind(selectable, bind)
+    if bind.dialect.name == 'postgresql':
+        with csv.open('ab+') as f:
+            with bind.begin() as conn:
+                conn.connection.cursor().copy_expert(literal_compile(stmt), f)
+    else:
+        with bind.begin() as conn:
+            conn.execute(stmt)
     return csv
 
 

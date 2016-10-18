@@ -102,16 +102,18 @@ def tmpfile(extension='', dir=None):
     os.close(handle)
     os.remove(filename)
 
-    yield filename
-
-    if os.path.exists(filename):
-        if os.path.isdir(filename):
-            shutil.rmtree(filename)
-        else:
-            try:
-                os.remove(filename)
-            except OSError:  # sometimes we can't remove a generated temp file
-                pass
+    try:
+        yield filename
+    finally:
+        if os.path.exists(filename):
+            if os.path.isdir(filename):
+                shutil.rmtree(filename)
+            else:
+                try:
+                    os.remove(filename)
+                except OSError:
+                    # sometimes we can't remove a generated temp file
+                    pass
 
 
 def keywords(func):
@@ -417,11 +419,27 @@ def deprecated(replacement=None):
             msg += "; use {} instead".format(replacement)
         if fun.__doc__ is None:
             fun.__doc__ = msg
-    
+
         @functools.wraps(fun)
         def inner(*args, **kwargs):
             warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
             return fun(*args, **kwargs)
-    
+
         return inner
     return outer
+
+
+def literal_compile(s):
+    """Compile a sql expression with bind params inlined as literals.
+
+    Parameters
+    ----------
+    s : Selectable
+        The expression to compile.
+
+    Returns
+    -------
+    cs : str
+        An equivalent sql string.
+    """
+    return str(s.compile(compile_kwargs={'literal_binds': True}))

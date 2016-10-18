@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import sys
 import subprocess
+from io import StringIO
 import uuid
 import mmap
 
@@ -10,6 +11,7 @@ from contextlib import closing
 from functools import partial
 from distutils.spawn import find_executable
 
+import pandas as pd
 import sqlalchemy as sa
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.elements import Executable, ClauseElement
@@ -19,10 +21,18 @@ from multipledispatch import MDNotImplementedError
 
 from ..append import append
 from ..convert import convert
+from ..utils import literal_compile
 from .csv import CSV, infer_header
 from ..temp import Temp
 from .aws import S3
 from .sql import getbind
+
+
+def _copy_from_kwargs(delimiter=',', na_value='', **kwargs):
+    return {
+        'sep': delimiter,
+        'null': na_value,
+    }
 
 
 class CopyFromCSV(Executable, ClauseElement):
@@ -154,7 +164,7 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
     return compiler.process(
         sa.text(
             """
-            COPY {0} FROM :path (
+            COPY {0} FROM STDIN (
                 FORMAT CSV,
                 DELIMITER :delimiter,
                 NULL :na_value,
@@ -165,7 +175,6 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
             )
             """.format(compiler.preparer.format_table(element.element))
         ).bindparams(
-            path=os.path.abspath(element.csv.path),
             delimiter=element.delimiter,
             na_value=element.na_value,
             quotechar=element.quotechar,
@@ -229,6 +238,22 @@ def append_csv_to_sql_table(tbl, csv, bind=None, **kwargs):
 
     kwargs = merge(csv.dialect, kwargs)
     stmt = CopyFromCSV(tbl, csv, bind=bind, **kwargs)
-    with bind.begin() as conn:
-        conn.execute(stmt)
+
+    if dialect == 'postgresql':
+        with bind.begin() as conn:
+            with csv.open() as f:
+                conn.connection.cursor().copy_expert(literal_compile(stmt), f)
+    else:
+        with bind.begin() as conn:
+            conn.execute(stmt)
     return tbl
+
+
+@append.register(sa.Table, pd.DataFrame)
+def append_dataframe_to_sql_table(tbl, df, dshape=None, **kwargs):
+    buf = StringIO()
+    df[[c.name for c in tbl.columns]].to_csv(buf, index=False)
+    return append_csv_to_sql_table(tbl,
+                                   CSV(None, buffer=buf, has_header=True),
+                                   dshape=dshape,
+                                   kwargs=kwargs)
