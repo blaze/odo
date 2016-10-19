@@ -6,26 +6,22 @@ matrix:
   fast_finish: true
   include:
     - python: 2.7
-      env: SPARK_VERSION=1.4
-    - python: 2.7
-      env: SPARK_VERSION=1.5
+      env:
     - python: 3.4
-      env: SPARK_VERSION=1.4
-    - python: 3.4
-      env: SPARK_VERSION=1.5
+      env:
     - python: 3.5
       env:
     - python: 2.7
-      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
+      env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
     - python: 3.4
-      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
+      env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
     - python: 3.5
       env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
   allow_failures:
     - python: 2.7
-      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
+      env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
     - python: 3.4
-      env: PANDAS_VERSION="git+https://github.com/pydata/pandas" SPARK_VERSION=1.5
+      env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
     - python: 3.5
       env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
 
@@ -59,9 +55,6 @@ install:
   - pip install -U toolz sas7bdat psycopg2 dill 'pymongo<3'
   - pip install git+git://github.com/blaze/dask.git#egg=dask-dev[complete]
   - if [ -n "$PANDAS_VERSION" ]; then pip install $PANDAS_VERSION; fi
-
-  # install pyspark
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' || $TRAVIS_PYTHON_VERSION == '3.4' ]]; then conda install spark=$SPARK_VERSION -c blaze -c https://conda.binstar.org/blaze/channel/dev -c anaconda-cluster; fi
 
   # redshift sqlalchemy dialect
   - pip install --upgrade git+git://github.com/graingert/redshift_sqlalchemy
