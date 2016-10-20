@@ -75,7 +75,7 @@ before_script:
 
 script:
   - conda list
-  - py.test -v --doctest-modules --doctest-ignore-import-errors odo
+  - PYTEST_DEBUG=1 py.test -v --doctest-modules --doctest-ignore-import-errors odo
 
 notifications:
   email: false
