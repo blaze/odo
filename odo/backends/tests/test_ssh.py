@@ -25,7 +25,7 @@ skipif = pytest.mark.skipif
 # KWS: 2016-08-10
 # JJ: Still happens as of 2016-10-20
 try_to_connect = sys.version_info[0] >= 3
-pytestmark = skipif(not try_to_connect, 'could not connect')
+pytestmark = skipif(not try_to_connect, reason='could not connect')
 
 if try_to_connect:
     try:
