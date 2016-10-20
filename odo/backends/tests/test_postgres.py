@@ -10,6 +10,8 @@ import itertools
 import shutil
 
 from datashape import dshape
+import numpy as np
+import pandas as pd
 
 from odo.backends.csv import CSV
 from odo.backends.sql import select_to_base
@@ -102,6 +104,7 @@ complex_sql = sql_fixture("""
         Name: string, RegistrationDate: date, ZipCode: int32, Consts: float64
     }
 """)
+sql_with_floats = sql_fixture('var * {a: float64, b: ?float64}')
 
 
 @pytest.yield_fixture
@@ -280,3 +283,21 @@ def test_drop_reflects_database_state(url):
     drop(url)
     with pytest.raises(ValueError):
         resource(url)  # Table doesn't exist and no dshape
+
+
+def test_nan_stays_nan(sql_with_floats):
+    sql_with_floats, bind = sql_with_floats
+
+    df = pd.DataFrame({'a': [1, np.nan, 3], 'b': [4, np.nan, 5]})
+    odo(df, sql_with_floats, bind=bind)
+    rehydrated = odo(sql_with_floats, pd.DataFrame, bind=bind)
+    pd.util.testing.assert_frame_equal(rehydrated, df)
+
+    nulls_query = sa.select(sql_with_floats.c).where(
+        sql_with_floats.c.a.is_(None) & sql_with_floats.c.b.is_(None)
+    )
+    if bind is None:
+        nulls = nulls_query.execute()
+    else:
+        nulls = bind.execute(nulls_query)
+    assert not nulls.fetchall()

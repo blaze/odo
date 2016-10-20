@@ -12,6 +12,7 @@ from functools import partial
 from distutils.spawn import find_executable
 
 import pandas as pd
+from pandas.formats.format import CSVFormatter
 import sqlalchemy as sa
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.elements import Executable, ClauseElement
@@ -240,20 +241,59 @@ def append_csv_to_sql_table(tbl, csv, bind=None, **kwargs):
     stmt = CopyFromCSV(tbl, csv, bind=bind, **kwargs)
 
     if dialect == 'postgresql':
-        with bind.begin() as conn:
+        with bind.begin() as c:
             with csv.open() as f:
-                conn.connection.cursor().copy_expert(literal_compile(stmt), f)
+                c.connection.cursor().copy_expert(literal_compile(stmt), f)
     else:
         with bind.begin() as conn:
             conn.execute(stmt)
     return tbl
 
 
+class NanIsNotNullFormatter(CSVFormatter):
+    def _save_chunk(self, start_i, end_i):
+
+        data_index = self.data_index
+
+        # create the data for a chunk
+        slicer = slice(start_i, end_i)
+        for i in range(len(self.blocks)):
+            b = self.blocks[i]
+            na_rep = 'nan' if b.dtype.kind == 'f' else self.na_rep
+            d = b.to_native_types(slicer=slicer,
+                                  na_rep=na_rep,
+                                  float_format=self.float_format,
+                                  decimal=self.decimal,
+                                  date_format=self.date_format,
+                                  quoting=self.quoting)
+
+            for col_loc, col in zip(b.mgr_locs, d):
+                # self.data is a preallocated list
+                self.data[col_loc] = col
+
+        ix = data_index.to_native_types(slicer=slicer, na_rep=self.na_rep,
+                                        float_format=self.float_format,
+                                        decimal=self.decimal,
+                                        date_format=self.date_format,
+                                        quoting=self.quoting)
+
+        pd.lib.write_csv_rows(self.data,
+                              ix,
+                              self.nlevels,
+                              self.cols,
+                              self.writer)
+
+
 @append.register(sa.Table, pd.DataFrame)
 def append_dataframe_to_sql_table(tbl, df, dshape=None, **kwargs):
     buf = StringIO()
-    df[[c.name for c in tbl.columns]].to_csv(buf, index=False)
+    NanIsNotNullFormatter(
+        df[[c.name for c in tbl.columns]],
+        buf,
+        index=False,
+    ).save()
+    buf.seek(0)
     return append_csv_to_sql_table(tbl,
                                    CSV(None, buffer=buf, has_header=True),
                                    dshape=dshape,
-                                   kwargs=kwargs)
+                                   **kwargs)
