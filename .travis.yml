@@ -74,7 +74,7 @@ before_script:
   - sleep 15
 
 script:
-  - conda list numpy
+  - conda list
   - py.test -v --doctest-modules --doctest-ignore-import-errors odo
 
 notifications:
