@@ -291,7 +291,7 @@ def test_nan_stays_nan(sql_with_floats):
     df = pd.DataFrame({'a': [1, np.nan, 3], 'b': [4, np.nan, 5]})
     odo(df, sql_with_floats, bind=bind)
     rehydrated = odo(sql_with_floats, pd.DataFrame, bind=bind)
-    pd.util.testing.assert_frame_equal(rehydrated, df)
+    pd.util.testing.assert_frame_equal(rehydrated.sort_index(axis=1), df)
 
     nulls_query = sa.select(sql_with_floats.c).where(
         sql_with_floats.c.a.is_(None) & sql_with_floats.c.b.is_(None)

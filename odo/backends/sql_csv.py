@@ -3,7 +3,6 @@ from __future__ import absolute_import, division, print_function
 import os
 import sys
 import subprocess
-from io import StringIO
 import uuid
 import mmap
 
@@ -22,6 +21,7 @@ from multipledispatch import MDNotImplementedError
 
 from ..append import append
 from ..convert import convert
+from ..compatibility import StringIO
 from ..utils import literal_compile
 from .csv import CSV, infer_header
 from ..temp import Temp
