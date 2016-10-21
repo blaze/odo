@@ -5,6 +5,7 @@ import sys
 import subprocess
 import uuid
 import mmap
+from tempfile import NamedTemporaryFile
 
 from contextlib import closing
 from functools import partial
@@ -27,13 +28,6 @@ from .csv import CSV, infer_header
 from ..temp import Temp
 from .aws import S3
 from .sql import getbind
-
-
-def _copy_from_kwargs(delimiter=',', na_value='', **kwargs):
-    return {
-        'sep': delimiter,
-        'null': na_value,
-    }
 
 
 class CopyFromCSV(Executable, ClauseElement):
@@ -82,7 +76,8 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
         # write to a temporary file after skipping the first line
         chunksize = 1 << 24  # 16 MiB
         lineterminator = element.lineterminator.encode(element.encoding)
-        with open(element.csv.path, 'rb') as f:
+
+        with element.csv.open() as f:
             with closing(mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)) as mf:
                 index = mf.find(lineterminator)
                 if index == -1:
@@ -96,7 +91,7 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
     cmd = ['sqlite3',
            '-nullvalue', repr(element.na_value),
            '-separator', element.delimiter,
-           '-cmd', '.import "%s" %s' % (
+           '-cmd', '.import "%s" \'%s\'' % (
                # FIXME: format_table(t) is correct, but sqlite will complain
                fullpath, compiler.preparer.format_table(t)
            ),
@@ -104,14 +99,10 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
     stderr = subprocess.check_output(
         cmd,
         stderr=subprocess.STDOUT,
-        stdin=subprocess.PIPE
+        stdin=subprocess.PIPE,
     ).decode(sys.getfilesystemencoding())
     if stderr:
-        # TODO: this seems like a lot of rigamarole
-        try:
-            raise OSError(stderr)
-        except OSError as e:
-            raise sa.exc.DatabaseError(' '.join(cmd), [], e)
+        raise sa.exc.DatabaseError(' '.join(cmd), [], OSError(stderr))
     return ''
 
 
@@ -284,16 +275,56 @@ class NanIsNotNullFormatter(CSVFormatter):
                               self.writer)
 
 
+# The set of sql dialects which do not bounce dataframes to disk to append
+# to a sql table.
+DATAFRAME_TO_TABLE_IN_MEMORY_CSV = frozenset({
+    'postgresql',
+})
+
+# TODO: figure out how to dynamically detect this number, users may have
+# compiled their sqlite with a different max variable number but this is the
+# default.
+SQLITE_MAX_VARIABLE_NUMBER = 999
+
+
 @append.register(sa.Table, pd.DataFrame)
-def append_dataframe_to_sql_table(tbl, df, dshape=None, **kwargs):
-    buf = StringIO()
-    NanIsNotNullFormatter(
-        df[[c.name for c in tbl.columns]],
-        buf,
-        index=False,
-    ).save()
-    buf.seek(0)
-    return append_csv_to_sql_table(tbl,
-                                   CSV(None, buffer=buf, has_header=True),
-                                   dshape=dshape,
-                                   **kwargs)
+def append_dataframe_to_sql_table(tbl, df, bind=None, dshape=None, **kwargs):
+    bind = getbind(tbl, bind)
+    dialect = bind.dialect.name
+
+    if dialect == 'sqlite':
+        name = ('.'.join((tbl.schema, tbl.name))
+                if tbl.schema is not None else
+                tbl.name)
+        df.to_sql(
+            name,
+            bind,
+            index=False,
+            if_exists='append',
+            chunksize=SQLITE_MAX_VARIABLE_NUMBER,
+        )
+        return tbl
+
+    if dialect in DATAFRAME_TO_TABLE_IN_MEMORY_CSV:
+        buf = StringIO()
+        path = None
+    else:
+        buf = NamedTemporaryFile(mode='w+')
+        path = buf.name
+
+    with buf:
+        NanIsNotNullFormatter(
+            df[[c.name for c in tbl.columns]],
+            buf,
+            index=False,
+        ).save()
+        buf.flush()
+        buf.seek(0)
+
+        return append_csv_to_sql_table(
+            tbl,
+            CSV(path, buffer=buf if path is None else None, has_header=True),
+            dshape=dshape,
+            bind=bind,
+            **kwargs
+        )

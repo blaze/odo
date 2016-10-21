@@ -172,6 +172,12 @@ class CSV(object):
         self._sniff_nbytes = sniff_nbytes
         self._buffer = buffer
 
+        if path is not None and buffer is not None:
+            raise ValueError("may only pass one of 'path' or 'buffer'")
+
+        if path is None and buffer is None:
+            raise ValueError("must pass one of 'path' or 'buffer'")
+
     def _sniff_dialect(self, path):
         kwargs = self._kwargs
         dialect = sniff_dialect(path, self._sniff_nbytes,
