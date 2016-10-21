@@ -145,6 +145,26 @@ def dialect_to_dict(dialect):
                 for name in dialect_terms if hasattr(dialect, name))
 
 
+class NoCloseFile(object):
+    def __init__(self, buffer):
+        self._buf = buffer
+
+    def __getattr__(self, attr):
+        return getattr(self._buf, attr)
+
+    def close(self):
+        pass
+
+    def __enter__(self):
+        return self._buf
+
+    def __exit__(self, *exc_info):
+        pass
+
+    def __iter__(self):
+        return iter(self._buf)
+
+
 class CSV(object):
 
     """ Proxy for a CSV file
@@ -206,8 +226,7 @@ class CSV(object):
     def open(self, mode='rb', **kwargs):
         buf = self._buffer
         if buf is not None:
-            buf.seek(0)
-            return buf
+            return NoCloseFile(buf)
 
         return open_file(self.path, mode=mode, **kwargs)
 

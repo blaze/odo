@@ -301,3 +301,17 @@ def test_nan_stays_nan(sql_with_floats):
     else:
         nulls = bind.execute(nulls_query)
     assert not nulls.fetchall()
+
+
+def test_to_dataframe(sql):
+    sql, bind = sql
+    insert_query = sql.insert().values([{'a': 1, 'b': 2}, {'a': 3, 'b': 4}])
+    if bind is None:
+        insert_query.execute()
+    else:
+        bind.execute(insert_query)
+
+    df = odo(sql, pd.DataFrame, bind=bind)
+    expected = pd.DataFrame(np.array([(1, 2), (3, 4)],
+                                     dtype=[('a', 'int32'), ('b', 'float32')]))
+    pd.util.testing.assert_frame_equal(df, expected)
