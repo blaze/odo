@@ -234,27 +234,16 @@ class CSV(object):
 @sample.register(CSV)
 @contextmanager
 def sample_csv(csv, length=8192, **kwargs):
-    should_delete = False
-    if csv.path is None:
+    if csv.path is None or not os.path.exists(csv.path):
         mgr = NamedTemporaryFile(suffix='.csv', mode='wb+')
-    elif not os.path.exists(csv.path):
-        with csv.open(mode='ab'):
-            # ensure the file gets created
-            pass
-        mgr = csv.open(mode='rb')
-        should_delete = True
     else:
         mgr = csv.open(mode='rb')
 
-    try:
-        with mgr as f:
-            with tmpfile(csv.canonical_extension) as fn:
-                with open(fn, mode='wb') as tmpf:
-                    tmpf.write(f.read(length))
-                yield fn
-    finally:
-        if should_delete:
-            os.remove(csv.path)
+    with mgr as f:
+        with tmpfile(csv.canonical_extension) as fn:
+            with open(fn, mode='wb') as tmpf:
+                tmpf.write(f.read(length))
+            yield fn
 
 
 @append.register(CSV, object)
