@@ -288,7 +288,12 @@ SQLITE_MAX_VARIABLE_NUMBER = 999
 
 
 @append.register(sa.Table, pd.DataFrame)
-def append_dataframe_to_sql_table(tbl, df, bind=None, dshape=None, **kwargs):
+def append_dataframe_to_sql_table(tbl,
+                                  df,
+                                  bind=None,
+                                  dshape=None,
+                                  sqlite_max_variable_number=SQLITE_MAX_VARIABLE_NUMBER,
+                                  **kwargs):
     bind = getbind(tbl, bind)
     dialect = bind.dialect.name
 
@@ -301,7 +306,7 @@ def append_dataframe_to_sql_table(tbl, df, bind=None, dshape=None, **kwargs):
             bind,
             index=False,
             if_exists='append',
-            chunksize=SQLITE_MAX_VARIABLE_NUMBER,
+            chunksize=sqlite_max_variable_number,
         )
         return tbl
 
