@@ -105,6 +105,7 @@ complex_sql = sql_fixture("""
     }
 """)
 sql_with_floats = sql_fixture('var * {a: float64, b: ?float64}')
+sql_with_dts = sql_fixture('var * {a: datetime, b: ?datetime}')
 
 
 @pytest.yield_fixture
@@ -288,19 +289,38 @@ def test_drop_reflects_database_state(url):
 def test_nan_stays_nan(sql_with_floats):
     sql_with_floats, bind = sql_with_floats
 
-    df = pd.DataFrame({'a': [1, np.nan, 3], 'b': [4, np.nan, 5]})
+    df = pd.DataFrame({'a': [np.nan, 1, 2], 'b': [3, np.nan, 4]})
     odo(df, sql_with_floats, bind=bind)
     rehydrated = odo(sql_with_floats, pd.DataFrame, bind=bind)
     pd.util.testing.assert_frame_equal(rehydrated.sort_index(axis=1), df)
 
     nulls_query = sa.select(sql_with_floats.c).where(
-        sql_with_floats.c.a.is_(None) & sql_with_floats.c.b.is_(None)
+        sql_with_floats.c.a.is_(None) | sql_with_floats.c.b.is_(None)
     )
     if bind is None:
         nulls = nulls_query.execute()
     else:
         nulls = bind.execute(nulls_query)
     assert not nulls.fetchall()
+
+
+def test_nat_to_null(sql_with_dts):
+    sql_with_dts, bind = sql_with_dts
+
+    df = pd.DataFrame({'a': pd.to_datetime(['2014-01-01', '2014-01-02']),
+                       'b': pd.to_datetime(['2014-01-01', 'nat'])})
+    odo(df, sql_with_dts, bind=bind)
+    rehydrated = odo(sql_with_dts, pd.DataFrame, bind=bind)
+    pd.util.testing.assert_frame_equal(rehydrated.sort_index(axis=1), df)
+
+    nulls_query = sa.select(sql_with_dts.c).where(
+        sql_with_dts.c.a.is_(None) | sql_with_dts.c.b.is_(None)
+    )
+    if bind is None:
+        nulls = nulls_query.execute()
+    else:
+        nulls = bind.execute(nulls_query)
+    assert nulls.fetchall() == [(pd.Timestamp('2014-01-02'), None)]
 
 
 def test_to_dataframe(sql):
