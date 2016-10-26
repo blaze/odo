@@ -333,5 +333,5 @@ def test_to_dataframe(sql):
 
     df = odo(sql, pd.DataFrame, bind=bind)
     expected = pd.DataFrame(np.array([(1, 2), (3, 4)],
-                                     dtype=[('a', 'int32'), ('b', 'float32')]))
+                                     dtype=[('a', 'int32'), ('b', 'float64')]))
     pd.util.testing.assert_frame_equal(df, expected)
