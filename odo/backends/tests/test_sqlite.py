@@ -1,9 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import sys
-from platform import platform
 from itertools import product
+import pandas as pd
 import pytest
 sa = pytest.importorskip('sqlalchemy')
 
@@ -144,3 +143,12 @@ def test_send_parameterized_query_to_csv():
             q = t.select(t.c.a == 1)
             r = odo(q, fn)
             assert sorted(odo(q, list)) == sorted(odo(r, list))
+
+
+def test_df_to_in_memory_db():
+    df = pd.DataFrame([[1, 2], [3, 4]], columns=list('ab'))
+    tbl = odo(df, 'sqlite:///:memory:::tbl')
+    pd.util.testing.assert_frame_equal(
+        odo(tbl, pd.DataFrame),
+        df,
+    )

@@ -12,10 +12,14 @@ if sys.version_info[0] >= 3:
     unicode = str
     map = map
     range = range
+
+    from io import StringIO
 else:
     unicode = unicode
     map = itertools.imap
     range = xrange
+
+    from io import BytesIO as StringIO
 
 
 def skipif(cond, **kwargs):

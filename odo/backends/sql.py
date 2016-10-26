@@ -33,8 +33,14 @@ from toolz import (partition_all, keyfilter, valfilter, identity, concat,
                    curry, merge, memoize)
 from toolz.curried import pluck, map
 
-from ..compatibility import unicode
-from ..utils import keywords, ignoring, iter_except, filter_kwargs
+from ..compatibility import unicode, StringIO
+from ..utils import (
+    keywords,
+    ignoring,
+    iter_except,
+    filter_kwargs,
+    literal_compile,
+)
 from ..convert import convert, ooc_types
 from ..append import append
 from ..resource import resource
@@ -649,6 +655,13 @@ def drop(table, bind=None):
 
 @convert.register(pd.DataFrame, (sa.sql.Select, sa.sql.Selectable), cost=200.0)
 def select_or_selectable_to_frame(el, bind=None, **kwargs):
+    bind = getbind(el, bind)
+    if bind.dialect.name == 'postgresql':
+        buf = StringIO()
+        append(CSV(None, buffer=buf), el, bind=bind, **kwargs)
+        buf.seek(0)
+        return pd.read_csv(buf)
+
     columns, rows = batch(el, bind=bind)
     row = next(rows, None)
     if row is None:
@@ -695,7 +708,7 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
     selectable = element.element
     return compiler.process(
         sa.text(
-            """COPY {0} TO :path
+            """COPY {0} TO STDOUT
             WITH (
                 FORMAT CSV,
                 HEADER :header,
@@ -708,10 +721,9 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
             """.format(
                 compiler.preparer.format_table(selectable)
                 if isinstance(selectable, sa.Table)
-                else '({0})'.format(compiler.process(selectable))
+                else '({0})'.format(literal_compile(selectable))
             )
         ).bindparams(
-            path=element.path,
             header=element.header,
             delimiter=element.delimiter,
             quotechar=element.quotechar,
@@ -795,12 +807,19 @@ def append_table_to_csv(csv, selectable, dshape=None, bind=None, **kwargs):
                        merge(csv.dialect, kwargs))
     stmt = CopyToCSV(
         selectable,
-        os.path.abspath(csv.path),
+        os.path.abspath(csv.path) if csv.path is not None else None,
         bind=bind,
         **kwargs
     )
-    with getbind(selectable, bind).begin() as conn:
-        conn.execute(stmt)
+
+    bind = getbind(selectable, bind)
+    if bind.dialect.name == 'postgresql':
+        with csv.open('ab+') as f:
+            with bind.begin() as conn:
+                conn.connection.cursor().copy_expert(literal_compile(stmt), f)
+    else:
+        with bind.begin() as conn:
+            conn.execute(stmt)
     return csv
 
 
