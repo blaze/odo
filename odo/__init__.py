@@ -62,7 +62,10 @@ with ignoring(ImportError):
 with ignoring(ImportError):
     from .backends.url import URL
 with ignoring(ImportError):
+    from .backends.avro import AVRO
+with ignoring(ImportError):
     from .backends.dask import dask
+
 
 
 restart_ordering()  # Restart multipledispatch ordering and do ordering

@@ -1,6 +1,6 @@
 datashape >= 0.5.0
 numpy >= 1.7
 pandas >= 0.15.0
-toolz >= 0.7.3
+toolz >= 0.7.4
 multipledispatch >= 0.4.7
 networkx
