@@ -12,6 +12,7 @@ from collections import Iterator
 from datetime import datetime, date, timedelta
 from distutils.spawn import find_executable
 
+import numpy as np
 import pandas as pd
 import sqlalchemy as sa
 from sqlalchemy import inspect
@@ -135,6 +136,7 @@ def batch(sel, chunksize=10000, bind=None):
     chunksize : int, optional, default 10000
         Number of rows to fetch from the database
     """
+
     def rowterator(sel, chunksize=chunksize):
         with getbind(sel, bind).connect() as conn:
             result = conn.execute(sel)
@@ -203,9 +205,9 @@ def discover_foreign_key_relationship(fk, parent, parent_measure=None):
     return {fk.parent.name: Map(discover(fk.parent.type), parent_measure)}
 
 
-@discover.register(sa.Column)
+@discover.register(sa.sql.elements.ColumnClause)
 def discover_sqlalchemy_column(c):
-    meta = Option if c.nullable else identity
+    meta = Option if getattr(c, 'nullable', True) else identity
     return Record([(c.name, meta(discover(c.type)))])
 
 
@@ -451,8 +453,6 @@ def select_to_iterator(sel, dshape=None, bind=None, **kwargs):
 
 @convert.register(base, sa.sql.Select, cost=200.0)
 def select_to_base(sel, dshape=None, bind=None, **kwargs):
-    if dshape is not None and not isscalar(dshape):
-        raise ValueError('dshape should be None or scalar, got %s' % dshape)
     with getbind(sel, bind).connect() as conn:
         return conn.execute(sel).scalar()
 
@@ -653,21 +653,52 @@ def drop(table, bind=None):
     metadata_of_engine(bind, schema=table.schema).remove(table)
 
 
-@convert.register(pd.DataFrame, (sa.sql.Select, sa.sql.Selectable), cost=200.0)
-def select_or_selectable_to_frame(el, bind=None, **kwargs):
+@convert.register(sa.sql.Select, sa.Table, cost=0)
+def table_to_select(t, **kwargs):
+    return t.select()
+
+
+@convert.register(pd.DataFrame, (sa.sql.Select, sa.sql.Selectable), cost=300.0)
+def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
     bind = getbind(el, bind)
     if bind.dialect.name == 'postgresql':
         buf = StringIO()
         append(CSV(None, buffer=buf), el, bind=bind, **kwargs)
         buf.seek(0)
-        return pd.read_csv(buf)
+        datetime_fields = []
+        other_dtypes = {}
+        for field, dtype in dshape.measure.fields:
+            if getattr(dtype, 'ty', dtype) == datashape.datetime_:
+                datetime_fields.append(field)
+            elif isinstance(dtype, Option):
+                ty = dtype.ty
+                if ty in datashape.integral:
+                    other_dtypes[field] = 'float64'
+                else:
+                    other_dtypes[field] = ty.to_numpy_dtype()
+            else:
+                other_dtypes[field] = dtype.to_numpy_dtype()
+
+        return pd.read_csv(
+            buf,
+            parse_dates=datetime_fields,
+            dtype=other_dtypes,
+        )
 
     columns, rows = batch(el, bind=bind)
-    row = next(rows, None)
-    if row is None:
-        return pd.DataFrame(columns=columns)
-    return pd.DataFrame(list(chain([tuple(row)], map(tuple, rows))),
-                        columns=columns)
+    dtypes = {}
+    for field, dtype in dshape.measure.fields:
+        if isinstance(dtype, Option):
+            ty = dtype.ty
+            if ty in datashape.integral:
+                dtypes[field] = 'float64'
+            else:
+                dtypes[field] = ty.to_numpy_dtype()
+        else:
+            dtypes[field] = dtype.to_numpy_dtype()
+
+    return pd.DataFrame(np.array(list(map(tuple, rows)),
+                                 dtype=[(str(c), dtypes[c]) for c in columns]))
 
 
 class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
