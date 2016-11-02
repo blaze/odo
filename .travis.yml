@@ -41,20 +41,18 @@ install:
   - conda update conda
 
   # Install dependencies
-  - conda create -n odo python=$TRAVIS_PYTHON_VERSION pytest numpy pandas sqlalchemy
-  - conda install -n odo h5py pip cython bcolz coverage networkx toolz multipledispatch
-  - conda install -n odo pytables paramiko boto boto3 bokeh pymysql
-  - if [ -n "$PANDAS_VERSION" ]; then conda remove -n odo pandas; fi
+  # Use conda **ONLY** for numpy and pandas, this speeds up the builds a
+  # lot. Use the normal pip install for the rest.
+  - conda create -n odo python=$TRAVIS_PYTHON_VERSION pandas=${PANDAS_VERSON:-0.19.0} numpy=1.11.2
   - source activate odo
+  # update setuptools and pip
+  - conda update setuptools pip
+
+  # install the frozen ci dependencies
+  - pip install -e .[ci]
 
   # datashape
   - pip install git+git://github.com/blaze/datashape.git
-
-  # Install various deps
-  - conda uninstall toolz
-  - pip install -U toolz sas7bdat psycopg2 dill 'pymongo<3'
-  - pip install git+git://github.com/blaze/dask.git#egg=dask-dev[complete]
-  - if [ -n "$PANDAS_VERSION" ]; then pip install $PANDAS_VERSION; fi
 
   # redshift sqlalchemy dialect
   - pip install --upgrade git+git://github.com/graingert/redshift_sqlalchemy
