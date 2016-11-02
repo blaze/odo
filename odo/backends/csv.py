@@ -324,10 +324,13 @@ def _csv_to_dataframe(c, dshape=None, chunksize=None, **kwargs):
     if names:
         try:
             with c.open() as f:
-                found_names = pd.read_csv(f, nrows=1)
+                found_names = pd.read_csv(f,
+                                          nrows=1,
+                                          encoding=encoding,
+                                          sep=sep)
         except StopIteration:
             with c.open() as f:
-                found_names = pd.read_csv(f)
+                found_names = pd.read_csv(f, encoding=encoding, sep=sep)
     if names and header == 'infer':
         if [n.strip() for n in found_names] == [n.strip() for n in names]:
             header = 0
