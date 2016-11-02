@@ -667,7 +667,12 @@ def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
         buf.seek(0)
         datetime_fields = []
         other_dtypes = {}
-        for field, dtype in dshape.measure.fields:
+        try:
+            fields = dshape.measure.fields
+        except AttributeError:
+            fields = [(0, dshape.measure)]
+
+        for field, dtype in fields:
             if getattr(dtype, 'ty', dtype) == datashape.datetime_:
                 datetime_fields.append(field)
             elif isinstance(dtype, Option):
@@ -683,11 +688,16 @@ def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
             buf,
             parse_dates=datetime_fields,
             dtype=other_dtypes,
+            skip_blank_lines=False,
         )
 
     columns, rows = batch(el, bind=bind)
     dtypes = {}
-    for field, dtype in dshape.measure.fields:
+    try:
+        fields = dshape.measure.fields
+    except AttributeError:
+        fields = [(columns[0], dshape.measure)]
+    for field, dtype in fields:
         if isinstance(dtype, Option):
             ty = dtype.ty
             if ty in datashape.integral:

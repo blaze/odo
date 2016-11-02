@@ -28,7 +28,34 @@ def dataframe_to_numpy(df, dshape=None, **kwargs):
 
 @convert.register(pd.DataFrame, np.ndarray, cost=1.0)
 def numpy_to_dataframe(x, dshape, **kwargs):
-    return pd.DataFrame(x, columns=getattr(dshape.measure, 'names', None))
+    dtype = x.dtype
+    names = dtype.names
+    if names is None:
+        if dtype.kind == 'm':
+            # pandas does not do this conversion for us but doesn't work
+            # with non 'ns' unit timedeltas
+            x = x.astype('m8[ns]')
+    else:
+        fields = dtype.fields
+        new_dtype = []
+        should_astype = False
+        for name in names:
+            original_field_value = fields[name][0]
+            if original_field_value.kind == 'm':
+                # pandas does not do this conversion for us but doesn't work
+                # with non 'ns' unit timedeltas
+                new_dtype.append((name, 'm8[ns]'))
+
+                # perform the astype at the end of the loop
+                should_astype = True
+            else:
+                new_dtype.append((name, original_field_value))
+
+        if should_astype:
+            x = x.astype(new_dtype)
+
+    df = pd.DataFrame(x, columns=getattr(dshape.measure, 'names', ['.column']))
+    return df
 
 
 @convert.register(pd.Series, np.ndarray, cost=1.0)
