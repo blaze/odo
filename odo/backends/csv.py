@@ -273,7 +273,10 @@ def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
             kwargs['mode'] = 'ab' if sys.platform == 'win32' else 'at'
 
     with c.open(mode=kwargs.get('mode', 'a')) as f:
-        df.to_csv(f, mode='a', header=has_header, index=False, sep=sep,
+        df.to_csv(f,
+                  header=has_header,
+                  index=False,
+                  sep=sep,
                   encoding=encoding)
 
     return c

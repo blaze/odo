@@ -54,7 +54,7 @@ def numpy_to_dataframe(x, dshape, **kwargs):
         if should_astype:
             x = x.astype(new_dtype)
 
-    df = pd.DataFrame(x, columns=getattr(dshape.measure, 'names', ['.column']))
+    df = pd.DataFrame(x, columns=getattr(dshape.measure, 'names', names))
     return df
 
 
