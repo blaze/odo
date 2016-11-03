@@ -55,8 +55,8 @@ def extras_require():
     extras['postgres'] += extras['sql']
 
     # don't include the 'ci' or 'test' targets in 'all'
-    extras['all'] = list(chain.from_iterable(v for v in extras.values()
-                                             if v not in {'ci', 'test'}))
+    extras['all'] = list(chain.from_iterable(v for k, v in extras.items()
+                                             if k not in {'ci', 'test'}))
     return extras
 
 
