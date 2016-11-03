@@ -273,7 +273,10 @@ def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
             kwargs['mode'] = 'ab' if sys.platform == 'win32' else 'at'
 
     with c.open(mode=kwargs.get('mode', 'a')) as f:
-        df.to_csv(f, mode='a', header=has_header, index=False, sep=sep,
+        df.to_csv(f,
+                  header=has_header,
+                  index=False,
+                  sep=sep,
                   encoding=encoding)
 
     return c
@@ -324,10 +327,13 @@ def _csv_to_dataframe(c, dshape=None, chunksize=None, **kwargs):
     if names:
         try:
             with c.open() as f:
-                found_names = pd.read_csv(f, nrows=1)
+                found_names = pd.read_csv(f,
+                                          nrows=1,
+                                          encoding=encoding,
+                                          sep=sep)
         except StopIteration:
             with c.open() as f:
-                found_names = pd.read_csv(f)
+                found_names = pd.read_csv(f, encoding=encoding, sep=sep)
     if names and header == 'infer':
         if [n.strip() for n in found_names] == [n.strip() for n in names]:
             header = 0
