@@ -6,11 +6,11 @@ matrix:
   fast_finish: true
   include:
     - python: 2.7
-      env: PANDAS_VERSION=0.19.0
+      env:
     - python: 3.4
-      env: PANDAS_VERSION=0.19.0
+      env:
     - python: 3.5
-      env: PANDAS_VERSION=0.19.0
+      env:
     - python: 2.7
       env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
     - python: 3.4
@@ -41,12 +41,13 @@ install:
   - conda update conda
 
   # Install dependencies
-  # Use conda **ONLY** for numpy and pandas, this speeds up the builds a
-  # lot. Use the normal pip install for the rest.
-  - conda create -n odo python=$TRAVIS_PYTHON_VERSION pandas=$PANDAS_VERSION numpy=1.11.2
+  # Use conda **ONLY** for numpy and pandas (if not pulling from master), this
+  # speeds up the builds a lot. Use the normal pip install for the rest.
+  - conda create -n odo numpy=1.11.2
   - source activate odo
   # update setuptools and pip
   - conda update setuptools pip
+  - if [ -n "$PANDAS_VERSION" ]; then pip install cython==0.24.1; pip install $PANDAS_VERSION; else conda install pandas=0.19.0; fi
 
   # install the frozen ci dependencies
   - pip install -e .[ci]
