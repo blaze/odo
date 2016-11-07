@@ -5,6 +5,7 @@ import pytest
 sa = pytest.importorskip('sqlalchemy')
 psycopg2 = pytest.importorskip('psycopg2')
 
+import datetime
 import os
 import itertools
 import shutil
@@ -106,6 +107,14 @@ complex_sql = sql_fixture("""
 """)
 sql_with_floats = sql_fixture('var * {a: float64, b: ?float64}')
 sql_with_dts = sql_fixture('var * {a: datetime, b: ?datetime}')
+sql_with_datelikes = sql_fixture("""
+    var * {
+        date: date,
+        option_date: ?date,
+        datetime: datetime,
+        option_datetime: ?datetime,
+    }
+""")
 
 
 @pytest.yield_fixture
@@ -334,4 +343,34 @@ def test_to_dataframe(sql):
     df = odo(sql, pd.DataFrame, bind=bind)
     expected = pd.DataFrame(np.array([(1, 2), (3, 4)],
                                      dtype=[('a', 'int32'), ('b', 'float64')]))
+    pd.util.testing.assert_frame_equal(df, expected)
+
+
+def test_to_dataframe_datelike(sql_with_datelikes):
+    sql_with_datelikes, bind = sql_with_datelikes
+    date_0 = datetime.date(2014, 1, 1)
+    date_1 = datetime.date(2014, 1, 2)
+    datetime_0 = datetime.datetime(2014, 1, 1)
+    datetime_1 = datetime.datetime(2014, 1, 2)
+    insert_query = sql_with_datelikes.insert().values([
+        {'date': date_0,
+         'option_date': date_0,
+         'datetime': datetime_0,
+         'option_datetime': datetime_0},
+        {'date': date_1,
+         'option_date': date_1,
+         'datetime': datetime_1,
+         'option_datetime': datetime_1},
+    ])
+    if bind is None:
+        insert_query.execute()
+    else:
+        bind.execute(insert_query)
+
+    df = odo(sql_with_datelikes, pd.DataFrame, bind=bind)
+    expected = pd.DataFrame([[datetime_0] * 4, [datetime_1] * 4],
+                            columns=['date',
+                                     'option_date',
+                                     'datetime',
+                                     'option_datetime'])
     pd.util.testing.assert_frame_equal(df, expected)
