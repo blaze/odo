@@ -1,0 +1,62 @@
+Release |version|
+-----------------
+
+:Release: |version|
+:Date: TBD
+
+New Features
+------------
+
+None
+
+Experimental Features
+---------------------
+
+.. warning::
+
+   Experimental features are subject to change.
+
+None
+
+New Backends
+------------
+
+None
+
+Improved Backends
+-----------------
+
+* Optimized `chunks` backend to allow parallel evaluation using `dask`
+  whenever the iteratable is a list of callables.
+
+* Improved performance of CSV -> SQL Table.
+
+* Improved performance of pandas DataFrame -> SQL Table.
+
+API Changes
+-----------
+
+None
+
+Bug Fixes
+---------
+
+None
+
+Miscellaneous
+-------------
+
+* Odo now has extra install targets for installing different subsystems. For
+  example: ``odo[postgres]``, ``odo[bcolz]``, and ``odo[pytables]``. There are
+  also three special targets: ``odo[all]``, ``odo[test]`` and ``odo[ci]``.
+  ``odo[all]`` installs all of the subsystems available through the various
+  non-special targets. ``odo[test]`` installs the dependencies needed to run the
+  test suite. Note: you will still need to setup the testing databases
+  externally. ``odo[ci]`` is a set of strict (==) requirements  which will be
+  used to run the tests on travis and other CI services. This can be used to
+  reproduce the test environment that the automated tests ran in (:issue:`496`).
+
+* We now run the CI on a frozen set of dependencies to make it easier to
+  reproduce a testing environment. One downside of this is that we will need to
+  manually keep our packages up to date; however, if someone wants to own a
+  package update we will be very willing to help support that (:issue:`496`).

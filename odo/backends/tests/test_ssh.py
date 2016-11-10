@@ -20,27 +20,29 @@ import socket
 
 skipif = pytest.mark.skipif
 
-if sys.version_info[0] == 2:
-    # NOTE: this is a workaround for paramiko on Py2; connect() hangs without
-    # raising an exception.  Shows up on paramiko 1.16.0 and 2.0.2 with Py 2.7.
-    # KWS: 2016-08-10.
-    pytest.mark.skip('could not connect')
+# NOTE: this is a workaround for paramiko on Py2; connect() hangs without
+# raising an exception.  Shows up on paramiko 1.16.0 and 2.0.2 with Py 2.7.
+# KWS: 2016-08-10
+# JJ: Still happens as of 2016-10-20
+try_to_connect = sys.version_info[0] >= 3
+pytestmark = skipif(not try_to_connect, reason='could not connect')
 
-try:
-    ssh = connect(hostname='localhost')
-    ssh.close()
-except socket.error:
-    pytest.mark.skip('Could not connect')
-except paramiko.PasswordRequiredException as e:
-    pytest.mark.skip(str(e))
-except paramiko.SSHException as e:
-    pytest.mark.skip(str(e))
-except TypeError:
-    # NOTE: This is a workaround for paramiko version 1.16.0 on Python 3.4,
-    # that raises a TypeError due to improper indexing internally into
-    # dict_keys when a ConnectionRefused error is raised.
-    # KWS 2016-04-21.
-    pytest.mark.skip('Could not connect')
+if try_to_connect:
+    try:
+        ssh = connect(hostname='localhost')
+        ssh.close()
+    except socket.error:
+        pytestmark = pytest.mark.skip('Could not connect')
+    except paramiko.PasswordRequiredException as e:
+        pytestmark = pytest.mark.skip(str(e))
+    except paramiko.SSHException as e:
+        pytestmark = pytest.mark.skip(str(e))
+    except TypeError:
+        # NOTE: This is a workaround for paramiko version 1.16.0 on Python 3.4,
+        # that raises a TypeError due to improper indexing internally into
+        # dict_keys when a ConnectionRefused error is raised.
+        # KWS 2016-04-21.
+        pytestmark = pytest.mark.skip('Could not connect')
 
 
 def test_resource():

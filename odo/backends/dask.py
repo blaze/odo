@@ -95,7 +95,7 @@ def bag_to_iterator(x, **kwargs):
 
 @convert.register(Bag, chunks(TextFile))
 def bag_to_iterator(x, **kwargs):
-    return db.from_filenames([tf.path for tf in x])
+    return db.read_text([tf.path for tf in x])
 
 
 @convert.register(Bag, list)

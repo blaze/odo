@@ -7,6 +7,7 @@ import gzip
 import bz2
 import uuid
 import csv
+from tempfile import NamedTemporaryFile
 
 from glob import glob
 from contextlib import contextmanager
@@ -15,6 +16,7 @@ from toolz import concat, keyfilter, keymap, merge, valfilter
 
 import pandas as pd
 
+from dask.threaded import get as dsk_get
 import datashape
 
 from datashape import discover, Record, Option
@@ -30,6 +32,7 @@ from ..chunks import chunks
 from ..temp import Temp
 from ..numpy_dtype import dshape_to_pandas
 from .pandas import coerce_datetimes
+from functools import partial
 
 dialect_terms = '''delimiter doublequote escapechar lineterminator quotechar
 quoting skipinitialspace strict'''.split()
@@ -76,11 +79,26 @@ def alias(key):
     return aliases.get(key, key)
 
 
+class ModeProxy(object):
+    """Gzipped files use int enums for mode so we want to proxy it to provide
+    The proper string version.
+    """
+    def __init__(self, file, mode):
+        self._file = file
+        self.mode = mode
+
+    def __getattr__(self, attr):
+        return getattr(self._file, attr)
+
+    def __iter__(self):
+        return iter(self._file)
+
+
 @contextmanager
 def open_file(path, *args, **kwargs):
     f = compressed_open.get(ext(path), open)(path, *args, **kwargs)
     try:
-        yield f
+        yield ModeProxy(f, kwargs.get('mode', 'r'))
     finally:
         f.close()
 
@@ -127,6 +145,26 @@ def dialect_to_dict(dialect):
                 for name in dialect_terms if hasattr(dialect, name))
 
 
+class NoCloseFile(object):
+    def __init__(self, buffer):
+        self._buf = buffer
+
+    def __getattr__(self, attr):
+        return getattr(self._buf, attr)
+
+    def close(self):
+        pass
+
+    def __enter__(self):
+        return self._buf
+
+    def __exit__(self, *exc_info):
+        pass
+
+    def __iter__(self):
+        return iter(self._buf)
+
+
 class CSV(object):
 
     """ Proxy for a CSV file
@@ -146,12 +184,19 @@ class CSV(object):
     canonical_extension = 'csv'
 
     def __init__(self, path, has_header=None, encoding='utf-8',
-                 sniff_nbytes=10000, **kwargs):
+                 sniff_nbytes=10000, buffer=None, **kwargs):
         self.path = path
         self._has_header = has_header
         self.encoding = encoding or 'utf-8'
         self._kwargs = kwargs
         self._sniff_nbytes = sniff_nbytes
+        self._buffer = buffer
+
+        if path is not None and buffer is not None:
+            raise ValueError("may only pass one of 'path' or 'buffer'")
+
+        if path is None and buffer is None:
+            raise ValueError("must pass one of 'path' or 'buffer'")
 
     def _sniff_dialect(self, path):
         kwargs = self._kwargs
@@ -178,23 +223,27 @@ class CSV(object):
                                                            encoding=self.encoding)
         return self._has_header
 
+    def open(self, mode='rb', **kwargs):
+        buf = self._buffer
+        if buf is not None:
+            return NoCloseFile(buf)
+
+        return open_file(self.path, mode=mode, **kwargs)
+
 
 @sample.register(CSV)
 @contextmanager
 def sample_csv(csv, length=8192, **kwargs):
-    should_delete = not os.path.exists(csv.path)
-    if should_delete:
-        with open_file(csv.path, mode='wb'):
-            pass
-    try:
-        with open_file(csv.path, mode='rb') as f:
-            with tmpfile(csv.canonical_extension) as fn:
-                with open(fn, mode='wb') as tmpf:
-                    tmpf.write(f.read(length))
-                yield fn
-    finally:
-        if should_delete:
-            os.remove(csv.path)
+    if csv.path is None or not os.path.exists(csv.path):
+        mgr = NamedTemporaryFile(suffix='.csv', mode='wb+')
+    else:
+        mgr = csv.open(mode='rb')
+
+    with mgr as f:
+        with tmpfile(csv.canonical_extension) as fn:
+            with open(fn, mode='wb') as tmpf:
+                tmpf.write(f.read(length))
+            yield fn
 
 
 @append.register(CSV, object)
@@ -222,16 +271,14 @@ def append_dataframe_to_csv(c, df, dshape=None, **kwargs):
             kwargs['encoding'] = encoding
         elif sys.version_info[0] == 2:
             kwargs['mode'] = 'ab' if sys.platform == 'win32' else 'at'
-        f = compressed_open[ext(c.path)](c.path, **kwargs)
-    else:
-        f = c.path
 
-    try:
-        df.to_csv(f, mode='a', header=has_header, index=False, sep=sep,
+    with c.open(mode=kwargs.get('mode', 'a')) as f:
+        df.to_csv(f,
+                  header=has_header,
+                  index=False,
+                  sep=sep,
                   encoding=encoding)
-    finally:
-        if hasattr(f, 'close'):
-            f.close()
+
     return c
 
 
@@ -276,17 +323,17 @@ def _csv_to_dataframe(c, dshape=None, chunksize=None, **kwargs):
     if parse_dates and usecols:
         parse_dates = [col for col in parse_dates if col in usecols]
 
-    compression = kwargs.pop('compression',
-                             {'gz': 'gzip', 'bz2': 'bz2'}.get(ext(c.path)))
-
     # See read_csv docs for header for reasoning
     if names:
         try:
-            found_names = pd.read_csv(c.path, encoding=encoding,
-                                      compression=compression, nrows=1)
+            with c.open() as f:
+                found_names = pd.read_csv(f,
+                                          nrows=1,
+                                          encoding=encoding,
+                                          sep=sep)
         except StopIteration:
-            found_names = pd.read_csv(c.path, encoding=encoding,
-                                      compression=compression)
+            with c.open() as f:
+                found_names = pd.read_csv(f, encoding=encoding, sep=sep)
     if names and header == 'infer':
         if [n.strip() for n in found_names] == [n.strip() for n in names]:
             header = 0
@@ -297,17 +344,17 @@ def _csv_to_dataframe(c, dshape=None, chunksize=None, **kwargs):
             header = None
 
     kwargs = keyfilter(keywords(pd.read_csv).__contains__, kwargs)
-    return pd.read_csv(c.path,
-                       header=header,
-                       sep=sep,
-                       encoding=encoding,
-                       dtype=dtypes,
-                       parse_dates=parse_dates,
-                       names=names,
-                       compression=compression,
-                       chunksize=chunksize,
-                       usecols=usecols,
-                       **kwargs)
+    with c.open() as f:
+        return pd.read_csv(f,
+                           header=header,
+                           sep=sep,
+                           encoding=encoding,
+                           dtype=dtypes,
+                           parse_dates=parse_dates,
+                           names=names,
+                           chunksize=chunksize,
+                           usecols=usecols,
+                           **kwargs)
 
 
 @convert.register(chunks(pd.DataFrame), (Temp(CSV), CSV), cost=10.0)
@@ -321,11 +368,8 @@ def CSV_to_chunks_of_dataframes(c, chunksize=2 ** 20, **kwargs):
     else:
         rest = []
 
-    def _():
-        yield first
-        for df in rest:
-            yield df
-    return chunks(pd.DataFrame)(_)
+    data = [first] + rest
+    return chunks(pd.DataFrame)(data)
 
 
 @discover.register(CSV)
@@ -368,10 +412,23 @@ def resource_glob(uri, **kwargs):
 @convert.register(chunks(pd.DataFrame), (chunks(CSV), chunks(Temp(CSV))),
                   cost=10.0)
 def convert_glob_of_csvs_to_chunks_of_dataframes(csvs, **kwargs):
-    def _():
-        return concat(convert(chunks(pd.DataFrame), csv, **kwargs)
-                      for csv in csvs)
-    return chunks(pd.DataFrame)(_)
+    f = partial(convert, chunks(pd.DataFrame), **kwargs)
+
+    def df_gen():
+        # build up a dask graph to run all of the `convert` calls concurrently
+
+        # use a list to hold the requested key names to ensure that we return
+        # the results in the correct order
+        p = []
+        dsk = {}
+        for n, csv_ in enumerate(csvs):
+            key = 'p%d' % n
+            dsk[key] = f, csv_
+            p.append(key)
+
+        return concat(dsk_get(dsk, p))
+
+    return chunks(pd.DataFrame)(df_gen)
 
 
 @convert.register(Temp(CSV), (pd.DataFrame, chunks(pd.DataFrame)))
@@ -383,7 +440,8 @@ def convert_dataframes_to_temporary_csv(data, **kwargs):
 
 @dispatch(CSV)
 def drop(c):
-    os.unlink(c.path)
+    if c.path is not None:
+        os.unlink(c.path)
 
 
 ooc_types.add(CSV)

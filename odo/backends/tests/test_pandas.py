@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from collections import OrderedDict
 from datetime import datetime, timedelta
-from distutils.version import StrictVersion
+from distutils.version import LooseVersion
 
 from datashape import (
     Categorical,
@@ -95,7 +95,7 @@ def test_categorical_pandas():
 
 
 @pytest.mark.skipif(
-    StrictVersion(pd.__version__) < StrictVersion('0.17'),
+    LooseVersion(pd.__version__) < LooseVersion('0.17'),
     reason="Pandas before DatetimeTZ",
 )
 def test_datetimetz_pandas():

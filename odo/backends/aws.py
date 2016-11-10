@@ -211,7 +211,8 @@ def s3_text_to_temp_text(s3_object, **kwargs):
 @append.register(JSONLines, S3(JSONLines))
 @append.register(TextFile, S3(TextFile))
 def s3_text_to_text(data, s3_object, **kwargs):
-    return append(data, convert(Temp(s3_object.subtype), s3_object, **kwargs), **kwargs)
+    s3_object.object.get_contents_to_filename(data.path)
+    return data
 
 
 @append.register((S3(CSV), Temp(S3(CSV))), (S3(CSV), Temp(S3(CSV))))

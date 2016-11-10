@@ -11,6 +11,7 @@ from .core import NetworkDispatcher, ooc_types
 from .chunks import chunks, Chunks
 from .numpy_dtype import dshape_to_numpy
 from .utils import records_to_tuples
+from functools import partial
 
 
 convert = NetworkDispatcher('convert')
@@ -27,7 +28,34 @@ def dataframe_to_numpy(df, dshape=None, **kwargs):
 
 @convert.register(pd.DataFrame, np.ndarray, cost=1.0)
 def numpy_to_dataframe(x, dshape, **kwargs):
-    return pd.DataFrame(x, columns=getattr(dshape.measure, 'names', None))
+    dtype = x.dtype
+    names = dtype.names
+    if names is None:
+        if dtype.kind == 'm':
+            # pandas does not do this conversion for us but doesn't work
+            # with non 'ns' unit timedeltas
+            x = x.astype('m8[ns]')
+    else:
+        fields = dtype.fields
+        new_dtype = []
+        should_astype = False
+        for name in names:
+            original_field_value = fields[name][0]
+            if original_field_value.kind == 'm':
+                # pandas does not do this conversion for us but doesn't work
+                # with non 'ns' unit timedeltas
+                new_dtype.append((name, 'm8[ns]'))
+
+                # perform the astype at the end of the loop
+                should_astype = True
+            else:
+                new_dtype.append((name, original_field_value))
+
+        if should_astype:
+            x = x.astype(new_dtype)
+
+    df = pd.DataFrame(x, columns=getattr(dshape.measure, 'names', names))
+    return df
 
 
 @convert.register(pd.Series, np.ndarray, cost=1.0)
@@ -207,11 +235,18 @@ def iterator_to_numpy_chunks(seq, chunksize=1024, **kwargs):
 def iterator_to_DataFrame_chunks(seq, chunksize=1024, **kwargs):
     seq2 = partition_all(chunksize, seq)
 
-    if kwargs.get('add_index'):
-        mkindex = _add_index
-    else:
-        mkindex = _ignore_index
+    add_index = kwargs.get('add_index', False)
+    if not add_index:
+        # Simple, we can dispatch to dask...
+        f = lambda d: convert(pd.DataFrame, d, **kwargs)
+        data = [partial(f, d) for d in seq2]
+        if not data:
+            data = [convert(pd.DataFrame, [], **kwargs)]
+        return chunks(pd.DataFrame)(data)
 
+    # TODO: Decide whether we should support the `add_index` flag at all.
+    # If so, we need to post-process the converted DataFrame objects sequencially,
+    # so we can't parallelize the process.
     try:
         first, rest = next(seq2), seq2
     except StopIteration:
@@ -219,20 +254,16 @@ def iterator_to_DataFrame_chunks(seq, chunksize=1024, **kwargs):
             yield convert(pd.DataFrame, [], **kwargs)
     else:
         df = convert(pd.DataFrame, first, **kwargs)
-        df1, n1 = mkindex(df, 0)
+        df1, n1 = _add_index(df, 0)
 
         def _():
             n = n1
             yield df1
             for i in rest:
                 df = convert(pd.DataFrame, i, **kwargs)
-                df, n = mkindex(df, n)
+                df, n = _add_index(df, n)
                 yield df
     return chunks(pd.DataFrame)(_)
-
-
-def _ignore_index(df, start):
-    return df, start
 
 
 def _add_index(df, start, _idx_type=getattr(pd, 'RangeIndex',
