@@ -163,8 +163,8 @@ class TestPyTablesLight(object):
 def test_pytables_to_csv():
     ndim = 2
     with tmpfile('.h5') as fn:
-        h5file = tb.openFile(fn, mode='w', title="Test Array")
-        h5file.createArray('/', "test", np.zeros((ndim, ndim), dtype=float))
+        h5file = tb.open_file(fn, mode='w', title="Test Array")
+        h5file.create_array('/', "test", np.zeros((ndim, ndim), dtype=float))
         h5file.close()
         with tmpfile('csv') as csv:
             t = odo('pytables://%s::/test' % fn, csv)
