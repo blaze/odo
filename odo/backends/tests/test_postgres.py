@@ -115,6 +115,9 @@ sql_with_datelikes = sql_fixture("""
         option_datetime: ?datetime,
     }
 """)
+sql_with_strings = sql_fixture("""
+    var * {non_optional: string, optional: ?string}
+""")
 
 
 @pytest.yield_fixture
@@ -373,4 +376,22 @@ def test_to_dataframe_datelike(sql_with_datelikes):
                                      'option_date',
                                      'datetime',
                                      'option_datetime'])
+    pd.util.testing.assert_frame_equal(df, expected)
+
+
+def test_to_dataframe_null_string(sql_with_strings):
+    sql_with_strings, bind = sql_with_strings
+
+    insert_query = sql_with_strings.insert().values([
+        {'non_optional': 'ayy', 'optional': 'hello'},
+        {'non_optional': 'lmao', 'optional': None},
+    ])
+    if bind is None:
+        insert_query.execute()
+    else:
+        bind.execute(insert_query)
+
+    df = odo(sql_with_strings, pd.DataFrame, bind=bind)
+    expected = pd.DataFrame([['ayy', 'hello'], ['lmao', None]],
+                            columns=['non_optional', 'optional'])
     pd.util.testing.assert_frame_equal(df, expected)

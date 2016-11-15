@@ -667,6 +667,7 @@ def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
         buf.seek(0)
         datetime_fields = []
         other_dtypes = {}
+        optional_string_fields = []
         try:
             fields = dshape.measure.fields
         except AttributeError:
@@ -681,15 +682,22 @@ def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
                     other_dtypes[field] = 'float64'
                 else:
                     other_dtypes[field] = ty.to_numpy_dtype()
+                    if ty == string:
+                        optional_string_fields.append(field)
             else:
                 other_dtypes[field] = dtype.to_numpy_dtype()
 
-        return pd.read_csv(
+        df = pd.read_csv(
             buf,
             parse_dates=datetime_fields,
             dtype=other_dtypes,
             skip_blank_lines=False,
         )
+        # read_csv really wants missing values to be NaN, but for
+        # string (object) columns, we want None to be missing
+        for field in optional_string_fields:
+            df.loc[df[field].isnull(), field] = None
+        return df
 
     columns, rows = batch(el, bind=bind)
     dtypes = {}
