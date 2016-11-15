@@ -170,6 +170,8 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
             delimiter=element.delimiter,
             na_value=element.na_value,
             quotechar=element.quotechar,
+            # use quotechar for escape intentionally because it makes it easier
+            # to create a csv that pandas and postgres agree on
             escapechar=element.quotechar,
             header=element.header,
             encoding=element.encoding or element.bind(
@@ -324,6 +326,8 @@ def append_dataframe_to_sql_table(tbl,
             index=False,
             quotechar=quotechar,
             doublequote=True,
+            # use quotechar for escape intentionally because it makes it easier
+            # to create a csv that pandas and postgres agree on
             escapechar=quotechar,
         ).save()
         buf.flush()
@@ -334,10 +338,15 @@ def append_dataframe_to_sql_table(tbl,
             CSV(path,
                 buffer=buf if path is None else None,
                 has_header=True,
+                # use quotechar for escape intentionally because it makes it
+                # makes it easier to create a csv that pandas and postgres
+                # agree on
                 escapechar=quotechar,
                 quotechar=quotechar),
             dshape=dshape,
             bind=bind,
+            # use quotechar for escape intentionally because it makes it easier
+            # to create a csv that pandas and postgres agree on
             escapechar=quotechar,
             quotechar=quotechar,
             **kwargs
