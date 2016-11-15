@@ -170,7 +170,7 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
             delimiter=element.delimiter,
             na_value=element.na_value,
             quotechar=element.quotechar,
-            escapechar=element.escapechar,
+            escapechar=element.quotechar,
             header=element.header,
             encoding=element.encoding or element.bind(
                 'show client_encoding'
@@ -230,7 +230,6 @@ def append_csv_to_sql_table(tbl, csv, bind=None, **kwargs):
 
     kwargs = merge(csv.dialect, kwargs)
     stmt = CopyFromCSV(tbl, csv, bind=bind, **kwargs)
-
     if dialect == 'postgresql':
         with bind.begin() as c:
             with csv.open() as f:
@@ -293,6 +292,7 @@ def append_dataframe_to_sql_table(tbl,
                                   bind=None,
                                   dshape=None,
                                   sqlite_max_variable_number=SQLITE_MAX_VARIABLE_NUMBER,
+                                  quotechar='"',
                                   **kwargs):
     bind = getbind(tbl, bind)
     dialect = bind.dialect.name
@@ -322,14 +322,23 @@ def append_dataframe_to_sql_table(tbl,
             df[[c.name for c in tbl.columns]],
             buf,
             index=False,
+            quotechar=quotechar,
+            doublequote=True,
+            escapechar=quotechar,
         ).save()
         buf.flush()
         buf.seek(0)
 
         return append_csv_to_sql_table(
             tbl,
-            CSV(path, buffer=buf if path is None else None, has_header=True),
+            CSV(path,
+                buffer=buf if path is None else None,
+                has_header=True,
+                escapechar=quotechar,
+                quotechar=quotechar),
             dshape=dshape,
             bind=bind,
+            escapechar=quotechar,
+            quotechar=quotechar,
             **kwargs
         )

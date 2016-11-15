@@ -692,6 +692,7 @@ def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
             parse_dates=datetime_fields,
             dtype=other_dtypes,
             skip_blank_lines=False,
+            escapechar=kwargs.get('escapechar', '\\'),
         )
         # read_csv really wants missing values to be NaN, but for
         # string (object) columns, we want None to be missing

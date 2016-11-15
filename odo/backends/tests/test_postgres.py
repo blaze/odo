@@ -379,11 +379,11 @@ def test_to_dataframe_datelike(sql_with_datelikes):
     pd.util.testing.assert_frame_equal(df, expected)
 
 
-def test_to_dataframe_null_string(sql_with_strings):
+def test_to_dataframe_strings(sql_with_strings):
     sql_with_strings, bind = sql_with_strings
 
     insert_query = sql_with_strings.insert().values([
-        {'non_optional': 'ayy', 'optional': 'hello'},
+        {'non_optional': 'ayy', 'optional': 'hello "world"'},
         {'non_optional': 'lmao', 'optional': None},
     ])
     if bind is None:
@@ -392,6 +392,16 @@ def test_to_dataframe_null_string(sql_with_strings):
         bind.execute(insert_query)
 
     df = odo(sql_with_strings, pd.DataFrame, bind=bind)
-    expected = pd.DataFrame([['ayy', 'hello'], ['lmao', None]],
+    expected = pd.DataFrame([['ayy', 'hello "world"'], ['lmao', None]],
                             columns=['non_optional', 'optional'])
     pd.util.testing.assert_frame_equal(df, expected)
+
+
+def test_from_dataframe_strings(sql_with_strings):
+    sql_with_strings, bind = sql_with_strings
+
+    input_ = pd.DataFrame([['ayy', 'hello "world"'], ['lmao', None]],
+                          columns=['non_optional', 'optional'])
+    odo(input_, sql_with_strings, bind=bind)
+    output = odo(sql_with_strings, pd.DataFrame, bind=bind)
+    pd.util.testing.assert_frame_equal(output, input_)
