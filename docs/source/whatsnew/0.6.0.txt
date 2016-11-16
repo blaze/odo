@@ -44,7 +44,7 @@ None
 Bug Fixes
 ---------
 
-None
+* Correctly handles low-precision decimal fields (:issue:`479`).
 
 Miscellaneous
 -------------

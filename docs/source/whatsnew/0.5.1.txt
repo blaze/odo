@@ -40,7 +40,6 @@ Bug Fixes
 * Adds workaround to skip ssh tests on Py2 due to paramiko hang (:issue:`474`).
 * Fixes issue with kwarg passing for S3 backend (:issue:`466`).
 * S3(x) to x directly gets object from S3 (:issue:`472` :issue:`473`).
-* Correctly handles low-precision decimal fields (:issue:`479`).
 
 Miscellaneous
 -------------
