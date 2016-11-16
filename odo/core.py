@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import logging
 from collections import namedtuple
 from contextlib import contextmanager
 from warnings import warn
@@ -10,6 +11,7 @@ import networkx as nx
 from .compatibility import map
 from .utils import expand_tuples, ignoring
 
+log = logging.getLogger(__name__)
 
 ooc_types = set()  # Out-of-Core types
 
@@ -101,11 +103,16 @@ def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types,
     path_proxy = IterProxy(pth)
     for convert_from, convert_to, f, cost in path_proxy:
         try:
+            log.debug('Transforming %s -> %s', A.__name__, B.__name__,
+                      extra={'kwargs': kwargs, 'f': f, 'excluded_edges': excluded_edges}
+            )
             x = f(x, excluded_edges=excluded_edges, **kwargs)
         except NotImplementedError as e:
             if kwargs.get('raise_on_errors'):
                 raise
-            warn(FailedConversionWarning(convert_from, convert_to, e))
+            log.warning('Failed on %s -> %s. Working around\nError message:\n%s',
+                        A.__name__, B.__name__, e
+            )
 
             # exclude the broken edge
             excluded_edges |= {(convert_from, convert_to)}
