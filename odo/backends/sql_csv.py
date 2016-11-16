@@ -149,10 +149,6 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
             'postgres does not allow escape characters longer than 1 byte when '
             'bulk loading a CSV file'
         )
-    if element.lineterminator != '\n':
-        raise ValueError(
-            r'PostgreSQL does not support line terminators other than \n'
-        )
     return compiler.process(
         sa.text(
             """
