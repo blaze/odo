@@ -52,6 +52,36 @@ So the following lines would be valid inputs to ``odo``
 
       >>> odo('myfile.csv', df) # this will raise TypeError because DataFrame is not appendable
 
+
+Enabling Conversions
+--------------------
+
+Odo is dependent on external libraries for many of its conversions. Since most
+users will only use a small subset of conversions, Odo does not install most
+external libraries.
+
+If you try to use a supported conversion and that conversion is not installed,
+you may get the following error:
+
+.. code-block::
+
+   NotImplementedError: Unable to parse uri to data resource...
+
+To install various subsystems of odo you can use extra install targets like:
+
+.. code-block::
+
+   pip install odo[postgres]
+   pip install odo[bcolz]
+   ...
+
+There are a lot of these, but two special extras targets are ``odo[all]`` and
+``odo[ci]``. ``odo[all]`` will install all of the subsystems. ``odo[ci]`` will
+install the versions of packages we used to run the full test suite for the
+release. This can be helpful if you are seeing an issue that you suspect may be
+due to an incomptatible library version.
+
+
 Network Effects
 ---------------
 
