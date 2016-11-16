@@ -10,6 +10,8 @@ dask==0.11.1
 decorator==4.0.10
 distributed==1.13.3
 docutils==0.12
+elasticsearch==2.4.0
+elasticsearch-dsl==2.2.0
 h5py==2.6.0
 HeapDict==1.0.0
 idna==2.1
