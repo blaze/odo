@@ -61,3 +61,23 @@ def test_ooc_behavior():
     ooc = set([A, C])
     assert [(a, b) for a, b, func in path(foo.graph, A, C, ooc_types=ooc)] == \
                         [(A, C)]
+
+
+def test_convert_passes_extras():
+    foo = NetworkDispatcher('foo')
+    class A(object): pass
+    class B(object): pass
+
+    discover.register(lambda x: 'int')
+
+    kwargs = {}
+
+    @foo.register(B, A, cost=1.0)
+    def _(a, **k):
+        kwargs.update(k)
+        return 1
+
+    assert foo(B, A()) == 1
+
+    assert kwargs['converting_from'] is A
+    assert kwargs['converting_to'] is B
