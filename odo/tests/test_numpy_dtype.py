@@ -13,6 +13,7 @@ import numpy as np
         ('decimal[9,2]', np.float64),
         ('decimal[9]', np.int32),
         ('?decimal[9]', np.float32),
+        ('?decimal[1,0]', np.float16),
     ]
 )
 def test_decimal(ds, expected):
