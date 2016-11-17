@@ -31,6 +31,7 @@ addons:
 services:
     - mongodb
     - mysql
+    - elasticsearch
 
 install:
   # Install conda

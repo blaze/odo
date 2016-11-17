@@ -41,6 +41,7 @@ def extras_require():
                           'bokeh',
                           'ci',
                           'dask',
+                          'elasticsearch',
                           'h5py',
                           'mongo',
                           'mysql',
