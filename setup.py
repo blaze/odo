@@ -40,7 +40,6 @@ def extras_require():
                           'bcolz',
                           'bokeh',
                           'ci',
-                          'dask',
                           'h5py',
                           'mongo',
                           'mysql',
