@@ -19,6 +19,7 @@ requirements:
     - toolz >=0.7.3
     - multipledispatch >=0.4.7
     - networkx
+    - dask >=0.11.1
 
   run:
     - python
@@ -28,6 +29,7 @@ requirements:
     - toolz >=0.7.3
     - multipledispatch >=0.4.7
     - networkx
+    - dask >=0.11.1
 
 test:
   requires:
