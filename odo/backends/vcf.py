@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+from __future__ import unicode_literals
 
 import sys
 import os
@@ -86,11 +87,8 @@ class VCF(object):
     """
     canonical_extension = 'vcf'
 
-    def __init__(self, path,
-                 sniff_nbytes=10000, buffer=None, **kwargs):
+    def __init__(self, path=None, buffer=None, **_):
         self.path = path
-        self._kwargs = kwargs
-        self._sniff_nbytes = sniff_nbytes
         self._buffer = buffer
 
         if path is not None and buffer is not None:
@@ -109,7 +107,7 @@ class VCF(object):
 compressed_open = {'gz': gzip.open, 'bz2': bz2.BZ2File}
 
 @convert.register(pd.DataFrame, (Temp(VCF), VCF), cost=20.0)
-def vcf_to_dataframe(v, nrows=None, **kwargs):
+def vcf_to_dataframe(v, nrows=None, **_):
     with v.open() as f:
         try:
             _skip_meta_data(f)
@@ -117,7 +115,7 @@ def vcf_to_dataframe(v, nrows=None, **kwargs):
             print("File %s does not look like a VCF one." % v.path)
             raise
 
-        df = pd.read_csv(f, nrows=nrows, sep='\t')
+        df = pd.read_csv(f, nrows=nrows, sep=str('\t'), encoding='ascii')
 
     return df
 
@@ -127,7 +125,8 @@ def _skip_meta_data(f):
         last_pos = f.tell()
         line = f.readline()
 
-        if not(len(line) > 1 and line[0] == ord(b'#') and line[1] == ord(b'#')):
+        if not(len(line) > 1 and line[0:1] == b'#'
+               and line[1:2] == b'#'):
             f.seek(last_pos)
             break
 
@@ -195,7 +194,7 @@ def drop(v):
 
 @sample.register(VCF)
 @contextmanager
-def sample_vcf(vcf, length=8192, **kwargs):
+def sample_vcf(vcf, length=8192, **_):
     if vcf.path is None or not os.path.exists(vcf.path):
         mgr = NamedTemporaryFile(suffix='.vcf', mode='wb+')
     else:
@@ -215,17 +214,19 @@ def append_object_to_vcf(v, seq, **kwargs):
 
 @append.register(VCF, pd.DataFrame)
 def append_dataframe_to_vcf(v, df, **kwargs):
-    if ext(v.path) in compressed_open:
-        if sys.version_info[0] >= 3:
-            kwargs['mode'] = 'at'
-        elif sys.version_info[0] == 2:
-            kwargs['mode'] = 'ab' if sys.platform == 'win32' else 'at'
+    if v.path is not None:
+        if ext(v.path) in compressed_open:
+            if sys.version_info[0] >= 3:
+                kwargs['mode'] = 'at'
+            elif sys.version_info[0] == 2:
+                kwargs['mode'] = 'ab' if sys.platform == 'win32' else 'at'
 
     with v.open(mode=kwargs.get('mode', 'a')) as f:
         df.to_csv(f,
                   header=None,
                   index=None,
-                  sep='\t')
+                  sep=str('\t'),
+                  encoding='ascii')
 
     return v
 

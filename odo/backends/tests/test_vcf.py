@@ -1,26 +1,20 @@
 from __future__ import absolute_import, division, print_function
+from __future__ import unicode_literals
 
 import pytest
 
 import sys
 import os
-import numpy as np
+import shutil
 import pandas as pd
-import pandas.util.testing as tm
 import gzip
 import tempfile
-import datashape
-from datashape import Option, string
 from collections import Iterator
-from contextlib import contextmanager
 
 from odo.backends.vcf import (VCF, append, convert, resource,
-                              vcf_to_dataframe, VCF_to_chunks_of_dataframes)
-from odo.utils import tmpfile, filetext, filetexts, raises
-from odo import (into, append, convert, resource, discover, dshape, Temp,
-                 chunks, odo)
-from odo.temp import _Temp
-from odo.compatibility import unicode
+                              vcf_to_dataframe)
+from odo.utils import filetext, filetexts
+from odo import (into, append, convert, resource, chunks, odo)
 
 def test_vcf_to_dataframe():
     fp = os.path.join(os.path.dirname(__file__), 'dummydata.vcf')
@@ -97,20 +91,24 @@ def test_pandas_write(header, data0):
             s = f.read()
             assert s.count('#CHROM') == 1
 
-@pytest.mark.xfail(sys.version_info[0] == 3, reason="Doesn't work on Python 3")
 def test_pandas_write_gzip(header, data0):
-    txt = unicode("\t".join(header) + '\n').encode()
-    with filetext(txt, open=gzip.open,
-                  extension='.vcf', mode='w') as fn:
+    tmpdir = tempfile.mkdtemp()
+    try:
+        f = os.path.join(tmpdir, '.vcf')
 
-        vcf = VCF(fn)
-        append(vcf, data0)
+        with gzip.open(f, 'wt') as g:
+            # txt = unicode("\t".join(header) + '\n').encode()
+            txt = "\t".join(header) + '\n'
+            g.write(txt)
+            vcf = VCF(buffer=g)
+            append(vcf, data0)
 
-        f = gzip.open(fn)
-        s = f.read()
-        assert b'snp_22_16050612' in s
-        assert b'#CHROM' in s
-        f.close()
+        with gzip.open(f, mode='r') as g:
+            s = g.read()
+            assert b'snp_22_16050612' in s
+            assert b'#CHROM' in s
+    finally:
+        shutil.rmtree(tmpdir)
 
 def test_vcf_into_list(header, data0):
     with filetext("\t".join(header) + '\n', extension='vcf') as fn:
