@@ -6,7 +6,10 @@ from functools import partial
 import codecs
 import os
 
-from odo import odo, resource, URL, discover, CSV, TextFile, convert
+from odo import odo, resource, discover, convert
+from odo.backends.url import URL
+from odo.backends.csv import CSV
+from odo.backends.text import TextFile
 from odo.backends.url import sample
 from odo.temp import _Temp, Temp
 from odo.utils import tmpfile, raises

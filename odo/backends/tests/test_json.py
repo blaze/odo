@@ -3,15 +3,14 @@ from __future__ import absolute_import, division, print_function
 import datetime
 import os
 import gzip
-import os
 import json
 
 from contextlib import contextmanager
 
-import numpy as np
 from odo.backends.json import json_dumps
 from odo.utils import tmpfile, ignoring
-from odo import odo, discover, JSONLines, resource, JSON, convert, append, drop
+from odo import odo, discover, resource, convert, append, drop
+from odo.backends.json import JSONLines, JSON
 from odo.temp import Temp, _Temp
 
 from datashape import dshape

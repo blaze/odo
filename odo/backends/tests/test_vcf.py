@@ -14,7 +14,8 @@ from collections import Iterator
 from odo.backends.vcf import (VCF, append, convert, resource,
                               vcf_to_dataframe)
 from odo.utils import filetext, filetexts
-from odo import (into, append, convert, resource, chunks, odo)
+from odo import (into, append, convert, resource, odo)
+from odo.chunks import chunks
 
 def test_vcf_to_dataframe():
     fp = os.path.join(os.path.dirname(__file__), 'dummydata.vcf')

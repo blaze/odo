@@ -48,7 +48,8 @@ class _URL(object):
      Examples
     --------
 
-    >>> from odo import URL, CSV
+    >>> from odo.backends.url import URL
+    >>> from odo.backends.csv import CSV
     >>> u = URL(CSV)('http://foo.com/myfile.csv')
 
     Normally create through resource uris
