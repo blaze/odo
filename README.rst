@@ -95,7 +95,9 @@ Odo was factored out from the Blaze_ project.
 
 
 .. _Blaze: http://blaze.pydata.org/
+
 .. _networkx: https://networkx.github.io/
+
 .. _Documentation: https://odo.readthedocs.org/en/latest/
 
 .. |Build Status| image:: https://travis-ci.org/blaze/odo.png
@@ -105,5 +107,5 @@ Odo was factored out from the Blaze_ project.
   :target: http://odo.pydata.org/en/latest/
   :alt: Documentation Status
 
-.. |Conda Status| image:: https://binstar.org/blaze/odo/badges/build.svg
-  :target: https://binstar.org/blaze/odo/builds
+.. |Conda Status| image:: https://anaconda.org/blaze/odo/badges/version.svg
+  :target: https://anaconda.org/blaze/odo
