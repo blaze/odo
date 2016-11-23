@@ -3,7 +3,7 @@ Odo
 
 |Build Status| |Doc Status| |Conda Status|
 
-Data migration in Python
+Data migration in Python.
 
 Documentation_
 
@@ -103,7 +103,7 @@ Odo was factored out from the Blaze_ project.
 .. |Build Status| image:: https://travis-ci.org/blaze/odo.png?style=flat-square
   :target: https://travis-ci.org/blaze/odo
 
-.. |Doc Status| image:: https://readthedocs.org/projects/odo/badge/?version=latest?style=flat-square
+.. |Doc Status| image:: https://readthedocs.org/projects/odo/badge/?version=latest&style=flat-square
   :target: http://odo.pydata.org/en/latest/
   :alt: Documentation Status
 
