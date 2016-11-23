@@ -1,7 +1,7 @@
 Odo
 ===
 
-|Build Status| |Doc Status| |Conda Status|
+|Build Status| |Conda Status| |Doc Status|
 
 Data migration in Python.
 

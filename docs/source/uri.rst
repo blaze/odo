@@ -27,8 +27,10 @@ What sorts of URI's does ``odo`` support?
     * ``.bcolz``
     * ``.xls(x)``
     * ``.sas7bdat``
+    * ``.vcf``
 * Collections of files on disk
     * ``*.csv``
+    * ``*.vcf``
 * SQLAlchemy strings
     * ``sqlite:////absolute/path/to/myfile.db::tablename``
     * ``sqlite:////absolute/path/to/myfile.db``  (specify a particular table)
