@@ -4,6 +4,7 @@ recursive-include docs *.rst
 include requirements.txt
 include extra-requirements.txt
 include setup.py
+include setup.cfg
 include README.rst
 include LICENSE
 include MANIFEST.in

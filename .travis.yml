@@ -74,7 +74,7 @@ before_script:
 
 script:
   - conda list
-  - py.test -v --doctest-modules --doctest-ignore-import-errors -rs odo
+  - python setup.py test
 
 notifications:
   email: false
