@@ -7,5 +7,3 @@ include setup.py
 include README.rst
 include LICENSE
 include MANIFEST.in
-include versioneer.py
-include odo/_version.py
