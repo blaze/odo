@@ -47,7 +47,9 @@ Alternatively you can construct objects programmatically.  SSH uses the
 
 .. code-block:: python
 
-   >>> from odo import SSH, CSV, JSON
+   >>> from odo.backends.ssh import SSH
+   >>> from odo.backends.csv import CSV
+   >>> from odo.backends.json import JSON
    >>> auth = {'user': 'ubuntu',
    ...         'host': 'hostname',
    ...         'key_filename': '.ssh/id_rsa'}
