@@ -1,24 +1,22 @@
-#!/usr/bin/env python
 from itertools import chain
 import os
+import sys
 from fnmatch import fnmatch
 from setuptools import setup, find_packages
-
-import versioneer
 
 
 def find_data_files(where, exts):
     exts = tuple(exts)
-    for root, dirs, files in os.walk(where):
+    for root, _, files in os.walk(where):
         for f in files:
             if any(fnmatch(f, pat) for pat in exts):
                 yield os.path.join(root, f)
 
-
-exts = ('*.h5', '*.csv', '*.xls', '*.xlsx', '*.db', '*.json', '*.gz', '*.hdf5',
-        '*.sas7bdat', '*.vcf')
-package_data = [x.replace('odo' + os.sep, '') for x in
-                find_data_files('odo', exts)]
+def get_package_data():
+    exts = ('*.h5', '*.csv', '*.xls', '*.xlsx', '*.db', '*.json', '*.gz', '*.hdf5',
+            '*.sas7bdat', '*.vcf')
+    return [x.replace('odo' + os.sep, '') for x in
+            find_data_files('odo', exts)]
 
 
 def read(filename):
@@ -58,20 +56,53 @@ def extras_require():
                                              if k not in {'ci', 'test'}))
     return extras
 
+def setup_package():
+    src_path = os.path.dirname(os.path.abspath(sys.argv[0]))
+    old_path = os.getcwd()
+    os.chdir(src_path)
+    sys.path.insert(0, src_path)
 
-setup(name='odo',
-      version=versioneer.get_version(),
-      cmdclass=versioneer.get_cmdclass(),
-      description='Data migration utilities',
-      url='https://github.com/blaze/odo',
-      author='Blaze development team',
-      author_email='blaze-dev@continuum.io',
-      license='BSD',
-      keywords='odo data conversion hdf5 sql blaze',
-      packages=find_packages(),
-      install_requires=install_requires(),
-      extras_require=extras_require(),
-      long_description=read('README.rst'),
-      package_data={'odo': package_data},
-      zip_safe=False,
-      scripts=[os.path.join('bin', 'odo')])
+
+    needs_pytest = {'pytest', 'test', 'ptr'}.intersection(sys.argv)
+    pytest_runner = ['pytest-runner'] if needs_pytest else []
+
+    setup_requires = [] + pytest_runner
+    tests_require = ['pytest']
+
+    metadata = dict(
+        name='odo',
+        version='0.5.2.dev0',
+        description='Data migration utilities',
+        url='https://github.com/blaze/odo',
+        author='Blaze development team',
+        author_email='blaze-dev@continuum.io',
+        license='BSD',
+        keywords='odo data conversion hdf5 sql blaze',
+        packages=find_packages(),
+        install_requires=install_requires(),
+        setup_requires=setup_requires,
+        tests_require=tests_require,
+        extras_require=extras_require(),
+        long_description=read('README.rst'),
+        package_data={'odo': get_package_data()},
+        include_package_data=True,
+        zip_safe=False,
+        scripts=[os.path.join('bin', 'odo')],
+        classifiers=[
+            "Development Status :: 5 - Production/Stable",
+            "License :: OSI Approved :: BSD License",
+            "Programming Language :: Python :: 2.7",
+            "Programming Language :: Python :: 3.4",
+            "Programming Language :: Python :: 3.5",
+            "Operating System :: OS Independent",
+        ],
+    )
+
+    try:
+        setup(**metadata)
+    finally:
+        del sys.path[0]
+        os.chdir(old_path)
+
+if __name__ == '__main__':
+    setup_package()

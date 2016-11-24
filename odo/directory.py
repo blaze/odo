@@ -26,7 +26,7 @@ class _Directory(Chunks):
 
     """
     def __init__(self, path, **kwargs):
-        super(_Directory, self).__init__()
+        super(_Directory, self).__init__(None)
         self.path = path
         self.kwargs = kwargs
 
