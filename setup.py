@@ -67,7 +67,7 @@ def setup_package():
     pytest_runner = ['pytest-runner'] if needs_pytest else []
 
     setup_requires = [] + pytest_runner
-    tests_require = ['pytest']
+    tests_require = ['pytest'] + extras_require()['ssh']
 
     metadata = dict(
         name='odo',
