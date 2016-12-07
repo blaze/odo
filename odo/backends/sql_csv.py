@@ -49,7 +49,7 @@ class CopyFromCSV(Executable, ClauseElement):
         self.quotechar = quotechar
         self.escapechar = escapechar
         self.encoding = encoding
-        self.skiprows = int(skiprows or self.header)
+        self.skiprows = skiprows if self.header is None else int(self.header)
         self._bind = getbind(element, bind)
 
         for k, v in kwargs.items():
