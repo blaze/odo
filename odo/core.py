@@ -103,15 +103,15 @@ def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types,
     path_proxy = IterProxy(pth)
     for convert_from, convert_to, f, cost in path_proxy:
         try:
-            log.debug('Transforming %s -> %s', A.__name__, B.__name__,
-                      extra={'kwargs': kwargs, 'f': f, 'excluded_edges': excluded_edges}
+            log.debug('Transforming %s -> %s', convert_from.__name__, convert_to.__name__,
+                      extra={'kwargs': kwargs, 'f': f, 'excluded_edges': excluded_edges, 'cost': cost}
             )
             x = f(x, excluded_edges=excluded_edges, **kwargs)
         except NotImplementedError as e:
             if kwargs.get('raise_on_errors'):
                 raise
             log.warning('Failed on %s -> %s. Working around\nError message:\n%s',
-                        A.__name__, B.__name__, e
+                        convert_from.__name__, convert_to.__name__, e
             )
 
             # exclude the broken edge
