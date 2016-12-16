@@ -12,6 +12,10 @@ New Features
   current value to the target. This can prevent a lot of duplicated work when
   the new path shares a prefix with the original path (:issue:`449`).
 
+* ``convert`` will now search the entire mro of the source type. This means that
+  you can convert a subclass of a known source type into a known destination
+  type (:issue:`518`).
+
 Experimental Features
 ---------------------
 

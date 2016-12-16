@@ -1,11 +1,13 @@
 from __future__ import absolute_import, division, print_function
 
-from collections import namedtuple
+from collections import namedtuple, Iterator
 from contextlib import contextmanager
 from warnings import warn
 
 from datashape import discover
 import networkx as nx
+import numpy as np
+from toolz import concatv
 
 from .compatibility import map
 from .utils import expand_tuples, ignoring
@@ -143,6 +145,7 @@ def _transform(graph, target, source, excluded_edges=None, ooc_types=ooc_types,
 
 
 PathPart = namedtuple('PathPart', 'convert_from convert_to func cost')
+_virtual_superclasses = (Iterator,)
 
 
 def path(graph, source, target, excluded_edges=None, ooc_types=ooc_types):
@@ -152,11 +155,10 @@ def path(graph, source, target, excluded_edges=None, ooc_types=ooc_types):
     if not isinstance(target, type):
         target = type(target)
 
-    if source not in graph:
-        for cls in valid_subclasses:
-            if issubclass(source, cls):
-                source = cls
-                break
+    for cls in concatv(source.mro(), _virtual_superclasses):
+        if cls in graph:
+            source = cls
+            break
 
     # If both source and target are Out-Of-Core types then restrict ourselves
     # to the graph of out-of-core types
@@ -180,12 +182,6 @@ def path_cost(path):
     """Calculate the total cost of a path.
     """
     return sum(p.cost for p in path)
-
-
-# Catch-all subclasses
-from collections import Iterator
-import numpy as np
-valid_subclasses = [Iterator, np.ndarray]
 
 
 @contextmanager

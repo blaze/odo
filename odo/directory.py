@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from glob import glob
-from .chunks import Chunks
+from .chunks import Chunks, chunks
 from .resource import resource
 from .utils import copydoc
 from toolz import memoize, first
@@ -38,7 +38,7 @@ class _Directory(Chunks):
 @copydoc(_Directory)
 def Directory(cls):
     """ Parametrized DirectoryClass """
-    return type('Directory(%s)' % cls.__name__, (_Directory,), {'container': cls})
+    return type('Directory(%s)' % cls.__name__, (_Directory, chunks(cls)), {})
 
 
 re_path_sep = os.path.sep

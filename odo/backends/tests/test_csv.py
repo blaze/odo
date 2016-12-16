@@ -478,3 +478,18 @@ def test_globbed_csv_to_chunks_of_dataframe():
                           pd.DataFrame([[1, 2, 3], [4, 5, 6]], columns=columns))
     tm.assert_frame_equal(dfs[1],
                           pd.DataFrame([[7, 8, 9], [10, 11, 12]], columns=columns))
+
+
+def test_globbed_csv_to_dataframe():
+    header = 'a,b,c\n'
+    d = {'a-1.csv': header + '1,2,3\n4,5,6\n',
+         'a-2.csv': header + '7,8,9\n10,11,12\n'}
+
+    with filetexts(d):
+        df = odo('a-*.csv', pd.DataFrame)
+
+    tm.assert_frame_equal(
+        df,
+        pd.DataFrame([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]],
+                     columns=['a', 'b', 'c']),
+    )
