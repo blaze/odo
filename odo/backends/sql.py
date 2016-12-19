@@ -683,7 +683,7 @@ def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
         except AttributeError:
             fields = [(0, dshape.measure)]
 
-        for field, dtype in fields:
+        for n, (field, dtype) in enumerate(fields):
             if isdatelike(dtype):
                 datetime_fields.append(field)
             elif isinstance(dtype, Option):
@@ -693,7 +693,11 @@ def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
                 else:
                     other_dtypes[field] = ty.to_numpy_dtype()
                     if ty == string:
-                        optional_string_fields.append(field)
+                        # work with integer column indices for the
+                        # optional_string columns because we don't always
+                        # know the column name and then the lookup will fail
+                        # in the loop below.
+                        optional_string_fields.append(n)
             else:
                 other_dtypes[field] = dtype.to_numpy_dtype()
 
@@ -706,7 +710,11 @@ def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
         )
         # read_csv really wants missing values to be NaN, but for
         # string (object) columns, we want None to be missing
-        for field in optional_string_fields:
+        columns = df.columns
+        for field_ix in optional_string_fields:
+            # use ``df.loc[bool, df.columns[field_ix]]`` because you cannot do
+            # boolean slicing with ``df.iloc``.
+            field = columns[field_ix]
             df.loc[df[field].isnull(), field] = None
         return df
 
