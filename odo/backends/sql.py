@@ -190,7 +190,7 @@ def discover_typeengine(typ):
         return dshape(revtypes[typ])[0]
     if type(typ) in revtypes:
         return revtypes[type(typ)]
-    if isinstance(typ, (sa.NUMERIC, sa.DECIMAL)):
+    if isinstance(typ, sa.Numeric):
         return datashape.Decimal(precision=typ.precision, scale=typ.scale)
     if isinstance(typ, (sa.String, sa.Unicode)):
         return datashape.String(typ.length, 'U8')
