@@ -1,11 +1,13 @@
 from __future__ import absolute_import, division, print_function
 
+import csv
 import os
 import re
 import subprocess
 import sys
 import decimal
 import warnings
+from uuid import uuid4
 
 from operator import attrgetter
 from itertools import chain
@@ -668,13 +670,46 @@ def table_to_select(t, **kwargs):
     return t.select()
 
 
+_default_na = (
+    '',
+    '#N/A',
+    '#N/A N/A',
+    '#NA',
+    '-1.#IND',
+    '-1.#QNAN',
+    '-NaN',
+    '-nan',
+    '1.#IND',
+    '1.#QNAN',
+    'N/A',
+    'NA',
+    'NULL',
+    'NaN',
+    'nan',
+)
+
+
+def _na_value(dtype, na_rep):
+    if isinstance(dtype, Option):
+        if dtype.ty == string:
+            return [na_rep]
+        else:
+            return _default_na + (na_rep,)
+
+    if dtype == string:
+        return []
+    return _default_na + (na_rep,)
+
+
 @convert.register(pd.DataFrame, (sa.sql.Select, sa.sql.Selectable), cost=300.0)
-def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
+def select_or_selectable_to_frame(el,
+                                  bind=None,
+                                  dshape=None,
+                                  na_value=None,
+                                  escapechar='\\',
+                                  **kwargs):
     bind = getbind(el, bind)
     if bind.dialect.name == 'postgresql':
-        buf = StringIO()
-        append(CSV(None, buffer=buf), el, bind=bind, **kwargs)
-        buf.seek(0)
         datetime_fields = []
         other_dtypes = {}
         optional_string_fields = []
@@ -701,12 +736,31 @@ def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
             else:
                 other_dtypes[field] = dtype.to_numpy_dtype()
 
+        if na_value is None:
+            na_value = '<NULL: %s>' % uuid4().hex
+
+        buf = StringIO()
+        append(
+            CSV(None, buffer=buf),
+            el,
+            bind=bind,
+            na_value=na_value,
+            escapechar=escapechar,
+            **kwargs
+        )
+        buf.seek(0)
+
         df = pd.read_csv(
             buf,
+            index_col=False,
             parse_dates=datetime_fields,
             dtype=other_dtypes,
+            escapechar=escapechar,
+            na_values={
+                field: _na_value(dtype, na_value) for field, dtypes in fields
+            },
+            keep_default_na=False,
             skip_blank_lines=False,
-            escapechar=kwargs.get('escapechar', '\\'),
         )
         # read_csv really wants missing values to be NaN, but for
         # string (object) columns, we want None to be missing
@@ -740,19 +794,18 @@ def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
 
 class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
 
-    def __init__(
-        self,
-        element,
-        path,
-        delimiter=',',
-        quotechar='"',
-        lineterminator='\n',
-        escapechar='\\',
-        header=True,
-        na_value='',
-        encoding=None,
-        bind=None,
-    ):
+    def __init__(self,
+                 element,
+                 path,
+                 delimiter=',',
+                 quotechar='"',
+                 lineterminator='\n',
+                 escapechar='\\',
+                 header=True,
+                 na_value='',
+                 encoding=None,
+                 bind=None,
+                 force_quote=()):
         self.element = element
         self.path = path
         self.delimiter = delimiter
@@ -765,6 +818,7 @@ class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
         self.escapechar = escapechar
         self.na_value = na_value
         self.encoding = encoding
+        self.force_quote = force_quote
 
     @property
     def bind(self):
@@ -776,7 +830,7 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
     selectable = element.element
     return compiler.process(
         sa.text(
-            """COPY {0} TO STDOUT
+            """COPY {stmt} TO STDOUT
             WITH (
                 FORMAT CSV,
                 HEADER :header,
@@ -785,11 +839,22 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
                 NULL :na_value,
                 ESCAPE :escapechar,
                 ENCODING :encoding
+                {force_quote}
             )
             """.format(
-                compiler.preparer.format_table(selectable)
-                if isinstance(selectable, sa.Table)
-                else '({0})'.format(literal_compile(selectable))
+                stmt=(
+                    compiler.preparer.format_table(selectable)
+                    if isinstance(selectable, sa.Table) else
+                    '({})'.format(literal_compile(selectable))
+                ),
+                force_quote=(
+                    ',\nFORCE_QUOTE (%s)' % ', '.join(map(
+                        compiler.preparer.quote_identifier,
+                        element.force_quote,
+                    ))
+                    if element.force_quote else
+                    ''
+                ),
             )
         ).bindparams(
             header=element.header,
@@ -799,7 +864,7 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
             escapechar=element.escapechar,
             encoding=element.encoding or element.bind.execute(
                 'show client_encoding'
-            ).scalar()
+            ).scalar(),
         ),
         **kwargs
     )

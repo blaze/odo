@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import codecs
 import warnings
 import functools
 import inspect
@@ -19,7 +20,7 @@ from datashape.discovery import is_zero_time
 
 from toolz import pluck, get, curry, keyfilter
 
-from .compatibility import unicode
+from .compatibility import unicode, PY2
 
 sample = Dispatcher('sample')
 
