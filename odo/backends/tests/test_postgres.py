@@ -118,6 +118,8 @@ sql_with_datelikes = sql_fixture("""
 sql_with_strings = sql_fixture("""
     var * {non_optional: string, optional: ?string}
 """)
+sql_with_bools = sql_fixture('var * {non_optional: bool, optional: ?bool}')
+sql_with_single_bool = sql_fixture('var * {column: bool}')
 
 
 @pytest.yield_fixture
@@ -421,6 +423,50 @@ def test_to_dataframe_strings(sql_with_strings):
         columns=['non_optional', 'optional'],
     )
     df = odo(sql_with_strings, pd.DataFrame, bind=bind)
+    pd.util.testing.assert_frame_equal(df, expected)
+
+
+def test_to_dataframe_bools(sql_with_bools):
+    sql_with_bools, bind = sql_with_bools
+
+    insert_query = sql_with_bools.insert().values([
+        {'non_optional': True, 'optional': True},
+        {'non_optional': False, 'optional': False},
+        {'non_optional': True, 'optional': None},
+    ])
+    if bind is None:
+        insert_query.execute()
+    else:
+        bind.execute(insert_query)
+
+    expected = pd.DataFrame(
+        [[True, True],
+         [False, False],
+         [True, np.nan]],
+        columns=['non_optional', 'optional'],
+    )
+    df = odo(sql_with_bools, pd.DataFrame, bind=bind)
+    pd.util.testing.assert_frame_equal(df, expected)
+
+
+def test_to_dataframe_single_bool_column(sql_with_single_bool):
+    sql_with_single_bool, bind = sql_with_single_bool
+
+    insert_query = sql_with_single_bool.insert().values([
+        {'column': True},
+        {'column': False}
+    ])
+    if bind is None:
+        insert_query.execute()
+    else:
+        bind.execute(insert_query)
+
+    expected = pd.DataFrame(
+        [[True],
+         [False]],
+        columns=['column'],
+    )
+    df = odo(sql_with_single_bool, pd.DataFrame, bind=bind)
     pd.util.testing.assert_frame_equal(df, expected)
 
 

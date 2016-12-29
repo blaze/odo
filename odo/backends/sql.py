@@ -694,11 +694,11 @@ def _na_value(dtype, na_rep):
         if dtype.ty == string:
             return [na_rep]
         else:
-            return _default_na + (na_rep,)
+            return list(_default_na + (na_rep,))
 
     if dtype == string:
         return []
-    return _default_na + (na_rep,)
+    return list(_default_na + (na_rep,))
 
 
 @convert.register(pd.DataFrame, (sa.sql.Select, sa.sql.Selectable), cost=300.0)
@@ -746,21 +746,27 @@ def select_or_selectable_to_frame(el,
             bind=bind,
             na_value=na_value,
             escapechar=escapechar,
+            encoding='utf-8',
             **kwargs
         )
         buf.seek(0)
 
         df = pd.read_csv(
             buf,
+            names=[name for name, _ in fields],
+            header=0,
+            encoding='utf-8',
             index_col=False,
             parse_dates=datetime_fields,
             dtype=other_dtypes,
             escapechar=escapechar,
             na_values={
-                field: _na_value(dtype, na_value) for field, dtypes in fields
+                field: _na_value(dtype, na_value) for field, dtype in fields
             },
             keep_default_na=False,
             skip_blank_lines=False,
+            true_values=['t'],
+            false_values=['f'],
         )
         # read_csv really wants missing values to be NaN, but for
         # string (object) columns, we want None to be missing
