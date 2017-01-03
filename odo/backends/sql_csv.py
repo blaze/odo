@@ -211,6 +211,29 @@ else:
         return compiler.process(cmd)
 
 
+@compiles(CopyFromCSV, 'mssql')
+def compile_from_csv_mssql(element, compiler, **kwargs):
+    return compiler.process(
+        sa.text(
+            """BULK INSERT {table} FROM '{path}'
+            WITH (
+            FIELDTERMINATOR = '{delimiter}'
+            , ROWTERMINATOR = '{rowterminator}'
+           , FIRSTROW = {firstrow}
+            )
+            """.format(
+                table=compiler.preparer.format_table(element.element),
+                delimiter=element.delimiter,
+                path=os.path.abspath(element.csv.path),
+                rowterminator=element.lineterminator,
+                fieldquote=element.quotechar,
+                firstrow=str(int(element.skiprows) + 1)
+            )
+        ),
+        **kwargs
+    )
+
+
 @append.register(sa.Table, CSV)
 def append_csv_to_sql_table(tbl, csv, bind=None, **kwargs):
     bind = getbind(tbl, bind)
@@ -292,6 +315,8 @@ def append_dataframe_to_sql_table(tbl,
                                   sqlite_max_variable_number=SQLITE_MAX_VARIABLE_NUMBER,
                                   quotechar='"',
                                   **kwargs):
+    import pdb
+    pdb.set_trace()
     bind = getbind(tbl, bind)
     dialect = bind.dialect.name
 

@@ -427,7 +427,6 @@ def dshape_to_table(name, ds, metadata=None, foreign_keys=None,
           Column('amount', Integer(), table=<bank>, nullable=False),
           schema=None)
     """
-
     if isinstance(ds, str):
         ds = dshape(ds)
     if not isrecord(ds.measure):
@@ -440,6 +439,17 @@ def dshape_to_table(name, ds, metadata=None, foreign_keys=None,
         foreign_keys = {}
 
     validate_foreign_keys(ds, foreign_keys)
+
+    if (metadata.bind.dialect.name == 'mssql') and metadata.schema:
+        engine = metadata.bind
+
+        schema_exists = engine.execute(sa.text(
+            """select * from information_schema.schemata where
+            schema_name = :schema"""
+        ).bindparams(schema=metadata.schema)).scalar()
+        if not schema_exists:
+            from sqlalchemy.schema import CreateSchema
+            engine.execute(CreateSchema(metadata.schema))
 
     cols = dshape_to_alchemy(ds, primary_key=primary_key or frozenset())
     cols.extend(sa.ForeignKeyConstraint([column_name], [referent])
@@ -971,6 +981,10 @@ def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
     # This will be a no-op since we're doing the write during the compile
     return ''
 
+
+@compiles(CopyToCSV, 'mssql')
+def compile_copy_to_csv_mssql(element, compiler, **kwargs):
+    raise MDNotImplementedError("MSSQL does not have a T-SQL bulk export")
 
 try:
     from sqlalchemy_redshift.dialect import UnloadFromSelect
