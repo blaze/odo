@@ -118,6 +118,8 @@ sql_with_datelikes = sql_fixture("""
 sql_with_strings = sql_fixture("""
     var * {non_optional: string, optional: ?string}
 """)
+sql_with_bools = sql_fixture('var * {non_optional: bool, optional: ?bool}')
+sql_with_single_bool = sql_fixture('var * {column: bool}')
 
 
 @pytest.yield_fixture
@@ -383,17 +385,88 @@ def test_to_dataframe_strings(sql_with_strings):
     sql_with_strings, bind = sql_with_strings
 
     insert_query = sql_with_strings.insert().values([
-        {'non_optional': 'ayy', 'optional': 'hello "world"'},
-        {'non_optional': 'lmao', 'optional': None},
+        # quoting is done correctly
+        {'non_optional': 'hello "world"', 'optional': 'hello "world"'},
+
+        # None stays None
+        {'non_optional': 'ayy lmao', 'optional': None},
+
+        # nan string is just the string nan
+        {'non_optional': 'nan', 'optional': 'nan'},
+
+        # NULL is just the string NULL
+        {'non_optional': 'NULL', 'optional': 'NULL'},
+
+        # escaping is done correctly
+        {'non_optional': r'\no\t \ \escaped \"',
+         'optional': r'\no\t \ \escaped \"'},
+
+        # empty string is not NULL
+        {'non_optional': '', 'optional': ''},
+
+        # commas are properly escaped
+        {'non_optional': 'comma,delim', 'optional': 'comma,delim'},
     ])
     if bind is None:
         insert_query.execute()
     else:
         bind.execute(insert_query)
 
+    expected = pd.DataFrame(
+        [['hello "world"', 'hello "world"'],
+         ['ayy lmao', None],
+         ['nan', 'nan'],
+         ['NULL', 'NULL'],
+         [r'\no\t \ \escaped \"', r'\no\t \ \escaped \"'],
+         ['', ''],
+         ['comma,delim', 'comma,delim']],
+        columns=['non_optional', 'optional'],
+    )
     df = odo(sql_with_strings, pd.DataFrame, bind=bind)
-    expected = pd.DataFrame([['ayy', 'hello "world"'], ['lmao', None]],
-                            columns=['non_optional', 'optional'])
+    pd.util.testing.assert_frame_equal(df, expected)
+
+
+def test_to_dataframe_bools(sql_with_bools):
+    sql_with_bools, bind = sql_with_bools
+
+    insert_query = sql_with_bools.insert().values([
+        {'non_optional': True, 'optional': True},
+        {'non_optional': False, 'optional': False},
+        {'non_optional': True, 'optional': None},
+    ])
+    if bind is None:
+        insert_query.execute()
+    else:
+        bind.execute(insert_query)
+
+    expected = pd.DataFrame(
+        [[True, True],
+         [False, False],
+         [True, np.nan]],
+        columns=['non_optional', 'optional'],
+    )
+    df = odo(sql_with_bools, pd.DataFrame, bind=bind)
+    pd.util.testing.assert_frame_equal(df, expected)
+
+
+def test_to_dataframe_single_bool_column(sql_with_single_bool):
+    sql_with_single_bool, bind = sql_with_single_bool
+
+    insert_query = sql_with_single_bool.insert().values([
+        {'column': True},
+        {'column': False}
+    ])
+    if bind is None:
+        insert_query.execute()
+    else:
+        bind.execute(insert_query)
+
+    expected = pd.DataFrame(
+        [[True],
+         [False]],
+        columns=['column'],
+    )
+    df = odo(sql_with_single_bool, pd.DataFrame, bind=bind)
     pd.util.testing.assert_frame_equal(df, expected)
 
 
