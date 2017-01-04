@@ -36,6 +36,7 @@ from toolz import (partition_all, keyfilter, valfilter, identity, concat,
 from toolz.curried import pluck, map
 
 from ..compatibility import unicode, StringIO
+from ..directory import Directory
 from ..utils import (
     keywords,
     ignoring,
@@ -867,6 +868,34 @@ def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
 
     # This will be a no-op since we're doing the write during the compile
     return ''
+
+
+try:
+    from sqlalchemy_redshift.dialect import UnloadFromSelect
+    from odo.backends.aws import S3, get_s3_connection
+except ImportError:
+    pass
+else:
+    @resource.register('s3://.*/$')
+    def resource_s3_prefix(uri, **kwargs):
+        return Directory(S3)(uri, **kwargs)
+
+    @append.register(Directory(S3), sa.Table)
+    def redshit_to_s3_bucket(bucket, selectable, dshape=None, bind=None,
+                             **kwargs):
+        s3_conn_kwargs = filter_kwargs(get_s3_connection, kwargs)
+        s3 = get_s3_connection(**s3_conn_kwargs)
+
+        unload_kwargs = filter_kwargs(UnloadFromSelect, kwargs)
+        unload_kwargs['unload_location'] = bucket.path
+        unload_kwargs['access_key_id'] = s3.access_key
+        unload_kwargs['secret_access_key'] = s3.secret_key
+
+        unload = UnloadFromSelect(selectable.select(), **unload_kwargs)
+
+        with getbind(selectable, bind).begin() as conn:
+            conn.execute(unload)
+        return bucket.path
 
 
 @append.register(CSV, sa.sql.Selectable)

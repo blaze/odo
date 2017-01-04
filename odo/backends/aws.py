@@ -25,10 +25,13 @@ from ..utils import tmpfile, ext, sample, filter_kwargs, copydoc
 
 
 @memoize
-def get_s3_connection(aws_access_key_id=None,
-                      aws_secret_access_key=None,
-                      anon=False):
+def get_s3_connection(aws_access_key_id=None, aws_secret_access_key=None,
+                      anon=False, profile_name=None, **kwargs):
     import boto
+
+    if profile_name:
+        return boto.connect_s3(profile_name=profile_name)
+
     cfg = boto.Config()
 
     if aws_access_key_id is None:
@@ -70,9 +73,11 @@ class _S3(object):
             self.s3 = s3
         else:
             self.s3 = get_s3_connection(aws_access_key_id=aws_access_key_id,
-                                        aws_secret_access_key=aws_secret_access_key)
+                                        aws_secret_access_key=aws_secret_access_key,
+                                        **kwargs)
         try:
             bucket = self.s3.get_bucket(self.bucket,
+                                        validate=False,
                                         **filter_kwargs(self.s3.get_bucket,
                                                         kwargs))
         except boto.exception.S3ResponseError:
@@ -154,7 +159,7 @@ def resource_s3_csv(uri, **kwargs):
 
 @resource.register('s3://.*\*.csv(\.gz)?', priority=19)
 def resource_s3_csv_glob(uri, **kwargs):
-    con = get_s3_connection()
+    con = get_s3_connection(**kwargs)
     result = urlparse(uri)
     bucket = con.get_bucket(result.netloc, validate=False)
     key = result.path.lstrip('/')
