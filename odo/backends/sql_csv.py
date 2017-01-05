@@ -5,7 +5,7 @@ import sys
 import subprocess
 import uuid
 import mmap
-from tempfile import NamedTemporaryFile, TemporaryFile
+from tempfile import NamedTemporaryFile
 
 from contextlib import closing
 from functools import partial
