@@ -13,8 +13,11 @@ from io import BytesIO
 import pandas as pd
 from toolz import memoize, first, concat, curry
 
-from .. import (discover, CSV, resource, append, convert, drop, Temp, JSON,
-                JSONLines, chunks)
+from .. import (discover, resource, append, convert, drop)
+from ..chunks import chunks
+from ..backends.csv import CSV
+from ..backends.json import (JSON, JSONLines)
+from ..temp import Temp
 
 from multipledispatch import MDNotImplementedError
 
@@ -173,10 +176,10 @@ def resource_s3_csv_glob(uri, **kwargs):
 
 @convert.register(chunks(pd.DataFrame), chunks(S3(CSV)), cost=11.0)
 def convert_gob_of_s3_csvs_to_chunks_of_dataframes(csvs, **kwargs):
-   def _():
-       return concat(convert(chunks(pd.DataFrame), csv, **kwargs)
+    def _():
+        return concat(convert(chunks(pd.DataFrame), csv, **kwargs)
                       for csv in csvs)
-   return chunks(pd.DataFrame)(_)
+    return chunks(pd.DataFrame)(_)
 
 
 @resource.register('s3://.*\.txt(\.gz)?', priority=18)

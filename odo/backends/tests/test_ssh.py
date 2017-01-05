@@ -13,7 +13,8 @@ from odo.utils import tmpfile, filetext
 from odo.directory import _Directory, Directory
 from odo.backends.ssh import SSH, resource, ssh_pattern, sftp, drop, connect
 from odo.backends.csv import CSV
-from odo import into, discover, CSV, JSONLines, JSON, convert
+from odo import into, discover, convert
+from odo.backends.json import JSONLines, JSON
 from odo.temp import _Temp, Temp
 from odo.compatibility import ON_TRAVIS_CI
 import socket

@@ -14,7 +14,8 @@ import numpy as np
 import pandas as pd
 import sqlalchemy as sa
 
-from odo import convert, append, resource, into, odo, chunks
+from odo import convert, append, resource, into, odo
+from odo.chunks import chunks
 from odo.backends.sql import (
     dshape_to_table, create_from_datashape, dshape_to_alchemy
 )
@@ -134,7 +135,7 @@ def single_table_engine():
 
 
 def test_select_to_iterator():
-    engine, t = single_table_engine()
+    _, t = single_table_engine()
     append(t, [('Alice', 100), ('Bob', 200)])
 
     sel = sa.select([t.c.amount + 1])
@@ -163,7 +164,7 @@ def test_discovery_engine():
 
 
 def test_discovery_metadata():
-    engine, t = single_table_engine()
+    _, t = single_table_engine()
     metadata = t.metadata
     assert str(discover(metadata)) == str(discover({'accounts': t}))
 
@@ -182,7 +183,7 @@ def test_discover_views():
 
 
 def test_extend_empty():
-    engine, t = single_table_engine()
+    _, t = single_table_engine()
 
     assert not convert(list, t)
     append(t, [])

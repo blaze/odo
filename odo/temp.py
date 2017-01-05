@@ -11,7 +11,8 @@ class _Temp(object):
 
     This is a parametrized type, so call it on types to make new types
 
-    >>> from odo import Temp, CSV
+    >>> from odo.temp import Temp
+    >>> from odo.backends.csv import CSV
     >>> csv = Temp(CSV)('/tmp/myfile.csv', delimiter=',')
     """
     def __del__(self):

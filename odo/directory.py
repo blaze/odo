@@ -15,7 +15,7 @@ class _Directory(Chunks):
     For typed containers see the ``Directory`` function which generates
     parametrized Directory classes.
 
-    >>> from odo import CSV
+    >>> from odo.backends.csv import CSV
     >>> c = Directory(CSV)('path/to/data/')  # doctest: +SKIP
 
     Normal use through resource strings
@@ -26,6 +26,7 @@ class _Directory(Chunks):
 
     """
     def __init__(self, path, **kwargs):
+        super(_Directory, self).__init__(None)
         self.path = path
         self.kwargs = kwargs
 
@@ -46,11 +47,11 @@ if re_path_sep == '\\':
     re_path_sep = '\\\\'
 
 @discover.register(_Directory)
-def discover_Directory(c, **kwargs):
+def discover_Directory(c, **_):
     return var * discover(first(c)).subshape[0]
 
 
-@resource.register('.+' + re_path_sep + '\*\..+', priority=15)
+@resource.register(r'.+' + re_path_sep + r'\*\..+', priority=15)
 def resource_directory(uri, **kwargs):
     path = uri.rsplit(os.path.sep, 1)[0]
     try:
@@ -61,7 +62,7 @@ def resource_directory(uri, **kwargs):
     return Directory(subtype)(path, **kwargs)
 
 
-@resource.register('.+' + re_path_sep, priority=9)
+@resource.register(r'.+' + re_path_sep, priority=9)
 def resource_directory_with_trailing_slash(uri, **kwargs):
     try:
         one_uri = os.listdir(uri)[0]

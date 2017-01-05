@@ -16,9 +16,9 @@ from odo.backends.csv import (CSV, append, convert, resource,
                               csv_to_dataframe, CSV_to_chunks_of_dataframes,
                               infer_header)
 from odo.utils import tmpfile, filetext, filetexts, raises
-from odo import (into, append, convert, resource, discover, dshape, Temp,
-                 chunks, odo)
-from odo.temp import _Temp
+from odo import (into, append, convert, resource, discover, dshape, odo)
+from odo.chunks import chunks
+from odo.temp import _Temp, Temp
 from odo.compatibility import unicode
 
 
@@ -191,7 +191,7 @@ def test_discover_csv_yields_string_on_totally_empty_columns():
 def test_glob():
     d = {'accounts1.csv': 'name,when\nAlice,100\nBob,200',
          'accounts2.csv': 'name,when\nAlice,300\nBob,400'}
-    with filetexts(d) as fns:
+    with filetexts(d):
         r = resource('accounts*.csv', has_header=True)
         assert convert(list, r) == [('Alice', 100), ('Bob', 200),
                                     ('Alice', 300), ('Bob', 400)]
@@ -231,7 +231,7 @@ def test_header_argument_set_with_or_without_header():
 def test_first_csv_establishes_consistent_dshape():
     d = {'accounts1.csv': 'name,when\nAlice,one\nBob,two',
          'accounts2.csv': 'name,when\nAlice,300\nBob,400'}
-    with filetexts(d) as fns:
+    with filetexts(d):
         result = into(list, 'accounts*.csv')
         assert len(result) == 4
         assert all(isinstance(val, (str, unicode)) for name, val in result)
@@ -259,7 +259,7 @@ def test_header_mix_str_digits():
                                     "1990": ?string}''')
     with filetext('On- or Off- Budget,1990\nOn Budget,-628\nOff budget,"5,962"\n') as fn:
         csv = CSV(fn, has_header=True)
-        df = convert(pd.DataFrame, csv)
+        convert(pd.DataFrame, csv)
         assert discover(csv).measure == ds.measure
 
 
@@ -436,13 +436,13 @@ def multibyte_csv():
 
 
 def test_multibyte_encoding_header(multibyte_csv):
-        c = CSV(multibyte_csv, encoding='utf8', sniff_nbytes=3)
-        assert c.has_header is None  # not enough data to infer header
+    c = CSV(multibyte_csv, encoding='utf8', sniff_nbytes=3)
+    assert c.has_header is None  # not enough data to infer header
 
 
 def test_multibyte_encoding_dialect(multibyte_csv):
-        c = CSV(multibyte_csv, encoding='utf8', sniff_nbytes=10)
-        assert c.dialect['delimiter'] == ','
+    c = CSV(multibyte_csv, encoding='utf8', sniff_nbytes=10)
+    assert c.dialect['delimiter'] == ','
 
 
 @pytest.mark.parametrize('string_dshape', ['string', 'string[25]'])

@@ -1,15 +1,9 @@
 Odo
 ===
 
-|Build Status| |Doc Status|
+|Build Status| |Conda Status| |Doc Status|
 
-.. image:: https://binstar.org/blaze/odo/badges/build.svg
-   :target: https://binstar.org/blaze/odo/builds
-
-.. image:: https://binstar.org/blaze/odo/badges/version.svg
-   :target: https://binstar.org/blaze/odo
-
-Data migration in Python
+Data migration in Python.
 
 Documentation_
 
@@ -101,10 +95,17 @@ Odo was factored out from the Blaze_ project.
 
 
 .. _Blaze: http://blaze.pydata.org/
+
 .. _networkx: https://networkx.github.io/
+
 .. _Documentation: https://odo.readthedocs.org/en/latest/
-.. |Build Status| image:: https://travis-ci.org/blaze/odo.png
-   :target: https://travis-ci.org/blaze/odo
-.. |Doc Status| image:: https://readthedocs.org/projects/odo/badge/?version=latest
-   :target: https://readthedocs.org/projects/odo/?badge=latest
-   :alt: Documentation Status
+
+.. |Build Status| image:: https://img.shields.io/travis/blaze/odo/master.svg?style=flat-square
+  :target: https://travis-ci.org/blaze/odo
+
+.. |Doc Status| image:: https://readthedocs.org/projects/odo/badge/?version=latest&style=flat-square
+  :target: http://odo.pydata.org/en/latest/
+  :alt: Documentation Status
+
+.. |Conda Status| image:: https://anaconda.org/blaze/odo/badges/version.svg
+  :target: https://anaconda.org/blaze/odo

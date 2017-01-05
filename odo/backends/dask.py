@@ -12,12 +12,14 @@ import dask.bag as db
 from dask.compatibility import long
 import dask.dataframe as dd
 
-from odo import append, chunks, convert, discover, TextFile
+from odo import append, discover, convert
+from odo.chunks import chunks
+from odo.backends.text import TextFile
 from ..utils import filter_kwargs
 
 
 @discover.register(Array)
-def discover_dask_array(a, **kwargs):
+def discover_dask_array(a, **_):
     return from_numpy(a.shape, a.dtype)
 
 
@@ -67,19 +69,19 @@ def array_to_dask(x, name=None, chunks=None, **kwargs):
 
 
 @convert.register(np.ndarray, Array, cost=10.)
-def dask_to_numpy(x, **kwargs):
+def dask_to_numpy(x, **_):
     return np.array(x)
 
 
 @convert.register(pd.DataFrame, dd.DataFrame, cost=200)
 @convert.register(pd.Series, dd.Series, cost=200)
 @convert.register(float, Array, cost=200)
-def dask_to_other(x, **kwargs):
+def dask_to_other(x, **_):
     return x.compute()
 
 
 @append.register(tuple(arrays), Array)
-def store_Array_in_ooc_data(out, arr, inplace=False, **kwargs):
+def store_Array_in_ooc_data(out, arr, inplace=False, **_):
     if not inplace:
         # Resize output dataset to accept new data
         assert out.shape[1:] == arr.shape[1:]
@@ -89,12 +91,12 @@ def store_Array_in_ooc_data(out, arr, inplace=False, **kwargs):
 
 
 @convert.register(Iterator, Bag)
-def bag_to_iterator(x, **kwargs):
+def bag_to_iterator(x, **_):
     return iter(x)
 
 
 @convert.register(Bag, chunks(TextFile))
-def bag_to_iterator(x, **kwargs):
+def bag_to_iterator(x, **_):
     return db.read_text([tf.path for tf in x])
 
 
