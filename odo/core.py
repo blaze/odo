@@ -160,6 +160,12 @@ def path(graph, source, target, excluded_edges=None, ooc_types=ooc_types):
             source = cls
             break
 
+    # For Directory class we need its container type to find the path in the graph
+    from odo.chunks import chunks
+    from odo.directory import _Directory
+    if issubclass(source, _Directory):
+        source = chunks(source.container)
+
     # If both source and target are Out-Of-Core types then restrict ourselves
     # to the graph of out-of-core types
     if ooc_types:
