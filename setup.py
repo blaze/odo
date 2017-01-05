@@ -16,7 +16,7 @@ def find_data_files(where, exts):
 
 
 exts = ('*.h5', '*.csv', '*.xls', '*.xlsx', '*.db', '*.json', '*.gz', '*.hdf5',
-        '*.sas7bdat')
+        '*.sas7bdat', '*.vcf')
 package_data = [x.replace('odo' + os.sep, '') for x in
                 find_data_files('odo', exts)]
 
