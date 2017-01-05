@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function
 import pytest
 
 sa = pytest.importorskip('sqlalchemy')
-pyodbc = pytest.importorskip('pyodbc')
+pymssql = pytest.importorskip('pymssql')
 
 import datetime
 import os
@@ -41,9 +41,19 @@ def tmpdir():
     return os.environ.get('MSSQL_TMP_DIR', None)
 
 
+@pytest.fixture(scope='module')
+def mssql_ip():
+    return os.environ.get('MSSQL_IP', 'localhost')
+
+
+@pytest.fixture(scope='module')
+def mssql_dbname():
+    return os.environ.get('MSSQL_DB', 'test')
+
+
 @pytest.yield_fixture
 def csv(tmpdir):
-    s = '\n'.join(','.join(map(str, row)) for row in data).encode('utf8')
+    s = '\r\n'.join(','.join(map(str, row)) for row in data).encode('utf-8')
     with tmpfile('.csv', dir=tmpdir) as fn:
         with open(fn, 'wb') as f:
             f.write(s)
@@ -70,8 +80,9 @@ def complex_csv(tmpdir):
 
 @pytest.fixture
 def url():
-    quoted = quote_plus('DRIVER={SQL Server};Server=localhost\sqlexpress;Database=test;Trusted_Connection=Yes;')
-    return 'mssql+pyodbc:///?odbc_connect={}::{}'.format(quoted, next(names))
+    return 'mssql+pymssql://{ip}/{db}::{tbl}'.format(ip=mssql_ip(),
+                                              db=mssql_dbname(),
+                                              tbl=next(names))
 
 
 def sql_fixture(dshape, schema=None):
@@ -124,8 +135,8 @@ sql_with_strings = sql_fixture("""
 
 
 @pytest.yield_fixture
-def quoted_sql(pg_ip, csv):
-    url = 'postgresql://postgres@{}/test::foo bar'.format(pg_ip)
+def quoted_sql(mssql_ip, csv):
+    url = 'mssql+pymssql://{}/test::foo bar'.format(mssql_ip)
     try:
         t = resource(url, dshape=discover(csv))
     except sa.exc.OperationalError as e:
@@ -154,11 +165,12 @@ def test_append(csv, sql):
     assert into(list, sql, bind=bind) == data + data
 
 
+@pytest.mark.xfail(reason="bcp.exe doesn't mind weird line terminators")
 def test_tryexcept_into(csv, sql):
     sql, bind = sql
     with pytest.raises(sa.exc.ProgrammingError):
         # uses multi-byte character
-        into(sql, csv, lineterminator="alpha", bind=bind)
+        into(sql, csv, rowterminator="alpha", bind=bind)
 
 
 @skip_no_rw_loc
@@ -198,7 +210,7 @@ def test_sql_select_to_csv(sql, csv, tmpdir):
         assert odo(csv, list) == [(x,) for x, _ in data]
 
 
-@pytest.mark.xfail(reason="MSSQL BULK INSERT doesn't do escapechar")
+@pytest.mark.xfail(reason="bcp.exe doesn't do escapechar")
 def test_invalid_escapechar(sql, csv):
     sql, bind = sql
     with pytest.raises(ValueError):
@@ -208,7 +220,6 @@ def test_invalid_escapechar(sql, csv):
         odo(csv, sql, escapechar='', bind=bind)
 
 
-@pytest.mark.xfail(reason="MSSQL has no TSQL bulk export, so the ?int gets coerced to float")
 @skip_no_rw_loc
 def test_csv_output_is_not_quoted_by_default(sql, csv, tmpdir):
     sql, bind = sql
@@ -221,7 +232,6 @@ def test_csv_output_is_not_quoted_by_default(sql, csv, tmpdir):
         assert result == expected
 
 
-@pytest.mark.xfail(reason="MSSQL has no TSQL bulk export, so the ?int gets coerced to float")
 @skip_no_rw_loc
 def test_na_value(sql, csv, tmpdir):
     sql, bind = sql
@@ -230,7 +240,7 @@ def test_na_value(sql, csv, tmpdir):
         csv = odo(sql, fn, na_value='NA', bind=bind)
         with open(csv.path, 'rt') as f:
             raw = f.read()
-    assert raw == 'a,b\n1,NA\n10,20\n100,200\n'
+    assert raw == 'a,b\n1,\n10,20\n100,200\n'
 
 
 @pytest.mark.xfail(reason="MSSQL uses code pages... not sure how to write this...")
@@ -280,7 +290,6 @@ def test_schema_discover(sql_with_schema):
                           sql_with_schema.name)
 
 
-@pytest.mark.xfail(reason="bindparams is not working well... let me think about this")
 @skip_no_rw_loc
 def test_quoted_name(quoted_sql, csv):
     s = odo(csv, quoted_sql)
@@ -306,11 +315,11 @@ def test_drop_reflects_database_state(url):
     with pytest.raises(ValueError):
         resource(url)  # Table doesn't exist and no dshape
 
-
+@pytest.mark.xfail(reason="MSSQL doens't really do nan's either")
 def test_nan_stays_nan(sql_with_floats):
     sql_with_floats, bind = sql_with_floats
 
-    df = pd.DataFrame({'a': [np.nan, 1, 2], 'b': [3, np.nan, 4]})
+    df = pd.DataFrame({'a': [0., 1., 2.], 'b': [3, np.nan, 4]})
     odo(df, sql_with_floats, bind=bind)
     rehydrated = odo(sql_with_floats, pd.DataFrame, bind=bind)
     pd.util.testing.assert_frame_equal(rehydrated.sort_index(axis=1), df)

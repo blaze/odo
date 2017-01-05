@@ -5,7 +5,7 @@ import sys
 import subprocess
 import uuid
 import mmap
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryFile
 
 from contextlib import closing
 from functools import partial
@@ -211,27 +211,102 @@ else:
         return compiler.process(cmd)
 
 
+# #############################################################################
+# First try of this uses BULK INSERT... BCP seems like a better approach
+# #############################################################################
+
+# @compiles(CopyFromCSV, 'mssql')
+# def compile_from_csv_mssql(element, compiler, **kwargs):
+#     return compiler.process(
+#         sa.text(
+#             """BULK INSERT {table} FROM '{path}'
+#             WITH (
+#             FIELDTERMINATOR = '{delimiter}'
+#             , ROWTERMINATOR = '{rowterminator}'
+#            , FIRSTROW = {firstrow}
+#             )
+#             """.format(
+#                 table=compiler.preparer.format_table(element.element),
+#                 delimiter=element.delimiter,
+#                 path=os.path.abspath(element.csv.path),
+#                 rowterminator=element.lineterminator,
+#                 fieldquote=element.quotechar,
+#                 firstrow=str(int(element.skiprows) + 1)
+#             )
+#         ),
+#         **kwargs
+#     )
+
 @compiles(CopyFromCSV, 'mssql')
 def compile_from_csv_mssql(element, compiler, **kwargs):
-    return compiler.process(
-        sa.text(
-            """BULK INSERT {table} FROM '{path}'
-            WITH (
-            FIELDTERMINATOR = '{delimiter}'
-            , ROWTERMINATOR = '{rowterminator}'
-           , FIRSTROW = {firstrow}
-            )
-            """.format(
-                table=compiler.preparer.format_table(element.element),
-                delimiter=element.delimiter,
-                path=os.path.abspath(element.csv.path),
-                rowterminator=element.lineterminator,
-                fieldquote=element.quotechar,
-                firstrow=str(int(element.skiprows) + 1)
-            )
-        ),
-        **kwargs
-    )
+    if not find_executable('bcp'):
+        raise MDNotImplementedError("Could not find bcp executable")
+    if element.bind.url.get_driver_name() != 'pymssql':
+        raise MDNotImplementedError("Requires pymssql driver")
+
+    t = element.element
+    if not element.header:
+        csv = element.csv
+        skiprows = int(element.skiprows) + 1
+    else:
+        csv = Temp(CSV)('.%s' % uuid.uuid1())
+        assert csv.has_header, \
+            'SQLAlchemy element.header is True but CSV inferred no header'
+
+        # write to a temporary file after skipping the first line
+        skiprows = int(element.skiprows)
+        chunksize = 1 << 24  # 16 MiB
+        lineterminator = element.lineterminator.encode(element.encoding)
+
+        with element.csv.open() as f:
+            with closing(mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)) as mf:
+                index = mf.find(lineterminator)
+                if index == -1:
+                    raise ValueError("'%s' not found" % lineterminator)
+                mf.seek(index + len(lineterminator))  # len because \r\n
+                with open(csv.path, 'wb') as g:
+                    for chunk in iter(partial(mf.read, chunksize), b''):
+                        g.write(chunk)
+    """
+    if t.schema:
+        table_name = '{schema}.{tbl}'.format(
+            schema=compiler.preparer.format_schema(t.schema),
+            tbl=compiler.preparer.format_table(t)
+        )
+    else:
+        table_name = compiler.preparer.format_table(t)
+    """
+    table_name = compiler.preparer.format_table(t)
+
+    fullpath = os.path.abspath(csv.path).encode('unicode-escape').decode()
+    url = element.bind.url
+    cmd = ['bcp.exe',
+           table_name,
+           'in', fullpath,
+           '-d{}'.format(url.database),
+           '-S{}'.format(url.host),
+           '-c',
+           '-t{}'.format(element.delimiter),
+           '-k']
+
+    if url.username:
+        cmd = cmd + ['-U', url.username]
+    else:
+        cmd = cmd + ['-T']
+    if url.password:
+        cmd = cmd + ['-P', url.password]
+    if skiprows > 1:
+        cmd = cmd + ['-F{}'.format(str(skiprows))]
+
+    stderr = subprocess.check_output(
+        cmd,
+        stderr=subprocess.STDOUT,
+        stdin=subprocess.PIPE,
+    ).decode(sys.getfilesystemencoding())
+
+    # if stderr: # Returns a value, but there's no error. Need to parse? 
+    #     raise sa.exc.DatabaseError(' '.join(cmd), [], OSError(stderr))
+    return ''
 
 
 @append.register(sa.Table, CSV)
@@ -315,8 +390,6 @@ def append_dataframe_to_sql_table(tbl,
                                   sqlite_max_variable_number=SQLITE_MAX_VARIABLE_NUMBER,
                                   quotechar='"',
                                   **kwargs):
-    import pdb
-    pdb.set_trace()
     bind = getbind(tbl, bind)
     dialect = bind.dialect.name
 
@@ -337,24 +410,55 @@ def append_dataframe_to_sql_table(tbl,
         buf = StringIO()
         path = None
     else:
-        buf = NamedTemporaryFile(mode='w+')
+        buf = NamedTemporaryFile(mode='w+', delete=False)
         path = buf.name
 
     with buf:
-        NanIsNotNullFormatter(
-            df[[c.name for c in tbl.columns]],
-            buf,
-            index=False,
-            quotechar=quotechar,
-            doublequote=True,
-            # use quotechar for escape intentionally because it makes it easier
-            # to create a csv that pandas and postgres agree on
-            escapechar=quotechar,
-        ).save()
+        if dialect != 'mssql':
+            NanIsNotNullFormatter(
+                df[[c.name for c in tbl.columns]],
+                buf,
+                index=False,
+                quotechar=quotechar,
+                doublequote=True,
+                # use quotechar for escape intentionally because it makes it easier
+                # to create a csv that pandas and postgres agree on
+                escapechar=quotechar,
+            ).save()
+        else:
+            import csv
+            CSVFormatter(
+                df[[c.name for c in tbl.columns]],
+                buf,
+                index=False,
+                quoting=csv.QUOTE_NONE
+            ).save()
         buf.flush()
         buf.seek(0)
 
-        return append_csv_to_sql_table(
+        if dialect in DATAFRAME_TO_TABLE_IN_MEMORY_CSV:
+            return append_csv_to_sql_table(
+                tbl,
+                CSV(path,
+                    buffer=buf if path is None else None,
+                    has_header=True,
+                    # use quotechar for escape intentionally because it makes it
+                    # makes it easier to create a csv that pandas and postgres
+                    # agree on
+                    escapechar=quotechar,
+                    quotechar=quotechar),
+                dshape=dshape,
+                bind=bind,
+                # use quotechar for escape intentionally because it makes it easier
+                # to create a csv that pandas and postgres agree on
+                escapechar=quotechar,
+                quotechar=quotechar,
+                **kwargs
+            )
+
+    # NamedTemporary files can't be re-opened in win32.
+    with open(path, mode='r+') as buf:
+        t = append_csv_to_sql_table(
             tbl,
             CSV(path,
                 buffer=buf if path is None else None,
@@ -372,3 +476,5 @@ def append_dataframe_to_sql_table(tbl,
             quotechar=quotechar,
             **kwargs
         )
+    os.unlink(path)
+    return t

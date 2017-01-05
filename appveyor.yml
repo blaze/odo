@@ -15,7 +15,6 @@ platform:
     - x64
 
 services:
-  # - mssql2014 # No tests for mssql written yet
   # - mysql # mysql tests fail. Don't understand how to fix at the moment.
   - postgresql93
   - mongodb
@@ -51,6 +50,14 @@ build_script:
 
   # install python stuff
   - sh etc\ci-install.sh
+
+  # MSSQL
+  # pymssql requires TCP/IP
+  - SET INSTANCENAME=SQL2014
+  - net start MSSQL$%INSTANCENAME%
+  - "powershell ci\\sql_server_tcpip.ps1"
+  - sqlcmd -E -Q "CREATE DATABASE test;"
+
 
 test_script:
   - activate odo
