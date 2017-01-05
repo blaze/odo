@@ -7,7 +7,7 @@ Dependencies
 * `boto <http://boto.readthedocs.org>`_
 * `sqlalchemy <http://docs.sqlalchemy.org/en/rel_0_9>`_
 * `psycopg2 <http://initd.org/psycopg>`_
-* `redshift_sqlalchemy <https://github.com/cpcloud/redshift_sqlalchemy>`_
+* `sqlalchemy_redshift <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift>`_
 
 Setup
 -----
@@ -28,7 +28,7 @@ Interface
 ``odo`` provides access to the following AWS services:
 
 * `S3 <http://aws.amazon.com/s3>`_ via boto.
-* `Redshift <http://aws.amazon.com/redshift>`_ via a `SQLAlchemy dialect <https://github.com/cpcloud/redshift_sqlalchemy>`_
+* `Redshift <http://aws.amazon.com/redshift>`_ via a `SQLAlchemy dialect <https://github.com/sqlalchemy-redshift/sqlalchemy-redshift>`_
 
 URIs
 ----
