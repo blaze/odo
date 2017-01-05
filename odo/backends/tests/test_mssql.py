@@ -133,6 +133,10 @@ sql_with_strings = sql_fixture("""
     var * {non_optional: string, optional: ?string}
 """)
 
+sql_with_bit = sql_fixture("""
+    var * {bit1: bool, bit2: ?bool}
+""")
+
 
 @pytest.yield_fixture
 def quoted_sql(mssql_ip, csv):
@@ -365,6 +369,53 @@ def test_to_dataframe(sql):
     expected = pd.DataFrame(np.array([(1, 2), (3, 4)],
                                      dtype=[('a', 'int32'), ('b', 'float64')]))
     pd.util.testing.assert_frame_equal(df, expected)
+
+
+def test_to_dataframe_bit(sql_with_bit):
+    sql, bind = sql_with_bit
+    insert_query = sql.insert().values([
+        {'bit1': 1, 'bit2': None},
+        {'bit1': 0, 'bit2': 1},
+        {'bit1': 1, 'bit2': 0}
+    ])
+    if bind is None:
+        insert_query.execute()
+    else:
+        bind.execute(insert_query)
+    df = odo(sql, pd.DataFrame, bind=bind)
+    expected = pd.DataFrame({'bit1': [True, False, True],
+                             'bit2': [False, True, False]})
+    assert df.bit1.dtype == 'bool'
+    assert df.bit2.dtype == 'bool'
+    pd.util.testing.assert_frame_equal(df, expected)
+
+
+def test_to_dataframe_money():
+    from sqlalchemy import create_engine
+    import sqlalchemy as sa
+    tbl_name = next(names)
+    url = 'mssql+pymssql://{ip}/{db}'.format(ip=mssql_ip(),
+                                             db=mssql_dbname())
+    bind = create_engine(url)
+    metadata = sa.MetaData()
+    t = sa.Table(tbl_name, metadata,
+                 sa.Column('money1', sa.dialects.mssql.MONEY, nullable=False),
+                 sa.Column('money2', sa.dialects.mssql.MONEY, nullable=True))
+    metadata.create_all(bind)
+    insert_query = t.insert().values([
+        {'money1': 100.1, 'money2': None},
+        {'money1': 200.2, 'money2': 50.5},
+        {'money1': 300.3, 'money2': 100.2}
+    ])
+    bind.execute(insert_query)
+    sql = resource('{}::{}'.format(url, tbl_name))
+    df = odo(sql, pd.DataFrame, bind=bind)
+    expected = pd.DataFrame({'money1': [100.1, 200.2, 300.3],
+                             'money2': [np.nan, 50.5, 100.2]})
+    assert df.money1.dtype == 'float'
+    assert df.money2.dtype == 'float'
+    pd.util.testing.assert_frame_equal(df, expected)
+    sql.drop()
 
 
 def test_to_dataframe_datelike(sql_with_datelikes):
