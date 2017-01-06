@@ -382,6 +382,19 @@ def append_dataframe_to_sql_table(tbl,
 
     if dialect in DATAFRAME_TO_TABLE_IN_MEMORY_CSV:
         with StringIO() as buf:
+            NanIsNotNullFormatter(
+                df[[c.name for c in tbl.columns]],
+                buf,
+                index=False,
+                quotechar=quotechar,
+                doublequote=True,
+                # use quotechar for escape intentionally because it makes it
+                # easier to create a csv that pandas and postgres agree on
+                escapechar=quotechar,
+            ).save()
+            buf.flush()
+            buf.seek(0)
+
             return append_csv_to_sql_table(
                 tbl,
                 CSV(None,
