@@ -46,6 +46,7 @@ from ..utils import (
     iter_except,
     filter_kwargs,
     literal_compile,
+    tmpfile
 )
 from ..convert import convert, ooc_types
 from ..append import append
@@ -998,70 +999,64 @@ def compile_copy_to_csv_mssql(element, compiler, **kwargs):
         **kwargs
     ) + ';'
 
-
     fullpath = os.path.abspath(element.path)
     url = element.bind.url
 
     sql = re.sub(r'\s{2,}', ' ', re.sub(r'\s*\n\s*', ' ', sql))
-    sql = '"{}"'.format(sql) #  .encode(sys.getfilesystemencoding())
-    
-    cmd = ['bcp.exe',
-           sql,
-           'queryout', fullpath,
-           '-d{}'.format(url.database),
-           '-S{}'.format(url.host),
-           '-t{}'.format(element.delimiter),
-           '-c']
+    sql = '"{}"'.format(sql)  # .encode(sys.getfilesystemencoding())?
 
-    if url.username:
-        cmd = cmd + ['-U', url.username]
-    else:
-        cmd = cmd + ['-T']
-    if url.password:
-        cmd = cmd + ['-P', url.password]
+    with tmpfile() as tmpdata, tmpfile() as tmpheader:
+        cmd = ['bcp',
+               sql,
+               'queryout', tmpdata,
+               '-d{}'.format(url.database),
+               '-S{}'.format(url.host),
+               '-t{}'.format(element.delimiter),
+               '-c']
 
-    cmd = ' '.join(cmd)
+        if url.username:
+            cmd = cmd + ['-U', url.username]
+        else:
+            cmd = cmd + ['-T']
+        if url.password:
+            cmd = cmd + ['-P', url.password]
 
-    stderr = subprocess.check_output(cmd,
-                                     stderr=subprocess.STDOUT,
-                                     stdin=subprocess.PIPE,
-                                     )
-    if element.header is not False:
-        with CSVPrepender(fullpath) as f:
-            f.write_line(','.join(element.element.columns.keys()))
-    # This will be a no-op since we're doing the write during the compile
+        cmd = ' '.join(cmd)
+        # TODO: Is there a way to check this output to make sure no errors?
+        stderr = subprocess.check_output(cmd,
+                                         stderr=subprocess.STDOUT,
+                                         stdin=subprocess.PIPE,
+                                         )
+        if element.header is not False:
+            with open(tmpheader, 'w') as f:
+                head = str(element.delimiter)
+                head = head.join(element.element.columns.keys()) + '\n'
+                f.write(head)
+            if sys.platform == 'win32':
+                cmd = ['copy', '/b', tmpheader, '+', tmpdata,
+                       fullpath]
+                # TODO: For reasons I don't understand, passing the list
+                # to command prompt doens't seem to work
+                cmd = ' '.join(cmd)
+                # TODO: Is there a way to check this output to make sure no
+                # errors?
+                # Note, shell=True appears to be required to copy
+                stderr = subprocess.check_output(cmd,
+                                                 stderr=subprocess.STDOUT,
+                                                 stdin=subprocess.PIPE,
+                                                 shell=True)
+
+            else:
+                # This is for the handful of people who use *nix to talk to
+                # MSSQL.
+                cmd = ['cat', tmpheader, tmpdata, '>', fullpath]
+                # TODO: Is there a way to check this output to make sure no
+                # errors?
+                stderr = subprocess.check_output(cmd,
+                                                 stderr=subprocess.STDOUT,
+                                                 stdin=subprocess.PIPE)
     return ''
 
-    
-# From http://stackoverflow.com/questions/2677617/python-f-write-at-beginning-of-file
-class CSVPrepender(object):
-    def __init__(self, file_path):
-        # Read in the existing file, so we can write it back later
-        with open(file_path, mode='r') as f:
-            self.__write_queue = f.readlines()
-
-        self.__open_file = open(file_path, mode='w')
-
-    def write_line(self, line):
-        self.__write_queue.insert(0,
-                                  "%s\n" % line,
-                                 )
-
-    def write_lines(self, lines):
-        lines.reverse()
-        for line in lines:
-            self.write_line(line)
-
-    def close(self):
-        self.__exit__(None, None, None)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        if self.__write_queue:
-            self.__open_file.writelines(self.__write_queue)
-        self.__open_file.close()
 
 try:
     from sqlalchemy_redshift.dialect import UnloadFromSelect

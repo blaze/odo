@@ -23,7 +23,7 @@ from multipledispatch import MDNotImplementedError
 from ..append import append
 from ..convert import convert
 from ..compatibility import StringIO
-from ..utils import literal_compile
+from ..utils import literal_compile, tmpfile
 from .csv import CSV, infer_header
 from ..temp import Temp
 from .aws import S3
@@ -211,32 +211,6 @@ else:
         return compiler.process(cmd)
 
 
-# #############################################################################
-# First try of this uses BULK INSERT... BCP seems like a better approach
-# #############################################################################
-
-# @compiles(CopyFromCSV, 'mssql')
-# def compile_from_csv_mssql(element, compiler, **kwargs):
-#     return compiler.process(
-#         sa.text(
-#             """BULK INSERT {table} FROM '{path}'
-#             WITH (
-#             FIELDTERMINATOR = '{delimiter}'
-#             , ROWTERMINATOR = '{rowterminator}'
-#            , FIRSTROW = {firstrow}
-#             )
-#             """.format(
-#                 table=compiler.preparer.format_table(element.element),
-#                 delimiter=element.delimiter,
-#                 path=os.path.abspath(element.csv.path),
-#                 rowterminator=element.lineterminator,
-#                 fieldquote=element.quotechar,
-#                 firstrow=str(int(element.skiprows) + 1)
-#             )
-#         ),
-#         **kwargs
-#     )
-
 @compiles(CopyFromCSV, 'mssql')
 def compile_from_csv_mssql(element, compiler, **kwargs):
     if not find_executable('bcp'):
@@ -304,7 +278,7 @@ def compile_from_csv_mssql(element, compiler, **kwargs):
         stdin=subprocess.PIPE,
     ).decode(sys.getfilesystemencoding())
 
-    # if stderr: # Returns a value, but there's no error. Need to parse? 
+    # if stderr: # Returns a value, but there's no error. Need to parse?
     #     raise sa.exc.DatabaseError(' '.join(cmd), [], OSError(stderr))
     return ''
 
@@ -407,61 +381,51 @@ def append_dataframe_to_sql_table(tbl,
         return tbl
 
     if dialect in DATAFRAME_TO_TABLE_IN_MEMORY_CSV:
-        buf = StringIO()
-        path = None
-    else:
-        buf = NamedTemporaryFile(mode='w+', delete=False)
-        path = buf.name
-
-    with buf:
-        if dialect != 'mssql':
-            NanIsNotNullFormatter(
-                df[[c.name for c in tbl.columns]],
-                buf,
-                index=False,
-                quotechar=quotechar,
-                doublequote=True,
-                # use quotechar for escape intentionally because it makes it easier
-                # to create a csv that pandas and postgres agree on
-                escapechar=quotechar,
-            ).save()
-        else:
-            import csv
-            CSVFormatter(
-                df[[c.name for c in tbl.columns]],
-                buf,
-                index=False,
-                quoting=csv.QUOTE_NONE
-            ).save()
-        buf.flush()
-        buf.seek(0)
-
-        if dialect in DATAFRAME_TO_TABLE_IN_MEMORY_CSV:
+        with StringIO() as buf:
             return append_csv_to_sql_table(
                 tbl,
-                CSV(path,
-                    buffer=buf if path is None else None,
+                CSV(None,
+                    buffer=buf,
                     has_header=True,
-                    # use quotechar for escape intentionally because it makes it
-                    # makes it easier to create a csv that pandas and postgres
-                    # agree on
+                    # use quotechar for escape intentionally because it makes
+                    # it easier to create a csv that pandas and postgres agree
+                    # on
                     escapechar=quotechar,
                     quotechar=quotechar),
                 dshape=dshape,
                 bind=bind,
-                # use quotechar for escape intentionally because it makes it easier
-                # to create a csv that pandas and postgres agree on
+                # use quotechar for escape intentionally because it makes it
+                # easier to create a csv that pandas and postgres agree on
                 escapechar=quotechar,
                 quotechar=quotechar,
                 **kwargs
             )
 
-    # NamedTemporary files can't be re-opened in win32.
-    with open(path, mode='r+') as buf:
-        t = append_csv_to_sql_table(
+    with tmpfile() as f:
+        if dialect != 'mssql':
+            NanIsNotNullFormatter(
+                df[[c.name for c in tbl.columns]],
+                f,
+                index=False,
+                quotechar=quotechar,
+                doublequote=True,
+                # use quotechar for escape intentionally because it makes it
+                # easier to create a csv that pandas and postgres agree on
+                escapechar=quotechar,
+            ).save()
+        else:
+            import csv
+            # MSSQL bcp doesn't don't quotemarks
+            CSVFormatter(
+                df[[c.name for c in tbl.columns]],
+                f,
+                index=False,
+                quoting=csv.QUOTE_NONE
+            ).save()
+        return append_csv_to_sql_table(
             tbl,
-            CSV(path,
-                buffer=buf if path is None else None,
+            CSV(f,
+                buffer=None,
                 has_header=True,
                 # use quotechar for escape intentionally because it makes it
                 # makes it easier to create a csv that pandas and postgres
@@ -476,5 +440,3 @@ def append_dataframe_to_sql_table(tbl,
             quotechar=quotechar,
             **kwargs
         )
-    os.unlink(path)
-    return t

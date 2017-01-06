@@ -81,8 +81,8 @@ def complex_csv(tmpdir):
 @pytest.fixture
 def url():
     return 'mssql+pymssql://{ip}/{db}::{tbl}'.format(ip=mssql_ip(),
-                                              db=mssql_dbname(),
-                                              tbl=next(names))
+                                                     db=mssql_dbname(),
+                                                     tbl=next(names))
 
 
 def sql_fixture(dshape, schema=None):
@@ -247,7 +247,7 @@ def test_na_value(sql, csv, tmpdir):
     assert raw == 'a,b\n1,\n10,20\n100,200\n'
 
 
-@pytest.mark.xfail(reason="MSSQL uses code pages... not sure how to write this...")
+@pytest.mark.xfail(reason="MSSQL uses code pages. not sure how to write this.")
 def test_different_encoding(url, encoding_csv):
     try:
         sql = odo(encoding_csv, url, encoding='latin1')
@@ -318,6 +318,7 @@ def test_drop_reflects_database_state(url):
     drop(url)
     with pytest.raises(ValueError):
         resource(url)  # Table doesn't exist and no dshape
+
 
 @pytest.mark.xfail(reason="MSSQL doens't really do nan's either")
 def test_nan_stays_nan(sql_with_floats):
@@ -474,3 +475,15 @@ def test_from_dataframe_strings(sql_with_strings):
     odo(input_, sql_with_strings, bind=bind)
     output = odo(sql_with_strings, pd.DataFrame, bind=bind)
     pd.util.testing.assert_frame_equal(output, input_)
+
+
+def test_pipe_delimited(sql):
+    sql, bind = sql
+    expected = 'a|b\n1|\n10|200\n100|200\n'
+    with tmpfile('.csv') as path, tmpfile('.csv') as csv:
+        with open(path, 'w+') as f:
+            f.write(expected)
+        t = odo(path, sql, delimiter='|', bind=bind)
+        odo(t, csv, delimiter='|', bind=bind)
+        with open(csv, 'r') as f:
+            assert f.read() == expected
