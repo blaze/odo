@@ -23,14 +23,14 @@ def discover_bcolz(c, **kwargs):
 
 
 @append.register((ctable, carray), np.ndarray)
-def numpy_append_to_bcolz(a, b, **kwargs):
+def numpy_append_ndarray_to_bcolz(a, b, **kwargs):
     a.append(b)
     a.flush()
     return a
 
 
 @append.register((ctable, carray), object)
-def numpy_append_to_bcolz(a, b, **kwargs):
+def numpy_append_object_to_bcolz(a, b, **kwargs):
     return append(a, convert(chunks(np.ndarray), b, **kwargs), **kwargs)
 
 
@@ -81,7 +81,18 @@ def resource_bcolz(uri, dshape=None, expected_dshape=None, **kwargs):
                              " valid datashape")
         dshape = datashape.dshape(dshape)
 
+        # bcolz don't like unicode (yet). Should we coerce unicode strings
+        # to ascii (bytes)?
+        coerce = kwargs.get('bcolz_coerce_unicode', False)
+        if coerce:
+            if datashape.predicates.isrecord(dshape.measure):
+                for i, ty in enumerate(dshape.parameters[1].types):
+                    ty = getattr(ty, 'ty', ty)
+                    if hasattr(ty, 'encoding'):
+                        ty.encoding = 'A'
+
         dt = dshape_to_numpy(dshape)
+
         shape_tail = tuple(map(int, dshape.shape[1:]))  # tail of shape
         if dshape.shape[0] == datashape.var:
             shape = (0,) + shape_tail

@@ -300,3 +300,10 @@ def test_iterator_to_df():
     it = iter([1, 2, 3])
     df = convert(pd.DataFrame, it)
     assert df[0].tolist() == [1, 2, 3]
+
+
+def test_unicode_ndarray_to_ascii():
+    L = [u'\x96']
+    L2 = convert(np.ndarray, L, dshape=dshape("1 * string[5, 'A']"))
+    expected = [L[0].encode('utf-8')]
+    assert expected == L2

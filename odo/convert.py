@@ -195,7 +195,14 @@ def list_to_numpy(seq, dshape=None, **kwargs):
     if (seq and isinstance(seq[0], Iterable) and not ishashable(seq[0]) and
             not isscalar(dshape)):
         seq = list(map(tuple, seq))
-    return np.array(seq, dtype=dshape_to_numpy(dshape))
+    try:
+        return np.array(seq, dtype=dshape_to_numpy(dshape))
+    except UnicodeEncodeError:
+        ds = dshape_to_numpy(dshape)
+        for i, rec in enumerate(seq):
+            seq[i] = tuple(str(r).encode('utf-8') if (ds[k].kind == 'S') else r
+                           for k, r in enumerate(rec))
+        return np.array(seq, dtype=ds)
 
 
 @convert.register(Iterator, list, cost=0.001)
