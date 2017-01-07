@@ -213,7 +213,6 @@ def batch(sel, chunksize=10000, bind=None):
     iterator = rowiterator(sel)
     return columns, concat(iterator)
 
-
 @discover.register(sa.dialects.postgresql.base.INTERVAL)
 def discover_postgresql_interval(t):
     return discover(sa.Interval(day_precision=0, second_precision=t.precision))

@@ -390,6 +390,10 @@ def test_to_dataframe_bit(sql_with_bit):
     assert df.bit2.dtype == 'bool'
     pd.util.testing.assert_frame_equal(df, expected)
 
+    ndarr = odo(sql, np.ndarray, bind=bind)
+    assert ndarr.bit1.dtype == 'bool'
+    assert ndarr.bit2.dtype == 'bool'
+
 
 def test_to_dataframe_money():
     from sqlalchemy import create_engine
@@ -416,6 +420,10 @@ def test_to_dataframe_money():
     assert df.money1.dtype == 'float'
     assert df.money2.dtype == 'float'
     pd.util.testing.assert_frame_equal(df, expected)
+
+    ndarr = odo(sql, np.ndarray, bind=bind)
+    assert ndarr.money1.dtype == 'float'
+    assert ndarr.money2.dtype == 'float'
     sql.drop()
 
 

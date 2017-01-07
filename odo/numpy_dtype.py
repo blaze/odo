@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 from datashape import dshape, DataShape, Option, DateTime, string, TimeDelta
-from datashape import Date, to_numpy_dtype, Tuple, String, Decimal
+from datashape import Date, to_numpy_dtype, Tuple, String, Decimal, bool_
 from datashape.predicates import isscalar, isnumeric, isrecord
 
 
@@ -42,6 +42,11 @@ def unit_to_dtype(ds):
                 str_np_dtype = 'float16'
             return unit_to_dtype(str_np_dtype)
         return unit_to_dtype(str(ds).replace('int', 'float').replace('?', ''))
+    if isinstance(ds, Option):
+        if ds.ty == bool_:
+            # NumPy doesn't support ?bool, so coerce to bool
+            # This will coerce NULL booleans/bits to False...
+            return unit_to_dtype('bool')
     if isinstance(ds, Option) and isinstance(
         ds.ty, (Date, DateTime, String, TimeDelta)
     ):
