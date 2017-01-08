@@ -29,7 +29,6 @@ def tmpbcolz(*args, **kwargs):
             shutil.rmtree(fn)
 
 
-
 def eq(a, b):
     c = a == b
     if isinstance(c, np.ndarray):
@@ -123,7 +122,7 @@ def test_resource_carray_overrides_expectedlen():
         assert get_expectedlen(r) == 200
 
 
-def test_resource_ctable_correctly_infers_length():
+def test_resource_carray_correctly_infers_length():
     with tmpbcolz(dshape='100 * int32') as r:
         assert isinstance(r, carray)
         assert r.dtype == 'i4'
@@ -146,7 +145,8 @@ def test_resource_nd_carray():
 
 
 y = np.array([('Alice', 100), ('Bob', 200)],
-            dtype=[('name', 'S7'), ('amount', 'i4')])
+             dtype=[('name', 'S7'), ('amount', 'i4')])
+
 
 def test_convert_numpy_to_ctable():
     b = convert(ctable, y)
@@ -189,3 +189,33 @@ def test_csv_to_bcolz():
         with tmpfile('bcolz') as tgt:
             bc = into(tgt, src)
             assert len(bc) == 3
+
+
+def test_coerce_ascii():
+    # The point of this test is to check that the bcolz_coerce_unicode
+    # option works
+    import datashape
+    import numpy as np
+    with filetext('name,runway,takeoff,datetime_nearest_close\n'
+                  'S28,28,TRUE,A\n'
+                  'S16,16,TRUE,Q\n'
+                  'L14,14,FALSE,I', extension='csv') as src:
+        dshape = datashape.dshape("""var * {name: string[3],
+            runway: int,
+            takeoff: bool,
+            datetime_nearest_close: string[1]}""")
+        ndarr = into(np.ndarray, src, dshape=dshape)
+    with tmpfile('bcolz') as tgt:
+        # Intermediate check that we actually coerced to unicode
+        assert ((ndarr['name'].dtype.type is np.str_) or
+                (ndarr['name'].dtype.type is np.unicode_))
+        assert ((ndarr['datetime_nearest_close'].dtype.type is np.str_) or
+                (ndarr['datetime_nearest_close'].dtype.type is np.unicode_))
+
+        bc = into(tgt, ndarr, bcolz_coerce_unicode=True)
+
+        for name in bc.cols:
+            assert ((bc[name].dtype.type is np.bytes_) or
+                    (bc[name].dtype.type is np.int32) or
+                    (bc[name].dtype.type is np.bool_) or
+                    (bc[name].dtype.type is np.int32))
