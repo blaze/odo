@@ -303,7 +303,11 @@ def test_iterator_to_df():
 
 
 def test_unicode_ndarray_to_ascii():
-    L = [u'\x96']
-    L2 = convert(np.ndarray, L, dshape=dshape("1 * string[5, 'A']"))
-    expected = [L[0].encode('utf-8')]
-    assert expected == L2
+    from numpy.testing import assert_array_equal
+    L = [(u'\x96', 1), (u'a', 2)]
+    L2 = convert(np.ndarray, L, dshape=dshape("""var{a: string[5, 'A'],
+                                                     b: int32}"""))
+    expected = np.array([(u'\x96'.encode('utf-8'), 1),
+                         (u'a'.encode('utf-8'), 2)],
+                        dtype=[('a', 'S5'), ('b', '<i4')])
+    assert_array_equal(expected, L2)
