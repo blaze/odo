@@ -197,7 +197,7 @@ else:
 
         compression = getattr(element, 'compression', '').upper() or None
         cmd = CopyCommand(
-            table=element.element,
+            to=element.element,
             data_location=element.csv.path,
             access_key_id=aws_access_key_id,
             secret_access_key=aws_secret_access_key,
