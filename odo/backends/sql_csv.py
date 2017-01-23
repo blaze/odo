@@ -5,11 +5,14 @@ import sys
 import subprocess
 import uuid
 import mmap
+from tempfile import NamedTemporaryFile
 
 from contextlib import closing
 from functools import partial
 from distutils.spawn import find_executable
 
+import pandas as pd
+from pandas.formats.format import CSVFormatter
 import sqlalchemy as sa
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.elements import Executable, ClauseElement
@@ -19,6 +22,8 @@ from multipledispatch import MDNotImplementedError
 
 from ..append import append
 from ..convert import convert
+from ..compatibility import StringIO
+from ..utils import literal_compile
 from .csv import CSV, infer_header
 from ..temp import Temp
 from .aws import S3
@@ -71,7 +76,8 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
         # write to a temporary file after skipping the first line
         chunksize = 1 << 24  # 16 MiB
         lineterminator = element.lineterminator.encode(element.encoding)
-        with open(element.csv.path, 'rb') as f:
+
+        with element.csv.open() as f:
             with closing(mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)) as mf:
                 index = mf.find(lineterminator)
                 if index == -1:
@@ -85,7 +91,7 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
     cmd = ['sqlite3',
            '-nullvalue', repr(element.na_value),
            '-separator', element.delimiter,
-           '-cmd', '.import "%s" %s' % (
+           '-cmd', '.import "%s" \'%s\'' % (
                # FIXME: format_table(t) is correct, but sqlite will complain
                fullpath, compiler.preparer.format_table(t)
            ),
@@ -93,14 +99,10 @@ def compile_from_csv_sqlite(element, compiler, **kwargs):
     stderr = subprocess.check_output(
         cmd,
         stderr=subprocess.STDOUT,
-        stdin=subprocess.PIPE
+        stdin=subprocess.PIPE,
     ).decode(sys.getfilesystemencoding())
     if stderr:
-        # TODO: this seems like a lot of rigamarole
-        try:
-            raise OSError(stderr)
-        except OSError as e:
-            raise sa.exc.DatabaseError(' '.join(cmd), [], e)
+        raise sa.exc.DatabaseError(' '.join(cmd), [], OSError(stderr))
     return ''
 
 
@@ -147,14 +149,10 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
             'postgres does not allow escape characters longer than 1 byte when '
             'bulk loading a CSV file'
         )
-    if element.lineterminator != '\n':
-        raise ValueError(
-            r'PostgreSQL does not support line terminators other than \n'
-        )
     return compiler.process(
         sa.text(
             """
-            COPY {0} FROM :path (
+            COPY {0} FROM STDIN (
                 FORMAT CSV,
                 DELIMITER :delimiter,
                 NULL :na_value,
@@ -165,11 +163,12 @@ def compile_from_csv_postgres(element, compiler, **kwargs):
             )
             """.format(compiler.preparer.format_table(element.element))
         ).bindparams(
-            path=os.path.abspath(element.csv.path),
             delimiter=element.delimiter,
             na_value=element.na_value,
             quotechar=element.quotechar,
-            escapechar=element.escapechar,
+            # use quotechar for escape intentionally because it makes it easier
+            # to create a csv that pandas and postgres agree on
+            escapechar=element.quotechar,
             header=element.header,
             encoding=element.encoding or element.bind(
                 'show client_encoding'
@@ -229,6 +228,122 @@ def append_csv_to_sql_table(tbl, csv, bind=None, **kwargs):
 
     kwargs = merge(csv.dialect, kwargs)
     stmt = CopyFromCSV(tbl, csv, bind=bind, **kwargs)
-    with bind.begin() as conn:
-        conn.execute(stmt)
+    if dialect == 'postgresql':
+        with bind.begin() as c:
+            with csv.open() as f:
+                c.connection.cursor().copy_expert(literal_compile(stmt), f)
+    else:
+        with bind.begin() as conn:
+            conn.execute(stmt)
     return tbl
+
+
+class NanIsNotNullFormatter(CSVFormatter):
+    def _save_chunk(self, start_i, end_i):
+
+        data_index = self.data_index
+
+        # create the data for a chunk
+        slicer = slice(start_i, end_i)
+        for i in range(len(self.blocks)):
+            b = self.blocks[i]
+            na_rep = 'nan' if b.dtype.kind == 'f' else self.na_rep
+            d = b.to_native_types(slicer=slicer,
+                                  na_rep=na_rep,
+                                  float_format=self.float_format,
+                                  decimal=self.decimal,
+                                  date_format=self.date_format,
+                                  quoting=self.quoting)
+
+            for col_loc, col in zip(b.mgr_locs, d):
+                # self.data is a preallocated list
+                self.data[col_loc] = col
+
+        ix = data_index.to_native_types(slicer=slicer, na_rep=self.na_rep,
+                                        float_format=self.float_format,
+                                        decimal=self.decimal,
+                                        date_format=self.date_format,
+                                        quoting=self.quoting)
+
+        pd.lib.write_csv_rows(self.data,
+                              ix,
+                              self.nlevels,
+                              self.cols,
+                              self.writer)
+
+
+# The set of sql dialects which do not bounce dataframes to disk to append
+# to a sql table.
+DATAFRAME_TO_TABLE_IN_MEMORY_CSV = frozenset({
+    'postgresql',
+})
+
+# TODO: figure out how to dynamically detect this number, users may have
+# compiled their sqlite with a different max variable number but this is the
+# default.
+SQLITE_MAX_VARIABLE_NUMBER = 999
+
+
+@append.register(sa.Table, pd.DataFrame)
+def append_dataframe_to_sql_table(tbl,
+                                  df,
+                                  bind=None,
+                                  dshape=None,
+                                  sqlite_max_variable_number=SQLITE_MAX_VARIABLE_NUMBER,
+                                  quotechar='"',
+                                  **kwargs):
+    bind = getbind(tbl, bind)
+    dialect = bind.dialect.name
+
+    if dialect == 'sqlite':
+        name = ('.'.join((tbl.schema, tbl.name))
+                if tbl.schema is not None else
+                tbl.name)
+        df.to_sql(
+            name,
+            bind,
+            index=False,
+            if_exists='append',
+            chunksize=sqlite_max_variable_number,
+        )
+        return tbl
+
+    if dialect in DATAFRAME_TO_TABLE_IN_MEMORY_CSV:
+        buf = StringIO()
+        path = None
+    else:
+        buf = NamedTemporaryFile(mode='w+')
+        path = buf.name
+
+    with buf:
+        NanIsNotNullFormatter(
+            df[[c.name for c in tbl.columns]],
+            buf,
+            index=False,
+            quotechar=quotechar,
+            doublequote=True,
+            # use quotechar for escape intentionally because it makes it easier
+            # to create a csv that pandas and postgres agree on
+            escapechar=quotechar,
+        ).save()
+        buf.flush()
+        buf.seek(0)
+
+        return append_csv_to_sql_table(
+            tbl,
+            CSV(path,
+                buffer=buf if path is None else None,
+                has_header=True,
+                # use quotechar for escape intentionally because it makes it
+                # makes it easier to create a csv that pandas and postgres
+                # agree on
+                escapechar=quotechar,
+                quotechar=quotechar),
+            dshape=dshape,
+            bind=bind,
+            # use quotechar for escape intentionally because it makes it easier
+            # to create a csv that pandas and postgres agree on
+            escapechar=quotechar,
+            quotechar=quotechar,
+            **kwargs
+        )

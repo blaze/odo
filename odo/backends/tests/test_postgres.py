@@ -3,19 +3,22 @@ from __future__ import absolute_import, division, print_function
 import pytest
 
 sa = pytest.importorskip('sqlalchemy')
-pytest.importorskip('psycopg2')
+psycopg2 = pytest.importorskip('psycopg2')
 
+import datetime
 import os
-import sys
 import itertools
 import shutil
 
 from datashape import dshape
+import numpy as np
+import pandas as pd
 
 from odo.backends.csv import CSV
 from odo.backends.sql import select_to_base
 from odo import odo, into, resource, drop, discover, convert
 from odo.utils import assert_allclose, tmpfile
+
 
 @pytest.fixture(scope='module')
 def pg_ip():
@@ -102,6 +105,19 @@ complex_sql = sql_fixture("""
         Name: string, RegistrationDate: date, ZipCode: int32, Consts: float64
     }
 """)
+sql_with_floats = sql_fixture('var * {a: float64, b: ?float64}')
+sql_with_dts = sql_fixture('var * {a: datetime, b: ?datetime}')
+sql_with_datelikes = sql_fixture("""
+    var * {
+        date: date,
+        option_date: ?date,
+        datetime: datetime,
+        option_datetime: ?datetime,
+    }
+""")
+sql_with_strings = sql_fixture("""
+    var * {non_optional: string, optional: ?string}
+""")
 
 
 @pytest.yield_fixture
@@ -137,7 +153,7 @@ def test_append(csv, sql):
 
 def test_tryexcept_into(csv, sql):
     sql, bind = sql
-    with pytest.raises(sa.exc.NotSupportedError):
+    with pytest.raises(psycopg2.NotSupportedError):
         # uses multi-byte character
         into(sql, csv, quotechar="alpha", bind=bind)
 
@@ -265,8 +281,8 @@ def test_quoted_name(quoted_sql, csv):
 
 def test_path_of_reduction(sql):
     sql, bind = sql
-    result = convert.path(sa.select([sa.func.sum(sql.c.a)]), float)
-    expected = [(sa.sql.Select, float, select_to_base)]
+    result = list(convert.path(sa.select([sa.func.sum(sql.c.a)]), float))
+    expected = [(sa.sql.Select, float, select_to_base, 200)]
     assert result == expected
 
 
@@ -280,3 +296,112 @@ def test_drop_reflects_database_state(url):
     drop(url)
     with pytest.raises(ValueError):
         resource(url)  # Table doesn't exist and no dshape
+
+
+def test_nan_stays_nan(sql_with_floats):
+    sql_with_floats, bind = sql_with_floats
+
+    df = pd.DataFrame({'a': [np.nan, 1, 2], 'b': [3, np.nan, 4]})
+    odo(df, sql_with_floats, bind=bind)
+    rehydrated = odo(sql_with_floats, pd.DataFrame, bind=bind)
+    pd.util.testing.assert_frame_equal(rehydrated.sort_index(axis=1), df)
+
+    nulls_query = sa.select(sql_with_floats.c).where(
+        sql_with_floats.c.a.is_(None) | sql_with_floats.c.b.is_(None)
+    )
+    if bind is None:
+        nulls = nulls_query.execute()
+    else:
+        nulls = bind.execute(nulls_query)
+    assert not nulls.fetchall()
+
+
+def test_nat_to_null(sql_with_dts):
+    sql_with_dts, bind = sql_with_dts
+
+    df = pd.DataFrame({'a': pd.to_datetime(['2014-01-01', '2014-01-02']),
+                       'b': pd.to_datetime(['2014-01-01', 'nat'])})
+    odo(df, sql_with_dts, bind=bind)
+    rehydrated = odo(sql_with_dts, pd.DataFrame, bind=bind)
+    pd.util.testing.assert_frame_equal(rehydrated.sort_index(axis=1), df)
+
+    nulls_query = sa.select(sql_with_dts.c).where(
+        sql_with_dts.c.a.is_(None) | sql_with_dts.c.b.is_(None)
+    )
+    if bind is None:
+        nulls = nulls_query.execute()
+    else:
+        nulls = bind.execute(nulls_query)
+    assert nulls.fetchall() == [(pd.Timestamp('2014-01-02'), None)]
+
+
+def test_to_dataframe(sql):
+    sql, bind = sql
+    insert_query = sql.insert().values([{'a': 1, 'b': 2}, {'a': 3, 'b': 4}])
+    if bind is None:
+        insert_query.execute()
+    else:
+        bind.execute(insert_query)
+
+    df = odo(sql, pd.DataFrame, bind=bind)
+    expected = pd.DataFrame(np.array([(1, 2), (3, 4)],
+                                     dtype=[('a', 'int32'), ('b', 'float64')]))
+    pd.util.testing.assert_frame_equal(df, expected)
+
+
+def test_to_dataframe_datelike(sql_with_datelikes):
+    sql_with_datelikes, bind = sql_with_datelikes
+    date_0 = datetime.date(2014, 1, 1)
+    date_1 = datetime.date(2014, 1, 2)
+    datetime_0 = datetime.datetime(2014, 1, 1)
+    datetime_1 = datetime.datetime(2014, 1, 2)
+    insert_query = sql_with_datelikes.insert().values([
+        {'date': date_0,
+         'option_date': date_0,
+         'datetime': datetime_0,
+         'option_datetime': datetime_0},
+        {'date': date_1,
+         'option_date': date_1,
+         'datetime': datetime_1,
+         'option_datetime': datetime_1},
+    ])
+    if bind is None:
+        insert_query.execute()
+    else:
+        bind.execute(insert_query)
+
+    df = odo(sql_with_datelikes, pd.DataFrame, bind=bind)
+    expected = pd.DataFrame([[datetime_0] * 4, [datetime_1] * 4],
+                            columns=['date',
+                                     'option_date',
+                                     'datetime',
+                                     'option_datetime'])
+    pd.util.testing.assert_frame_equal(df, expected)
+
+
+def test_to_dataframe_strings(sql_with_strings):
+    sql_with_strings, bind = sql_with_strings
+
+    insert_query = sql_with_strings.insert().values([
+        {'non_optional': 'ayy', 'optional': 'hello "world"'},
+        {'non_optional': 'lmao', 'optional': None},
+    ])
+    if bind is None:
+        insert_query.execute()
+    else:
+        bind.execute(insert_query)
+
+    df = odo(sql_with_strings, pd.DataFrame, bind=bind)
+    expected = pd.DataFrame([['ayy', 'hello "world"'], ['lmao', None]],
+                            columns=['non_optional', 'optional'])
+    pd.util.testing.assert_frame_equal(df, expected)
+
+
+def test_from_dataframe_strings(sql_with_strings):
+    sql_with_strings, bind = sql_with_strings
+
+    input_ = pd.DataFrame([['ayy', 'hello "world"'], ['lmao', None]],
+                          columns=['non_optional', 'optional'])
+    odo(input_, sql_with_strings, bind=bind)
+    output = odo(sql_with_strings, pd.DataFrame, bind=bind)
+    pd.util.testing.assert_frame_equal(output, input_)

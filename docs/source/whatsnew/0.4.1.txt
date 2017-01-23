@@ -1,8 +1,8 @@
-Release |version|
------------------
+Release 0.4.1
+=============
 
-:Release: |version|
-:Date: TBD
+:Release: 0.4.1
+:Date: February 3, 2016
 
 New Features
 ------------

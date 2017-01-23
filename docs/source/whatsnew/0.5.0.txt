@@ -1,14 +1,14 @@
-Release |version|
------------------
+Release 0.5.0
+=============
 
-:Release: |version|
+:Release: 0.5.0
 :Date: TBD
 
 New Features
 ------------
 
-* For conversions that go through chunked pandas DataFrames, adding the
-  keyword `add_index=True` will append a unique index column onto the data.
+* For conversions that go through chunked pandas DataFrames, adding the keyword
+  ``add_index=True`` will append a unique index column onto the data.
   Otherwise, the index will likely repeat each chunk.
 
 Experimental Features

@@ -1,13 +1,20 @@
-Release |version|
------------------
+Release 0.6.0
+=============
 
-:Release: |version|
+:Release: 0.6.0
 :Date: TBD
 
 New Features
 ------------
 
-None
+* When an edge fails in ``convert`` we will now consider both the path from the
+  source to the target with the broken edge removed as well as the path from the
+  current value to the target. This can prevent a lot of duplicated work when
+  the new path shares a prefix with the original path (:issue:`449`).
+
+* ``convert`` will now search the entire mro of the source type. This means that
+  you can convert a subclass of a known source type into a known destination
+  type (:issue:`518`).
 
 Experimental Features
 ---------------------
@@ -29,6 +36,10 @@ Improved Backends
 * Optimized `chunks` backend to allow parallel evaluation using `dask`
   whenever the iteratable is a list of callables.
 
+* Improved performance of CSV -> SQL Table.
+
+* Improved performance of pandas DataFrame -> SQL Table.
+
 API Changes
 -----------
 
@@ -37,9 +48,22 @@ None
 Bug Fixes
 ---------
 
-None
+* Correctly handles low-precision decimal fields (:issue:`479`).
 
 Miscellaneous
 -------------
 
-None
+* Odo now has extra install targets for installing different subsystems. For
+  example: ``odo[postgres]``, ``odo[bcolz]``, and ``odo[pytables]``. There are
+  also three special targets: ``odo[all]``, ``odo[test]`` and ``odo[ci]``.
+  ``odo[all]`` installs all of the subsystems available through the various
+  non-special targets. ``odo[test]`` installs the dependencies needed to run the
+  test suite. Note: you will still need to setup the testing databases
+  externally. ``odo[ci]`` is a set of strict (==) requirements  which will be
+  used to run the tests on travis and other CI services. This can be used to
+  reproduce the test environment that the automated tests ran in (:issue:`496`).
+
+* We now run the CI on a frozen set of dependencies to make it easier to
+  reproduce a testing environment. One downside of this is that we will need to
+  manually keep our packages up to date; however, if someone wants to own a
+  package update we will be very willing to help support that (:issue:`496`).

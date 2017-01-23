@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+from itertools import chain
 import os
 from fnmatch import fnmatch
 from setuptools import setup, find_packages
@@ -26,6 +26,39 @@ def read(filename):
         return f.read()
 
 
+def read_reqs(filename):
+    return read(filename).strip().splitlines()
+
+
+def install_requires():
+    return read_reqs('etc/requirements.txt')
+
+
+def extras_require():
+    extras = {req: read_reqs('etc/requirements_%s.txt' % req)
+              for req in {'aws',
+                          'bcolz',
+                          'bokeh',
+                          'ci',
+                          'h5py',
+                          'mongo',
+                          'mysql',
+                          'postgres',
+                          'pytables',
+                          'sas',
+                          'ssh',
+                          'sql',
+                          'test'}}
+
+    extras['mysql'] += extras['sql']
+    extras['postgres'] += extras['sql']
+
+    # don't include the 'ci' or 'test' targets in 'all'
+    extras['all'] = list(chain.from_iterable(v for k, v in extras.items()
+                                             if k not in {'ci', 'test'}))
+    return extras
+
+
 setup(name='odo',
       version=versioneer.get_version(),
       cmdclass=versioneer.get_cmdclass(),
@@ -36,8 +69,8 @@ setup(name='odo',
       license='BSD',
       keywords='odo data conversion hdf5 sql blaze',
       packages=find_packages(),
-      install_requires=read('requirements.txt').strip().split('\n'),
-      extra_requires={'all': read('extra-requirements.txt').strip().split('\n')},
+      install_requires=install_requires(),
+      extras_require=extras_require(),
       long_description=read('README.rst'),
       package_data={'odo': package_data},
       zip_safe=False,

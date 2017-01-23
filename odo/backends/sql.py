@@ -5,6 +5,7 @@ import re
 import subprocess
 import sys
 import decimal
+import warnings
 
 from operator import attrgetter
 from itertools import chain
@@ -12,6 +13,7 @@ from collections import Iterator
 from datetime import datetime, date, timedelta
 from distutils.spawn import find_executable
 
+import numpy as np
 import pandas as pd
 import sqlalchemy as sa
 from sqlalchemy import inspect
@@ -24,7 +26,7 @@ from multipledispatch import MDNotImplementedError
 
 import datashape
 from datashape import DataShape, Record, Option, var, dshape, Map
-from datashape.predicates import isdimension, isrecord, isscalar
+from datashape.predicates import isdimension, isrecord, isscalar, isdatelike
 from datashape import discover, datetime_, date_, float64, int64, int_, string
 from datashape import float32
 from datashape.dispatch import dispatch
@@ -33,8 +35,15 @@ from toolz import (partition_all, keyfilter, valfilter, identity, concat,
                    curry, merge, memoize)
 from toolz.curried import pluck, map
 
-from ..compatibility import unicode
-from ..utils import keywords, ignoring, iter_except, filter_kwargs
+from ..compatibility import unicode, StringIO
+from ..directory import Directory
+from ..utils import (
+    keywords,
+    ignoring,
+    iter_except,
+    filter_kwargs,
+    literal_compile,
+)
 from ..convert import convert, ooc_types
 from ..append import append
 from ..resource import resource
@@ -129,6 +138,7 @@ def batch(sel, chunksize=10000, bind=None):
     chunksize : int, optional, default 10000
         Number of rows to fetch from the database
     """
+
     def rowterator(sel, chunksize=chunksize):
         with getbind(sel, bind).connect() as conn:
             result = conn.execute(sel)
@@ -197,9 +207,9 @@ def discover_foreign_key_relationship(fk, parent, parent_measure=None):
     return {fk.parent.name: Map(discover(fk.parent.type), parent_measure)}
 
 
-@discover.register(sa.Column)
+@discover.register(sa.sql.elements.ColumnClause)
 def discover_sqlalchemy_column(c):
-    meta = Option if c.nullable else identity
+    meta = Option if getattr(c, 'nullable', True) else identity
     return Record([(c.name, meta(discover(c.type)))])
 
 
@@ -297,13 +307,22 @@ def discover(metadata):
         try:
             pairs.append([name, discover(table)])
         except sa.exc.CompileError as e:
-            print("Can not discover type of table %s.\n" % name +
-                  "SQLAlchemy provided this error message:\n\t%s" % e.message +
-                  "\nSkipping.")
+            warnings.warn(
+                "Can not discover type of table {name}.\n"
+                "SQLAlchemy provided this error message:\n\t{msg}"
+                "\nSkipping.".format(
+                    name=name,
+                    msg=e.message,
+                ),
+                stacklevel=3,
+            )
         except NotImplementedError as e:
-            print("Blaze does not understand a SQLAlchemy type.\n"
-                  "Blaze provided the following error:\n\t%s" % "\n\t".join(e.args) +
-                  "\nSkipping.")
+            warnings.warn(
+                "Odo does not understand a SQLAlchemy type.\n"
+                "Odo provided the following error:\n\t{msg}"
+                "\nSkipping.".format(msg="\n\t".join(e.args)),
+                stacklevel=3,
+            )
     return DataShape(Record(pairs))
 
 
@@ -445,8 +464,6 @@ def select_to_iterator(sel, dshape=None, bind=None, **kwargs):
 
 @convert.register(base, sa.sql.Select, cost=200.0)
 def select_to_base(sel, dshape=None, bind=None, **kwargs):
-    if dshape is not None and not isscalar(dshape):
-        raise ValueError('dshape should be None or scalar, got %s' % dshape)
     with getbind(sel, bind).connect() as conn:
         return conn.execute(sel).scalar()
 
@@ -647,14 +664,79 @@ def drop(table, bind=None):
     metadata_of_engine(bind, schema=table.schema).remove(table)
 
 
-@convert.register(pd.DataFrame, (sa.sql.Select, sa.sql.Selectable), cost=200.0)
-def select_or_selectable_to_frame(el, bind=None, **kwargs):
+@convert.register(sa.sql.Select, sa.Table, cost=0)
+def table_to_select(t, **kwargs):
+    return t.select()
+
+
+@convert.register(pd.DataFrame, (sa.sql.Select, sa.sql.Selectable), cost=300.0)
+def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
+    bind = getbind(el, bind)
+    if bind.dialect.name == 'postgresql':
+        buf = StringIO()
+        append(CSV(None, buffer=buf), el, bind=bind, **kwargs)
+        buf.seek(0)
+        datetime_fields = []
+        other_dtypes = {}
+        optional_string_fields = []
+        try:
+            fields = dshape.measure.fields
+        except AttributeError:
+            fields = [(0, dshape.measure)]
+
+        for n, (field, dtype) in enumerate(fields):
+            if isdatelike(dtype):
+                datetime_fields.append(field)
+            elif isinstance(dtype, Option):
+                ty = dtype.ty
+                if ty in datashape.integral:
+                    other_dtypes[field] = 'float64'
+                else:
+                    other_dtypes[field] = ty.to_numpy_dtype()
+                    if ty == string:
+                        # work with integer column indices for the
+                        # optional_string columns because we don't always
+                        # know the column name and then the lookup will fail
+                        # in the loop below.
+                        optional_string_fields.append(n)
+            else:
+                other_dtypes[field] = dtype.to_numpy_dtype()
+
+        df = pd.read_csv(
+            buf,
+            parse_dates=datetime_fields,
+            dtype=other_dtypes,
+            skip_blank_lines=False,
+            escapechar=kwargs.get('escapechar', '\\'),
+        )
+        # read_csv really wants missing values to be NaN, but for
+        # string (object) columns, we want None to be missing
+        columns = df.columns
+        for field_ix in optional_string_fields:
+            # use ``df.loc[bool, df.columns[field_ix]]`` because you cannot do
+            # boolean slicing with ``df.iloc``.
+            field = columns[field_ix]
+            df.loc[df[field].isnull(), field] = None
+        return df
+
     columns, rows = batch(el, bind=bind)
-    row = next(rows, None)
-    if row is None:
-        return pd.DataFrame(columns=columns)
-    return pd.DataFrame(list(chain([tuple(row)], map(tuple, rows))),
-                        columns=columns)
+    dtypes = {}
+    try:
+        fields = dshape.measure.fields
+    except AttributeError:
+        fields = [(columns[0], dshape.measure)]
+    for field, dtype in fields:
+        if isinstance(dtype, Option):
+            ty = dtype.ty
+            if ty in datashape.integral:
+                dtypes[field] = 'float64'
+            else:
+                dtypes[field] = ty.to_numpy_dtype()
+        else:
+            dtypes[field] = dtype.to_numpy_dtype()
+
+    return pd.DataFrame(np.array(list(map(tuple, rows)),
+                                 dtype=[(str(c), dtypes[c]) for c in columns]))
 
 
 class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
@@ -695,7 +777,7 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
     selectable = element.element
     return compiler.process(
         sa.text(
-            """COPY {0} TO :path
+            """COPY {0} TO STDOUT
             WITH (
                 FORMAT CSV,
                 HEADER :header,
@@ -708,10 +790,9 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
             """.format(
                 compiler.preparer.format_table(selectable)
                 if isinstance(selectable, sa.Table)
-                else '({0})'.format(compiler.process(selectable))
+                else '({0})'.format(literal_compile(selectable))
             )
         ).bindparams(
-            path=element.path,
             header=element.header,
             delimiter=element.delimiter,
             quotechar=element.quotechar,
@@ -789,18 +870,53 @@ def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
     return ''
 
 
+try:
+    from sqlalchemy_redshift.dialect import UnloadFromSelect
+    from odo.backends.aws import S3, get_s3_connection
+except ImportError:
+    pass
+else:
+    @resource.register('s3://.*/$')
+    def resource_s3_prefix(uri, **kwargs):
+        return Directory(S3)(uri, **kwargs)
+
+    @append.register(Directory(S3), sa.Table)
+    def redshit_to_s3_bucket(bucket, selectable, dshape=None, bind=None,
+                             **kwargs):
+        s3_conn_kwargs = filter_kwargs(get_s3_connection, kwargs)
+        s3 = get_s3_connection(**s3_conn_kwargs)
+
+        unload_kwargs = filter_kwargs(UnloadFromSelect, kwargs)
+        unload_kwargs['unload_location'] = bucket.path
+        unload_kwargs['access_key_id'] = s3.access_key
+        unload_kwargs['secret_access_key'] = s3.secret_key
+
+        unload = UnloadFromSelect(selectable.select(), **unload_kwargs)
+
+        with getbind(selectable, bind).begin() as conn:
+            conn.execute(unload)
+        return bucket.path
+
+
 @append.register(CSV, sa.sql.Selectable)
 def append_table_to_csv(csv, selectable, dshape=None, bind=None, **kwargs):
     kwargs = keyfilter(keywords(CopyToCSV).__contains__,
                        merge(csv.dialect, kwargs))
     stmt = CopyToCSV(
         selectable,
-        os.path.abspath(csv.path),
+        os.path.abspath(csv.path) if csv.path is not None else None,
         bind=bind,
         **kwargs
     )
-    with getbind(selectable, bind).begin() as conn:
-        conn.execute(stmt)
+
+    bind = getbind(selectable, bind)
+    if bind.dialect.name == 'postgresql':
+        with csv.open('ab+') as f:
+            with bind.begin() as conn:
+                conn.connection.cursor().copy_expert(literal_compile(stmt), f)
+    else:
+        with bind.begin() as conn:
+            conn.execute(stmt)
     return csv
 
 
