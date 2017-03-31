@@ -8,6 +8,7 @@ import os
 from .csv import CSV
 from .json import JSON, JSONLines
 from .text import TextFile
+from .blob import File
 import pandas as pd
 import uuid
 import datashape
@@ -427,6 +428,7 @@ def append_hdfs_csv_to_table(tbl, csv, **kwargs):
         conn.execute(statement)
     return tbl
 
+@append.register(File, HDFS(File))
 @append.register(TextFile, HDFS(TextFile))
 @append.register(JSONLines, HDFS(JSONLines))
 @append.register(JSON, HDFS(JSON))
@@ -438,6 +440,7 @@ def append_hdfs_file_to_local(target, source, **kwargs):
     return target
 
 
+@convert.register(Temp(File), HDFS(File))
 @convert.register(Temp(TextFile), HDFS(TextFile))
 @convert.register(Temp(JSONLines), HDFS(JSONLines))
 @convert.register(Temp(JSON), HDFS(JSON))
@@ -449,6 +452,7 @@ def convert_hdfs_file_to_temp_local(source, **kwargs):
     return append(tmp, source, **kwargs)
 
 
+@append.register(HDFS(File), File)
 @append.register(HDFS(TextFile), TextFile)
 @append.register(HDFS(JSONLines), JSONLines)
 @append.register(HDFS(JSON), JSON)
@@ -507,7 +511,6 @@ def dialect_of(data, **kwargs):
     return d
 
 
-
 types_by_extension = {'csv': CSV, 'json': JSONLines, 'txt': TextFile,
                       'log': TextFile}
 
@@ -535,6 +538,7 @@ def resource_hdfs(uri, **kwargs):
     return HDFS(subtype)(path, **kwargs)
 
 
+@append.register(HDFS(File), (Iterator, object))
 @append.register(HDFS(TextFile), (Iterator, object))
 @append.register(HDFS(JSON), (list, object))
 @append.register(HDFS(CSV), (chunks(pd.DataFrame), pd.DataFrame, object))
@@ -543,6 +547,7 @@ def append_object_to_hdfs(target, source, **kwargs):
     return append(target, tmp, **kwargs)
 
 
+@append.register(HDFS(File), SSH(File))
 @append.register(HDFS(TextFile), SSH(TextFile))
 @append.register(HDFS(JSONLines), SSH(JSONLines))
 @append.register(HDFS(JSON), SSH(JSON))
@@ -551,6 +556,7 @@ def append_remote_file_to_hdfs(target, source, **kwargs):
     raise MDNotImplementedError()
 
 
+@append.register(HDFS(File), HDFS(File))
 @append.register(HDFS(TextFile), HDFS(TextFile))
 @append.register(HDFS(JSONLines), HDFS(JSONLines))
 @append.register(HDFS(JSON), HDFS(JSON))
@@ -559,6 +565,7 @@ def append_hdfs_file_to_hdfs_file(target, source, **kwargs):
     raise MDNotImplementedError()
 
 
+@append.register(SSH(File), HDFS(File))
 @append.register(SSH(TextFile), HDFS(TextFile))
 @append.register(SSH(JSONLines), HDFS(JSONLines))
 @append.register(SSH(JSON), HDFS(JSON))

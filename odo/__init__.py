@@ -19,6 +19,7 @@ from .create import create
 from .drop import drop
 from .temp import Temp
 from .backends.text import TextFile
+from .backends.blob import File
 from .chunks import chunks, Chunks
 from datashape import discover, dshape
 import numpy as np
