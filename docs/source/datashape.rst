@@ -131,7 +131,7 @@ datashape is only a guess and might need to be tweaked.
    >>> discover(csv)
    dshape("var * {name: string, balance: int64}")
 
-   >>> ds = dshape("var * {name: string, balance: float64")  # copy-paste-modify
+   >>> ds = dshape("var * {name: string, balance: float64}")  # copy-paste-modify
    >>> odo('accounts.csv', pd.DataFrame, dshape=ds)
 
 In these cases we can copy-paste the datashape and modify the parts that we
