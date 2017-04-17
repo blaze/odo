@@ -17,6 +17,7 @@ from datashape.dispatch import namespace
 from datashape.predicates import isdimension
 
 from .compatibility import unicode
+from .simulate import Path
 from pandas import DataFrame, Series
 from numpy import ndarray
 
@@ -46,7 +47,10 @@ def validate(f):
 
 @into.register(type, object)
 @validate
-def into_type(a, b, dshape=None, **kwargs):
+def into_type(a, b, dshape=None, simulate=False, **kwargs):
+    if simulate:
+        return Path(b, a, call_type='convert')
+
     with ignoring(NotImplementedError):
         if dshape is None:
             dshape = discover(b)
@@ -55,7 +59,7 @@ def into_type(a, b, dshape=None, **kwargs):
 
 @into.register(object, object)
 @validate
-def into_object(target, source, dshape=None, **kwargs):
+def into_object(target, source, dshape=None, simulate=False, **kwargs):
     """ Push one dataset into another
 
     Parameters
@@ -69,6 +73,9 @@ def into_object(target, source, dshape=None, **kwargs):
         or a string (e.g. 'postgresql://hostname::tablename'
     raise_on_errors: bool (optional, defaults to False)
         Raise exceptions rather than reroute around them
+    simulate: bool (optional, defaults to False)
+        Rather than executing a conversion, returns a Path object describing
+        the conversion function path odo will take.
     **kwargs:
         keyword arguments to pass through to conversion functions.
 
@@ -121,6 +128,9 @@ def into_object(target, source, dshape=None, **kwargs):
     into.convert.convert    - Convert things into new things
     into.append.append      - Add things onto existing things
     """
+    if simulate:
+        return Path(source, target, call_type='append')
+
     if isinstance(source, (str, unicode)):
         source = resource(source, dshape=dshape, **kwargs)
     if type(target) in not_appendable_types:
@@ -133,20 +143,20 @@ def into_object(target, source, dshape=None, **kwargs):
 
 @into.register((str, unicode), object)
 @validate
-def into_string(uri, b, dshape=None, **kwargs):
+def into_string(uri, b, dshape=None, simulate=False, **kwargs):
     if dshape is None:
         dshape = discover(b)
 
     resource_ds = 0 * dshape.subshape[0] if isdimension(dshape[0]) else dshape
 
     a = resource(uri, dshape=resource_ds, expected_dshape=dshape, **kwargs)
-    return into(a, b, dshape=dshape, **kwargs)
+    return into(a, b, dshape=dshape, simulate=simulate, **kwargs)
 
 
 @into.register((type, (str, unicode)), (str, unicode))
 @validate
-def into_string_string(a, b, **kwargs):
-    return into(a, resource(b, **kwargs), **kwargs)
+def into_string_string(a, b, simulate=False, **kwargs):
+    return into(a, resource(b, **kwargs), simulate=simulate, **kwargs)
 
 
 @into.register(object)
