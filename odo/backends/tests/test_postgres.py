@@ -397,6 +397,26 @@ def test_to_dataframe_strings(sql_with_strings):
     pd.util.testing.assert_frame_equal(df, expected)
 
 
+def test_to_dataframe_modulo(sql):
+    sql, bind = sql
+
+    insert_query = sql.insert().values([{'a': n} for n in range(10)])
+    if bind is None:
+        insert_query.execute()
+    else:
+        bind.execute(insert_query)
+
+    lookup_query = sa.select([(sql.c.a % 5).label('a')])
+    result = odo(
+        lookup_query,
+        pd.DataFrame,
+        bind=bind,
+        dshape='var * {a: int32}',
+    )
+    expected = pd.DataFrame({'a': np.arange(10) % 5}, dtype='int32')
+    pd.util.testing.assert_frame_equal(result, expected)
+
+
 def test_from_dataframe_strings(sql_with_strings):
     sql_with_strings, bind = sql_with_strings
 
