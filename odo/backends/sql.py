@@ -786,7 +786,9 @@ else:
         remove this patch.
         """
         literal_binds = kw.get('literal_binds', False)
-        if self.preparer._double_percents and not literal_binds:
+        if (getattr(self.preparer, '_double_percents', True) and
+                not literal_binds):
+
             return '{} %% {}'.format(
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
