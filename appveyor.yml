@@ -9,6 +9,7 @@ environment:
     #   PYTHON_ARCH: "x86_64"
     - PY_MAJOR_VER: 3
       PYTHON_ARCH: "x86_64"
+      python: 3.5
 
 platform:
     - x64
@@ -17,7 +18,7 @@ services:
   # - mssql2014 # No tests for mssql written yet
   # - mysql # mysql tests fail. Don't understand how to fix at the moment.
   - postgresql93
-  # - mongodb # mongodb tests fail. Don't understand how to fix at the moment.
+  - mongodb
 
 build_script:
   - ps: Start-FileDownload "https://repo.continuum.io/miniconda/Miniconda$env:PY_MAJOR_VER-latest-Windows-$env:PYTHON_ARCH.exe" C:\Miniconda.exe; echo "Finished downloading miniconda"
@@ -25,8 +26,6 @@ build_script:
   - SET PATH=C:\Py;C:\Py\Scripts;C:\Py\Library\bin;%PATH%
   - conda config --set always_yes yes
   - conda update conda --quiet
-  - conda create -n odo python=3.5 numpy cryptography pytables h5py pandas dask boto3 bcolz psycopg2 botocore s3transfer pymysql pytest pytz requests s3fs sas7bdat SQLAlchemy pytables odo
-  - activate odo
   - conda update setuptools pip
 
   # sqlite
@@ -34,13 +33,11 @@ build_script:
   - 7z e C:\sqlite.zip
 
   # mongodb
-  # mongodb tests run, but they fail. Appveyor has more recent version than
-  # travis. For now, don't run tests, and don't set up mongodb.
-  # - SET PATH=C:\mongodb\bin;%PATH%
-  # - ps: 'mongo admin --eval "db.runCommand({setParameter: 1, textSearchEnabled: true});"'
+  - SET PATH=C:\mongodb\bin;%PATH%
+  - ps: 'mongo admin --eval "db.runCommand({setParameter: 1, textSearchEnabled: true});"'
 
   # MySql
-  # Can't seem to get mysql tests to run properly either. 
+  # Can't seem to get mysql tests to run properly either.
   # - SET PATH=C:\Program Files\MySql\MySQL Server 5.7\bin\;%PATH%
   # - mysql -u root -p"Password12!" -e "CREATE DATABASE IF NOT EXISTS test;"
   # - mysql -u root -p"Password12!" -e "CREATE USER 'appveyor'@'localhost';"
@@ -52,18 +49,9 @@ build_script:
   - SET PATH=C:\Program Files\PostgreSQL\9.3\bin\;%PATH%
   - createdb test
 
-  # install the frozen ci dependencies
-  # This takes too long and there's a bunch of dependencies to solve (e.g., h5py) 
-  # - pip install -e .[ci]
-
-  # datashape
-  - pip install git+git://github.com/blaze/datashape.git
-
-  # redshift sqlalchemy dialect
-  - pip install --upgrade git+git://github.com/graingert/redshift_sqlalchemy
-
-  - python setup.py develop
+  # install python stuff
+  - sh etc\ci-install.sh
 
 test_script:
-  - conda list
+  - activate odo
   - py.test -v --doctest-modules --doctest-ignore-import-errors -rs odo
