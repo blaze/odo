@@ -13,6 +13,7 @@ from datashape import (
     dshape,
     float64,
     int64,
+    coretypes as ct,
 )
 from datashape.util.testing import assert_dshape_equal
 from networkx import NetworkXNoPath
@@ -21,6 +22,12 @@ import pandas as pd
 import pytest
 
 from odo import odo
+
+
+requires_datetimetz = pytest.mark.skipif(
+    LooseVersion(pd.__version__) < LooseVersion('0.17'),
+    reason="Pandas before DatetimeTZ",
+)
 
 
 data = [('Alice', 100), ('Bob', 200)]
@@ -94,10 +101,7 @@ def test_categorical_pandas():
     assert_dshape_equal(discover(df.x), 15 * Categorical(['a', 'b', 'c']))
 
 
-@pytest.mark.skipif(
-    LooseVersion(pd.__version__) < LooseVersion('0.17'),
-    reason="Pandas before DatetimeTZ",
-)
+@requires_datetimetz
 def test_datetimetz_pandas():
     df = pd.DataFrame(
         OrderedDict([
@@ -124,3 +128,28 @@ def test_datetimetz_pandas():
             discover(df[tz]),
             5 * Option(DateTime(tz=tz))
         )
+
+
+@pytest.mark.parametrize('dtype', ('int64', 'float64'))
+def test_numeric_index(dtype):
+    ix = pd.Index([1, 2, 3], dtype=dtype)
+    actual = discover(ix)
+    expected = 3 * getattr(ct, dtype)
+
+    assert_dshape_equal(actual, expected)
+
+
+@pytest.mark.parametrize(
+    'tz', (
+        None,
+        requires_datetimetz('US/Eastern'),
+        requires_datetimetz('UTC'),
+        requires_datetimetz('Europe/Moscow'),
+    ),
+)
+def test_datetime_index(tz):
+    ix = pd.DatetimeIndex(['2014-01-01', '2014-01-02', '2014-01-03'], tz=tz)
+    actual = discover(ix)
+    expected = 3 * Option(DateTime(tz=tz))
+
+    assert_dshape_equal(actual, expected)
