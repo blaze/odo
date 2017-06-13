@@ -39,9 +39,9 @@ def discover_dataframe(df):
                                        for k in df.columns])
 
 
-@discover.register(pd.Series)
-def discover_series(s):
-    return len(s) * dshape_from_pandas(s)
+@discover.register((pd.Series, pd.Index))
+def discover_1d(array_like):
+    return len(array_like) * dshape_from_pandas(array_like)
 
 
 def coerce_datetimes(df):
