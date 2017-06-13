@@ -40,23 +40,8 @@ install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update conda
 
-  # Install dependencies
-  # Use conda **ONLY** for numpy and pandas (if not pulling from master), this
-  # speeds up the builds a lot. Use the normal pip install for the rest.
-  - conda create -n odo numpy=1.11.2
-  - source activate odo
-  # update setuptools and pip
-  - conda update setuptools pip
-  - if [ -n "$PANDAS_VERSION" ]; then pip install cython==0.24.1; pip install $PANDAS_VERSION; else conda install pandas=0.19.0; fi
-
-  # install the frozen ci dependencies
-  - pip install -e .[ci]
-
-  # datashape
-  - pip install git+git://github.com/blaze/datashape.git
-
-  # redshift sqlalchemy dialect
-  - pip install --upgrade git+git://github.com/graingert/redshift_sqlalchemy
+  # install python stuff
+  - source etc/ci-install.sh
 
 # Before_script section stolen from fabric
 # See license https://github.com/fabric/fabric/blob/master/LICENSE
@@ -73,7 +58,6 @@ before_script:
   - sleep 15
 
 script:
-  - conda list
   - py.test -v --doctest-modules --doctest-ignore-import-errors -rs odo
 
 notifications:

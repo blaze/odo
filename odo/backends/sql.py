@@ -6,6 +6,7 @@ import subprocess
 import sys
 import decimal
 import warnings
+from functools import partial
 
 from operator import attrgetter
 from itertools import chain
@@ -772,13 +773,46 @@ class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
         return self._bind
 
 
+try:
+    from sqlalchemy.dialects.postgresql.psycopg2 import PGCompiler_psycopg2
+except ImportError:
+    pass
+else:
+    @partial(setattr, PGCompiler_psycopg2, 'visit_mod_binary')
+    def _postgres_visit_mod_binary(self, binary, operator, **kw):
+        """Patched visit mod binary to work with literal_binds.
+
+        When https://github.com/zzzeek/sqlalchemy/pull/366 is merged we can
+        remove this patch.
+        """
+        literal_binds = kw.get('literal_binds', False)
+        if (getattr(self.preparer, '_double_percents', True) and
+                not literal_binds):
+
+            return '{} %% {}'.format(
+                self.process(binary.left, **kw),
+                self.process(binary.right, **kw),
+            )
+        else:
+            return '{} % {}'.format(
+                self.process(binary.left, **kw),
+                self.process(binary.right, **kw),
+            )
+
+
 @compiles(CopyToCSV, 'postgresql')
 def compile_copy_to_csv_postgres(element, compiler, **kwargs):
     selectable = element.element
-    return compiler.process(
-        sa.text(
-            """COPY {0} TO STDOUT
-            WITH (
+    if isinstance(selectable, sa.Table):
+        selectable_part = compiler.preparer.format_table(selectable)
+    else:
+        selectable_part = '(%s)' % compiler.process(element.element, **kwargs)
+
+    return 'COPY %s TO STDOUT WITH (%s)' % (
+        selectable_part,
+        compiler.process(
+            sa.text(
+                """
                 FORMAT CSV,
                 HEADER :header,
                 DELIMITER :delimiter,
@@ -786,23 +820,19 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
                 NULL :na_value,
                 ESCAPE :escapechar,
                 ENCODING :encoding
-            )
-            """.format(
-                compiler.preparer.format_table(selectable)
-                if isinstance(selectable, sa.Table)
-                else '({0})'.format(literal_compile(selectable))
-            )
-        ).bindparams(
-            header=element.header,
-            delimiter=element.delimiter,
-            quotechar=element.quotechar,
-            na_value=element.na_value,
-            escapechar=element.escapechar,
-            encoding=element.encoding or element.bind.execute(
-                'show client_encoding'
-            ).scalar()
+                """,
+            ).bindparams(
+                header=element.header,
+                delimiter=element.delimiter,
+                quotechar=element.quotechar,
+                na_value=element.na_value,
+                escapechar=element.escapechar,
+                encoding=element.encoding or element.bind.execute(
+                    'show client_encoding',
+                ).scalar(),
+            ),
+            **kwargs
         ),
-        **kwargs
     )
 
 
