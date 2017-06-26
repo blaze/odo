@@ -50,6 +50,8 @@ build_script:
 
   # install python stuff
   - sh etc\ci-install.sh
+  - conda install cython
+  - pip install git+https://github.com/pymssql/pymssql/
 
   # MSSQL
   # pymssql requires TCP/IP
@@ -58,7 +60,5 @@ build_script:
   - "powershell ci\\sql_server_tcpip.ps1"
   - sqlcmd -E -Q "CREATE DATABASE test;"
 
-
 test_script:
-  - activate odo
   - py.test -v --doctest-modules --doctest-ignore-import-errors -rs odo

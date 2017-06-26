@@ -219,37 +219,11 @@ def compile_from_csv_mssql(element, compiler, **kwargs):
         raise MDNotImplementedError("Requires pymssql driver")
 
     t = element.element
+    csv = element.csv
     if not element.header:
-        csv = element.csv
         skiprows = int(element.skiprows) + 1
     else:
-        csv = Temp(CSV)('.%s' % uuid.uuid1())
-        assert csv.has_header, \
-            'SQLAlchemy element.header is True but CSV inferred no header'
-
-        # write to a temporary file after skipping the first line
-        skiprows = int(element.skiprows)
-        chunksize = 1 << 24  # 16 MiB
-        lineterminator = element.lineterminator.encode(element.encoding)
-
-        with element.csv.open() as f:
-            with closing(mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)) as mf:
-                index = mf.find(lineterminator)
-                if index == -1:
-                    raise ValueError("'%s' not found" % lineterminator)
-                mf.seek(index + len(lineterminator))  # len because \r\n
-                with open(csv.path, 'wb') as g:
-                    for chunk in iter(partial(mf.read, chunksize), b''):
-                        g.write(chunk)
-    """
-    if t.schema:
-        table_name = '{schema}.{tbl}'.format(
-            schema=compiler.preparer.format_schema(t.schema),
-            tbl=compiler.preparer.format_table(t)
-        )
-    else:
-        table_name = compiler.preparer.format_table(t)
-    """
+        skiprows = 2
     table_name = compiler.preparer.format_table(t)
 
     fullpath = os.path.abspath(csv.path).encode('unicode-escape').decode()
@@ -269,7 +243,7 @@ def compile_from_csv_mssql(element, compiler, **kwargs):
         cmd = cmd + ['-T']
     if url.password:
         cmd = cmd + ['-P', url.password]
-    if skiprows > 1:
+    if skiprows > 0:
         cmd = cmd + ['-F{}'.format(str(skiprows))]
 
     stderr = subprocess.check_output(
@@ -278,8 +252,10 @@ def compile_from_csv_mssql(element, compiler, **kwargs):
         stdin=subprocess.PIPE,
     ).decode(sys.getfilesystemencoding())
 
-    # if stderr: # Returns a value, but there's no error. Need to parse?
-    #     raise sa.exc.DatabaseError(' '.join(cmd), [], OSError(stderr))
+    # If the world "error" is in the string stderr, assume error and die.
+
+    if 'error' in stderr.lower():
+        raise sa.exc.DatabaseError(' '.join(cmd), [], OSError(stderr))
     return ''
 
 

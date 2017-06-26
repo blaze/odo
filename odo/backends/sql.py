@@ -1019,13 +1019,22 @@ def compile_copy_to_csv_mssql(element, compiler, **kwargs):
             cmd = cmd + ['-T']
         if url.password:
             cmd = cmd + ['-P', url.password]
-
+        # TODO: For reasons I don't understand, passing the list
+        # to command prompt doens't seem to work
         cmd = ' '.join(cmd)
-        # TODO: Is there a way to check this output to make sure no errors?
         stderr = subprocess.check_output(cmd,
                                          stderr=subprocess.STDOUT,
                                          stdin=subprocess.PIPE,
                                          )
+        # This retuns warning, but the text calls it an error.
+        # Thus, remove the harmless error from the string and search
+        # for a real one.
+        err = stderr.decode()
+        err = err.replace('NativeError', '')
+        tmp = 'Error = [Microsoft][ODBC Driver 11 for SQL Server]Warning'
+        err = err.replace(tmp, '')
+        if 'error' in err.lower():
+            raise sa.exc.DatabaseError(' '.join(cmd), [], OSError(stderr))
         if element.header is not False:
             with open(tmpheader, 'w') as f:
                 head = str(element.delimiter)
@@ -1037,23 +1046,29 @@ def compile_copy_to_csv_mssql(element, compiler, **kwargs):
                 # TODO: For reasons I don't understand, passing the list
                 # to command prompt doens't seem to work
                 cmd = ' '.join(cmd)
-                # TODO: Is there a way to check this output to make sure no
-                # errors?
+
                 # Note, shell=True appears to be required to copy
                 stderr = subprocess.check_output(cmd,
                                                  stderr=subprocess.STDOUT,
                                                  stdin=subprocess.PIPE,
                                                  shell=True)
+                stderr = stderr.decode()
+                if 'error' in stderr.lower():
+                    raise sa.exc.DatabaseError(' '.join(cmd), [],
+                                               OSError(stderr))
 
             else:
                 # This is for the handful of people who use *nix to talk to
                 # MSSQL.
                 cmd = ['cat', tmpheader, tmpdata, '>', fullpath]
-                # TODO: Is there a way to check this output to make sure no
-                # errors?
                 stderr = subprocess.check_output(cmd,
                                                  stderr=subprocess.STDOUT,
                                                  stdin=subprocess.PIPE)
+                # If the world "error" is in the string stderr, assume error
+                # and die. Not sure how/if this works on *nix.
+                if 'error' in stderr.lower():
+                    raise sa.exc.DatabaseError(' '.join(cmd), [],
+                                               OSError(stderr))
     return ''
 
 
