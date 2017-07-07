@@ -101,6 +101,8 @@ revtypes.update({
     mssql.MONEY: float64,
     mssql.SMALLMONEY: float32,
     mssql.UNIQUEIDENTIFIER: string,
+    # The SQL Server TIMESTAMP value doesn't correspond to the ISO Standard
+    # It is instead just a binary(8) value with no relation to dates or times
     mssql.TIMESTAMP: bytes_,
 })
 
