@@ -26,11 +26,12 @@ from sqlalchemy.dialects import mssql
 from multipledispatch import MDNotImplementedError
 
 import datashape
-from datashape import DataShape, Record, Option, var, dshape, Map
-from datashape.predicates import isdimension, isrecord, isscalar, isdatelike
-from datashape import discover, datetime_, date_, float64, int64, int_, string
-from datashape import float32
 from datashape.dispatch import dispatch
+from datashape.predicates import isdimension, isrecord, isscalar, isdatelike
+from datashape import (
+    DataShape, Record, Option, var, dshape, Map, discover,
+    datetime_, date_, float64, int64, int_, string, bytes_, float32,
+)
 
 from toolz import (partition_all, keyfilter, valfilter, identity, concat,
                    curry, merge, memoize)
@@ -99,7 +100,8 @@ revtypes.update({
     mssql.DATETIMEOFFSET: string,
     mssql.MONEY: float64,
     mssql.SMALLMONEY: float32,
-    mssql.UNIQUEIDENTIFIER: string
+    mssql.UNIQUEIDENTIFIER: string,
+    mssql.TIMESTAMP: bytes_,
 })
 
 # interval types are special cased in discover_typeengine so remove them from
