@@ -225,7 +225,13 @@ def discover_sqlalchemy_selectable(t):
     fkeys = [discover(fkey, t, parent_measure=Record(record))
              for fkey in t.foreign_keys]
     for name, column in merge(*fkeys).items():
-        record[ordering[name]] = (name, column)
+        index = ordering[name]
+        _, key_type = record[index]
+        # If the foreign-key is nullable the column (map) key
+        # should be an Option type
+        if isinstance(key_type, Option):
+            column.key = Option(column.key)
+        record[index] = (name, column)
     return var * Record(record)
 
 
