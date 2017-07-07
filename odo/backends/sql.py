@@ -742,9 +742,15 @@ def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
             if ty in datashape.integral:
                 dtypes[field] = 'float64'
             else:
-                dtypes[field] = ty.to_numpy_dtype()
+                try:
+                    dtypes[field] = ty.to_numpy_dtype()
+                except TypeError:
+                    dtypes[field] = np.dtype(object)
         else:
-            dtypes[field] = dtype.to_numpy_dtype()
+            try:
+                dtypes[field] = dtype.to_numpy_dtype()
+            except TypeError:
+                dtypes[field] = np.dtype(object)
 
     return pd.DataFrame(np.array(list(map(tuple, rows)),
                                  dtype=[(str(c), dtypes[c]) for c in columns]))
