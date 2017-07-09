@@ -8,7 +8,7 @@ from decimal import Decimal
 from functools import partial
 
 import datashape
-from datashape import discover, dshape, float32, float64
+from datashape import discover, dshape, float32, float64, Option
 from datashape.util.testing import assert_dshape_equal
 import numpy as np
 import pandas as pd
@@ -16,7 +16,8 @@ import sqlalchemy as sa
 
 from odo import convert, append, resource, into, odo, chunks
 from odo.backends.sql import (
-    dshape_to_table, create_from_datashape, dshape_to_alchemy
+    dshape_to_table, create_from_datashape, dshape_to_alchemy,
+    discover_sqlalchemy_selectable
 )
 from odo.utils import tmpfile, raises
 
@@ -780,3 +781,54 @@ def test_pass_non_hashable_arg_to_create_engine():
         dshape='var * {a: int32}',
     )
     assert s() is not s()
+
+
+def test_nullable_foreign_key():
+    """Test for issue #554"""
+    engine = sa.create_engine('sqlite://')
+    metadata = sa.MetaData(bind=engine)
+
+    T1 = sa.Table(
+        'NullableForeignKeyDemo',
+        metadata,
+        sa.Column('pkid', sa.Integer, primary_key=True),
+        sa.Column('label_id', sa.Integer,
+                  sa.ForeignKey("ForeignKeyLabels.pkid"), nullable=True),
+    )
+
+    T2 = sa.Table(
+        'ForeignKeyLabels',
+        metadata,
+        sa.Column('pkid', sa.Integer, primary_key=True),
+        sa.Column('label', sa.String),
+    )
+
+    metadata.create_all()
+
+    x = np.arange(10)
+    records1 = [
+        {'pkid': idx, 'label_id': int(value)}
+        for idx, value
+        in enumerate(x[::-1])
+    ]
+    records1[-1]['label_id'] = None  # foreign-key is nullable!
+
+    records2 = [
+        {'pkid': int(pkid), 'label': chr(pkid + 65)}
+        for pkid in x
+    ]
+    with engine.connect() as conn:
+        conn.execute(T1.insert(), records1)
+        conn.execute(T2.insert(), records2)
+
+    ds = discover_sqlalchemy_selectable(T1)
+    # The nullable key should be an Option instance
+    assert isinstance(ds.measure['label_id'].key, Option)
+
+    dtype = [('pkid', np.int32), ('label_id', object)]
+    expected = np.rec.fromarrays([x, x[::-1]], dtype=dtype)
+    expected = pd.DataFrame(expected)
+    expected.iloc[-1, -1] = None
+
+    actual = odo(T1, pd.DataFrame)
+    assert actual.equals(expected)
