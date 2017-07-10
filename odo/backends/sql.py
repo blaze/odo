@@ -144,19 +144,19 @@ def batch(sel, chunksize=10000, bind=None):
         Number of rows to fetch from the database
     """
 
-    def rowterator(sel, chunksize=chunksize):
+    def rowiterator(sel, chunksize=chunksize):
         with getbind(sel, bind).connect() as conn:
             result = conn.execute(sel)
-            yield result.keys()
-
             for rows in iter_except(curry(result.fetchmany, size=chunksize),
                                     sa.exc.ResourceClosedError):
                 if rows:
                     yield rows
                 else:
                     return
-    terator = rowterator(sel)
-    return next(terator), concat(terator)
+    
+    columns = [col.name for col in sel.columns]
+    iterator = rowiterator(sel)
+    return columns, concat(iterator)
 
 
 @discover.register(sa.dialects.postgresql.base.INTERVAL)
