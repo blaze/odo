@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import pytest
+from mock import patch, Mock
 
 from functools import partial
 import codecs
@@ -64,8 +65,10 @@ def test_sample_different_encoding():
 
 
 @pytest.mark.xfail(raises=HTTPError)
-def test_failed_url():
+@patch('odo.backends.url.urlopen')
+def test_failed_url(m):
     failed_url = "http://foo.com/myfile.csv"
+    m.side_effect = HTTPError(failed_url, 404, 'Not found', None, None)
     with tmpfile('.csv') as fn:
         odo(failed_url, fn)
 
