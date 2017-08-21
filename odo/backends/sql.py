@@ -103,7 +103,7 @@ revtypes.update({
     mssql.UNIQUEIDENTIFIER: string,
     # The SQL Server TIMESTAMP value doesn't correspond to the ISO Standard
     # It is instead just a binary(8) value with no relation to dates or times
-    mssql.TIMESTAMP: bytes_,
+    # mssql.TIMESTAMP: bytes_,
 })
 
 # interval types are special cased in discover_typeengine so remove them from
