@@ -184,12 +184,14 @@ def compile_from_csv_mssql(element, compiler, **kwargs):
     connection_elements = selectable.bind.url.query['odbc_connect'].replace('=',';').split(';')
     connection_elements = dict(zip(connection_elements[0::2], connection_elements[1::2]))
 
-    cmd_template = """bcp {database}.{schema}.{table} IN {path} -S {server} -T -c -q"""
+    cmd_template = """bcp {database}.{schema}.{table} IN {path} -S {server} -T -c -r{lineterm} -t"{delim}" -q"""
     cmd_statement = cmd_template.format(database=connection_elements['DATABASE'],
                                         schema=selectable.schema,
                                         table=selectable.name,
                                         path=element.csv.path,
-                                        server=connection_elements['SERVER'])
+                                        server=connection_elements['SERVER'],
+                                        lineterm = element.lineterminator,
+                                        delim= element.delimiter)
 
     try:
         _call = subprocess.Popen(cmd_statement, stderr=subprocess.PIPE)
