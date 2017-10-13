@@ -83,6 +83,19 @@ types = {
 
 revtypes = dict(map(reversed, types.items()))
 
+# Subclass mssql.TIMESTAMP subclass for use when differentiating between
+# mssql.TIMESTAMP and sa.TIMESTAMP.
+# At the time of this writing, (mssql.TIMESTAMP == sa.TIMESTAMP) is True,
+# which causes a collision when defining the revtypes mappings.
+# 
+# See:
+# https://bitbucket.org/zzzeek/sqlalchemy/issues/4092/type-problem-with-mssqltimestamp
+class MSSQLTimestamp(mssql.TIMESTAMP):
+    pass
+
+# Assign the custom subclass as the type to use instead of `mssql.TIMESTAMP`.
+mssql.base.ischema_names['TIMESTAMP'] = MSSQLTimestamp
+
 revtypes.update({
     sa.DATETIME: datetime_,
     sa.TIMESTAMP: datetime_,
@@ -103,7 +116,7 @@ revtypes.update({
     mssql.UNIQUEIDENTIFIER: string,
     # The SQL Server TIMESTAMP value doesn't correspond to the ISO Standard
     # It is instead just a binary(8) value with no relation to dates or times
-    mssql.TIMESTAMP: bytes_,
+    MSSQLTimestamp: bytes_,
 })
 
 # interval types are special cased in discover_typeengine so remove them from

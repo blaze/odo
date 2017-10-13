@@ -8,7 +8,20 @@ from decimal import Decimal
 from functools import partial
 
 import datashape
-from datashape import discover, dshape, float32, float64, Option
+from datashape import (
+    date_,
+    datetime_,
+    discover,
+    dshape,
+    int_,
+    int64,
+    float32,
+    float64,
+    string,
+    var,
+    Option,
+    R,
+)
 from datashape.util.testing import assert_dshape_equal
 import numpy as np
 import pandas as pd
@@ -279,6 +292,28 @@ def test_discover_oracle_intervals(freq):
     assert discover(t) == dshape('var * {dur: ?timedelta[unit="%s"]}' % freq)
 
 
+@pytest.mark.parametrize(
+    'typ,dtype', (
+        (sa.DATETIME, datetime_),
+        (sa.TIMESTAMP, datetime_),
+        (sa.FLOAT, float64),
+        (sa.DATE, date_),
+        (sa.BIGINT, int64),
+        (sa.INTEGER, int_),
+        (sa.BIGINT, int64),
+        (sa.types.NullType, string),
+        (sa.REAL, float32),
+        (sa.Float, float64),
+        # sa.Float(precision=24), float32 (reason="Currently returns float64")
+        (sa.Float(precision=53), float64),
+    ),
+)
+def test_types(typ, dtype):
+    expected = var * R['value': Option(dtype)]
+    t = sa.Table('t', sa.MetaData(), sa.Column('value', typ))
+    assert_dshape_equal(discover(t), expected)
+    
+
 def test_mssql_types():
     typ = sa.dialects.mssql.BIT()
     t = sa.Table('t', sa.MetaData(), sa.Column('bit', typ))
@@ -295,7 +330,6 @@ def test_mssql_types():
     typ = sa.dialects.mssql.UNIQUEIDENTIFIER()
     t = sa.Table('t', sa.MetaData(), sa.Column('uuid', typ))
     assert_dshape_equal(discover(t), dshape('var * {uuid: ?string}'))
-
 
 def test_create_from_datashape():
     engine = sa.create_engine('sqlite:///:memory:')
