@@ -6,6 +6,7 @@ pytest.importorskip('sqlalchemy')
 import os
 from decimal import Decimal
 from functools import partial
+from textwrap import dedent
 
 import datashape
 from datashape import (
@@ -304,7 +305,16 @@ def test_discover_oracle_intervals(freq):
         (sa.types.NullType, string),
         (sa.REAL, float32),
         (sa.Float, float64),
-        # sa.Float(precision=24), float32 (reason="Currently returns float64")
+        pytest.param(
+            sa.Float(precision=24), float32,
+            marks=pytest.mark.xfail(
+                reason=dedent("""
+                Currently returns float64.
+                Unique instances of sa.Float(precision=24) do not equate to each other, which prevents
+                discover_typeengine from correctly keying into sql.revparses.
+                """).strip()
+            )
+        ),
         (sa.Float(precision=53), float64),
     ),
 )
