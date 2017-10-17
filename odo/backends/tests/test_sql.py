@@ -305,16 +305,7 @@ def test_discover_oracle_intervals(freq):
         (sa.types.NullType, string),
         (sa.REAL, float32),
         (sa.Float, float64),
-        pytest.param(
-            sa.Float(precision=24), float32,
-            marks=pytest.mark.xfail(
-                reason=dedent("""
-                Currently returns float64.
-                Unique instances of sa.Float(precision=24) do not equate to each other, which prevents
-                discover_typeengine from correctly keying into sql.revparses.
-                """).strip()
-            )
-        ),
+        (sa.Float(precision=24), float32),
         (sa.Float(precision=53), float64),
     ),
 )
@@ -322,7 +313,7 @@ def test_types(typ, dtype):
     expected = var * R['value': Option(dtype)]
     t = sa.Table('t', sa.MetaData(), sa.Column('value', typ))
     assert_dshape_equal(discover(t), expected)
-    
+
 
 def test_mssql_types():
     typ = sa.dialects.mssql.BIT()

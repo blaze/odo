@@ -11,6 +11,7 @@ import itertools
 import shutil
 
 from datashape import dshape
+from datashape.util.testing import assert_dshape_equal
 import numpy as np
 import pandas as pd
 
@@ -425,3 +426,15 @@ def test_from_dataframe_strings(sql_with_strings):
     odo(input_, sql_with_strings, bind=bind)
     output = odo(sql_with_strings, pd.DataFrame, bind=bind)
     pd.util.testing.assert_frame_equal(output, input_)
+
+
+def test_float_dtype(sql_with_floats):
+    sql_with_floats, bind = sql_with_floats
+
+    expected = dshape("var * {a: float64, b: ?float64}")
+
+    assert_dshape_equal(discover(sql_with_floats), expected)
+
+    # Also check that reflection from the database returns expected dshape.
+    assert_dshape_equal(discover(bind).subshape[sql_with_floats.name],
+                        expected)

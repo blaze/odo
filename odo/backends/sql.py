@@ -21,7 +21,7 @@ from sqlalchemy import inspect
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy import event
 from sqlalchemy.schema import CreateSchema
-from sqlalchemy.dialects import mssql
+from sqlalchemy.dialects import mssql, postgresql
 
 from multipledispatch import MDNotImplementedError
 
@@ -107,8 +107,6 @@ revtypes.update({
     sa.types.NullType: string,
     sa.REAL: float32,
     sa.Float: float64,
-    sa.Float(precision=24): float32,
-    sa.Float(precision=53): float64,
     mssql.BIT: datashape.bool_,
     mssql.DATETIMEOFFSET: string,
     mssql.MONEY: float64,
@@ -118,6 +116,29 @@ revtypes.update({
     # It is instead just a binary(8) value with no relation to dates or times
     MSSQLTimestamp: bytes_,
 })
+
+# Types which can be specified on precision.
+# These are checked before checking membership in revtypes, because:
+# 1) An instance of a precision type does not equal another instancec with
+# the same precision.
+# (DOUBLE_PRECISION(precision=53) != DOUBLE_PRECISION(precision=53)
+# 2) Precision types can be a instance of a type in revtypes.
+# isinstance(sa.Float(precision=53), sa.Float)
+precision_types = {
+    sa.Float,
+    postgresql.base.DOUBLE_PRECISION
+}
+
+# Maps the value of a precision types `precision` attribute to the desired
+# dtype.
+# e.g. the value returned by
+# `postgresql.base.DOUBLE_PRECISION(precision=53).precision`
+# maps to `float64`.
+precision_to_dtype = {
+    24: float32,
+    53: float64
+}
+
 
 # interval types are special cased in discover_typeengine so remove them from
 # revtypes
@@ -199,6 +220,8 @@ def discover_typeengine(typ):
                              'second_precision=%d, day_precision=%d' %
                              (typ.second_precision, typ.day_precision))
         return datashape.TimeDelta(unit=units)
+    if type(typ) in precision_types and typ.precision in precision_to_dtype:
+        return precision_to_dtype[typ.precision]
     if typ in revtypes:
         return dshape(revtypes[typ])[0]
     if type(typ) in revtypes:
