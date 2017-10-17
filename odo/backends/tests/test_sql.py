@@ -305,7 +305,9 @@ def test_discover_oracle_intervals(freq):
         (sa.types.NullType, string),
         (sa.REAL, float32),
         (sa.Float, float64),
+        (sa.Float(precision=8), float32),
         (sa.Float(precision=24), float32),
+        (sa.Float(precision=42), float64),
         (sa.Float(precision=53), float64),
     ),
 )
@@ -313,6 +315,21 @@ def test_types(typ, dtype):
     expected = var * R['value': Option(dtype)]
     t = sa.Table('t', sa.MetaData(), sa.Column('value', typ))
     assert_dshape_equal(discover(t), expected)
+
+
+@pytest.mark.parametrize(
+    'typ', (
+        sa.Float(precision=-1),
+        sa.Float(precision=0),
+        sa.Float(precision=54)
+    )
+)
+def test_unsupported_precision(typ):
+    t = sa.Table('t', sa.MetaData(), sa.Column('value', typ))
+    with pytest.raises(ValueError) as err:
+        discover(t)
+    assert str(err.value) == "{} is not a supported precision".format(
+        typ.precision)
 
 
 def test_mssql_types():
