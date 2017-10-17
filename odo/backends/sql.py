@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
+import numbers
 import os
 import re
 import subprocess
@@ -129,15 +130,34 @@ precision_types = {
     postgresql.base.DOUBLE_PRECISION
 }
 
-# Maps the value of a precision types `precision` attribute to the desired
-# dtype.
-# e.g. the value returned by
-# `postgresql.base.DOUBLE_PRECISION(precision=53).precision`
-# maps to `float64`.
-precision_to_dtype = {
-    24: float32,
-    53: float64
-}
+
+def precision_to_dtype(precision):
+    """
+    Maps a float or double precision attribute to the desired dtype.
+
+    The mappings are as follows:
+    [1, 24] -> float32
+    [25, 53] -> float64
+
+    Values outside of those ranges raise a ``ValueError``.
+
+    Parameter
+    ---------
+    precision : int
+         A double or float precision. e.g. the value returned by
+    `postgresql.base.DOUBLE_PRECISION(precision=53).precision`
+
+    Returns
+    -------
+    dtype : datashape.dtype (float32|float64)
+         The dtype to use for columns of the specified precision.
+    """
+    if isinstance(precision, numbers.Integral):
+        if 1 <= precision <= 24:
+            return float32
+        elif 25 <= precision <= 53:
+            return float64
+    raise ValueError("{} is not a supported precision".format(precision))
 
 
 # interval types are special cased in discover_typeengine so remove them from
@@ -220,8 +240,8 @@ def discover_typeengine(typ):
                              'second_precision=%d, day_precision=%d' %
                              (typ.second_precision, typ.day_precision))
         return datashape.TimeDelta(unit=units)
-    if type(typ) in precision_types and typ.precision in precision_to_dtype:
-        return precision_to_dtype[typ.precision]
+    if type(typ) in precision_types and typ.precision is not None:
+        return precision_to_dtype(typ.precision)
     if typ in revtypes:
         return dshape(revtypes[typ])[0]
     if type(typ) in revtypes:
