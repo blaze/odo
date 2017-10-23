@@ -884,3 +884,30 @@ def test_nullable_foreign_key():
 
     actual = odo(T1, pd.DataFrame)
     assert actual.equals(expected)
+
+
+def test_transaction():
+    with tmpfile('.db') as fn:
+        rsc = resource('sqlite:///%s::table' % fn, dshape='var * {a: int}')
+
+    data = [(1,), (2,), (3,)]
+
+    conn_1 = rsc.bind.connect()
+    conn_2 = rsc.bind.connect()
+
+    trans_1 = conn_1.begin()
+    conn_2.begin()
+
+    odo(data, rsc, bind=conn_1)
+
+    # inside the transaction the write should be there
+    assert odo(rsc, list, bind=conn_1) == data
+
+    # outside of a transaction or in a different transaction the write is not
+    # there
+    assert odo(rsc, list) == odo(rsc, list, bind=conn_2) == []
+
+    trans_1.commit()
+
+    # now the data should appear outside the transaction
+    assert odo(rsc, list) == odo(rsc, list, bind=conn_2) == data
