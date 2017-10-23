@@ -181,7 +181,7 @@ def getbind(t, bind):
     if bind is None:
         return t.bind
 
-    if isinstance(bind, sa.engine.base.Engine):
+    if isinstance(bind, sa.engine.interfaces.Connectable):
         return bind
     return create_engine(bind)
 
@@ -538,9 +538,9 @@ def select_to_base(sel, dshape=None, bind=None, **kwargs):
 @append.register(sa.Table, Iterator)
 def append_iterator_to_table(t, rows, dshape=None, bind=None, **kwargs):
     assert not isinstance(t, type)
-    engine = getbind(t, bind)
-    if not t.exists(bind=engine):
-        t.create(bind=engine)
+    bind = getbind(t, bind)
+    if not t.exists(bind=bind):
+        t.create(bind=bind)
     rows = iter(rows)
 
     # We see if the sequence is of tuples or dicts
@@ -564,9 +564,9 @@ def append_iterator_to_table(t, rows, dshape=None, bind=None, **kwargs):
             names = discover(t).measure.names
         rows = (dict(zip(names, row)) for row in rows)
 
-    with engine.connect() as conn:
+    with bind.begin():
         for chunk in partition_all(1000, rows):  # TODO: 1000 is hardcoded
-            conn.execute(t.insert(), chunk)
+            bind.execute(t.insert(), chunk)
 
     return t
 
@@ -607,8 +607,7 @@ def append_select_statement_to_sql_Table(t, o, bind=None, **kwargs):
 
     query = t.insert().from_select(o.columns.keys(), o)
 
-    with bind.connect() as conn:
-        conn.execute(query)
+    bind.execute(query)
     return t
 
 
