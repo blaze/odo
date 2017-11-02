@@ -911,3 +911,32 @@ def test_transaction():
 
     # now the data should appear outside the transaction
     assert odo(rsc, list) == odo(rsc, list, bind=conn_2) == data
+
+
+def test_integer_detection():
+    """Test for PR #596"""
+    engine = sa.create_engine('sqlite://')
+    metadata = sa.MetaData(bind=engine)
+
+    T = sa.Table(
+        'Demo', metadata,
+        sa.Column('pkid', sa.Integer, primary_key=True),
+        sa.Column(
+            'value',
+            sa.DECIMAL(precision=1, scale=0, asdecimal=False),
+            nullable=True
+        ),
+    )
+    metadata.create_all()
+
+    values =  [1, 0, 1, 0, None, 1, 1, 1, 0, 1]
+    pkids = range(len(values))
+    dtype = [('pkid', np.int32), ('value', np.float64)]
+    expected = np.array(list(zip(pkids, values)), dtype=dtype)
+    expected = pd.DataFrame(expected)
+    records = expected.to_dict(orient='records')
+    with engine.connect() as conn:
+        conn.execute(T.insert(), records)
+
+    actual = odo(T, pd.DataFrame)
+    assert actual.equals(expected)
