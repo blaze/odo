@@ -14,7 +14,11 @@ from ..convert import convert
 
 
 possibly_missing = frozenset({string, datetime_})
-categorical = type(pd.Categorical.dtype)
+try:
+    from pandas.api.types import CategoricalDtype as categorical
+except ImportError:
+    categorical = type(pd.Categorical.dtype)
+    assert categorical is not property
 
 
 def dshape_from_pandas(col):

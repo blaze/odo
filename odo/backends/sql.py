@@ -88,7 +88,7 @@ revtypes = dict(map(reversed, types.items()))
 # mssql.TIMESTAMP and sa.TIMESTAMP.
 # At the time of this writing, (mssql.TIMESTAMP == sa.TIMESTAMP) is True,
 # which causes a collision when defining the revtypes mappings.
-# 
+#
 # See:
 # https://bitbucket.org/zzzeek/sqlalchemy/issues/4092/type-problem-with-mssqltimestamp
 class MSSQLTimestamp(mssql.TIMESTAMP):
@@ -207,7 +207,7 @@ def batch(sel, chunksize=10000, bind=None):
                     yield rows
                 else:
                     return
-    
+
     columns = [col.name for col in sel.columns]
     iterator = rowiterator(sel)
     return columns, concat(iterator)
@@ -794,13 +794,14 @@ def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
     for field, dtype in fields:
         if isinstance(dtype, Option):
             ty = dtype.ty
-            if ty in datashape.integral:
-                dtypes[field] = 'float64'
+            try:
+                dtypes[field] = ty.to_numpy_dtype()
+            except TypeError:
+                dtypes[field] = np.dtype(object)
             else:
-                try:
-                    dtypes[field] = ty.to_numpy_dtype()
-                except TypeError:
-                    dtypes[field] = np.dtype(object)
+                if np.issubdtype(dtypes[field], np.integer):
+                    # cast nullable ints to float64 so NaN can be used for nulls
+                    dtypes[field] = np.float64
         else:
             try:
                 dtypes[field] = dtype.to_numpy_dtype()

@@ -15,9 +15,8 @@ df = pd.DataFrame([[100, 'Alice'],
 
 def test_convert_dataframe_to_cds():
     cds = convert(ColumnDataSource, df)
-    assert cds.data == {'name': ['Alice', 'Bob', 'Charlie'],
-                        'balance': [100, 200, 300]}
-
+    assert list(cds.data['name']) == ['Alice', 'Bob', 'Charlie']
+    assert list(cds.data['balance']) == [100, 200, 300]
     df2 = convert(pd.DataFrame, cds)
     assert isinstance(df2, pd.DataFrame)
 
