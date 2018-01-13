@@ -46,6 +46,7 @@ from ..utils import (
     iter_except,
     filter_kwargs,
     literal_compile,
+    tmpfile
 )
 from ..convert import convert, ooc_types
 from ..append import append
@@ -211,7 +212,6 @@ def batch(sel, chunksize=10000, bind=None):
     columns = [col.name for col in sel.columns]
     iterator = rowiterator(sel)
     return columns, concat(iterator)
-
 
 @discover.register(sa.dialects.postgresql.base.INTERVAL)
 def discover_postgresql_interval(t):
@@ -427,7 +427,6 @@ def dshape_to_table(name, ds, metadata=None, foreign_keys=None,
           Column('amount', Integer(), table=<bank>, nullable=False),
           schema=None)
     """
-
     if isinstance(ds, str):
         ds = dshape(ds)
     if not isrecord(ds.measure):
@@ -440,6 +439,18 @@ def dshape_to_table(name, ds, metadata=None, foreign_keys=None,
         foreign_keys = {}
 
     validate_foreign_keys(ds, foreign_keys)
+
+    if hasattr(metadata.bind, 'dialect'):
+        if (metadata.bind.dialect.name == 'mssql') and metadata.schema:
+            engine = metadata.bind
+
+            schema_exists = engine.execute(sa.text(
+                """select * from information_schema.schemata where
+                schema_name = :schema"""
+            ).bindparams(schema=metadata.schema)).scalar()
+            if not schema_exists:
+                from sqlalchemy.schema import CreateSchema
+                engine.execute(CreateSchema(metadata.schema))
 
     cols = dshape_to_alchemy(ds, primary_key=primary_key or frozenset())
     cols.extend(sa.ForeignKeyConstraint([column_name], [referent])
@@ -969,6 +980,95 @@ def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
         subprocess.Popen(cmd, stdout=f, stdin=subprocess.PIPE).communicate(sql)
 
     # This will be a no-op since we're doing the write during the compile
+    return ''
+
+
+@compiles(CopyToCSV, 'mssql')
+def compile_copy_to_csv_mssql(element, compiler, **kwargs):
+    if not find_executable('bcp'):
+        raise MDNotImplementedError("Could not find bcp executable")
+
+    # we are sending a SQL string directorly to the SQLite process so we always
+    # need to bind everything before sending it
+    kwargs['literal_binds'] = True
+
+    selectable = element.element
+    sql = compiler.process(
+        selectable.select() if isinstance(selectable, sa.Table) else selectable,
+        **kwargs
+    ) + ';'
+
+    fullpath = os.path.abspath(element.path)
+    url = element.bind.url
+
+    sql = re.sub(r'\s{2,}', ' ', re.sub(r'\s*\n\s*', ' ', sql))
+    sql = '"{}"'.format(sql)  # .encode(sys.getfilesystemencoding())?
+
+    with tmpfile() as tmpdata, tmpfile() as tmpheader:
+        cmd = ['bcp',
+               sql,
+               'queryout', tmpdata,
+               '-d{}'.format(url.database),
+               '-S{}'.format(url.host),
+               '-t{}'.format(element.delimiter),
+               '-c']
+
+        if url.username:
+            cmd = cmd + ['-U', url.username]
+        else:
+            cmd = cmd + ['-T']
+        if url.password:
+            cmd = cmd + ['-P', url.password]
+        # TODO: For reasons I don't understand, passing the list
+        # to command prompt doens't seem to work
+        cmd = ' '.join(cmd)
+        stderr = subprocess.check_output(cmd,
+                                         stderr=subprocess.STDOUT,
+                                         stdin=subprocess.PIPE,
+                                         )
+        # This retuns warning, but the text calls it an error.
+        # Thus, remove the harmless error from the string and search
+        # for a real one.
+        err = stderr.decode()
+        err = err.replace('NativeError', '')
+        tmp = 'Error = [Microsoft][ODBC Driver 11 for SQL Server]Warning'
+        err = err.replace(tmp, '')
+        if 'error' in err.lower():
+            raise sa.exc.DatabaseError(' '.join(cmd), [], OSError(stderr))
+        if element.header is not False:
+            with open(tmpheader, 'w') as f:
+                head = str(element.delimiter)
+                head = head.join(element.element.columns.keys()) + '\n'
+                f.write(head)
+            if sys.platform == 'win32':
+                cmd = ['copy', '/b', tmpheader, '+', tmpdata,
+                       fullpath]
+                # TODO: For reasons I don't understand, passing the list
+                # to command prompt doens't seem to work
+                cmd = ' '.join(cmd)
+
+                # Note, shell=True appears to be required to copy
+                stderr = subprocess.check_output(cmd,
+                                                 stderr=subprocess.STDOUT,
+                                                 stdin=subprocess.PIPE,
+                                                 shell=True)
+                stderr = stderr.decode()
+                if 'error' in stderr.lower():
+                    raise sa.exc.DatabaseError(' '.join(cmd), [],
+                                               OSError(stderr))
+
+            else:
+                # This is for the handful of people who use *nix to talk to
+                # MSSQL.
+                cmd = ['cat', tmpheader, tmpdata, '>', fullpath]
+                stderr = subprocess.check_output(cmd,
+                                                 stderr=subprocess.STDOUT,
+                                                 stdin=subprocess.PIPE)
+                # If the world "error" is in the string stderr, assume error
+                # and die. Not sure how/if this works on *nix.
+                if 'error' in stderr.lower():
+                    raise sa.exc.DatabaseError(' '.join(cmd), [],
+                                               OSError(stderr))
     return ''
 
 

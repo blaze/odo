@@ -23,7 +23,7 @@ from multipledispatch import MDNotImplementedError
 from ..append import append
 from ..convert import convert
 from ..compatibility import StringIO
-from ..utils import literal_compile
+from ..utils import literal_compile, tmpfile
 from .csv import CSV, infer_header
 from ..temp import Temp
 from .aws import S3
@@ -211,6 +211,54 @@ else:
         return compiler.process(cmd)
 
 
+@compiles(CopyFromCSV, 'mssql')
+def compile_from_csv_mssql(element, compiler, **kwargs):
+    if not find_executable('bcp'):
+        raise MDNotImplementedError("Could not find bcp executable")
+    if element.bind.url.get_driver_name() != 'pymssql':
+        raise MDNotImplementedError("Requires pymssql driver")
+
+    t = element.element
+    csv = element.csv
+    if not element.header:
+        skiprows = int(element.skiprows) + 1
+    else:
+        skiprows = 2
+    table_name = compiler.preparer.format_table(t)
+
+    fullpath = os.path.abspath(csv.path).encode('unicode-escape').decode()
+    url = element.bind.url
+    cmd = ['bcp.exe',
+           table_name,
+           'in', fullpath,
+           '-d{}'.format(url.database),
+           '-S{}'.format(url.host),
+           '-c',
+           '-t{}'.format(element.delimiter),
+           '-k']
+
+    if url.username:
+        cmd = cmd + ['-U', url.username]
+    else:
+        cmd = cmd + ['-T']
+    if url.password:
+        cmd = cmd + ['-P', url.password]
+    if skiprows > 0:
+        cmd = cmd + ['-F{}'.format(str(skiprows))]
+
+    stderr = subprocess.check_output(
+        cmd,
+        stderr=subprocess.STDOUT,
+        stdin=subprocess.PIPE,
+    ).decode(sys.getfilesystemencoding())
+
+    # If the world "error" is in the string stderr, assume error and die.
+
+    if 'error' in stderr.lower():
+        raise sa.exc.DatabaseError(' '.join(cmd), [], OSError(stderr))
+    return ''
+
+
 @append.register(sa.Table, CSV)
 def append_csv_to_sql_table(tbl, csv, bind=None, **kwargs):
     bind = getbind(tbl, bind)
@@ -309,30 +357,64 @@ def append_dataframe_to_sql_table(tbl,
         return tbl
 
     if dialect in DATAFRAME_TO_TABLE_IN_MEMORY_CSV:
-        buf = StringIO()
-        path = None
-    else:
-        buf = NamedTemporaryFile(mode='w+')
-        path = buf.name
+        with StringIO() as buf:
+            NanIsNotNullFormatter(
+                df[[c.name for c in tbl.columns]],
+                buf,
+                index=False,
+                quotechar=quotechar,
+                doublequote=True,
+                # use quotechar for escape intentionally because it makes it
+                # easier to create a csv that pandas and postgres agree on
+                escapechar=quotechar,
+            ).save()
+            buf.flush()
+            buf.seek(0)
 
-    with buf:
-        NanIsNotNullFormatter(
-            df[[c.name for c in tbl.columns]],
-            buf,
-            index=False,
-            quotechar=quotechar,
-            doublequote=True,
-            # use quotechar for escape intentionally because it makes it easier
-            # to create a csv that pandas and postgres agree on
-            escapechar=quotechar,
-        ).save()
-        buf.flush()
-        buf.seek(0)
+            return append_csv_to_sql_table(
+                tbl,
+                CSV(None,
+                    buffer=buf,
+                    has_header=True,
+                    # use quotechar for escape intentionally because it makes
+                    # it easier to create a csv that pandas and postgres agree
+                    # on
+                    escapechar=quotechar,
+                    quotechar=quotechar),
+                dshape=dshape,
+                bind=bind,
+                # use quotechar for escape intentionally because it makes it
+                # easier to create a csv that pandas and postgres agree on
+                escapechar=quotechar,
+                quotechar=quotechar,
+                **kwargs
+            )
 
+    with tmpfile() as f:
+        if dialect != 'mssql':
+            NanIsNotNullFormatter(
+                df[[c.name for c in tbl.columns]],
+                f,
+                index=False,
+                quotechar=quotechar,
+                doublequote=True,
+                # use quotechar for escape intentionally because it makes it
+                # easier to create a csv that pandas and postgres agree on
+                escapechar=quotechar,
+            ).save()
+        else:
+            import csv
+            # MSSQL bcp doesn't don't quotemarks
+            CSVFormatter(
+                df[[c.name for c in tbl.columns]],
+                f,
+                index=False,
+                quoting=csv.QUOTE_NONE
+            ).save()
         return append_csv_to_sql_table(
             tbl,
-            CSV(path,
-                buffer=buf if path is None else None,
+            CSV(f,
+                buffer=None,
                 has_header=True,
                 # use quotechar for escape intentionally because it makes it
                 # makes it easier to create a csv that pandas and postgres
