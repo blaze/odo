@@ -971,6 +971,30 @@ def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
     # This will be a no-op since we're doing the write during the compile
     return ''
 
+@compiles(CopyToCSV, 'mssql')
+def compile_copy_to_csv_mssql(element, compiler, **kwargs):
+    selectable = element.element
+
+    connection_elements = selectable.bind.url.query['odbc_connect'].replace('=',';').split(';')
+    connection_elements = dict(zip(connection_elements[0::2], connection_elements[1::2]))
+
+    cmd_template = """bcp {database}.{schema}.{table} OUT {path} -S {server} -T -c -r{lineterm} -t"{delim}" -q"""
+    cmd_statement = cmd_template.format(database=connection_elements['DATABASE'],
+                                        schema=selectable.schema,
+                                        table=selectable.name,
+                                        path=element.path,
+                                        server=connection_elements['SERVER'],
+                                        lineterm=element.lineterminator,
+                                        delim=element.delimiter)
+
+    try:
+        _call = subprocess.Popen(cmd_statement, stderr=subprocess.PIPE)
+        out, err = _call.communicate()
+    except OSError as e:
+        return e
+    except subprocess.CalledProcessError:
+        return "Error: {0} Return Code: {1}".format(err, _call.returncode)
+    return _call.returncode
 
 try:
     from sqlalchemy_redshift.dialect import UnloadFromSelect
