@@ -17,6 +17,7 @@ Jinja2==2.8
 jmespath==0.9.0
 locket==0.2.0
 MarkupSafe==0.23
+mock==2.0.0
 msgpack-python==0.4.8
 multipledispatch==0.4.9
 networkx==1.11
@@ -27,12 +28,12 @@ paramiko==2.0.2
 partd==0.3.6
 psutil==4.4.2
 psycopg2==2.6.2
-py==1.4.31
+py==1.4.34
 pyasn1==0.1.9
 pycparser==2.17
 pymongo==2.9.4
 PyMySQL==0.7.9
-pytest==3.0.3
+pytest==3.2.3
 python-dateutil==2.5.3
 pytz==2016.7
 pywebhdfs==0.4.1

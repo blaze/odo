@@ -6,9 +6,23 @@ pytest.importorskip('sqlalchemy')
 import os
 from decimal import Decimal
 from functools import partial
+from textwrap import dedent
 
 import datashape
-from datashape import discover, dshape, float32, float64
+from datashape import (
+    date_,
+    datetime_,
+    discover,
+    dshape,
+    int_,
+    int64,
+    float32,
+    float64,
+    string,
+    var,
+    Option,
+    R,
+)
 from datashape.util.testing import assert_dshape_equal
 import numpy as np
 import pandas as pd
@@ -16,7 +30,8 @@ import sqlalchemy as sa
 
 from odo import convert, append, resource, into, odo, chunks
 from odo.backends.sql import (
-    dshape_to_table, create_from_datashape, dshape_to_alchemy
+    dshape_to_table, create_from_datashape, dshape_to_alchemy,
+    discover_sqlalchemy_selectable
 )
 from odo.utils import tmpfile, raises
 
@@ -278,6 +293,45 @@ def test_discover_oracle_intervals(freq):
     assert discover(t) == dshape('var * {dur: ?timedelta[unit="%s"]}' % freq)
 
 
+@pytest.mark.parametrize(
+    'typ,dtype', (
+        (sa.DATETIME, datetime_),
+        (sa.TIMESTAMP, datetime_),
+        (sa.FLOAT, float64),
+        (sa.DATE, date_),
+        (sa.BIGINT, int64),
+        (sa.INTEGER, int_),
+        (sa.BIGINT, int64),
+        (sa.types.NullType, string),
+        (sa.REAL, float32),
+        (sa.Float, float64),
+        (sa.Float(precision=8), float32),
+        (sa.Float(precision=24), float32),
+        (sa.Float(precision=42), float64),
+        (sa.Float(precision=53), float64),
+    ),
+)
+def test_types(typ, dtype):
+    expected = var * R['value': Option(dtype)]
+    t = sa.Table('t', sa.MetaData(), sa.Column('value', typ))
+    assert_dshape_equal(discover(t), expected)
+
+
+@pytest.mark.parametrize(
+    'typ', (
+        sa.Float(precision=-1),
+        sa.Float(precision=0),
+        sa.Float(precision=54)
+    )
+)
+def test_unsupported_precision(typ):
+    t = sa.Table('t', sa.MetaData(), sa.Column('value', typ))
+    with pytest.raises(ValueError) as err:
+        discover(t)
+    assert str(err.value) == "{} is not a supported precision".format(
+        typ.precision)
+
+
 def test_mssql_types():
     typ = sa.dialects.mssql.BIT()
     t = sa.Table('t', sa.MetaData(), sa.Column('bit', typ))
@@ -294,7 +348,6 @@ def test_mssql_types():
     typ = sa.dialects.mssql.UNIQUEIDENTIFIER()
     t = sa.Table('t', sa.MetaData(), sa.Column('uuid', typ))
     assert_dshape_equal(discover(t), dshape('var * {uuid: ?string}'))
-
 
 def test_create_from_datashape():
     engine = sa.create_engine('sqlite:///:memory:')
@@ -780,3 +833,110 @@ def test_pass_non_hashable_arg_to_create_engine():
         dshape='var * {a: int32}',
     )
     assert s() is not s()
+
+
+def test_nullable_foreign_key():
+    """Test for issue #554"""
+    engine = sa.create_engine('sqlite://')
+    metadata = sa.MetaData(bind=engine)
+
+    T1 = sa.Table(
+        'NullableForeignKeyDemo',
+        metadata,
+        sa.Column('pkid', sa.Integer, primary_key=True),
+        sa.Column('label_id', sa.Integer,
+                  sa.ForeignKey("ForeignKeyLabels.pkid"), nullable=True),
+    )
+
+    T2 = sa.Table(
+        'ForeignKeyLabels',
+        metadata,
+        sa.Column('pkid', sa.Integer, primary_key=True),
+        sa.Column('label', sa.String),
+    )
+
+    metadata.create_all()
+
+    x = np.arange(10)
+    records1 = [
+        {'pkid': idx, 'label_id': int(value)}
+        for idx, value
+        in enumerate(x[::-1])
+    ]
+    records1[-1]['label_id'] = None  # foreign-key is nullable!
+
+    records2 = [
+        {'pkid': int(pkid), 'label': chr(pkid + 65)}
+        for pkid in x
+    ]
+    with engine.connect() as conn:
+        conn.execute(T1.insert(), records1)
+        conn.execute(T2.insert(), records2)
+
+    ds = discover_sqlalchemy_selectable(T1)
+    # The nullable key should be an Option instance
+    assert isinstance(ds.measure['label_id'].key, Option)
+
+    dtype = [('pkid', np.int32), ('label_id', object)]
+    expected = np.rec.fromarrays([x, x[::-1]], dtype=dtype)
+    expected = pd.DataFrame(expected)
+    expected.iloc[-1, -1] = None
+
+    actual = odo(T1, pd.DataFrame)
+    assert actual.equals(expected)
+
+
+def test_transaction():
+    with tmpfile('.db') as fn:
+        rsc = resource('sqlite:///%s::table' % fn, dshape='var * {a: int}')
+
+    data = [(1,), (2,), (3,)]
+
+    conn_1 = rsc.bind.connect()
+    conn_2 = rsc.bind.connect()
+
+    trans_1 = conn_1.begin()
+    conn_2.begin()
+
+    odo(data, rsc, bind=conn_1)
+
+    # inside the transaction the write should be there
+    assert odo(rsc, list, bind=conn_1) == data
+
+    # outside of a transaction or in a different transaction the write is not
+    # there
+    assert odo(rsc, list) == odo(rsc, list, bind=conn_2) == []
+
+    trans_1.commit()
+
+    # now the data should appear outside the transaction
+    assert odo(rsc, list) == odo(rsc, list, bind=conn_2) == data
+
+
+def test_integer_detection():
+    """Test for PR #596"""
+    engine = sa.create_engine('sqlite://')
+    metadata = sa.MetaData(bind=engine)
+
+    T = sa.Table(
+        'Demo', metadata,
+        sa.Column('pkid', sa.Integer, primary_key=True),
+        sa.Column(
+            'value',
+            sa.DECIMAL(precision=1, scale=0, asdecimal=False),
+            nullable=True
+        ),
+    )
+    metadata.create_all()
+
+    values =  [1, 0, 1, 0, None, 1, 1, 1, 0, 1]
+    pkids = range(len(values))
+    dtype = [('pkid', np.int32), ('value', np.float64)]
+    expected = np.array(list(zip(pkids, values)), dtype=dtype)
+    expected = pd.DataFrame(expected)
+    records = expected.to_dict(orient='records')
+    with engine.connect() as conn:
+        conn.execute(T.insert(), records)
+
+    actual = odo(T, pd.DataFrame)
+    assert actual.equals(expected)

@@ -40,6 +40,7 @@ install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update conda
 
+<<<<<<< HEAD
   # Install dependencies
   # Use conda **ONLY** for numpy and pandas (if not pulling from master), this
   # speeds up the builds a lot. Use the normal pip install for the rest.
@@ -57,6 +58,9 @@ install:
 
   # redshift sqlalchemy dialect
   - pip install --upgrade git+git://github.com/graingert/redshift_sqlalchemy
+ 
+  # install python stuff
+  - source etc/ci-install.sh
 
 # Before_script section stolen from fabric
 # See license https://github.com/fabric/fabric/blob/master/LICENSE
@@ -73,7 +77,6 @@ before_script:
   - sleep 15
 
 script:
-  - conda list
   - py.test -v --doctest-modules --doctest-ignore-import-errors -rs odo
 
 notifications:

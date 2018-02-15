@@ -6,3 +6,7 @@ odo.egg-info/
 dist
 .coverage
 .cache/
+
+# IDEs
+.idea/
+.vscode/

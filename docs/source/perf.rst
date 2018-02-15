@@ -46,7 +46,7 @@ advantage of.
 Timings
 -------
 
-CSV → PostgreSQL (22m 64s)
+CSV → PostgreSQL (22m 46s)
 ``````````````````````````
 * READS: ~50 MB/s
 * WRITES: ~50 MB/s
@@ -152,7 +152,7 @@ Pandas
 
 I didn't actually finish this timing because a single iteration of inserting
 1,000,000 rows took about 4 minutes and there would be 174 such iterations
-bringing the total loading time to::
+bringing the total loading time to:
 
 .. code-block:: python
 

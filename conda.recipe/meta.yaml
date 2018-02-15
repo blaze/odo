@@ -39,6 +39,7 @@ test:
     - sqlalchemy >=0.8.0
     - bcolz
     - pymongo # [not (py35 or win)]
+    - mock
     - dask
     - paramiko # [not win]
     - sqlite3 # [win]
