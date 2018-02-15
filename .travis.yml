@@ -1,7 +1,4 @@
 sudo: False
-os:
-  - linux
-  - osx
 
 language: generic
 
@@ -43,7 +40,6 @@ install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update conda
 
-<<<<<<< HEAD
   # Install dependencies
   # Use conda **ONLY** for numpy and pandas (if not pulling from master), this
   # speeds up the builds a lot. Use the normal pip install for the rest.
