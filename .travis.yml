@@ -29,8 +29,8 @@ addons:
   postgresql: "9.5"
 
 services:
-    - mongodb
-    - mysql
+  - mongodb
+  - mysql
 
 install:
   # Install conda
