@@ -1,6 +1,9 @@
 sudo: False
+os:
+  - linux
+  - osx
 
-language: python
+language: generic
 
 matrix:
   fast_finish: true
