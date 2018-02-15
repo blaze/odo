@@ -24,7 +24,7 @@ def test_discover():
     ddf = dd.from_pandas(df, npartitions=2)
     assert_dshape_equal(discover(ddf),
                         var * Record([('x', Categorical(['a', 'b', 'c'])),
-                                            ('y', int64), ('z', float64)]))
+                                      ('y', int64), ('z', float64)]))
     assert_dshape_equal(discover(ddf.x), var * Categorical(['a', 'b', 'c']))
 
 

@@ -59,14 +59,14 @@ def test_into_inplace():
 
 
 def test_insert_to_ooc():
-    x = np.arange(600).reshape((20, 30))
-    y = np.empty(shape=x.shape, dtype=x.dtype)
-    a = convert(Array, x, chunks=(4, 5))
+    in_arr = np.arange(600).reshape((20, 30))
+    out_arr = np.empty(shape=in_arr.shape, dtype=in_arr.dtype)
+    d_arr = convert(Array, in_arr, chunks=(4, 5))
 
-    dsk = insert_to_ooc(y, a)
-    core.get(merge(dsk, a.dask), list(dsk.keys()))
+    dsk = insert_to_ooc(d_arr, out_arr)
+    core.get(merge(dsk, d_arr.dask), list(dsk.keys()))
 
-    assert eq(y, x)
+    assert eq(out_arr, in_arr)
 
 
 def test_array_interface():

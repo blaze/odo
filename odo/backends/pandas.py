@@ -18,7 +18,7 @@ categorical = type(pd.Categorical.dtype)
 
 
 def dshape_from_pandas(col):
-    if isinstance(col.dtype, categorical):
+    if col.dtype.name == 'category':
         return Categorical(col.cat.categories.tolist())
     elif col.dtype.kind == 'M':
         tz = getattr(col.dtype, 'tz', None)
