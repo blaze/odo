@@ -14,7 +14,11 @@ from ..convert import convert
 
 
 possibly_missing = frozenset({string, datetime_})
-categorical = type(pd.Categorical.dtype)
+try:
+    from pandas.api.types import CategoricalDtype as categorical
+except ImportError:
+    categorical = type(pd.Categorical.dtype)
+    assert categorical is not property
 
 
 def dshape_from_pandas(col):
@@ -39,9 +43,9 @@ def discover_dataframe(df):
                                        for k in df.columns])
 
 
-@discover.register(pd.Series)
-def discover_series(s):
-    return len(s) * dshape_from_pandas(s)
+@discover.register((pd.Series, pd.Index))
+def discover_1d(array_like):
+    return len(array_like) * dshape_from_pandas(array_like)
 
 
 def coerce_datetimes(df):
@@ -99,7 +103,7 @@ def nan_to_nat(fl, **kwargs):
     raise NotImplementedError()
 
 
-@convert.register((pd.Timestamp, pd.Timedelta), (pd.tslib.NaTType, type(None)))
+@convert.register((pd.Timestamp, pd.Timedelta), (type(pd.NaT), type(None)))
 def convert_null_or_nat_to_nat(n, **kwargs):
     return pd.NaT
 

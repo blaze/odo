@@ -83,5 +83,5 @@ Developer Documentation
 
 Odo is part of the Open Source Blaze_ projects supported by `Continuum Analytics`_
 
-.. _Blaze: http://continuum.io/open-source/blaze
+.. _Blaze: http://blaze.pydata.org/
 .. _`Continuum Analytics`: http://continuum.io

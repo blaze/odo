@@ -31,7 +31,6 @@ def test_convert_logfiles_to_bag():
         logs = chunks(TextFile)(list(map(TextFile, fns)))
         b = odo(logs, Bag)
         assert isinstance(b, Bag)
-        assert 'a1.log' in str(b.dask.values())
         assert (list(map(methodcaller('strip'), odo(b, list))) ==
                 list(map(methodcaller('strip'), odo(logs, list))))
 

@@ -1,11 +1,13 @@
 from __future__ import absolute_import, division, print_function
 
+import numbers
 import os
 import re
 import subprocess
 import sys
 import decimal
 import warnings
+from functools import partial
 
 from operator import attrgetter
 from itertools import chain
@@ -20,22 +22,24 @@ from sqlalchemy import inspect
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy import event
 from sqlalchemy.schema import CreateSchema
-from sqlalchemy.dialects import mssql
+from sqlalchemy.dialects import mssql, postgresql
 
 from multipledispatch import MDNotImplementedError
 
 import datashape
-from datashape import DataShape, Record, Option, var, dshape, Map
-from datashape.predicates import isdimension, isrecord, isscalar, isdatelike
-from datashape import discover, datetime_, date_, float64, int64, int_, string
-from datashape import float32
 from datashape.dispatch import dispatch
+from datashape.predicates import isdimension, isrecord, isscalar, isdatelike
+from datashape import (
+    DataShape, Record, Option, var, dshape, Map, discover,
+    datetime_, date_, float64, int64, int_, string, bytes_, float32,
+)
 
 from toolz import (partition_all, keyfilter, valfilter, identity, concat,
                    curry, merge, memoize)
 from toolz.curried import pluck, map
 
 from ..compatibility import unicode, StringIO
+from ..directory import Directory
 from ..utils import (
     keywords,
     ignoring,
@@ -80,6 +84,19 @@ types = {
 
 revtypes = dict(map(reversed, types.items()))
 
+# Subclass mssql.TIMESTAMP subclass for use when differentiating between
+# mssql.TIMESTAMP and sa.TIMESTAMP.
+# At the time of this writing, (mssql.TIMESTAMP == sa.TIMESTAMP) is True,
+# which causes a collision when defining the revtypes mappings.
+#
+# See:
+# https://bitbucket.org/zzzeek/sqlalchemy/issues/4092/type-problem-with-mssqltimestamp
+class MSSQLTimestamp(mssql.TIMESTAMP):
+    pass
+
+# Assign the custom subclass as the type to use instead of `mssql.TIMESTAMP`.
+mssql.base.ischema_names['TIMESTAMP'] = MSSQLTimestamp
+
 revtypes.update({
     sa.DATETIME: datetime_,
     sa.TIMESTAMP: datetime_,
@@ -91,14 +108,57 @@ revtypes.update({
     sa.types.NullType: string,
     sa.REAL: float32,
     sa.Float: float64,
-    sa.Float(precision=24): float32,
-    sa.Float(precision=53): float64,
     mssql.BIT: datashape.bool_,
     mssql.DATETIMEOFFSET: string,
     mssql.MONEY: float64,
     mssql.SMALLMONEY: float32,
-    mssql.UNIQUEIDENTIFIER: string
+    mssql.UNIQUEIDENTIFIER: string,
+    # The SQL Server TIMESTAMP value doesn't correspond to the ISO Standard
+    # It is instead just a binary(8) value with no relation to dates or times
+    MSSQLTimestamp: bytes_,
 })
+
+# Types which can be specified on precision.
+# These are checked before checking membership in revtypes, because:
+# 1) An instance of a precision type does not equal another instancec with
+# the same precision.
+# (DOUBLE_PRECISION(precision=53) != DOUBLE_PRECISION(precision=53)
+# 2) Precision types can be a instance of a type in revtypes.
+# isinstance(sa.Float(precision=53), sa.Float)
+precision_types = {
+    sa.Float,
+    postgresql.base.DOUBLE_PRECISION
+}
+
+
+def precision_to_dtype(precision):
+    """
+    Maps a float or double precision attribute to the desired dtype.
+
+    The mappings are as follows:
+    [1, 24] -> float32
+    [25, 53] -> float64
+
+    Values outside of those ranges raise a ``ValueError``.
+
+    Parameter
+    ---------
+    precision : int
+         A double or float precision. e.g. the value returned by
+    `postgresql.base.DOUBLE_PRECISION(precision=53).precision`
+
+    Returns
+    -------
+    dtype : datashape.dtype (float32|float64)
+         The dtype to use for columns of the specified precision.
+    """
+    if isinstance(precision, numbers.Integral):
+        if 1 <= precision <= 24:
+            return float32
+        elif 25 <= precision <= 53:
+            return float64
+    raise ValueError("{} is not a supported precision".format(precision))
+
 
 # interval types are special cased in discover_typeengine so remove them from
 # revtypes
@@ -121,7 +181,7 @@ def getbind(t, bind):
     if bind is None:
         return t.bind
 
-    if isinstance(bind, sa.engine.base.Engine):
+    if isinstance(bind, sa.engine.interfaces.Connectable):
         return bind
     return create_engine(bind)
 
@@ -138,19 +198,19 @@ def batch(sel, chunksize=10000, bind=None):
         Number of rows to fetch from the database
     """
 
-    def rowterator(sel, chunksize=chunksize):
+    def rowiterator(sel, chunksize=chunksize):
         with getbind(sel, bind).connect() as conn:
             result = conn.execute(sel)
-            yield result.keys()
-
             for rows in iter_except(curry(result.fetchmany, size=chunksize),
                                     sa.exc.ResourceClosedError):
                 if rows:
                     yield rows
                 else:
                     return
-    terator = rowterator(sel)
-    return next(terator), concat(terator)
+
+    columns = [col.name for col in sel.columns]
+    iterator = rowiterator(sel)
+    return columns, concat(iterator)
 
 
 @discover.register(sa.dialects.postgresql.base.INTERVAL)
@@ -180,6 +240,8 @@ def discover_typeengine(typ):
                              'second_precision=%d, day_precision=%d' %
                              (typ.second_precision, typ.day_precision))
         return datashape.TimeDelta(unit=units)
+    if type(typ) in precision_types and typ.precision is not None:
+        return precision_to_dtype(typ.precision)
     if typ in revtypes:
         return dshape(revtypes[typ])[0]
     if type(typ) in revtypes:
@@ -219,7 +281,13 @@ def discover_sqlalchemy_selectable(t):
     fkeys = [discover(fkey, t, parent_measure=Record(record))
              for fkey in t.foreign_keys]
     for name, column in merge(*fkeys).items():
-        record[ordering[name]] = (name, column)
+        index = ordering[name]
+        _, key_type = record[index]
+        # If the foreign-key is nullable the column (map) key
+        # should be an Option type
+        if isinstance(key_type, Option):
+            column.key = Option(column.key)
+        record[index] = (name, column)
     return var * Record(record)
 
 
@@ -470,9 +538,9 @@ def select_to_base(sel, dshape=None, bind=None, **kwargs):
 @append.register(sa.Table, Iterator)
 def append_iterator_to_table(t, rows, dshape=None, bind=None, **kwargs):
     assert not isinstance(t, type)
-    engine = getbind(t, bind)
-    if not t.exists(bind=engine):
-        t.create(bind=engine)
+    bind = getbind(t, bind)
+    if not t.exists(bind=bind):
+        t.create(bind=bind)
     rows = iter(rows)
 
     # We see if the sequence is of tuples or dicts
@@ -496,9 +564,9 @@ def append_iterator_to_table(t, rows, dshape=None, bind=None, **kwargs):
             names = discover(t).measure.names
         rows = (dict(zip(names, row)) for row in rows)
 
-    with engine.connect() as conn:
+    with bind.begin():
         for chunk in partition_all(1000, rows):  # TODO: 1000 is hardcoded
-            conn.execute(t.insert(), chunk)
+            bind.execute(t.insert(), chunk)
 
     return t
 
@@ -539,8 +607,7 @@ def append_select_statement_to_sql_Table(t, o, bind=None, **kwargs):
 
     query = t.insert().from_select(o.columns.keys(), o)
 
-    with bind.connect() as conn:
-        conn.execute(query)
+    bind.execute(query)
     return t
 
 
@@ -683,7 +750,7 @@ def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
         except AttributeError:
             fields = [(0, dshape.measure)]
 
-        for field, dtype in fields:
+        for n, (field, dtype) in enumerate(fields):
             if isdatelike(dtype):
                 datetime_fields.append(field)
             elif isinstance(dtype, Option):
@@ -693,7 +760,11 @@ def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
                 else:
                     other_dtypes[field] = ty.to_numpy_dtype()
                     if ty == string:
-                        optional_string_fields.append(field)
+                        # work with integer column indices for the
+                        # optional_string columns because we don't always
+                        # know the column name and then the lookup will fail
+                        # in the loop below.
+                        optional_string_fields.append(n)
             else:
                 other_dtypes[field] = dtype.to_numpy_dtype()
 
@@ -706,7 +777,11 @@ def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
         )
         # read_csv really wants missing values to be NaN, but for
         # string (object) columns, we want None to be missing
-        for field in optional_string_fields:
+        columns = df.columns
+        for field_ix in optional_string_fields:
+            # use ``df.loc[bool, df.columns[field_ix]]`` because you cannot do
+            # boolean slicing with ``df.iloc``.
+            field = columns[field_ix]
             df.loc[df[field].isnull(), field] = None
         return df
 
@@ -719,12 +794,19 @@ def select_or_selectable_to_frame(el, bind=None, dshape=None, **kwargs):
     for field, dtype in fields:
         if isinstance(dtype, Option):
             ty = dtype.ty
-            if ty in datashape.integral:
-                dtypes[field] = 'float64'
-            else:
+            try:
                 dtypes[field] = ty.to_numpy_dtype()
+            except TypeError:
+                dtypes[field] = np.dtype(object)
+            else:
+                if np.issubdtype(dtypes[field], np.integer):
+                    # cast nullable ints to float64 so NaN can be used for nulls
+                    dtypes[field] = np.float64
         else:
-            dtypes[field] = dtype.to_numpy_dtype()
+            try:
+                dtypes[field] = dtype.to_numpy_dtype()
+            except TypeError:
+                dtypes[field] = np.dtype(object)
 
     return pd.DataFrame(np.array(list(map(tuple, rows)),
                                  dtype=[(str(c), dtypes[c]) for c in columns]))
@@ -763,13 +845,46 @@ class CopyToCSV(sa.sql.expression.Executable, sa.sql.ClauseElement):
         return self._bind
 
 
+try:
+    from sqlalchemy.dialects.postgresql.psycopg2 import PGCompiler_psycopg2
+except ImportError:
+    pass
+else:
+    @partial(setattr, PGCompiler_psycopg2, 'visit_mod_binary')
+    def _postgres_visit_mod_binary(self, binary, operator, **kw):
+        """Patched visit mod binary to work with literal_binds.
+
+        When https://github.com/zzzeek/sqlalchemy/pull/366 is merged we can
+        remove this patch.
+        """
+        literal_binds = kw.get('literal_binds', False)
+        if (getattr(self.preparer, '_double_percents', True) and
+                not literal_binds):
+
+            return '{} %% {}'.format(
+                self.process(binary.left, **kw),
+                self.process(binary.right, **kw),
+            )
+        else:
+            return '{} % {}'.format(
+                self.process(binary.left, **kw),
+                self.process(binary.right, **kw),
+            )
+
+
 @compiles(CopyToCSV, 'postgresql')
 def compile_copy_to_csv_postgres(element, compiler, **kwargs):
     selectable = element.element
-    return compiler.process(
-        sa.text(
-            """COPY {0} TO STDOUT
-            WITH (
+    if isinstance(selectable, sa.Table):
+        selectable_part = compiler.preparer.format_table(selectable)
+    else:
+        selectable_part = '(%s)' % compiler.process(element.element, **kwargs)
+
+    return 'COPY %s TO STDOUT WITH (%s)' % (
+        selectable_part,
+        compiler.process(
+            sa.text(
+                """
                 FORMAT CSV,
                 HEADER :header,
                 DELIMITER :delimiter,
@@ -777,23 +892,19 @@ def compile_copy_to_csv_postgres(element, compiler, **kwargs):
                 NULL :na_value,
                 ESCAPE :escapechar,
                 ENCODING :encoding
-            )
-            """.format(
-                compiler.preparer.format_table(selectable)
-                if isinstance(selectable, sa.Table)
-                else '({0})'.format(literal_compile(selectable))
-            )
-        ).bindparams(
-            header=element.header,
-            delimiter=element.delimiter,
-            quotechar=element.quotechar,
-            na_value=element.na_value,
-            escapechar=element.escapechar,
-            encoding=element.encoding or element.bind.execute(
-                'show client_encoding'
-            ).scalar()
+                """,
+            ).bindparams(
+                header=element.header,
+                delimiter=element.delimiter,
+                quotechar=element.quotechar,
+                na_value=element.na_value,
+                escapechar=element.escapechar,
+                encoding=element.encoding or element.bind.execute(
+                    'show client_encoding',
+                ).scalar(),
+            ),
+            **kwargs
         ),
-        **kwargs
     )
 
 
@@ -859,6 +970,34 @@ def compile_copy_to_csv_sqlite(element, compiler, **kwargs):
 
     # This will be a no-op since we're doing the write during the compile
     return ''
+
+
+try:
+    from sqlalchemy_redshift.dialect import UnloadFromSelect
+    from odo.backends.aws import S3, get_s3_connection
+except ImportError:
+    pass
+else:
+    @resource.register('s3://.*/$')
+    def resource_s3_prefix(uri, **kwargs):
+        return Directory(S3)(uri, **kwargs)
+
+    @append.register(Directory(S3), sa.Table)
+    def redshit_to_s3_bucket(bucket, selectable, dshape=None, bind=None,
+                             **kwargs):
+        s3_conn_kwargs = filter_kwargs(get_s3_connection, kwargs)
+        s3 = get_s3_connection(**s3_conn_kwargs)
+
+        unload_kwargs = filter_kwargs(UnloadFromSelect, kwargs)
+        unload_kwargs['unload_location'] = bucket.path
+        unload_kwargs['access_key_id'] = s3.access_key
+        unload_kwargs['secret_access_key'] = s3.secret_key
+
+        unload = UnloadFromSelect(selectable.select(), **unload_kwargs)
+
+        with getbind(selectable, bind).begin() as conn:
+            conn.execute(unload)
+        return bucket.path
 
 
 @append.register(CSV, sa.sql.Selectable)
