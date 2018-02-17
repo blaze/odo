@@ -103,7 +103,7 @@ def open_file(path, *args, **kwargs):
         f.close()
 
 
-def infer_header(path, nbytes=10000, encoding='utf-8', **kwargs):
+def infer_header(path, nbytes=10000, encoding=None, **kwargs):
     if encoding is None:
         encoding = 'utf-8'
     with open_file(path, 'rb') as f:
@@ -123,7 +123,7 @@ def newlines(encoding):
     return b'\r\n'.decode(encoding), b'\n'.decode(encoding)
 
 
-def sniff_dialect(path, nbytes, encoding='utf-8'):
+def sniff_dialect(path, nbytes, encoding=None):
     if not os.path.exists(path):
         return {}
     if encoding is None:
@@ -183,7 +183,7 @@ class CSV(object):
     """
     canonical_extension = 'csv'
 
-    def __init__(self, path, has_header=None, encoding='utf-8',
+    def __init__(self, path, has_header=None, encoding=None,
                  sniff_nbytes=10000, buffer=None, **kwargs):
         self.path = path
         self._has_header = has_header
