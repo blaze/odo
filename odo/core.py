@@ -169,10 +169,6 @@ def path(graph, source, target, excluded_edges=None, ooc_types=ooc_types):
                                     if issubclass(n, oocs)])
     with without_edges(graph, excluded_edges) as g:
         pth = nx.shortest_path(g, source=source, target=target, weight='cost')
-        #https: // github.com / blaze / odo / issues / 579
-        #https://github.com/blaze/odo/issues/588
-        #node can be retrieved from graph via dict-like access
-        #edge = graph.edge
 
         def path_part(src, tgt):
             #node = edge[src][tgt]
@@ -193,9 +189,6 @@ def without_edges(g, edges):
     edges = edges or []
     held = dict()
     for a, b in edges:
-        #https: // github.com / blaze / odo / issues / 579
-        #https://github.com/blaze/odo/issues/588
-        #held[(a, b)] = g.edge[a][b]
         held[(a, b)] = g[a][b]
         g.remove_edge(a, b)
 
