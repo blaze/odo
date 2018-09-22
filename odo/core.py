@@ -9,7 +9,7 @@ import networkx as nx
 import numpy as np
 from toolz import concatv
 
-from .compatibility import map
+from .compatibility import map, adjacency
 from .utils import expand_tuples, ignoring
 
 
@@ -169,7 +169,7 @@ def path(graph, source, target, excluded_edges=None, ooc_types=ooc_types):
                                     if issubclass(n, oocs)])
     with without_edges(graph, excluded_edges) as g:
         pth = nx.shortest_path(g, source=source, target=target, weight='cost')
-        edge = graph.edge
+        edge = adjacency(graph)
 
         def path_part(src, tgt):
             node = edge[src][tgt]
@@ -188,8 +188,9 @@ def path_cost(path):
 def without_edges(g, edges):
     edges = edges or []
     held = dict()
+    _g_edge = adjacency(g)
     for a, b in edges:
-        held[(a, b)] = g.edge[a][b]
+        held[(a, b)] = _g_edge[a][b]
         g.remove_edge(a, b)
 
     try:

@@ -39,3 +39,12 @@ try:
     from urllib2 import urlopen
 except ImportError:
     from urllib.request import urlopen
+
+import networkx
+if networkx.__version__.startswith('1.'):
+    def adjacency(g):
+        return g.edge
+else:
+    # NetworkX >=2.0
+    def adjacency(g):
+        return dict(g.adjacency())
