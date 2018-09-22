@@ -22,3 +22,5 @@ pip install -r etc/requirements_ci.txt
 
 # datashape
 pip install git+git://github.com/blaze/datashape.git
+
+pip list
