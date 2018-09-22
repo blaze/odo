@@ -3,7 +3,7 @@ set -x
 # Install dependencies
 # Use conda **ONLY** for numpy and pandas (if not pulling from master), this
 # speeds up the builds a lot. Use the normal pip install for the rest.
-conda create -n odo numpy=1.11.2 python=$python
+conda create -n odo numpy=1.11.2 python=${TRAVIS_PYTHON_VERSION}
 source activate odo
 
 # update setuptools and pip
@@ -24,5 +24,3 @@ pip install -r etc/requirements_ci.txt
 
 # datashape
 pip install git+git://github.com/blaze/datashape.git
-
-pip list
