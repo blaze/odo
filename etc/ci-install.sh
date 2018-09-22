@@ -1,3 +1,5 @@
+set -x
+
 # Install dependencies
 # Use conda **ONLY** for numpy and pandas (if not pulling from master), this
 # speeds up the builds a lot. Use the normal pip install for the rest.
