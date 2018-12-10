@@ -8,7 +8,7 @@ build:
   {% else %}string: py{{ environ.get('PY_VER').replace('.', '') }}_{{ environ.get('GIT_BUILD_STR', 'GIT_STUB') }}{% endif %}
 
 source:
-  git_url: ../
+  path: ../
 
 requirements:
   build:
@@ -18,7 +18,7 @@ requirements:
     - pandas >=0.15.0
     - toolz >=0.7.3
     - multipledispatch >=0.4.7
-    - networkx
+    - networkx >1.0,<2.0
     - dask >=0.11.1
 
   run:
@@ -28,7 +28,7 @@ requirements:
     - pandas >=0.15.0
     - toolz >=0.7.3
     - multipledispatch >=0.4.7
-    - networkx
+    - networkx >1.0,<2.0
     - dask >=0.11.1
 
 test:
@@ -38,8 +38,8 @@ test:
     - pytables >=3.0.0
     - sqlalchemy >=0.8.0
     - bcolz
+    - pymongo # [not (py35 or win)]
     - mock
-    - pymongo >=2.8,<3 # [not (py35 or win)]
     - dask
     - paramiko # [not win]
     - sqlite3 # [win]
@@ -50,7 +50,7 @@ test:
     - psycopg2 # [unix]
 
   commands:
-    - pip install sas7bdat && py.test -vx --pyargs odo -rsxX
+    - pip install sas7bdat && py.test -v --pyargs odo -rsxX
 
 about:
   home: https://github.com/blaze/odo/

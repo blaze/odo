@@ -165,7 +165,7 @@ def test_numpy_launders_python_types():
 
 def test_numpy_asserts_type_after_dataframe():
     df = pd.DataFrame({'name': ['Alice'], 'amount': [100]})
-    ds = datashape.dshape('1 * {name: string[10, "ascii"], amount: int32}')
+    ds = datashape.dshape('1 * {amount: int32, name: string[10, "ascii"]}')
     x = convert(np.ndarray, df, dshape=ds)
     assert discover(x) == ds
 

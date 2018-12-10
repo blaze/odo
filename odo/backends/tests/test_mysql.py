@@ -1,21 +1,23 @@
 from __future__ import absolute_import, division, print_function
 
+import csv as csv_module
+import getpass
+import itertools
+import os
+import sys
+
 import pytest
+import sqlalchemy
+import sqlalchemy as sa
+from datashape import var, Record, dshape
+
+from odo import resource, odo, drop, discover
+from odo.backends.csv import CSV
+from odo.utils import tmpfile
+
 
 pymysql = pytest.importorskip('pymysql')
 
-from datashape import var, DataShape, Record, dshape
-import itertools
-from odo.backends.csv import CSV
-from odo import resource, odo
-import sqlalchemy
-import sqlalchemy as sa
-import os
-import sys
-import csv as csv_module
-import getpass
-from odo import drop, discover
-from odo.utils import tmpfile
 
 
 pytestmark = pytest.mark.skipif(sys.platform == 'win32',
@@ -232,7 +234,7 @@ def test_different_encoding(name):
         sql = odo(os.path.join(os.path.dirname(__file__), 'encoding.csv'),
                   url + '::%s' % name,
                   encoding=encoding)
-    except sa.exc.OperationalError as e:
+    except (sa.exc.OperationalError, pymysql.err.InternalError) as e:
         pytest.skip(str(e))
     else:
         try:

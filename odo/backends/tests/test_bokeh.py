@@ -4,6 +4,8 @@ import pytest
 bokeh = pytest.importorskip('bokeh')
 
 from odo.backends.bokeh import convert, pd, ColumnDataSource
+import numpy as np
+import numpy.testing as nt
 import pandas.util.testing as tm
 
 

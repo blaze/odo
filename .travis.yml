@@ -1,36 +1,36 @@
-sudo: False
+sudo: required
 
-language: python
+language: generic
 
 matrix:
   fast_finish: true
   include:
     - python: 2.7
       env:
-    - python: 3.4
-      env:
     - python: 3.5
+      env:
+    - python: 3.6
       env:
     - python: 2.7
       env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
-    - python: 3.4
-      env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
     - python: 3.5
+      env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
+    - python: 3.6
       env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
   allow_failures:
     - python: 2.7
       env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
-    - python: 3.4
-      env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
     - python: 3.5
+      env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
+    - python: 3.6
       env: PANDAS_VERSION="git+https://github.com/pydata/pandas"
 
 addons:
-  postgresql: "9.3"
+  postgresql: "9.5"
 
 services:
-    - mongodb
-    - mysql
+  - mongodb
+  - mysql
 
 install:
   # Install conda
@@ -40,6 +40,24 @@ install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update conda
 
+  # Install dependencies
+  # Use conda **ONLY** for numpy and pandas (if not pulling from master), this
+  # speeds up the builds a lot. Use the normal pip install for the rest.
+  - conda create -n odo numpy=1.11.2
+  - source activate odo
+  # update setuptools and pip
+  - conda update setuptools pip
+  - if [ -n "$PANDAS_VERSION" ]; then pip install cython==0.27.3; pip install $PANDAS_VERSION; else conda install pandas=0.22.0; fi
+
+  # install the frozen ci dependencies
+  - pip install -e .[ci]
+
+  # datashape
+  - pip install git+git://github.com/blaze/datashape.git
+
+  # redshift sqlalchemy dialect
+  - pip install --upgrade git+git://github.com/graingert/redshift_sqlalchemy
+ 
   # install python stuff
   - source etc/ci-install.sh
 

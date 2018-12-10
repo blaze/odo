@@ -12,7 +12,7 @@ if [ -n "$PANDAS_VERSION" ];then
     pip install cython==0.24.1
     pip install $PANDAS_VERSION
 else
-    conda install pandas=0.19.0
+    conda install pandas=0.22.1
 fi
 
 conda install pytables=3.3.0

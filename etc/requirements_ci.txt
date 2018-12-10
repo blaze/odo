@@ -6,7 +6,7 @@ cffi==1.8.3
 click==6.6
 cloudpickle==0.2.1
 cryptography==1.5.2
-dask==0.11.1
+dask==0.16.1
 decorator==4.0.10
 distributed==1.13.3
 docutils==0.12
@@ -27,12 +27,12 @@ pandas==0.19.0  # # please update the .travis file!
 paramiko==2.0.2
 partd==0.3.6
 psutil==4.4.2
-psycopg2==2.6.2
+psycopg2==2.7.4
 py==1.4.34
 pyasn1==0.1.9
 pycparser==2.17
 pymongo==2.9.4
-PyMySQL==0.7.9
+PyMySQL==0.7.11
 pytest==3.2.3
 python-dateutil==2.5.3
 pytz==2016.7
@@ -43,7 +43,7 @@ s3fs==0.0.7
 s3transfer==0.1.9
 sas7bdat==2.0.7
 six==1.10.0
-SQLAlchemy==1.1.3
+SQLAlchemy==1.2.1
 tables==3.3.0
 tblib==1.3.0
 toolz==0.8.0
