@@ -6,4 +6,7 @@ sas7bdat
 paramiko
 pywebhdfs
 boto
+avro; python_version < '3'
+avro-python3; python_version > '2.7'
+fastavro
 sqlalchemy-redshift
