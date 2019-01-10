@@ -33,6 +33,8 @@ from ..temp import Temp
 from ..numpy_dtype import dshape_to_pandas
 from .pandas import coerce_datetimes
 from functools import partial
+from itertools import chain
+
 
 dialect_terms = '''delimiter doublequote escapechar lineterminator quotechar
 quoting skipinitialspace strict'''.split()
@@ -344,17 +346,16 @@ def _csv_to_dataframe(c, dshape=None, chunksize=None, **kwargs):
             header = None
 
     kwargs = keyfilter(keywords(pd.read_csv).__contains__, kwargs)
-    with c.open() as f:
-        return pd.read_csv(f,
-                           header=header,
-                           sep=sep,
-                           encoding=encoding,
-                           dtype=dtypes,
-                           parse_dates=parse_dates,
-                           names=names,
-                           chunksize=chunksize,
-                           usecols=usecols,
-                           **kwargs)
+    return pd.read_csv(c.path,
+                       header=header,
+                       sep=sep,
+                       encoding=encoding,
+                       dtype=dtypes,
+                       parse_dates=parse_dates,
+                       names=names,
+                       chunksize=chunksize,
+                       usecols=usecols,
+                       **kwargs)
 
 
 @convert.register(chunks(pd.DataFrame), (Temp(CSV), CSV), cost=10.0)
@@ -368,7 +369,7 @@ def CSV_to_chunks_of_dataframes(c, chunksize=2 ** 20, **kwargs):
     else:
         rest = []
 
-    data = [first] + rest
+    data = chain([first], rest)
     return chunks(pd.DataFrame)(data)
 
 
