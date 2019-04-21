@@ -235,8 +235,8 @@ def resource_h5py(uri, datapath=None, dshape=None, expected_dshape=None,
         old_dset = f[datapath]
         if expected_dshape is not None:
             dshape = expected_dshape
-            assert dshape == discover(old_dset)
-    if dshape is not None:
+            assert dshape.subshape[0] == discover(old_dset).subshape[0]
+    elif dshape is not None:
         ds = datashape.dshape(dshape)
         if datapath:
             while ds and datapath:

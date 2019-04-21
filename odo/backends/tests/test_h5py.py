@@ -120,8 +120,9 @@ def test_append():
 
 def test_append_with_uri():
     with file(x) as (fn, f, dset):
-        result = odo(dset, '%s::%s' % (fn, dset.name))
-        assert eq(result[:], np.concatenate([x, x]))
+        odo(dset, '%s::%s' % (fn, dset.name))
+        result = odo(x, '%s::%s' % (fn, dset.name))
+        assert eq(result[:], np.concatenate([x, x, x]))
 
 
 def test_into_resource():
