@@ -1,12 +1,15 @@
 from __future__ import absolute_import, division, print_function
 
 from glob import glob
+import os
+import re
+
+from datashape import discover, var
+from toolz import memoize, first
+
 from .chunks import Chunks, chunks
 from .resource import resource
 from .utils import copydoc
-from toolz import memoize, first
-from datashape import discover, var
-import os
 
 
 class _Directory(Chunks):
@@ -25,29 +28,42 @@ class _Directory(Chunks):
 
 
     """
+    @staticmethod
+    def container(uri):
+        raise NotImplementedError('overridden by Directory(cls) types')
+
     def __init__(self, path, **kwargs):
         self.path = path
         self.kwargs = kwargs
 
     def __iter__(self):
-        return (resource(os.path.join(self.path, fn), **self.kwargs)
-                    for fn in sorted(os.listdir(self.path)))
+        return (
+            self.container(
+                os.path.join(self.path, fn),
+                **self.kwargs
+            )
+            for fn in sorted(os.listdir(self.path))
+        )
 
 
 @memoize
 @copydoc(_Directory)
 def Directory(cls):
-    """ Parametrized DirectoryClass """
-    return type('Directory(%s)' % cls.__name__, (_Directory, chunks(cls)), {})
+    """Parametrized Directory class.
+    """
+    return type(
+        'Directory(%s)' % cls.__name__,
+        (_Directory, chunks(cls)),
+        {'container': cls},
+    )
 
 
-re_path_sep = os.path.sep
-if re_path_sep == '\\':
-    re_path_sep = '\\\\'
+re_path_sep = re.escape(os.path.sep)
+
 
 @discover.register(_Directory)
-def discover_Directory(c, **kwargs):
-    return var * discover(first(c)).subshape[0]
+def discover_directory(c, **kwargs):
+    return var * discover(first(c)).measure
 
 
 @resource.register('.+' + re_path_sep + '\*\..+', priority=15)

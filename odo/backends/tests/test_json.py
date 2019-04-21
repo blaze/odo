@@ -105,6 +105,11 @@ def test_convert_json_list():
         j = JSON(fn)
         assert convert(list, j) == dat
 
+    non_list_data ={'a': 1}
+    with json_file(non_list_data) as fn:
+        j = JSON(fn)
+        assert convert(list, j) == [non_list_data]
+
 
 def test_convert_jsonlines():
     with jsonlines_file(dat) as fn:

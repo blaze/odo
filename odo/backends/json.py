@@ -99,7 +99,10 @@ def discover_jsonlines(j, n=10, encoding='utf-8', **kwargs):
 
 @convert.register(list, (JSON, Temp(JSON)))
 def json_to_list(j, dshape=None, **kwargs):
-    return json_load(j.path, **kwargs)
+    result = json_load(j.path, **kwargs)
+    if not isinstance(result, list):
+        result = [result]
+    return result
 
 
 @convert.register(Iterator, (JSONLines, Temp(JSONLines)))
@@ -138,9 +141,10 @@ def json_load(path, encoding='utf-8', **kwargs):
         f = open(path)
         s = f.read()
 
-    data = json.loads(s)
-
-    f.close()
+    try:
+        data = json.loads(s)
+    finally:
+        f.close()
 
     return data
 
