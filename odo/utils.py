@@ -127,7 +127,7 @@ def keywords(func):
     """
     if isinstance(func, type):
         return keywords(func.__init__)
-    return inspect.getargspec(func).args
+    return inspect.getfullargspec(func).args
 
 
 def cls_name(cls):
