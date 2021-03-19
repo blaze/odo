@@ -13,7 +13,7 @@ docutils==0.12
 h5py==2.6.0
 HeapDict==1.0.0
 idna==2.1
-Jinja2==2.8
+Jinja2==2.11.3
 jmespath==0.9.0
 locket==0.2.0
 MarkupSafe==0.23
