@@ -37,7 +37,7 @@ pytest==3.2.3
 python-dateutil==2.5.3
 pytz==2016.7
 pywebhdfs==0.4.1
-PyYAML==3.12
+PyYAML==5.4
 requests==2.11.1
 s3fs==0.0.7
 s3transfer==0.1.9
