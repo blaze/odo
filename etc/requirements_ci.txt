@@ -6,7 +6,7 @@ cffi==1.8.3
 click==6.6
 cloudpickle==0.2.1
 cryptography==1.5.2
-dask==0.11.1
+dask==2021.10.0
 decorator==4.0.10
 distributed==1.13.3
 docutils==0.12
