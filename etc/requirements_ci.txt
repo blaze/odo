@@ -22,7 +22,7 @@ msgpack-python==0.4.8
 multipledispatch==0.4.9
 networkx==1.11
 numexpr==2.6.1
-numpy==1.11.2  # please update the .travis file!
+numpy==1.22.0  # please update the .travis file!
 pandas==0.19.0  # # please update the .travis file!
 paramiko==2.0.2
 partd==0.3.6
