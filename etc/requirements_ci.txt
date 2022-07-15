@@ -8,7 +8,7 @@ cloudpickle==0.2.1
 cryptography==1.5.2
 dask==0.11.1
 decorator==4.0.10
-distributed==1.13.3
+distributed==2021.10.0
 docutils==0.12
 h5py==2.6.0
 HeapDict==1.0.0
