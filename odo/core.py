@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
-from collections import namedtuple, Iterator
+from collections import namedtuple
+from collections.abc import Iterator
 from contextlib import contextmanager
 from warnings import warn
 

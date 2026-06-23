@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import gzip
 from datashape import discover, dshape
-from collections import Iterator
+from collections.abc import Iterator
 from toolz import partial, concat
 import uuid
 import os

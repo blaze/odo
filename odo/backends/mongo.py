@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import pymongo
 from pymongo.collection import Collection
-from collections import Iterator
+from collections.abc import Iterator
 from datashape import discover, DataShape, Record, var
 from datashape.predicates import isdimension
 from datashape.dispatch import dispatch

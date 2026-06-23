@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import json
 from toolz.curried import map, take, pipe, pluck, get, concat, filter
-from collections import Iterator, Iterable
+from collections.abc import Iterator, Iterable
 import os
 from contextlib import contextmanager
 

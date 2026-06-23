@@ -11,7 +11,7 @@ from functools import partial
 
 from operator import attrgetter
 from itertools import chain
-from collections import Iterator
+from collections.abc import Iterator
 from datetime import datetime, date, timedelta
 from distutils.spawn import find_executable
 

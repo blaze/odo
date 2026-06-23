@@ -5,7 +5,7 @@ sas7bdat = pytest.importorskip('sas7bdat')
 pytest.importorskip('odo.backends.sas')
 import os
 import pandas as pd
-from collections import Iterator
+from collections.abc import Iterator
 from sas7bdat import SAS7BDAT
 
 from odo.backends.sas import discover, sas_to_iterator

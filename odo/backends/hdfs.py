@@ -14,7 +14,8 @@ import datashape
 import sqlalchemy as sa
 from datashape import discover
 from datashape import coretypes as ct
-from collections import namedtuple, Iterator
+from collections import namedtuple
+from collections.abc import Iterator
 from contextlib import contextmanager
 from .ssh import SSH
 from .sql import metadata_of_engine

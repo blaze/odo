@@ -5,7 +5,7 @@ from sas7bdat import SAS7BDAT
 
 import datashape
 from datashape import discover, dshape, var, Record, date_, datetime_
-from collections import Iterator
+from collections.abc import Iterator
 import pandas as pd
 from .pandas import coerce_datetimes
 from ..append import append

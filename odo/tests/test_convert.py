@@ -7,7 +7,7 @@ from odo.convert import (convert, list_to_numpy, iterator_to_numpy_chunks,
                          iterator_to_DataFrame_chunks)
 from odo.chunks import chunks
 from datashape import discover, dshape
-from collections import Iterator
+from collections.abc import Iterator
 import datetime
 import datashape
 import numpy as np

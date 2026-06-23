@@ -7,7 +7,7 @@ import tempfile
 import shutil
 
 from functools import partial
-from collections import Iterator
+from collections.abc import Iterator
 from datetime import datetime, date
 
 import pandas as pd

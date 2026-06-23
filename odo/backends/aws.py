@@ -6,7 +6,7 @@ import zlib
 import re
 from fnmatch import fnmatch
 from contextlib import contextmanager
-from collections import Iterator
+from collections.abc import Iterator
 from operator import attrgetter
 from io import BytesIO
 

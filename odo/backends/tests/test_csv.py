@@ -10,7 +10,7 @@ import pandas.util.testing as tm
 import gzip
 import datashape
 from datashape import Option, string
-from collections import Iterator
+from collections.abc import Iterator
 
 from odo.backends.csv import (CSV, append, convert, resource,
                               csv_to_dataframe, CSV_to_chunks_of_dataframes,
